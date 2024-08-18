@@ -4,6 +4,7 @@
 
 plugins {
     id 'java'
+    id 'jacoco'
     id 'org.javamodularity.moduleplugin'
 }
 
@@ -26,4 +27,9 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(22)
     }
+}
+
+test {
+     // Always generate JaCoCo report after tests run
+    finalizedBy jacocoTestReport
 }
