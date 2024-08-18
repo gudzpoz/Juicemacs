@@ -1,0 +1,15 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'buildlogic.java-application-conventions'
+}
+
+dependencies {
+    implementation project(':elisp')
+}
+
+application {
+    mainClass = 'org.example.app.App'
+}

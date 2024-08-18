@@ -1,0 +1,8 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'buildlogic.java-common-conventions'
+    id 'java-library'
+}

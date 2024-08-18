@@ -1,0 +1,29 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'java'
+    id 'org.javamodularity.moduleplugin'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+}
+
+testing {
+    suites {
+        test {
+            useJUnitJupiter('5.10.3')
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(22)
+    }
+}

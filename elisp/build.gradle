@@ -1,0 +1,16 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+ext {
+    truffleVersion = '24.0.2'
+}
+
+dependencies {
+    implementation "org.graalvm.truffle:truffle-api:${truffleVersion}"
+    annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
+}
