@@ -20,11 +20,67 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li><a href="https://git.savannah.gnu.org/cgit/guile.git/tree/module/language/elisp/lexer.scm">
  * The ELisp lexer in Guile</a></li>
  * <li><a href="https://github.com/talyz/fromElisp">talyz/fromElisp in Nix</a></li>
+ * <li><a href="http://git.savannah.gnu.org/cgit/emacs.git/tree/src/lread.c">
+ * The ELisp lexer & parser in Emacs</a></li>
  * </ul>
  *
  * <p>
- * Not all ELisp grammar is supported.
+ * Not all ELisp grammar is supported. If you are to understand how many features are actually
+ * supported by canonical ELisp (as is in Emacs), I would recommend reading the {@code read0}
+ * function in the Emacs source code.
  * </p>
+ *
+ * <h2>Emacs ELisp Features</h2>
+ *
+ * <p>
+ * The following lists the features supported by Emacs ELisp,
+ * serving as my personal notes as well as a reference for future readers.
+ * Because the Emacs implementation integrates lexer and parser into the same function,
+ * the logic can be a bit convoluted.
+ * </p>
+ *
+ * <ul>
+ * <li>Unless otherwise noted, the "(" character marks {@code RE_list_start}.</li>
+ * <li>The ")" character marks the end of a {@code RE_list} (or {@code RE_list_start}),
+ * a {@code RE_record} or a {@code RE_string_props}.</li>
+ * <li>The "[" character marks the start of a {@code RE_vector}.</li>
+ * <li>The "]" character marks the end of a {@code RE_vector}, a {@code RE_byte_code},
+ * a {@code RE_char_table} or a {@code RE_sub_char_table}.</li>
+ * <li>The "#" character marks the start of many, many things.
+ * <ul>
+ * <li>{@code #'X}: Special syntax for function symbol reference.</li>
+ * <li>{@code ##}: The empty symbol.</li>
+ * <li>{@code #s(...)}: A record or hash-table.</li>
+ * <li>{@code #^[...]}: A character table.</li>
+ * <li>{@code #^^[...]}: A sub-char-table.</li>
+ * <li>{@code #(...)}: String with properties.</li>
+ * <li>{@code #[...]}: Byte code.</li>
+ * <li>{@code #&N"..."}: A bool vector.</li>
+ * <li>{@code #!}: The shebang.</li>
+ * <li>{@code #xFFFF / #XFFFF}: A hex integer.</li>
+ * <li>{@code #b1010 / #B1010}: A binary integer.</li>
+ * <li>{@code #o7070 / #O7070}: An octal integer.</li>
+ * <li>{@code #@NUMBER}: Used to skip {@code NUMBER} following bytes.</li>
+ * <li>{@code #$}: Reference to lazy-loaded string.</li>
+ * <li>{@code #:X}: Uninterned symbol.</li>
+ * <li>{@code #_X}: Symbol without shorthand.</li>
+ * <li>{@code #36rX}: A custom-radix integer.</li>
+ * <li>{@code #1= / #1#}: A cyclic definition / reference.</li>
+ * </ul>
+ * </li>
+ * <li>The "?" character marks the start of a character literal.</li>
+ * <li>The {@code "} character marks the start of a string.</li>
+ * <li>The "'" character marks a {@code RE_special(Qquote)}.</li>
+ * <li>The "`" character marks a {@code RE_special(Qbackquote)}.</li>
+ * <li>The ",@" string marks a {@code RE_special(Qcomma_at)}.</li>
+ * <li>The "," character marks a {@code RE_special(Qcomma)}.</li>
+ * <li>The ";" character marks a comment.</li>
+ * <li>The "." character is used in a cons pair, only if it is followed by the following chars:
+ * {@code [\0-\32]|NO_BREAK_SPACE|["';()\[#?`,]} ({@code )]} are not in the list).</li>
+ * <li>Otherwise, the characters that follows will be first parsed as numbers.</li>
+ * <li>If it turns out to be not a number, then it is a symbol, terminated by
+ * an unescaped non-symbol characters: {@code [\0-\32]|NO_BREAK_SPACE|["';#()\[\]`,]}.</li>
+ * </ul>
  */
 class ELispLexer {
 
@@ -54,6 +110,12 @@ class ELispLexer {
          * End-of-file indicator
          */
         record EOF() implements TokenData {
+        }
+
+        /**
+         * Somehow equivalent to {@link EOF}, but causes the parser to return nil
+         */
+        record SkipToEnd() implements TokenData {
         }
 
         /**
@@ -91,10 +153,16 @@ class ELispLexer {
         }
 
         /**
+         * Opening string with properties as is in {@code #(}
+         */
+        record StrWithPropsOpen() implements TokenData {
+        }
+
+        /**
          * Closing parenthesis
          *
          * <p>
-         * Please note that it also closes {@link RecordOpen}.
+         * Please note that it also closes {@link RecordOpen}, etc.
          * </p>
          */
         record ParenClose() implements TokenData {
@@ -113,10 +181,22 @@ class ELispLexer {
         }
 
         /**
+         * Opening char table as is in {@code #^[}
+         */
+        record CharTableOpen() implements TokenData {
+        }
+
+        /**
+         * Opening sub char table as is in {@code #^^[}
+         */
+        record SubCharTableOpen() implements TokenData {
+        }
+
+        /**
          * Closing square bracket
          *
          * <p>
-         * Please note that it also closes {@link ByteCodeOpen}.
+         * Please note that it also closes {@link ByteCodeOpen}, etc.
          * </p>
          */
         record SquareClose() implements TokenData {
@@ -173,7 +253,7 @@ class ELispLexer {
         record Num(NumberVariant value) implements TokenData {
         }
 
-        record Symbol(String value) implements TokenData {
+        record Symbol(String value, boolean intern, boolean shorthand) implements TokenData {
         }
 
         /**
@@ -184,28 +264,35 @@ class ELispLexer {
     }
 
     /**
-     * @param data the actual token data
+     * @param data   the actual token data
      * @param source the source section of the token
      */
     record Token(TokenData data, SourceSection source) {
     }
 
     private static final TokenData.EOF EOF = new TokenData.EOF();
+    private static final TokenData.SkipToEnd SKIP_TO_END = new TokenData.SkipToEnd();
     private static final TokenData.Dot DOT = new TokenData.Dot();
     private static final TokenData.ParenOpen PAREN_OPEN = new TokenData.ParenOpen();
     private static final TokenData.RecordOpen RECORD_OPEN = new TokenData.RecordOpen();
+    private static final TokenData.StrWithPropsOpen STR_WITH_PROPS_OPEN = new TokenData.StrWithPropsOpen();
     private static final TokenData.ParenClose PAREN_CLOSE = new TokenData.ParenClose();
     private static final TokenData.SquareOpen SQUARE_OPEN = new TokenData.SquareOpen();
     private static final TokenData.ByteCodeOpen BYTE_CODE_OPEN = new TokenData.ByteCodeOpen();
+    private static final TokenData.CharTableOpen CHAR_TABLE_OPEN = new TokenData.CharTableOpen();
+    private static final TokenData.SubCharTableOpen SUB_CHAR_TABLE_OPEN = new TokenData.SubCharTableOpen();
     private static final TokenData.SquareClose SQUARE_CLOSE = new TokenData.SquareClose();
     private static final TokenData.Function FUNCTION = new TokenData.Function();
     private static final TokenData.Quote QUOTE = new TokenData.Quote();
     private static final TokenData.BackQuote BACK_QUOTE = new TokenData.BackQuote();
     private static final TokenData.Unquote UNQUOTE = new TokenData.Unquote();
     private static final TokenData.UnquoteSplicing UNQUOTE_SPLICING = new TokenData.UnquoteSplicing();
+    static final TokenData.Symbol EMPTY_SYMBOL = new TokenData.Symbol("", true, true);
+    static final TokenData.Symbol NIL_SYMBOL = new TokenData.Symbol("nil", true, false);
 
+    private static final int NO_BREAK_SPACE = 0x00A0;
     private static final Pattern LEXICAL_BINDING_PATTERN = Pattern.compile(
-        "-\\*-(?:|.*;)[ \t]*lexical-binding:[ \t]*([^;]*[^ \t;]).*-\\*-"
+            "-\\*-(?:|.*;)[ \t]*lexical-binding:[ \t]*([^;]*[^ \t;]).*-\\*-"
     );
     private static final Pattern INTEGER_PATTERN = Pattern.compile("^([+-]?[0-9]+)\\.?$");
     private static final Pattern FLOAT_PATTERN = Pattern.compile("^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?$");
@@ -238,12 +325,13 @@ class ELispLexer {
      * Maintained by {@link #readCodepoint()} and {@link #peekCodepoint()}.
      */
     private int peekedCodepoint = -1;
+    private boolean shebang = false;
 
     /**
      * Reads a full Unicode codepoint from the reader.
      *
      * <p>
-     * The {@link eof}, {@link #line} and {@link #offset} fields are
+     * The {@link #eof}, {@link #line} and {@link #offset} fields are
      * maintained in this method only. One should take care to not modify
      * them elsewhere.
      * </p>
@@ -300,10 +388,11 @@ class ELispLexer {
     }
 
     /**
-     * @see https://www.gnu.org/software/emacs/manual/html_node/elisp/Basic-Char-Syntax.html
+     * @see <a href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Basic-Char-Syntax.html">
+     * elisp/Basic Char Syntax</a>
      */
     private static int mapBasicEscapeCode(int c) {
-        return switch(c) {
+        return switch (c) {
             case 'a' -> '\u0007';
             case 'b' -> '\b';
             case 't' -> '\t';
@@ -319,10 +408,11 @@ class ELispLexer {
     }
 
     /**
-     * @see https://www.gnu.org/software/emacs/manual/html_node/elisp/Other-Char-Bits.html
+     * @see <a href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Other-Char-Bits.html">
+     * elisp/Other Char Bits</a>
      */
     private static int mapMetaBits(int c, boolean inString) {
-        return switch(c) {
+        return switch (c) {
             case 'A' -> 22;
             case 's' -> 23;
             case 'H' -> 24;
@@ -334,7 +424,7 @@ class ELispLexer {
 
     private BigInteger readInteger(int base, int digits, boolean earlyReturn) throws IOException {
         BigInteger value = new BigInteger("0", base);
-        // When `digit == -1`, `i != digits` allows reading a infinitely large number.
+        // When `digit == -1`, `i != digits` allows reading an infinitely large number.
         for (int i = 0; i != digits; i++) {
             int c = peekCodepoint();
             if (earlyReturn) {
@@ -342,7 +432,7 @@ class ELispLexer {
                     return value;
                 }
             } else {
-                c = noEOF(c);
+                noEOF(c);
             }
             int digit;
             if ('0' <= c && c <= '9') {
@@ -417,6 +507,9 @@ class ELispLexer {
         }
         // Meta-prefix: ?\s-a => Bit annotated character
         int meta = mapMetaBits(escaped, inString);
+        if (inString && meta > 8) {
+            throw new IOException("Invalid modifier in string");
+        }
         if (meta != -1 && peekCodepoint() == '-') {
             readCodepoint();
             return (0x1 << meta) | readChar(inString);
@@ -489,8 +582,8 @@ class ELispLexer {
         }
     }
 
-    private boolean needsNoEscape(int c) throws IOException {
-        return Character.isDigit(c) || Character.isAlphabetic(c) || "-+=*/_~!@$%^&:<>{}?.".indexOf(c) != -1;
+    private static boolean isAlphaNumeric(int c) {
+        return '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z';
     }
 
     private TokenData readHashNumToken(int base) throws IOException {
@@ -499,12 +592,12 @@ class ELispLexer {
             // #1#
             case '#' -> {
                 readCodepoint();
-                return  new TokenData.CircularRef(value.longValueExact());
+                return new TokenData.CircularRef(value.longValueExact());
             }
             // #1=
             case '=' -> {
                 readCodepoint();
-                return  new TokenData.CircularDef(value.longValueExact());
+                return new TokenData.CircularDef(value.longValueExact());
             }
             // #24r1k => base-24 integer
             case 'r' -> {
@@ -517,13 +610,13 @@ class ELispLexer {
                     throw new IOException("Invalid base");
                 }
                 BigInteger number = readInteger(realBase, -1, true);
-                if (needsNoEscape(peekCodepoint())) {
+                if (isAlphaNumeric(peekCodepoint())) {
                     throw new IOException("Invalid character");
                 }
                 return new TokenData.Num(NumberVariant.from(number));
             }
             default -> {
-                if (needsNoEscape(peekCodepoint())) {
+                if (isAlphaNumeric(peekCodepoint())) {
                     throw new IOException("Invalid character");
                 }
                 return new TokenData.Num(NumberVariant.from(value));
@@ -531,74 +624,89 @@ class ELispLexer {
         }
     }
 
-    private TokenData readSymbolOrNumber(int alreadyRead, boolean symbolOnly) throws IOException {
+    private static boolean potentialUnescapedSymbolChar(int c) {
+        //noinspection ConditionCoveredByFurtherCondition
+        return c > 32 && c != NO_BREAK_SPACE
+                && (c >= 128 // noinspection: A quick check
+                || !(
+                c == '"' || c == '\'' || c == ';' || c == '#'
+                        || c == '(' || c == ')' || c == '[' || c == ']'
+                        || c == '`' || c == ','
+        ));
+    }
+
+    private TokenData readSymbolOrNumber(int alreadyRead, boolean uninterned, boolean noShorthand)
+            throws IOException {
+        boolean symbolOnly = uninterned || noShorthand;
         StringBuilder sb = new StringBuilder();
-        if (alreadyRead != -1) {
-            // TODO: Check.
-            sb.appendCodePoint(alreadyRead);
-        }
         boolean escaped = false;
-        while (true) {
-            int c = peekCodepoint();
-            if (c == -1) {
-                break;
+        int c = alreadyRead;
+        while (potentialUnescapedSymbolChar(c)) {
+            if (alreadyRead == -1) {
+                readCodepoint();
+            } else {
+                alreadyRead = -1;
             }
-            // TODO: Deal Unicode like "，" (not alphabetic in Java but acceptable in ELisp)
-            // Try: (setq ， 1)
-            if (needsNoEscape(c)) {
-                readCodepoint();
-                sb.appendCodePoint(c);
-            } else if (c == '\\') {
-                readCodepoint();
+            if (c == '\\') {
                 escaped = true;
                 sb.appendCodePoint(readCodepoint());
             } else {
-                break;
+                sb.appendCodePoint(c);
             }
+            c = peekCodepoint();
         }
         String symbol = sb.toString();
         if (!symbolOnly && !escaped) {
             Matcher integer = INTEGER_PATTERN.matcher(symbol);
             if (integer.matches()) {
-                return new TokenData.Num(NumberVariant.from(new BigInteger(integer.group(1))));
+                NumberVariant inner = NumberVariant.from(new BigInteger(integer.group(1)));
+                return new TokenData.Num(inner);
             }
             if (FLOAT_PATTERN.matcher(symbol).matches()) {
-                // Handle 1.0e+INF or 1.0e+NaN
-                double f;
-                if (symbol.endsWith("+INF")) {
-                    f = symbol.startsWith("-") ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
-                } else if (symbol.endsWith("+NaN")) {
-                    // Emacs encodes (number)e+NaN into the significand of the NaN...
-                    double base = Double.parseDouble(symbol.substring(0, symbol.length() - 5));
-                    boolean neg = Math.copySign(1.0, base) == -1.0;
-                    long SIGNIFICAND_BITS = 52;
-                    long SIGNIFICAND_MASK = (0x1 << (SIGNIFICAND_BITS - 1)) - 1;
-                    long EXP_BITS = 11;
-                    long NAN_EXP = (0x1 << EXP_BITS) - 1;
-                    long significand = ((long) base) & SIGNIFICAND_MASK;
-                    f = Double.longBitsToDouble(
-                        ((neg ? 0x1L : 0x0L) << 63) | ((significand + 1) << 1) | (NAN_EXP << (SIGNIFICAND_BITS))
-                    );
-                } else {
-                    f = Double.parseDouble(symbol);
-                }
-                return new TokenData.Num(new NumberVariant.Float(f));
+                return new TokenData.Num(new NumberVariant.Float(parseFloat(symbol)));
             }
         }
-        return new TokenData.Symbol(symbol);
+        return new TokenData.Symbol(symbol, !uninterned, !noShorthand);
+    }
+
+    private static double parseFloat(String symbol) {
+        double f;
+        // Handle 1.0e+INF or 1.0e+NaN
+        if (symbol.endsWith("+INF")) {
+            f = symbol.startsWith("-") ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+        } else if (symbol.endsWith("+NaN")) {
+            // Emacs encodes (number)e+NaN into the significand of the NaN...
+            double base = Double.parseDouble(symbol.substring(0, symbol.length() - 5));
+            boolean neg = Math.copySign(1.0, base) == -1.0;
+            long SIGNIFICAND_BITS = 52;
+            long SIGNIFICAND_MASK = (0x1L << (SIGNIFICAND_BITS - 1)) - 1;
+            long EXP_BITS = 11;
+            long NAN_EXP = (0x1 << (EXP_BITS + 1)) - 1;
+            long significand = ((long) Math.abs(base)) & SIGNIFICAND_MASK;
+            f = Double.longBitsToDouble(
+                    ((neg ? 0x1L : 0x0L) << 63) | significand | (NAN_EXP << (SIGNIFICAND_BITS - 1))
+            );
+        } else {
+            f = Double.parseDouble(symbol);
+        }
+        return f;
+    }
+
+    private static boolean charNextToDotAllowed(int c) {
+        return c <= 32 || c == NO_BREAK_SPACE
+                || c == '"' || c == '\'' || c == ';'
+                || c == '(' || c == '[' || c == '#'
+                || c == '?' || c == '`' || c == ',';
     }
 
     /**
      * Returns the next ELisp token from the reader.
      *
      * <p>
-     * It is based on the ELisp lexer from Guile.
-     * See <a href="https://git.savannah.gnu.org/cgit/guile.git/tree/module/language/elisp/lexer.scm">
-     * guile.git/tree/module/language/elisp/lexer.scm</a>.
-     * </p>
-     *
-     * <p>
-     * It assumes it is called by {@link #next()} with all whitespaces already consumed.
+     * It is loosely based on the Emacs implementation in {@code read0 @ src/lread.c}.
+     * You should definitely read that if you are trying to understand what this code does
+     * as well as what semantically each {@link TokenData} means.
+     * A summary is given at the Javadoc of this class ({@link ELispLexer}).
      * </p>
      *
      * @return {@code null} if there is a comment, or the next token otherwise.
@@ -608,24 +716,14 @@ class ELispLexer {
         if (c == -1) {
             return EOF;
         }
-        if (c == '.' && Character.isWhitespace(peekCodepoint())) {
+        if (c == '.' && charNextToDotAllowed(peekCodepoint())) {
             return DOT;
         }
         return switch (c) {
-            case ';' -> {
-                String comment = readLine();
-                if (line == 1) {
-                    Matcher matcher = LEXICAL_BINDING_PATTERN.matcher(comment);
-                    if (matcher.find()) {
-                        yield new TokenData.SetLexicalBindingMode(
-                                !matcher.group(1).equals("nil")
-                        );
-                    }
-                }
-                yield null;
-            }
-            case '?' -> new TokenData.Char(readChar(false));
-            case '"' -> new TokenData.Str(readStr());
+            case '(' -> PAREN_OPEN;
+            case ')' -> PAREN_CLOSE;
+            case '[' -> SQUARE_OPEN;
+            case ']' -> SQUARE_CLOSE;
             case '#' -> {
                 int next = peekCodepoint();
                 if ('0' <= next && next <= '9') {
@@ -634,10 +732,26 @@ class ELispLexer {
                 readCodepoint();
                 yield switch (next) {
                     case '\'' -> FUNCTION;
-                    case ':' -> readSymbolOrNumber(-1, true);
-                    // https://www.gnu.org/software/emacs/manual/html_node/elisp/Byte_002dCode-Objects.html
+                    case '#' -> EMPTY_SYMBOL;
+                    case 's' -> {
+                        if (noEOF(readCodepoint()) != '(') {
+                            throw new IOException("Expected '('");
+                        }
+                        yield RECORD_OPEN;
+                    }
+                    case '^' -> {
+                        int subChar = noEOF(readCodepoint());
+                        if (subChar == '^') {
+                            if (noEOF(readCodepoint()) == '[') {
+                                yield SUB_CHAR_TABLE_OPEN;
+                            }
+                        } else if (subChar == '[') {
+                            yield CHAR_TABLE_OPEN;
+                        }
+                        throw new IOException("Expected '^' or '['");
+                    }
+                    case '(' -> STR_WITH_PROPS_OPEN;
                     case '[' -> BYTE_CODE_OPEN;
-                    // https://www.gnu.org/software/emacs/manual/html_node/elisp/Bool_002dVectors.html
                     case '&' -> {
                         BigInteger length = readInteger(10, -1, true);
                         long l = length.longValueExact();
@@ -646,25 +760,43 @@ class ELispLexer {
                         }
                         yield new TokenData.BoolVec(l, readStr());
                     }
-                    case 's' -> {
-                        // https://www.gnu.org/software/emacs/manual/html_node/elisp/Records.html
-                        if (readCodepoint() != '(') {
-                            throw new IOException("Expected '('");
+                    case '!' -> {
+                        readLine();
+                        if (line == 1) {
+                            shebang = true;
                         }
-                        yield RECORD_OPEN;
+                        yield null;
                     }
-                    default -> switch (Character.toUpperCase(next)) {
-                        case 'B' -> readHashNumToken(2);
-                        case 'O' -> readHashNumToken(8);
-                        case 'X' -> readHashNumToken(16);
-                        default -> throw new IOException("Expected a number base indicator");
-                    };
+                    case 'x', 'X' -> readHashNumToken(16);
+                    case 'o', 'O' -> readHashNumToken(8);
+                    case 'b', 'B' -> readHashNumToken(2);
+                    case '@' -> {
+                        long start = offset;
+                        long skip = readInteger(10, -1, true).longValueExact();
+                        if (skip == 0 && offset - start == 2) {
+                            // #@00 skips to the end of the file
+                            eof = true;
+                            yield SKIP_TO_END;
+                        }
+                        //noinspection StatementWithEmptyBody
+                        while (readCodepoint() != '\037') {
+                            // Yes, it is how Emacs does it...
+                        }
+                        yield null;
+                    }
+                    // TODO: #$ - Vload_file_name
+                    case '$' -> NIL_SYMBOL;
+                    case ':' -> potentialUnescapedSymbolChar(peekCodepoint())
+                            ? readSymbolOrNumber(readCodepoint(), true, false)
+                            : new TokenData.Symbol("", false, true);
+                    case '_' -> potentialUnescapedSymbolChar(peekCodepoint())
+                            ? readSymbolOrNumber(readCodepoint(), false, true)
+                            : EMPTY_SYMBOL;
+                    default -> throw new IOException("Expected a number base indicator");
                 };
             }
-            case '(' -> PAREN_OPEN;
-            case ')' -> PAREN_CLOSE;
-            case '[' -> SQUARE_OPEN;
-            case ']' -> SQUARE_CLOSE;
+            case '?' -> new TokenData.Char(readChar(false));
+            case '"' -> new TokenData.Str(readStr());
             case '\'' -> QUOTE;
             case '`' -> BACK_QUOTE;
             case ',' -> {
@@ -674,7 +806,19 @@ class ELispLexer {
                 }
                 yield UNQUOTE;
             }
-            default -> readSymbolOrNumber(c, false);
+            case ';' -> {
+                String comment = readLine();
+                if (line == 1 || (shebang && line == 2)) {
+                    Matcher matcher = LEXICAL_BINDING_PATTERN.matcher(comment);
+                    if (matcher.find()) {
+                        yield new TokenData.SetLexicalBindingMode(
+                                !matcher.group(1).equals("nil")
+                        );
+                    }
+                }
+                yield null;
+            }
+            default -> potentialUnescapedSymbolChar(c) ? readSymbolOrNumber(c, false, false) : null;
         };
     }
 
@@ -685,7 +829,7 @@ class ELispLexer {
         while (true) {
             while (true) {
                 int c = peekCodepoint();
-                if (c == -1 || !Character.isWhitespace(c)) {
+                if (c != ' ' && c != '\n' && c != '\r' && c != '\t') {
                     break;
                 }
                 readCodepoint();
