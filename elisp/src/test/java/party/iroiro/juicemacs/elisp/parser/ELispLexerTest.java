@@ -1,4 +1,4 @@
-package party.iroiro.jvmacs.elisp.parser;
+package party.iroiro.juicemacs.elisp.parser;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -15,29 +15,29 @@ import org.junit.jupiter.api.Test;
 
 import com.oracle.truffle.api.source.Source;
 
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.NumberVariant;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.BackQuote;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.BoolVec;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.ByteCodeOpen;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Char;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.CircularDef;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.CircularRef;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Dot;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.EOF;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Function;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Num;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.ParenClose;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.ParenOpen;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Quote;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.RecordOpen;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.SetLexicalBindingMode;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.SquareClose;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.SquareOpen;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Str;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Symbol;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.Unquote;
-import party.iroiro.jvmacs.elisp.parser.ELispLexer.TokenData.UnquoteSplicing;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.BackQuote;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.BoolVec;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.ByteCodeOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Char;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.CircularDef;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.CircularRef;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Dot;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.EOF;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Function;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Num;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.ParenClose;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.ParenOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Quote;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.RecordOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SetLexicalBindingMode;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SquareClose;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SquareOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Str;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Symbol;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Unquote;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.UnquoteSplicing;
 
 public class ELispLexerTest {
 

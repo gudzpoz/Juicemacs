@@ -1,4 +1,4 @@
-package party.iroiro.jvmacs.elisp.parser;
+package party.iroiro.juicemacs.elisp.parser;
 
 import java.io.IOException;
 import java.io.Reader;
