@@ -11,6 +11,7 @@ ext {
 }
 
 dependencies {
+    implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
 }
