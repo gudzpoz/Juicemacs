@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.eclipse.jdt.annotation.Nullable;
 
 /**
  * A ELisp lexer
@@ -25,7 +26,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  *
  * <p>
- * Not all ELisp grammar is supported. If you are to understand how many features are actually
+ * This lexer tries to support all ELisp grammar as is listed below.
+ * If you are to understand how many features are actually
  * supported by canonical ELisp (as is in Emacs), I would recommend reading the {@code read0}
  * function in the Emacs source code.
  * </p>
@@ -711,6 +713,7 @@ class ELispLexer {
      *
      * @return {@code null} if there is a comment, or the next token otherwise.
      */
+    @Nullable
     private TokenData lexNext() throws IOException {
         int c = readCodepoint();
         if (c == -1) {
@@ -824,7 +827,7 @@ class ELispLexer {
 
     Token next() throws IOException {
         if (eof) {
-            return null;
+            throw new IOException("Unexpected EOF");
         }
         while (true) {
             while (true) {

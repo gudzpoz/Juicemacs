@@ -50,11 +50,13 @@ public class ELispContext {
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
         initSymbols(evalSymbols());
+        initSymbols(fnsSymbols());
         initSymbols(lreadSymbols());
         initSymbols(processSymbols());
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
         initBuiltIns(language, new BuiltInEval());
+        initBuiltIns(language, new BuiltInFns());
         initBuiltIns(language, new BuiltInLRead());
         initBuiltIns(language, new BuiltInProcess());
     }
@@ -67,6 +69,14 @@ public class ELispContext {
         for (ELispSymbol symbol : symbols) {
             internMap.put(symbol.name(), symbol);
         }
+    }
+
+    public boolean isNil(Object o) {
+        return o == NIL || (o instanceof Boolean b && !b);
+    }
+
+    public boolean isT(Object o) {
+        return o == T || (o instanceof Boolean b && b);
     }
 
     /* @generated region="data.c" by="extract-emacs-src.py" */
@@ -826,4 +836,104 @@ public class ELispContext {
         };
     }
     /* @end region="eval.c" */
+    /* @generated region="fns.c" by="extract-emacs-src.py" */
+    public final ELispSymbol CIN_PLACE = new ELispSymbol(":in-place");
+    public final ELispSymbol CKEY = new ELispSymbol(":key");
+    public final ELispSymbol CLESSP = new ELispSymbol(":lessp");
+    public final ELispSymbol CODESET = new ELispSymbol("codeset");
+    public final ELispSymbol CPURECOPY = new ELispSymbol(":purecopy");
+    public final ELispSymbol CREHASH_SIZE = new ELispSymbol(":rehash-size");
+    public final ELispSymbol CREHASH_THRESHOLD = new ELispSymbol(":rehash-threshold");
+    public final ELispSymbol CREVERSE = new ELispSymbol(":reverse");
+    public final ELispSymbol CSIZE = new ELispSymbol(":size");
+    public final ELispSymbol CTEST = new ELispSymbol(":test");
+    public final ELispSymbol CURSOR_IN_ECHO_AREA = new ELispSymbol("cursor-in-echo-area");
+    public final ELispSymbol CWEAKNESS = new ELispSymbol(":weakness");
+    public final ELispSymbol DAYS = new ELispSymbol("days");
+    public final ELispSymbol EQ = new ELispSymbol("eq");
+    public final ELispSymbol EQL = new ELispSymbol("eql");
+    public final ELispSymbol EQUAL = new ELispSymbol("equal");
+    public final ELispSymbol FEATURES = new ELispSymbol("features");
+    public final ELispSymbol FROM__TTY_MENU_P = new ELispSymbol("from--tty-menu-p");
+    public final ELispSymbol FUNCALL = new ELispSymbol("funcall");
+    public final ELispSymbol HASH_TABLE_P = new ELispSymbol("hash-table-p");
+    public final ELispSymbol HASH_TABLE_TEST = new ELispSymbol("hash-table-test");
+    public final ELispSymbol IV_AUTO = new ELispSymbol("iv-auto");
+    public final ELispSymbol KEY = new ELispSymbol("key");
+    public final ELispSymbol KEY_AND_VALUE = new ELispSymbol("key-and-value");
+    public final ELispSymbol KEY_OR_VALUE = new ELispSymbol("key-or-value");
+    public final ELispSymbol LIST_OR_VECTOR_P = new ELispSymbol("list-or-vector-p");
+    public final ELispSymbol MD5 = new ELispSymbol("md5");
+    public final ELispSymbol MONTHS = new ELispSymbol("months");
+    public final ELispSymbol OVERRIDING_PLIST_ENVIRONMENT = new ELispSymbol("overriding-plist-environment");
+    public final ELispSymbol PAPER = new ELispSymbol("paper");
+    public final ELispSymbol PLISTP = new ELispSymbol("plistp");
+    public final ELispSymbol PROVIDE = new ELispSymbol("provide");
+    public final ELispSymbol REAL_THIS_COMMAND = new ELispSymbol("real-this-command");
+    public final ELispSymbol REQUIRE = new ELispSymbol("require");
+    public final ELispSymbol SHA1 = new ELispSymbol("sha1");
+    public final ELispSymbol SHA224 = new ELispSymbol("sha224");
+    public final ELispSymbol SHA256 = new ELispSymbol("sha256");
+    public final ELispSymbol SHA384 = new ELispSymbol("sha384");
+    public final ELispSymbol SHA512 = new ELispSymbol("sha512");
+    public final ELispSymbol STRING_LESSP = new ELispSymbol("string-lessp");
+    public final ELispSymbol SUBFEATURES = new ELispSymbol("subfeatures");
+    public final ELispSymbol VALUE = new ELispSymbol("value");
+    public final ELispSymbol VALUELT = new ELispSymbol("value<");
+    public final ELispSymbol WIDGET_TYPE = new ELispSymbol("widget-type");
+    public final ELispSymbol YES_OR_NO_P = new ELispSymbol("yes-or-no-p");
+    public final ELispSymbol YES_OR_NO_P_HISTORY = new ELispSymbol("yes-or-no-p-history");
+    public final ELispSymbol Y_OR_N_P = new ELispSymbol("y-or-n-p");
+    private ELispSymbol[] fnsSymbols() {
+        return new ELispSymbol[] {
+            CIN_PLACE,
+            CKEY,
+            CLESSP,
+            CODESET,
+            CPURECOPY,
+            CREHASH_SIZE,
+            CREHASH_THRESHOLD,
+            CREVERSE,
+            CSIZE,
+            CTEST,
+            CURSOR_IN_ECHO_AREA,
+            CWEAKNESS,
+            DAYS,
+            EQ,
+            EQL,
+            EQUAL,
+            FEATURES,
+            FROM__TTY_MENU_P,
+            FUNCALL,
+            HASH_TABLE_P,
+            HASH_TABLE_TEST,
+            IV_AUTO,
+            KEY,
+            KEY_AND_VALUE,
+            KEY_OR_VALUE,
+            LIST_OR_VECTOR_P,
+            MD5,
+            MONTHS,
+            OVERRIDING_PLIST_ENVIRONMENT,
+            PAPER,
+            PLISTP,
+            PROVIDE,
+            REAL_THIS_COMMAND,
+            REQUIRE,
+            SHA1,
+            SHA224,
+            SHA256,
+            SHA384,
+            SHA512,
+            STRING_LESSP,
+            SUBFEATURES,
+            VALUE,
+            VALUELT,
+            WIDGET_TYPE,
+            YES_OR_NO_P,
+            YES_OR_NO_P_HISTORY,
+            Y_OR_N_P,
+        };
+    }
+    /* @end region="fns.c" */
 }

@@ -1,8 +1,12 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import java.util.ArrayList;
+import java.util.List;
 
-public class ELispVector extends ArrayList<Object> implements ELispValue {
+public final class ELispVector extends AbstractELispVector {
+
+    public ELispVector(List<Object> inner) {
+        super(inner);
+    }
 
     @Override
     public String type() {

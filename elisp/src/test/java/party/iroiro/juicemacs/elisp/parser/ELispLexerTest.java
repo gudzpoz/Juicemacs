@@ -255,7 +255,7 @@ public class ELispLexerTest {
         assertTrue(lexer.hasNext());
         assertEquals(new EOF(), lexer.next().data());
         assertFalse(lexer.hasNext());
-        assertNull(lexer.next());
+        assertThrows(IOException.class, lexer::next);
     }
 
     @Test

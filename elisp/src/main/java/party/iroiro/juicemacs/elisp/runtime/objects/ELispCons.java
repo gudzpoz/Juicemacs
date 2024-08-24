@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.NonNull;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispCallFormNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -8,6 +9,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import java.util.AbstractSequentialList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 
 /**
  * A cons cell in ELisp
@@ -19,15 +21,39 @@ import java.util.ListIterator;
  */
 public final class ELispCons extends AbstractSequentialList<Object> implements ELispValue {
 
-    public Object car;
-    public Object cdr;
+    public ELispCons(Object car, ELispContext context) {
+        this.car = Objects.requireNonNull(car);
+        this.context = context;
+    }
+
+    private Object car;
+    private final ELispContext context;
+    @Nullable
+    private Object cdr;
+
+    public Object car() {
+        return car;
+    }
+
+    public Object cdr() {
+        return cdr == null ? false : cdr;
+    }
+
+    public void setCar(Object car) {
+        this.car = Objects.requireNonNull(car);
+    }
+
+    public void setCdr(Object cdr) {
+        if (cdr instanceof Boolean b && !b) {
+            this.cdr = null;
+        } else {
+            this.cdr = cdr;
+        }
+    }
 
     @NonNull
     @Override
     public ListIterator<Object> listIterator(int i) {
-        if (car == null) {
-            return List.of().listIterator();
-        }
         var iterator = new BrentTortoiseHareIterator();
         for (int j = 0; j < i; j++) {
             if (!iterator.hasNext()) {
@@ -49,12 +75,6 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     @Override
     public ELispExpressionNode eval(ELispContext context) {
-        if (car == null && cdr == null) {
-            return ELispContext.NIL.eval(context);
-        }
-        if (car == null || cdr == null) {
-            throw new IllegalArgumentException();
-        }
         return new ELispCallFormNode(this, context);
     }
 
@@ -64,7 +84,9 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     private final class BrentTortoiseHareIterator implements ListIterator<Object> {
+        @Nullable
         private Object tortoise = ELispCons.this;
+        @Nullable
         private Object tail = ELispCons.this;
 
         int i = 0;
@@ -75,7 +97,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         @Override
         public boolean hasNext() {
-            return tail != null;
+            return tail != null && !context.isNil(tail);
         }
 
         @Override

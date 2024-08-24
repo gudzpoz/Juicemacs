@@ -3,9 +3,20 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.Source;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.parser.ELispParser;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 
+/**
+ * Built-in functions from {@code src/lread.c}
+ */
 public class BuiltInLRead extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -88,8 +99,32 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRead extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object read(Object a) {
-            throw new UnsupportedOperationException();
+        public Object read(Object a) {
+            if (ctx().isNil(a)) {
+                // TODO: Vstandard_input
+                throw new UnsupportedOperationException();
+            }
+            if (ctx().isT(a)) {
+                a = ctx().READ_CHAR;
+            }
+            if (a == ctx().READ_CHAR) {
+                throw new UnsupportedOperationException();
+            }
+            return readInternalStart(ctx(), a, ctx().NIL, ctx().NIL, false);
+        }
+    }
+
+    public static Object readInternalStart(
+            ELispContext context,
+            Object stream, Object start, Object end, boolean locateSymbols
+    ) {
+        // TODO: Handle stream instanceof ELispBuffer, ELispCons
+        ELispString s = (ELispString) stream;
+        Source source = Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
+        try {
+            return ELispParser.read(source, context);
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -115,8 +150,63 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLreadSubstituteObjectInSubtree extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object lreadSubstituteObjectInSubtree(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object lreadSubstituteObjectInSubtree(Object obj, Object placeholder, Object recursive) {
+            new SubstituteObjectRecurse(
+                    obj,
+                    placeholder,
+                    recursive instanceof ELispHashtable t ? t : null,
+                    recursive instanceof ELispHashtable ? null : new HashSet<>()
+            ).substitute(obj);
+            return false; // return Qnil;
+        }
+    }
+
+    /**
+     * See {@code substitute_object_recurse} in {@code src/lread.c}
+     */
+    public record SubstituteObjectRecurse(
+            Object object,
+            Object placeholder,
+            @Nullable ELispHashtable recursive,
+            @Nullable HashSet<Object> seen
+    ) {
+        public Object substitute(Object tree) {
+            if (tree == placeholder) {
+                return object;
+            }
+            return switch (tree) {
+                case Long _, Double _, ELispBigNum _, ELispSymbol _ -> tree;
+                case ELispString s when s.intervals() == 0 -> tree;
+                case ELispBoolVector _ -> tree;
+                default -> {
+                    if (recursive == null) {
+                        if (seen != null && seen.contains(tree)) {
+                            yield tree;
+                        }
+                    } else if (recursive.containsKey(tree)) {
+                        yield tree;
+                    }
+                    yield switch (tree) {
+                        case ELispCons cons -> {
+                            cons.setCar(substitute(cons.car()));
+                            cons.setCdr(substitute(cons.cdr()));
+                            yield cons;
+                        }
+                        case ELispString s -> {
+                            s.forProperties(this::substitute);
+                            yield s;
+                        }
+                        case ELispVectorLike<?> vec -> {
+                            // TODO: CHAR_TABLE_P, SUB_CHAR_TABLE_P, CLOSUREP, HASH_TABLE_P, RECORD P
+                            for (int i = 0; i < vec.size(); i++) {
+                                vec.setUntyped(i, substitute(vec.get(i)));
+                            }
+                            yield this;
+                        }
+                        default -> tree;
+                    };
+                }
+            };
         }
     }
 

@@ -1,22 +1,18 @@
 package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleString.Encoding;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.*;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
+import java.util.*;
 
 /**
  * A ELisp parser and reader
@@ -39,6 +35,7 @@ public class ELispParser {
         this.context = context;
     }
 
+    @Nullable
     private Token peekedToken = null;
 
     private Token peek() throws IOException {
@@ -55,11 +52,19 @@ public class ELispParser {
     }
 
     private boolean lexicalBinding = false;
-    
+
+    public boolean getLexicalBinding() {
+        return lexicalBinding;
+    }
+
+    private final HashMap<Long, Object> cyclicReferences = new HashMap<>();
+    private final HashSet<Object> readObjectsCompleted = new HashSet<>();
+
     private Object nextObject() throws IOException {
         Token token = read();
         return switch (token.data()) {
             case EOF() -> throw new IOException("Unexpected EOF");
+            case SkipToEnd() -> false; // TODO: Skip to EOF
             case SetLexicalBindingMode(boolean value) -> {
                 lexicalBinding = value;
                 yield nextObject();
@@ -68,14 +73,22 @@ public class ELispParser {
             case Num(NumberVariant.BigNum(BigInteger value)) -> new ELispBigNum(value);
             case Num(NumberVariant.Float(double value)) -> value;
             case Char(int value) -> (long) value;
-            case Str(String value) ->
-                    TruffleString.fromConstant(value, Encoding.UTF_8).asMutableTruffleStringUncached(Encoding.UTF_8);
+            case Str(String value) -> new ELispString(value);
             case Symbol(String value, boolean intern, boolean shorthand) -> {
                 String symbol = value;
                 if (shorthand) {
                     symbol = context.applyShorthands(symbol);
                 }
-                yield intern ? context.intern(symbol) : new ELispSymbol(symbol);
+                if (intern) {
+                    if (value.equals("nil")) {
+                        yield false;
+                    }
+                    if (value.equals("t")) {
+                        yield true;
+                    }
+                    yield context.intern(symbol);
+                }
+                yield new ELispSymbol(symbol);
             }
             case BoolVec(long length, String value) -> {
                 byte[] bytes = new byte[(int) Math.ceilDiv(length, 8)];
@@ -83,49 +96,88 @@ public class ELispParser {
                 for (int i = 0; i < len; i++) {
                     bytes[i] = (byte) value.charAt(i);
                 }
-                yield BitSet.valueOf(bytes);
+                yield new ELispBoolVector(BitSet.valueOf(bytes), (int) length);
             }
-            case Function(), Quote() -> quote(ELispContext.QUOTE);
-            case BackQuote() -> quote(ELispContext.BACKQUOTE);
-            case Unquote() -> ELispContext.UNQUOTE;
-            case UnquoteSplicing() -> ELispContext.UNQUOTE_SPLICING;
+            case Quote() -> quote(context.QUOTE); // 'a -> (quote a)
+            case Function() -> quote(context.FUNCTION); // #'a -> (function a)
+            case BackQuote() -> quote(context.BACKQUOTE); // `a -> (` a)
+            case Unquote() -> context.COMMA;
+            case UnquoteSplicing() -> context.COMMA_AT;
+            case Dot() -> context.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
             case ParenOpen() -> {
                 if (peek().data() instanceof ParenClose) {
                     read();
                     yield NIL;
                 }
-                ELispCons object = new ELispCons();
-                object.car = nextObject();
-                if (peek().data() instanceof Dot) {
-                    read();
-                    object.cdr = nextObject();
-                    yield object;
-                }
+                ELispCons object = new ELispCons(nextObject(), context);
                 ELispCons tail = object;
                 while (!(peek().data() instanceof ParenClose)) {
-                    tail.cdr = new ELispCons();
-                    tail = (ELispCons) tail.cdr;
-                    tail.car = nextObject();
+                    if (peek().data() instanceof Dot) {
+                        // (a b . c)
+                        read();
+                        object.setCdr(nextObject());
+                        if (!(read().data() instanceof ParenClose)) {
+                            throw new IOException("Expected ')'");
+                        }
+                        // TODO: Understand what Emacs does for (#$ . FIXNUM)
+                        yield object;
+                    }
+                    tail.setCdr(new ELispCons(nextObject(), context));
+                    tail = (ELispCons) tail.cdr();
                 }
                 read();
                 yield object;
             }
-            case SquareOpen() -> readVector();
+            case RecordOpen() -> {
+                List<Object> list = readList();
+                Object type = list.getFirst();
+                if (type instanceof ELispSymbol sym && sym == context.HASH_TABLE) {
+                    yield ELispHashtable.hashTableFromPlist(context, list);
+                }
+                yield new ELispRecord(list);
+            }
+            case StrWithPropsOpen() -> {
+                List<Object> list = readList();
+                ELispString base = (ELispString) list.getFirst();
+                base.syncFromPlist(context, list);
+                yield base;
+            }
+            case SquareOpen() -> new ELispVector(readVector());
             case ByteCodeOpen() -> readVector(); // TODO: Convert to byte-code function
-            case RecordOpen() -> readList(); // TODO: Convert to record
-            // case CircularRef(long _) -> {}
-            // case CircularDef(long _) -> {}
-            case ParenClose(), SquareClose(), Dot() -> throw new IOException("Expected start of expression");
-            default -> throw new UnsupportedOperationException("TODO");
+            case CharTableOpen(), SubCharTableOpen() -> readVector(); // TODO: Convert to char-table
+            case CircularRef(long i) -> Objects.requireNonNull(cyclicReferences.get(i));
+            case CircularDef(long i) -> {
+                ELispCons placeholder = new ELispCons(NIL, context);
+                cyclicReferences.put(i, placeholder);
+                Object def = nextObject();
+                if (def == placeholder) {
+                    // Emacs: "Catch silly games like #1=#1#"
+                    throw new IOException("Unexpected self reference");
+                }
+                if (def instanceof ELispCons cons) {
+                    readObjectsCompleted.add(placeholder);
+                    placeholder.setCar(cons.car());
+                    placeholder.setCdr(cons.cdr());
+                    yield placeholder;
+                } else {
+                    readObjectsCompleted.add(def);
+                    BuiltInLRead.FLreadSubstituteObjectInSubtree.lreadSubstituteObjectInSubtree(
+                            def,
+                            placeholder,
+                            readObjectsCompleted
+                    );
+                    cyclicReferences.put(i, def);
+                    yield def;
+                }
+            }
+            case ParenClose(), SquareClose() -> throw new IOException("Expected start of expression");
         };
     }
 
     private ELispCons quote(ELispSymbol quote) throws IOException {
-        ELispCons cons = new ELispCons();
-        cons.car = quote;
-        ELispCons cdr = new ELispCons();
-        cons.cdr = cdr;
-        cdr.car = nextObject();
+        ELispCons cons = new ELispCons(quote, context);
+        ELispCons cdr = new ELispCons(nextObject(), context);
+        cons.setCdr(cdr);
         return cons;
     }
 
@@ -147,13 +199,20 @@ public class ELispParser {
         return vector;
     }
 
-    private ELispExpressionNode nextExpression() throws IOException {
-        return context.valueToExpression(nextObject());
+    public Object nextLisp() throws IOException {
+        lexicalBinding = false;
+        cyclicReferences.clear();
+        readObjectsCompleted.clear();
+        return nextObject();
     }
 
     public static ELispExpressionNode parse(Source source, ELispContext context) throws IOException {
+        return context.valueToExpression(read(source, context));
+    }
+
+    public static Object read(Source source, ELispContext context) throws IOException {
         ELispParser parser = new ELispParser(source, context);
-        return parser.nextExpression();
+        return parser.nextLisp();
     }
 
 }

@@ -21,13 +21,13 @@ public class ELispCallFormNode extends ELispExpressionNode {
     private FunctionDispatchNode dispatchNode;
 
     public ELispCallFormNode(ELispCons lisp, ELispContext context) {
-        this.targetFunction = (ELispSymbolNode) ((ELispSymbol) lisp.car).eval(context);
-        if (lisp.cdr == null) {
-            this.callArguments = new ELispExpressionNode[0];
-        } else {
-            this.callArguments = ((ELispCons) lisp.cdr).stream()
+        this.targetFunction = (ELispSymbolNode) ((ELispSymbol) lisp.car()).eval(context);
+        if (lisp.cdr() instanceof ELispCons) {
+            this.callArguments = ((ELispCons) lisp.cdr()).stream()
                     .map(context::valueToExpression)
                     .toArray(ELispExpressionNode[]::new);
+        } else {
+            this.callArguments = new ELispExpressionNode[0];
         }
         this.dispatchNode = FunctionDispatchNodeGen.create();
     }
