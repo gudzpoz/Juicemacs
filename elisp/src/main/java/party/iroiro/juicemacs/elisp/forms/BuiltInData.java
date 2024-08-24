@@ -3,9 +3,17 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.math.BigInteger;
 import java.util.List;
+import java.util.Objects;
 
+/**
+ * Built-in functions from {@code src/data.c}
+ */
 public class BuiltInData extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -16,8 +24,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEq extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object eq(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean eq(Object a, Object b) {
+            return Objects.equals(a, b);
         }
     }
 
@@ -25,8 +33,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNull extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object null_(Object a) {
-            throw new UnsupportedOperationException();
+        public boolean isNull(Object a) {
+            return ctx().isNil(a);
         }
     }
 
@@ -34,17 +42,39 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTypeOf extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object typeOf(Object a) {
-            throw new UnsupportedOperationException();
+        public Object typeOf(Object a) {
+            return switch (a) {
+                case ELispSymbol _ -> ctx().SYMBOL;
+                case Long _, ELispBigNum _ -> ctx().INTEGER;
+                case ELispSubroutine _ -> ctx().SUBR;
+                default -> clTypeOf(ctx(), a);
+            };
         }
+    }
+
+    public static ELispSymbol clTypeOf(ELispContext ctx, Object a) {
+        return switch (a) {
+            case Boolean b -> b ? ctx.BOOLEAN : ctx.NULL;
+            case Long _ -> ctx.FIXNUM;
+            case ELispBigNum _ -> ctx.BIGNUM;
+            case ELispSymbol s when s == ctx.NIL -> ctx.NULL;
+            case ELispSymbol s when s == ctx.T -> ctx.BOOLEAN;
+            case ELispSymbol _ -> ctx.SYMBOL;
+            case ELispString _ -> ctx.STRING;
+            case ELispVector _ -> ctx.VECTOR;
+            // TODO: Handle other pseudo-vectors
+            case ELispCons _ -> ctx.CONS;
+            case Double _ -> ctx.FLOAT;
+            default -> throw new IllegalArgumentException();
+        };
     }
 
     @ELispBuiltIn(name = "cl-type-of", minArgs = 1, maxArgs = 1, doc = "Return a symbol representing the type of OBJECT.\nThe returned symbol names the most specific possible type of the object.\nfor example, (cl-type-of nil) returns `null'.\nThe specific type returned may change depending on Emacs versions,\nso we recommend you use `cl-typep', `cl-typecase', or other predicates\nrather than compare the return value of this function against\na fixed set of types.")
     @GenerateNodeFactory
     public abstract static class FClTypeOf extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object clTypeOf(Object a) {
-            throw new UnsupportedOperationException();
+        public Object clTypeOf(Object a) {
+            return BuiltInData.clTypeOf(ctx(), a);
         }
     }
 
@@ -52,8 +82,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FConsp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object consp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean consp(Object a) {
+            return a instanceof ELispCons;
         }
     }
 
@@ -61,8 +91,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAtom extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object atom(Object a) {
-            throw new UnsupportedOperationException();
+        public boolean atom(Object a) {
+            return !(a instanceof ELispCons);
         }
     }
 
@@ -70,17 +100,21 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FListp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object listp(Object a) {
-            throw new UnsupportedOperationException();
+        public boolean listp(Object a) {
+            return BuiltInData.listp(ctx(), a);
         }
+    }
+
+    public static boolean listp(ELispContext ctx, Object a) {
+        return a instanceof ELispCons || ctx.isNil(a);
     }
 
     @ELispBuiltIn(name = "nlistp", minArgs = 1, maxArgs = 1, doc = "Return t if OBJECT is not a list.  Lists include nil.")
     @GenerateNodeFactory
     public abstract static class FNlistp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object nlistp(Object a) {
-            throw new UnsupportedOperationException();
+        public boolean nlistp(Object a) {
+            return !listp(ctx(), a);
         }
     }
 
@@ -88,8 +122,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBareSymbolP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object bareSymbolP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean bareSymbolP(Object a) {
+            return a instanceof ELispSymbol;
         }
     }
 
@@ -97,8 +131,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolWithPosP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolWithPosP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean symbolWithPosP(Object ignored) {
+            return true;
         }
     }
 
@@ -106,8 +140,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean symbolp(Object a) {
+            return a instanceof ELispSymbol;
         }
     }
 
@@ -115,8 +149,14 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKeywordp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object keywordp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean keywordp(Object a) {
+            if (a instanceof ELispSymbol symbol) {
+                if (symbol.name().startsWith(":")) {
+                    // TODO: if SYMBOL_INTERNED_IN_INITIAL_OBARRAY_P ?
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -124,8 +164,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FVectorp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object vectorp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean vectorp(Object a) {
+            return a instanceof ELispVector;
         }
     }
 
@@ -133,7 +173,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRecordp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object recordp(Object a) {
+        public static boolean recordp(Object a) {
             throw new UnsupportedOperationException();
         }
     }
@@ -142,8 +182,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object stringp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean stringp(Object a) {
+            return a instanceof ELispString;
         }
     }
 
@@ -152,7 +192,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMultibyteStringP extends ELispBuiltInBaseNode {
         @Specialization
         public static Object multibyteStringP(Object a) {
-            throw new UnsupportedOperationException();
+            return a instanceof ELispString s && s.isMultibyte();
         }
     }
 
@@ -232,8 +272,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSubrp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object subrp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean subrp(Object a) {
+            return a instanceof ELispSubroutine;
         }
     }
 
@@ -277,8 +317,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharOrStringP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object charOrStringP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean charOrStringP(Object a) {
+            return a instanceof ELispString
+                    || ELispString.toValidChar(a) != null;
         }
     }
 
@@ -286,8 +327,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIntegerp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object integerp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean integerp(Object a) {
+            return a instanceof Long || a instanceof ELispBigNum;
         }
     }
 
@@ -305,7 +346,8 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FNatnump extends ELispBuiltInBaseNode {
         @Specialization
         public static Object natnump(Object a) {
-            throw new UnsupportedOperationException();
+            return (a instanceof Long l && l >= 0)
+                    || (a instanceof ELispBigNum n && n.value().signum() >= 0);
         }
     }
 
@@ -314,7 +356,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FNumberp extends ELispBuiltInBaseNode {
         @Specialization
         public static Object numberp(Object a) {
-            throw new UnsupportedOperationException();
+            return FIntegerp.integerp(a) || FFloatp.floatp(a);
         }
     }
 
@@ -331,8 +373,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFloatp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object floatp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean floatp(Object a) {
+            return a instanceof Double;
         }
     }
 
@@ -367,8 +409,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object car(Object a) {
-            throw new UnsupportedOperationException();
+        public Object car(Object a) {
+            return switch (a) {
+                case ELispCons cons -> cons.car();
+                case Boolean b when !b -> false;
+                case ELispSymbol sym when sym == ctx().NIL -> false;
+                default -> throw new IllegalArgumentException();
+            };
         }
     }
 
@@ -377,7 +424,10 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FCarSafe extends ELispBuiltInBaseNode {
         @Specialization
         public static Object carSafe(Object a) {
-            throw new UnsupportedOperationException();
+            if (a instanceof ELispCons cons) {
+                return cons.car();
+            }
+            return false;
         }
     }
 
@@ -385,8 +435,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object cdr(Object a) {
-            throw new UnsupportedOperationException();
+        public Object cdr(Object a) {
+            return switch (a) {
+                case ELispCons cons -> cons.cdr();
+                case Boolean b when !b -> false;
+                case ELispSymbol sym when sym == ctx().NIL -> false;
+                default -> throw new IllegalArgumentException();
+            };
         }
     }
 
@@ -395,7 +450,10 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FCdrSafe extends ELispBuiltInBaseNode {
         @Specialization
         public static Object cdrSafe(Object a) {
-            throw new UnsupportedOperationException();
+            if (a instanceof ELispCons cons) {
+                return cons.cdr();
+            }
+            return false;
         }
     }
 
@@ -404,7 +462,8 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSetcar extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setcar(Object a, Object b) {
-            throw new UnsupportedOperationException();
+            ((ELispCons) a).setCar(b);
+            return b;
         }
     }
 
@@ -413,7 +472,8 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSetcdr extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setcdr(Object a, Object b) {
-            throw new UnsupportedOperationException();
+            ((ELispCons) a).setCdr(b);
+            return b;
         }
     }
 
@@ -870,9 +930,65 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "+", minArgs = 0, maxArgs = 0, varArgs = true, doc = "Return sum of any number of arguments, which are numbers or markers.\nusage: (+ &rest NUMBERS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FPlus extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Object plus(Object[] args) {
-            throw new UnsupportedOperationException();
+        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
+        public static long plusLong(Object[] args) {
+            long sum = 0;
+            for (Object arg : args) {
+                sum = Math.addExact(sum, (Long) arg);
+            }
+            return sum;
+        }
+
+        @Specialization(replaces = "plusLong")
+        public Object plusAny(Object[] args) {
+            return tryAddLong(args);
+        }
+
+        public Object tryAddLong(Object[] args) {
+            long sum = 0;
+            for (int i = 0; i < args.length; i++) {
+                switch (args[i]) {
+                    case Long l -> {
+                        try {
+                            sum = Math.addExact(sum, l);
+                        } catch (ArithmeticException e) {
+                            return tryAddBigNum(sum, i, args);
+                        }
+                    }
+                    case Double _ -> {
+                        return tryAddDouble((double) sum, i, args);
+                    }
+                    case ELispBigNum _ -> {
+                        return tryAddBigNum(sum, i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return sum;
+        }
+
+        private Object tryAddBigNum(long prev, int i, Object[] args) {
+            BigInteger sum = BigInteger.valueOf(prev);
+            for (; i < args.length; i++) {
+                switch (args[i]) {
+                    case ELispBigNum(BigInteger n) -> sum = sum.add(n);
+                    case Long l -> sum = sum.add(BigInteger.valueOf(l));
+                    case Double _ -> {
+                        return tryAddDouble(sum.doubleValue(), i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            ELispBigNum result = new ELispBigNum(sum);
+            return result.fitsInLong() ? result.value().longValue() : result;
+        }
+
+        private double tryAddDouble(double prev, int i, Object[] args) {
+            double sum = prev;
+            for (; i < args.length; i++) {
+                sum += ELispTypeSystemGen.asImplicitDouble(args[i]);
+            }
+            return sum;
         }
     }
 
@@ -989,7 +1105,13 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FAdd1 extends ELispBuiltInBaseNode {
         @Specialization
         public static Object add1(Object a) {
-            throw new UnsupportedOperationException();
+            return switch (a) {
+                case Long l when l < Long.MAX_VALUE -> l + 1;
+                case Long l -> new ELispBigNum(BigInteger.valueOf(l).add(BigInteger.ONE));
+                case Double d -> d + 1;
+                case ELispBigNum(BigInteger i) -> new ELispBigNum(i.add(BigInteger.ONE));
+                default -> throw new IllegalArgumentException();
+            };
         }
     }
 
@@ -998,7 +1120,13 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSub1 extends ELispBuiltInBaseNode {
         @Specialization
         public static Object sub1(Object a) {
-            throw new UnsupportedOperationException();
+            return switch (a) {
+                case Long l when l > Long.MIN_VALUE -> l - 1;
+                case Long l -> new ELispBigNum(BigInteger.valueOf(l).subtract(BigInteger.ONE));
+                case Double d -> d - 1;
+                case ELispBigNum(BigInteger i) -> new ELispBigNum(i.subtract(BigInteger.ONE));
+                default -> throw new IllegalArgumentException();
+            };
         }
     }
 

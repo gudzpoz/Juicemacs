@@ -6,6 +6,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 
 import java.util.List;
 
+/**
+ * Built-in functions from {@code src/process.c}
+ */
 public class BuiltInProcess extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
