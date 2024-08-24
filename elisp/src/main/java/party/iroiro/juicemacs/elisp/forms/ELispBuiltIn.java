@@ -38,6 +38,13 @@ public @interface ELispBuiltIn {
     boolean varArgs() default false;
 
     /**
+     * @return whether the function is a
+     * <a href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Special-Forms.html">special form</a>
+     * and requires unevaluated lisp parameters
+     */
+    boolean rawArg() default false;
+
+    /**
      * @return documentation
      */
     String doc() default "";

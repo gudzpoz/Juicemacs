@@ -4,6 +4,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
@@ -30,6 +31,10 @@ public abstract class ELispExpressionNode extends Node {
 
     public ELispFunctionObject executeFunction(VirtualFrame frame) {
         return (ELispFunctionObject) executeGeneric(frame);
+    }
+
+    protected ELispContext ctx() {
+        return ELispContext.get(this);
     }
 
     public abstract Object executeGeneric(VirtualFrame frame);
