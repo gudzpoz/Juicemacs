@@ -1,6 +1,9 @@
 package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.MutableTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -73,7 +76,7 @@ public class ELispParser {
             case Num(NumberVariant.BigNum(BigInteger value)) -> new ELispBigNum(value);
             case Num(NumberVariant.Float(double value)) -> value;
             case Char(int value) -> (long) value;
-            case Str(String value) -> new ELispString(value);
+            case Str(MutableTruffleString value) -> new ELispString(value);
             case Symbol(String value, boolean intern, boolean shorthand) -> {
                 String symbol = value;
                 if (shorthand) {
@@ -90,11 +93,22 @@ public class ELispParser {
                 }
                 yield new ELispSymbol(symbol);
             }
-            case BoolVec(long length, String value) -> {
+            case BoolVec(long length, MutableTruffleString value) -> {
                 byte[] bytes = new byte[(int) Math.ceilDiv(length, 8)];
-                int len = Math.min(bytes.length, value.length());
-                for (int i = 0; i < len; i++) {
-                    bytes[i] = (byte) value.charAt(i);
+                TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.getUncached()
+                        .execute(value, TruffleString.Encoding.UTF_16);
+                for (int i = 0; i < length; i += 8) {
+                    if (!iterator.hasNext()) {
+                        throw new IOException("Unmatched bit vector length");
+                    }
+                    int codepoint = iterator.nextUncached();
+                    if (codepoint > 0xFF) {
+                        throw new IOException("Expected raw byte string");
+                    }
+                    bytes[i / 8] = (byte) codepoint;
+                }
+                if (iterator.hasNext()) {
+                    throw new IOException("Unmatched bit vector length");
                 }
                 yield new ELispBoolVector(BitSet.valueOf(bytes), (int) length);
             }
@@ -109,7 +123,7 @@ public class ELispParser {
                     read();
                     yield NIL;
                 }
-                ELispCons object = new ELispCons(nextObject(), context);
+                ELispCons object = new ELispCons(nextObject());
                 ELispCons tail = object;
                 while (!(peek().data() instanceof ParenClose)) {
                     if (peek().data() instanceof Dot) {
@@ -122,7 +136,7 @@ public class ELispParser {
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
                         yield object;
                     }
-                    tail.setCdr(new ELispCons(nextObject(), context));
+                    tail.setCdr(new ELispCons(nextObject()));
                     tail = (ELispCons) tail.cdr();
                 }
                 read();
@@ -139,15 +153,16 @@ public class ELispParser {
             case StrWithPropsOpen() -> {
                 List<Object> list = readList();
                 ELispString base = (ELispString) list.getFirst();
-                base.syncFromPlist(context, list);
+                base.syncFromPlist(list);
                 yield base;
             }
             case SquareOpen() -> new ELispVector(readVector());
-            case ByteCodeOpen() -> readVector(); // TODO: Convert to byte-code function
-            case CharTableOpen(), SubCharTableOpen() -> readVector(); // TODO: Convert to char-table
+            case ByteCodeOpen() -> ELispByteCode.create(readVector());
+            case CharTableOpen() -> ELispCharTable.create(readVector());
+            case SubCharTableOpen() -> ELispCharTable.SubTable.create(readVector());
             case CircularRef(long i) -> Objects.requireNonNull(cyclicReferences.get(i));
             case CircularDef(long i) -> {
-                ELispCons placeholder = new ELispCons(NIL, context);
+                ELispCons placeholder = new ELispCons(NIL);
                 cyclicReferences.put(i, placeholder);
                 Object def = nextObject();
                 if (def == placeholder) {
@@ -175,8 +190,8 @@ public class ELispParser {
     }
 
     private ELispCons quote(ELispSymbol quote) throws IOException {
-        ELispCons cons = new ELispCons(quote, context);
-        ELispCons cdr = new ELispCons(nextObject(), context);
+        ELispCons cons = new ELispCons(quote);
+        ELispCons cdr = new ELispCons(nextObject());
         cons.setCdr(cdr);
         return cons;
     }

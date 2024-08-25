@@ -4,8 +4,8 @@ import com.lodborg.intervaltree.IntegerInterval;
 import com.lodborg.intervaltree.IntervalTree;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -13,41 +13,50 @@ import java.util.function.Consumer;
 
 public final class ELispString implements ELispValue {
 
-    private static final class Properties extends IntegerInterval {
-        Object property;
+    public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_16;
 
-        Properties(int start, int end, Object property) {
+    public static MutableTruffleString from(String str) {
+        Builder builder = new Builder();
+        builder.appendString(str);
+        return builder.toTruffleString();
+    }
+
+    public static final class Properties extends IntegerInterval {
+        Object propertyList;
+
+        Properties(int start, int end, Object propertyList) {
             super(start, end, Bounded.CLOSED_LEFT);
-            this.property = property;
+            this.propertyList = propertyList;
         }
 
         @Override
         protected Properties create() {
             return new Properties(0, 0, false);
         }
+
+        @Override
+        public int hashCode() {
+            // OpenJDK Arrays::hashCode
+            return 31 + super.hashCode() * 31 + propertyList.hashCode() * 31 * 31;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Properties props
+                    && propertyList.equals(props.propertyList)
+                    && super.equals(obj);
+        }
     }
 
-    private MutableTruffleString value;
-    private TruffleString.Encoding encoding;
-    private final IntervalTree<Integer> properties;
+    private final MutableTruffleString value;
+    private final IntervalTree<Integer> intervals;
 
-    public ELispString(String init) {
-        this.value = TruffleString.fromConstant(init, TruffleString.Encoding.UTF_8)
-                .asMutableTruffleStringUncached(TruffleString.Encoding.UTF_8);
-        this.encoding = TruffleString.Encoding.UTF_8;
-        this.properties = new IntervalTree<>();
-    }
-
-    public ELispString(byte[] bytes) {
-        this.value = MutableTruffleString.fromByteArrayUncached(
-                bytes,
-                0,
-                bytes.length,
-                TruffleString.Encoding.BYTES,
-                false
-        );
-        this.encoding = TruffleString.Encoding.BYTES;
-        this.properties = new IntervalTree<>();
+    /**
+     * @param init the string value, no copy is performed
+     */
+    public ELispString(MutableTruffleString init) {
+        this.value = init;
+        this.intervals = new IntervalTree<>();
     }
 
     @Nullable
@@ -71,23 +80,23 @@ public final class ELispString implements ELispValue {
     }
 
     public boolean isMultibyte() {
-        return encoding.equals(TruffleString.Encoding.BYTES);
+        return true;
     }
 
     public int intervals() {
-        return properties.size();
+        return intervals.size();
     }
 
     public void forRangeProperties(int i, Consumer<Object> propertiesConsumer) {
-        properties.query(i).forEach((props) ->
-                propertiesConsumer.accept(((Properties) props).property));
+        intervals.query(i).forEach((props) ->
+                propertiesConsumer.accept(((Properties) props).propertyList));
     }
 
     public void forProperties(Consumer<Object> propertiesConsumer) {
-        properties.forEach((props) -> propertiesConsumer.accept(((Properties) props).property));
+        intervals.forEach((props) -> propertiesConsumer.accept(((Properties) props).propertyList));
     }
 
-    public void syncFromPlist(ELispContext context, List<Object> list) {
+    public void syncFromPlist(List<Object> list) {
         if ((list.size() - 1) % 3 != 0) {
             throw new IllegalArgumentException();
         }
@@ -95,9 +104,27 @@ public final class ELispString implements ELispValue {
             long start = (long) list.get(i);
             long end = (long) list.get(i + 1);
             Object props = list.get(i + 2);
-            if (context.isNil(props) || (props instanceof ELispCons cons && cons.size() % 2 == 0)) {
-                properties.add(new Properties((int) start, (int) end, props));
+            if (ELispSymbol.isNil(props) || (props instanceof ELispCons cons && cons.size() % 2 == 0)) {
+                intervals.add(new Properties((int) start, (int) end, props));
+            } else {
+                throw new IllegalArgumentException();
             }
+        }
+    }
+
+    public static final class Builder {
+        private final TruffleStringBuilder builder = TruffleStringBuilder.createUTF16();
+
+        public void appendCodePoint(int codepoint) {
+            builder.appendCodePointUncached(codepoint);
+        }
+
+        public void appendString(String s) {
+            builder.appendJavaStringUTF16Uncached(s);
+        }
+
+        public MutableTruffleString toTruffleString() {
+            return builder.toStringUncached().asMutableTruffleStringUncached(ENCODING);
         }
     }
 }

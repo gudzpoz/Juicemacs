@@ -3,7 +3,10 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -433,8 +436,20 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPlistGet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object plistGet(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object plistGet(ELispCons list, Object prop, Object predicate) {
+            // TODO: Handle different predicate
+            Iterator<Object> iterator = list.iterator();
+            try {
+                while (iterator.hasNext()) {
+                    if (prop == iterator.next()) {
+                        return iterator.next();
+                    }
+                    iterator.next();
+                }
+                return false;
+            } catch (IllegalStateException e) {
+                return false;
+            }
         }
     }
 
@@ -442,8 +457,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object get(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static Object get(Object symbol, Object prop) {
+            if (symbol instanceof ELispSymbol sym && sym.getProperties() instanceof ELispCons) {
+                FPlistGet.plistGet((ELispCons) sym.getProperties(), prop, false);
+            }
+            return false;
         }
     }
 

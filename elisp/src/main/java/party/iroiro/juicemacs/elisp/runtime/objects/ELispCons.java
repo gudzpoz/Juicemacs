@@ -6,10 +6,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispCallFormNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
-import java.util.AbstractSequentialList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * A cons cell in ELisp
@@ -21,13 +18,11 @@ import java.util.Objects;
  */
 public final class ELispCons extends AbstractSequentialList<Object> implements ELispValue {
 
-    public ELispCons(Object car, ELispContext context) {
+    public ELispCons(Object car) {
         this.car = Objects.requireNonNull(car);
-        this.context = context;
     }
 
     private Object car;
-    private final ELispContext context;
     @Nullable
     private Object cdr;
 
@@ -51,9 +46,14 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
     }
 
+    @Override
+    public boolean isEmpty() {
+        return false;
+    }
+
     @NonNull
     @Override
-    public ListIterator<Object> listIterator(int i) {
+    public BrentTortoiseHareIterator listIterator(int i) {
         var iterator = new BrentTortoiseHareIterator();
         for (int j = 0; j < i; j++) {
             if (!iterator.hasNext()) {
@@ -83,7 +83,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return "cons";
     }
 
-    private final class BrentTortoiseHareIterator implements ListIterator<Object> {
+    public final class BrentTortoiseHareIterator implements ListIterator<Object> {
         @Nullable
         private Object tortoise = ELispCons.this;
         @Nullable
@@ -97,7 +97,14 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         @Override
         public boolean hasNext() {
-            return tail != null && !context.isNil(tail);
+            return tail != null && !ELispSymbol.isNil(tail);
+        }
+
+        public ELispCons currentCons() {
+            if (tail instanceof ELispCons cons) {
+                return cons;
+            }
+            throw new NoSuchElementException();
         }
 
         @Override

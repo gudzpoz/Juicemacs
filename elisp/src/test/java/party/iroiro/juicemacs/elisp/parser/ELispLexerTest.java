@@ -38,6 +38,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SubCharTableOpen
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Symbol;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Unquote;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.UnquoteSplicing;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -319,7 +320,7 @@ public class ELispLexerTest {
                 new EOF()
         ), lex("#[a]"));
         assertEquals(Arrays.asList(
-                new BoolVec(10, "test"),
+                new BoolVec(10, ELispString.from("test")),
                 new EOF()
         ), lex("#&10\"test\""));
         assertEquals(Arrays.asList(
@@ -398,19 +399,19 @@ public class ELispLexerTest {
     @Test
     public void testStr() throws IOException {
         assertEquals(Arrays.asList(
-                new Str("test"),
+                new Str(ELispString.from("test")),
                 new EOF()
         ), lex("\"test\""));
         assertEquals(Arrays.asList(
-                new Str("\n"),
+                new Str(ELispString.from("\n")),
                 new EOF()
         ), lex("\"\\n\\ \\\n\""));
         assertEquals(Arrays.asList(
-                new Str("±"),
+                new Str(ELispString.from("±")),
                 new EOF()
         ), lex("\"\\M-1\""));
         assertEquals(Arrays.asList(
-                new Str("8@8[8`8{"),
+                new Str(ELispString.from("8@8[8`8{")),
                 new EOF()
         ), lex("\"\\70@\\70[\\70`\\70{\""));
     }

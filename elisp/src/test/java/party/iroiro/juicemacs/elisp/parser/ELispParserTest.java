@@ -87,6 +87,19 @@ public class ELispParserTest {
     }
 
     @Test
+    public void testRecord() throws IOException {
+        ELispRecord rec = assertInstanceOf(ELispRecord.class, read("#s(1 321)"));
+        assertEquals(1L, assertInstanceOf(Long.class, rec.get(0)));
+        assertEquals(321L, assertInstanceOf(Long.class, rec.get(1)));
+    }
+
+    @Test
+    public void testByteCode() throws IOException {
+        ELispByteCode bc = assertInstanceOf(ELispByteCode.class, read("#[() \"\" [] 0]"));
+        assertEquals(false, bc.getFirst());
+    }
+
+    @Test
     public void testLexicalBindingDetect() throws IOException {
         ELispParser parser = new ELispParser(
                 Source.newBuilder(
@@ -136,7 +149,7 @@ public class ELispParserTest {
                 assertInstanceOf(ELispSymbol.class, table.get(context.intern("k2"))).name()
         );
         ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(context.intern("k3")));
-        assertTrue(context.isNil(placeholder.car()));
+        assertTrue(ELispSymbol.isNil(placeholder.car()));
 
         ELispString str = assertInstanceOf(ELispString.class, read("#1=#(\"text here\" 0 1 (key #1#))"));
         assertEquals(1, str.intervals());
@@ -156,11 +169,32 @@ public class ELispParserTest {
     }
 
     @Test
+    public void testCharTables() throws IOException {
+        String charTableString = "#^[" + "t ".repeat(ELispCharTable.CHARTAB_STANDARD_SLOTS) + "]";
+        ELispCharTable table = assertInstanceOf(ELispCharTable.class, read(charTableString));
+        assertEquals(ELispCharTable.CHARTAB_STANDARD_SLOTS, table.size());
+        table.forEach((ele) -> assertSame(Boolean.TRUE, ele));
+        String subTableString = "#^^[1 1024 " + "t ".repeat(1 << ELispCharTable.CHARTAB_SIZE_BITS_1) + "]";
+        ELispCharTable.SubTable sub = assertInstanceOf(ELispCharTable.SubTable.class, read(subTableString));
+        assertEquals(2 + (1 << ELispCharTable.CHARTAB_SIZE_BITS_1), sub.size());
+        assertEquals(1, sub.getDepth());
+        assertEquals(1024, sub.getMinChar());
+        sub.forEach((ele) -> {
+            if (!(ele instanceof Long)) {
+                assertSame(Boolean.TRUE, ele);
+            }
+        });
+    }
+
+    @Test
     public void testErrors() {
         assertError("", "Unexpected EOF");
         assertError("(a . a a)", "Expected ')'");
         assertError(")", "Expected start of expression");
         assertError("]", "Expected start of expression");
+        assertError("#&1\"中\"", "Expected raw byte string");
+        assertError("#&16\"a\"", "Unmatched bit vector length");
+        assertError("#&16\"aaa\"", "Unmatched bit vector length");
     }
 
     private void assertError(String expr, String message) {

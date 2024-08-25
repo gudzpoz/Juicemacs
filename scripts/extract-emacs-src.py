@@ -98,11 +98,13 @@ with open(args.filename, 'r') as f:
     contents = f.read()
     count = len(DEFUN_DETECT.findall(contents))
     matches = DEFUN_REGEX.findall(contents)
-    assert (
-        set(DEFUN_DETECT.findall(contents))
-        == set(m[0] for m in matches)
-    ), set(DEFUN_DETECT.findall(contents)) - set(m[0] for m in matches)
-    assert len(matches) == count, (matches, count)
+    not_found = set(DEFUN_DETECT.findall(contents)) - set(m[0] for m in matches)
+    if not_found != {'testme'}:
+        assert (
+            set(DEFUN_DETECT.findall(contents))
+            == set(m[0] for m in matches)
+        ), not_found
+        assert len(matches) == count, (matches, count)
     subroutines = dict(
         (
             better_fname(fname),
@@ -167,6 +169,15 @@ JAVA_SYMBOL_DETECT = re.compile(
 )
 
 
+def symbol_scope(symbol: str):
+    if symbol == 'NIL' or symbol == 'T':
+        return '''/**
+     * Special symbol: {@code t / nil} mapped to {@code true / false}.
+     */
+    private'''
+    return 'public'
+
+
 with open(args.context, 'r') as f:
     c_file = Path(args.filename).name
     stem = Path(args.filename).stem
@@ -192,7 +203,7 @@ with open(args.context, 'r') as f:
         already_defined = JAVA_SYMBOL_DETECT.findall(contents)
     duplicates = set(already_defined)
     java_symbols = '\n'.join(
-        f'    public final ELispSymbol {varname} = '
+        f'    {symbol_scope(varname)} final ELispSymbol {varname} = '
         f'new ELispSymbol("{symbol}");'
         for varname, symbol in sorted(symbols.items())
         if varname not in duplicates

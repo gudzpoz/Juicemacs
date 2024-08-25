@@ -100,7 +100,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FRead extends ELispBuiltInBaseNode {
         @Specialization
         public Object read(Object a) {
-            if (ctx().isNil(a)) {
+            if (ELispSymbol.isNil(a)) {
                 // TODO: Vstandard_input
                 throw new UnsupportedOperationException();
             }
@@ -110,7 +110,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (a == ctx().READ_CHAR) {
                 throw new UnsupportedOperationException();
             }
-            return readInternalStart(ctx(), a, ctx().NIL, ctx().NIL, false);
+            return readInternalStart(ctx(), a, false, false, false);
         }
     }
 

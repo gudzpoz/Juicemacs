@@ -33,8 +33,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNull extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean isNull(Object a) {
-            return ctx().isNil(a);
+        public static boolean isNull(Object a) {
+            return ELispSymbol.isNil(a);
         }
     }
 
@@ -57,8 +57,6 @@ public class BuiltInData extends ELispBuiltIns {
             case Boolean b -> b ? ctx.BOOLEAN : ctx.NULL;
             case Long _ -> ctx.FIXNUM;
             case ELispBigNum _ -> ctx.BIGNUM;
-            case ELispSymbol s when s == ctx.NIL -> ctx.NULL;
-            case ELispSymbol s when s == ctx.T -> ctx.BOOLEAN;
             case ELispSymbol _ -> ctx.SYMBOL;
             case ELispString _ -> ctx.STRING;
             case ELispVector _ -> ctx.VECTOR;
@@ -100,21 +98,21 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FListp extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean listp(Object a) {
-            return BuiltInData.listp(ctx(), a);
+        public static boolean listp(Object a) {
+            return BuiltInData.listp(a);
         }
     }
 
-    public static boolean listp(ELispContext ctx, Object a) {
-        return a instanceof ELispCons || ctx.isNil(a);
+    public static boolean listp(Object a) {
+        return a instanceof ELispCons || ELispSymbol.isNil(a);
     }
 
     @ELispBuiltIn(name = "nlistp", minArgs = 1, maxArgs = 1, doc = "Return t if OBJECT is not a list.  Lists include nil.")
     @GenerateNodeFactory
     public abstract static class FNlistp extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean nlistp(Object a) {
-            return !listp(ctx(), a);
+        public static boolean nlistp(Object a) {
+            return !listp(a);
         }
     }
 
@@ -413,7 +411,6 @@ public class BuiltInData extends ELispBuiltIns {
             return switch (a) {
                 case ELispCons cons -> cons.car();
                 case Boolean b when !b -> false;
-                case ELispSymbol sym when sym == ctx().NIL -> false;
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -439,7 +436,6 @@ public class BuiltInData extends ELispBuiltIns {
             return switch (a) {
                 case ELispCons cons -> cons.cdr();
                 case Boolean b when !b -> false;
-                case ELispSymbol sym when sym == ctx().NIL -> false;
                 default -> throw new IllegalArgumentException();
             };
         }

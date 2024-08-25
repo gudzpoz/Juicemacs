@@ -8,7 +8,9 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.MutableTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 /**
  * A ELisp lexer
@@ -249,7 +251,7 @@ class ELispLexer {
         record Char(int value) implements TokenData {
         }
 
-        record Str(String value) implements TokenData {
+        record Str(MutableTruffleString value) implements TokenData {
         }
 
         record Num(NumberVariant value) implements TokenData {
@@ -261,7 +263,7 @@ class ELispLexer {
         /**
          * Bool vector as is in {@code #&10"value"}
          */
-        record BoolVec(long length, String value) implements TokenData {
+        record BoolVec(long length, MutableTruffleString value) implements TokenData {
         }
     }
 
@@ -561,14 +563,14 @@ class ELispLexer {
     /**
      * Read the remaining ELisp string after the initial {@code "} character.
      */
-    private String readStr() throws IOException {
-        StringBuilder sb = new StringBuilder();
+    private MutableTruffleString readStr() throws IOException {
+        ELispString.Builder sb = new ELispString.Builder();
         while (true) {
             int c = noEOF(peekCodepoint());
             switch (c) {
                 case '"' -> {
                     readCodepoint();
-                    return sb.toString();
+                    return sb.toTruffleString();
                 }
                 case '\\' -> {
                     c = readChar(true);

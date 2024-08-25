@@ -8,12 +8,23 @@ public final class ELispSymbol implements ELispValue {
 
     private final String name;
 
+    private final Object properties;
+
     private Object value;
 
     private ELispValue function;
 
     public ELispSymbol(String name) {
         this.name = name;
+        properties = false;
+    }
+
+    public Object getProperties() {
+        return properties;
+    }
+
+    public static boolean isSymbol(Object purpose) {
+        return purpose instanceof Boolean || purpose instanceof ELispSymbol;
     }
 
     public Object getValue() {
@@ -44,6 +55,10 @@ public final class ELispSymbol implements ELispValue {
 
     public String name() {
         return name;
+    }
+
+    public static boolean isNil(Object object) {
+        return object instanceof Boolean b && !b;
     }
 
 }

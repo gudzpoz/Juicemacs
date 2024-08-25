@@ -23,8 +23,12 @@ public class ELispContext {
     // TODO: Replace this with obarray
     private final HashMap<String, ELispSymbol> internMap = new HashMap<>();
 
-    public ELispSymbol intern(String symbol) {
-        return internMap.computeIfAbsent(symbol, ELispSymbol::new);
+    public Object intern(String symbol) {
+        return switch (symbol) {
+            case "nil" -> Boolean.FALSE;
+            case "t" -> Boolean.TRUE; // TODO: Emacs allows (defun t () ...)
+            default -> internMap.computeIfAbsent(symbol, ELispSymbol::new);
+        };
     }
 
     public String applyShorthands(String symbol) {
@@ -42,17 +46,22 @@ public class ELispContext {
     }
 
     public void registerFunction(String name, ELispValue function) {
-        ELispSymbol symbol = intern(name);
+        ELispSymbol symbol = name.equals("t") ? T : (ELispSymbol) intern(name);
         symbol.setFunction(function);
     }
 
     public void initGlobal(ELispLanguage language) {
+        initSymbols(allocSymbols());
+        initSymbols(chartabSymbols());
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
         initSymbols(evalSymbols());
         initSymbols(fnsSymbols());
         initSymbols(lreadSymbols());
         initSymbols(processSymbols());
+
+        initBuiltIns(language, new BuiltInAlloc());
+        initBuiltIns(language, new BuiltInCharTab());
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
         initBuiltIns(language, new BuiltInEval());
@@ -69,10 +78,6 @@ public class ELispContext {
         for (ELispSymbol symbol : symbols) {
             internMap.put(symbol.name(), symbol);
         }
-    }
-
-    public boolean isNil(Object o) {
-        return o == NIL || (o instanceof Boolean b && !b);
     }
 
     public boolean isT(Object o) {
@@ -386,7 +391,10 @@ public class ELispContext {
     public final ELispSymbol LOAD_TRUE_FILE_NAME = new ELispSymbol("load-true-file-name");
     public final ELispSymbol LREAD_UNESCAPED_CHARACTER_LITERALS = new ELispSymbol("lread--unescaped-character-literals");
     public final ELispSymbol MACROEXP__DYNVARS = new ELispSymbol("macroexp--dynvars");
-    public final ELispSymbol NIL = new ELispSymbol("nil");
+    /**
+     * Special symbol: {@code t / nil} mapped to {@code true / false}.
+     */
+    private final ELispSymbol NIL = new ELispSymbol("nil");
     public final ELispSymbol OBARRAYP = new ELispSymbol("obarrayp");
     public final ELispSymbol OBARRAY_CACHE = new ELispSymbol("obarray-cache");
     public final ELispSymbol PURECOPY = new ELispSymbol("purecopy");
@@ -395,7 +403,10 @@ public class ELispContext {
     public final ELispSymbol READ_MINIBUFFER = new ELispSymbol("read-minibuffer");
     public final ELispSymbol SIZE = new ELispSymbol("size");
     public final ELispSymbol STANDARD_INPUT = new ELispSymbol("standard-input");
-    public final ELispSymbol T = new ELispSymbol("t");
+    /**
+     * Special symbol: {@code t / nil} mapped to {@code true / false}.
+     */
+    private final ELispSymbol T = new ELispSymbol("t");
     public final ELispSymbol TEST = new ELispSymbol("test");
     public final ELispSymbol UNBOUND = new ELispSymbol("unbound");
     public final ELispSymbol VARIABLE_DOCUMENTATION = new ELispSymbol("variable-documentation");
@@ -936,4 +947,54 @@ public class ELispContext {
         };
     }
     /* @end region="fns.c" */
+    /* @generated region="chartab.c" by="extract-emacs-src.py" */
+    public final ELispSymbol CHAR_CODE_PROPERTY_TABLE = new ELispSymbol("char-code-property-table");
+    private ELispSymbol[] chartabSymbols() {
+        return new ELispSymbol[] {
+            CHAR_CODE_PROPERTY_TABLE,
+        };
+    }
+    /* @end region="chartab.c" */
+    /* @generated region="alloc.c" by="extract-emacs-src.py" */
+    public final ELispSymbol ALLOC = new ELispSymbol("alloc");
+    public final ELispSymbol AUTOMATIC_GC = new ELispSymbol("Automatic GC");
+    public final ELispSymbol BUFFERS = new ELispSymbol("buffers");
+    public final ELispSymbol CEMERGENCY = new ELispSymbol(":emergency");
+    public final ELispSymbol CHAR_TABLE_EXTRA_SLOTS = new ELispSymbol("char-table-extra-slots");
+    public final ELispSymbol CONSES = new ELispSymbol("conses");
+    public final ELispSymbol FLOATS = new ELispSymbol("floats");
+    public final ELispSymbol GC_CONS_PERCENTAGE = new ELispSymbol("gc-cons-percentage");
+    public final ELispSymbol GC_CONS_THRESHOLD = new ELispSymbol("gc-cons-threshold");
+    public final ELispSymbol HEAP = new ELispSymbol("heap");
+    public final ELispSymbol INTERVALS = new ELispSymbol("intervals");
+    public final ELispSymbol MEMORY_INFO = new ELispSymbol("memory-info");
+    public final ELispSymbol POST_GC_HOOK = new ELispSymbol("post-gc-hook");
+    public final ELispSymbol STRINGS = new ELispSymbol("strings");
+    public final ELispSymbol STRING_BYTES = new ELispSymbol("string-bytes");
+    public final ELispSymbol SYMBOLS = new ELispSymbol("symbols");
+    public final ELispSymbol VECTORS = new ELispSymbol("vectors");
+    public final ELispSymbol VECTOR_SLOTS = new ELispSymbol("vector-slots");
+    private ELispSymbol[] allocSymbols() {
+        return new ELispSymbol[] {
+            ALLOC,
+            AUTOMATIC_GC,
+            BUFFERS,
+            CEMERGENCY,
+            CHAR_TABLE_EXTRA_SLOTS,
+            CONSES,
+            FLOATS,
+            GC_CONS_PERCENTAGE,
+            GC_CONS_THRESHOLD,
+            HEAP,
+            INTERVALS,
+            MEMORY_INFO,
+            POST_GC_HOOK,
+            STRINGS,
+            STRING_BYTES,
+            SYMBOLS,
+            VECTORS,
+            VECTOR_SLOTS,
+        };
+    }
+    /* @end region="alloc.c" */
 }

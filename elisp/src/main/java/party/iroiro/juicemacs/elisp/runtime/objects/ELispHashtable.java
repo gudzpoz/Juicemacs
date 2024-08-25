@@ -39,7 +39,7 @@ public final class ELispHashtable implements ELispValue {
         return inner.size();
     }
 
-    protected class ELispHashtableKey {
+    protected final class ELispHashtableKey {
         private final Object key;
 
         private ELispHashtableKey(Object key) {
@@ -72,7 +72,7 @@ public final class ELispHashtable implements ELispValue {
         }
         ELispHashtable table = test == null ? new ELispHashtable() : new ELispHashtable(test);
         Object data = getFromPseudoPlist(list, context.DATA);
-        if (data != null && !context.isNil(data)) {
+        if (data != null && !ELispSymbol.isNil(data)) {
             ELispCons cons = (ELispCons) data;
             Iterator<Object> iterator = cons.iterator();
             while (iterator.hasNext()) {
@@ -96,8 +96,6 @@ public final class ELispHashtable implements ELispValue {
         }
         return null;
     }
-
-
 
     @Override
     public String type() {
