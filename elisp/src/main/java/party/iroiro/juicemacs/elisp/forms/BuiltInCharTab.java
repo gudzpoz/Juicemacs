@@ -8,6 +8,9 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_TABLE_EXTRA_SLOTS;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+
 public class BuiltInCharTab extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -18,21 +21,14 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeCharTable extends ELispBuiltInBaseNode {
         @Specialization
-        public Object makeCharTable(Object purpose, Object init) {
-            if (!ELispSymbol.isSymbol(purpose)) {
+        public static Object makeCharTable(ELispSymbol purpose, Object init) {
+            int extraSlots;
+            extraSlots = (int) (long) (Long) BuiltInFns.FGet.get(purpose, CHAR_TABLE_EXTRA_SLOTS);
+            if (extraSlots < 0 || 10 < extraSlots) {
                 throw new IllegalArgumentException();
             }
-            int extraSlots;
-            if (purpose instanceof ELispSymbol symbol) {
-                extraSlots = (int) (long) (Long) BuiltInFns.FGet.get(symbol, ctx().CHAR_TABLE_EXTRA_SLOTS);
-                if (extraSlots < 0 || 10 < extraSlots) {
-                    throw new IllegalArgumentException();
-                }
-            } else {
-                extraSlots = 0;
-            }
             ELispCharTable table = new ELispCharTable(init, extraSlots);
-            table.setParent(false);
+            table.setParent(NIL);
             table.setPurpose(purpose);
             return table;
         }

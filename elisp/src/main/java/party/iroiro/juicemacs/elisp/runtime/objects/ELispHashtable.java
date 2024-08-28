@@ -1,10 +1,11 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
 import java.util.*;
 import java.util.function.BiPredicate;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public final class ELispHashtable implements ELispValue {
 
@@ -59,19 +60,19 @@ public final class ELispHashtable implements ELispValue {
 
     public final BiPredicate<Object, Object> eq;
 
-    public static ELispHashtable hashTableFromPlist(ELispContext context, List<Object> list) {
+    public static ELispHashtable hashTableFromPlist(List<Object> list) {
         // #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data ())
-        Object testSym = getFromPseudoPlist(list, context.TEST);
+        Object testSym = getFromPseudoPlist(list, TEST);
         BiPredicate<Object, Object> test = null;
-        if (testSym == context.EQ) {
+        if (testSym == EQ) {
             test = Objects::equals;
-        } else if (testSym == context.EQL) {
+        } else if (testSym == EQL) {
             // TODO: Implement eql
-        } else if (testSym == context.EQUAL) {
+        } else if (testSym == EQUAL) {
             // TODO: Implement equal
         }
         ELispHashtable table = test == null ? new ELispHashtable() : new ELispHashtable(test);
-        Object data = getFromPseudoPlist(list, context.DATA);
+        Object data = getFromPseudoPlist(list, DATA);
         if (data != null && !ELispSymbol.isNil(data)) {
             ELispCons cons = (ELispCons) data;
             Iterator<Object> iterator = cons.iterator();

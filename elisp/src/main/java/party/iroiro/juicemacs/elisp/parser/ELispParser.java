@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+
 /**
  * A ELisp parser and reader
  *
@@ -28,14 +30,10 @@ import java.util.*;
  */
 public class ELispParser {
 
-    private static final Object NIL = Boolean.FALSE;
-
     private final ELispLexer lexer;
-    private final ELispContext context;
 
-    public ELispParser(Source source, ELispContext context) {
+    public ELispParser(Source source) {
         this.lexer = new ELispLexer(source);
-        this.context = context;
     }
 
     @Nullable
@@ -67,7 +65,7 @@ public class ELispParser {
         Token token = read();
         return switch (token.data()) {
             case EOF() -> throw new IOException("Unexpected EOF");
-            case SkipToEnd() -> false; // TODO: Skip to EOF
+            case SkipToEnd() -> NIL; // TODO: Skip to EOF
             case SetLexicalBindingMode(boolean value) -> {
                 lexicalBinding = value;
                 yield nextObject();
@@ -80,16 +78,10 @@ public class ELispParser {
             case Symbol(String value, boolean intern, boolean shorthand) -> {
                 String symbol = value;
                 if (shorthand) {
-                    symbol = context.applyShorthands(symbol);
+                    symbol = ELispContext.applyShorthands(symbol);
                 }
                 if (intern) {
-                    if (value.equals("nil")) {
-                        yield false;
-                    }
-                    if (value.equals("t")) {
-                        yield true;
-                    }
-                    yield context.intern(symbol);
+                    yield ELispContext.intern(symbol);
                 }
                 yield new ELispSymbol(symbol);
             }
@@ -112,12 +104,12 @@ public class ELispParser {
                 }
                 yield new ELispBoolVector(BitSet.valueOf(bytes), (int) length);
             }
-            case Quote() -> quote(context.QUOTE); // 'a -> (quote a)
-            case Function() -> quote(context.FUNCTION); // #'a -> (function a)
-            case BackQuote() -> quote(context.BACKQUOTE); // `a -> (` a)
-            case Unquote() -> context.COMMA;
-            case UnquoteSplicing() -> context.COMMA_AT;
-            case Dot() -> context.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
+            case Quote() -> quote(QUOTE); // 'a -> (quote a)
+            case Function() -> quote(FUNCTION); // #'a -> (function a)
+            case BackQuote() -> quote(BACKQUOTE); // `a -> (` a)
+            case Unquote() -> COMMA;
+            case UnquoteSplicing() -> COMMA_AT;
+            case Dot() -> ELispContext.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
             case ParenOpen() -> {
                 if (peek().data() instanceof ParenClose) {
                     read();
@@ -145,8 +137,8 @@ public class ELispParser {
             case RecordOpen() -> {
                 List<Object> list = readList();
                 Object type = list.getFirst();
-                if (type instanceof ELispSymbol sym && sym == context.HASH_TABLE) {
-                    yield ELispHashtable.hashTableFromPlist(context, list);
+                if (type instanceof ELispSymbol sym && sym == HASH_TABLE) {
+                    yield ELispHashtable.hashTableFromPlist(list);
                 }
                 yield new ELispRecord(list);
             }
@@ -221,12 +213,12 @@ public class ELispParser {
         return nextObject();
     }
 
-    public static ELispExpressionNode parse(Source source, ELispContext context) throws IOException {
-        return context.valueToExpression(read(source, context));
+    public static ELispExpressionNode parse(Source source) throws IOException {
+        return ELispContext.valueToExpression(read(source));
     }
 
-    public static Object read(Source source, ELispContext context) throws IOException {
-        ELispParser parser = new ELispParser(source, context);
+    public static Object read(Source source) throws IOException {
+        ELispParser parser = new ELispParser(source);
         return parser.nextLisp();
     }
 

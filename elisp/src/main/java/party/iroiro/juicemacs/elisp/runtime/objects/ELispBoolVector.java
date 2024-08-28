@@ -2,6 +2,8 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import java.util.BitSet;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+
 public final class ELispBoolVector extends ELispVectorLike<Boolean> {
     private final BitSet bits;
     private final int size;
@@ -33,7 +35,7 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
 
     @Override
     public void setUntyped(int i, Object object) {
-        set(i, (Boolean) object);
+        set(i, object != Boolean.FALSE && object != NIL);
     }
 
     @Override

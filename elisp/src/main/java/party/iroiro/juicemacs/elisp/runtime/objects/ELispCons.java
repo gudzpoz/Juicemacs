@@ -1,12 +1,8 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.nodes.ELispCallFormNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-
 import java.util.*;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 
 /**
  * A cons cell in ELisp
@@ -23,15 +19,14 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     private Object car;
-    @Nullable
-    private Object cdr;
+    private Object cdr = NIL;
 
     public Object car() {
         return car;
     }
 
     public Object cdr() {
-        return cdr == null ? false : cdr;
+        return cdr;
     }
 
     public void setCar(Object car) {
@@ -39,11 +34,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     public void setCdr(Object cdr) {
-        if (cdr instanceof Boolean b && !b) {
-            this.cdr = null;
-        } else {
-            this.cdr = cdr;
-        }
+        this.cdr = cdr;
     }
 
     @Override
@@ -51,7 +42,6 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return false;
     }
 
-    @NonNull
     @Override
     public BrentTortoiseHareIterator listIterator(int i) {
         var iterator = new BrentTortoiseHareIterator();
@@ -74,19 +64,12 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     @Override
-    public ELispExpressionNode eval(ELispContext context) {
-        return new ELispCallFormNode(this, context);
-    }
-
-    @Override
     public String type() {
         return "cons";
     }
 
     public final class BrentTortoiseHareIterator implements ListIterator<Object> {
-        @Nullable
         private Object tortoise = ELispCons.this;
-        @Nullable
         private Object tail = ELispCons.this;
 
         int i = 0;
@@ -97,7 +80,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         @Override
         public boolean hasNext() {
-            return tail != null && !ELispSymbol.isNil(tail);
+            return !ELispSymbol.isNil(tail);
         }
 
         public ELispCons currentCons() {

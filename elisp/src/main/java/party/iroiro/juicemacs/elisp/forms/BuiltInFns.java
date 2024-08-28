@@ -9,6 +9,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import java.util.Iterator;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+
 /**
  * Built-in functions from {@code src/comp.c}
  */
@@ -446,9 +448,9 @@ public class BuiltInFns extends ELispBuiltIns {
                     }
                     iterator.next();
                 }
-                return false;
+                return NIL;
             } catch (IllegalStateException e) {
-                return false;
+                return NIL;
             }
         }
     }
@@ -459,9 +461,9 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static Object get(Object symbol, Object prop) {
             if (symbol instanceof ELispSymbol sym && sym.getProperties() instanceof ELispCons) {
-                FPlistGet.plistGet((ELispCons) sym.getProperties(), prop, false);
+                FPlistGet.plistGet((ELispCons) sym.getProperties(), prop, NIL);
             }
-            return false;
+            return NIL;
         }
     }
 

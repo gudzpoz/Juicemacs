@@ -1,10 +1,14 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
  * Built-in functions from {@code src/eval.c}
@@ -15,12 +19,48 @@ public class BuiltInEval extends ELispBuiltIns {
         return BuiltInEvalFactory.getFactories();
     }
 
+    public static Object evalSub(Object form) {
+        return switch (form) {
+            case ELispSymbol symbol -> symbol.getValue();
+            case ELispCons cons -> evalCons(cons);
+            default -> form;
+        };
+    }
+
+    private static Object evalCons(ELispCons cons) {
+        Object function = cons.car();
+        Object[] args = cons.cdr() instanceof ELispCons rest ? rest.toArray() : new Object[0];
+        if (function instanceof ELispSymbol symbol) {
+            function = symbol.getFunction();
+            while (function instanceof ELispSymbol indirection) {
+                function = indirection.getFunction();
+            }
+        } else {
+            function = FFunction.function(function);
+        }
+        if (function instanceof ELispSubroutine(CallTarget body, boolean specialForm)) {
+            if (!specialForm) {
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = evalSub(args[i]);
+                }
+            }
+            return body.call(args);
+        }
+        throw new UnsupportedOperationException();
+    }
+
     @ELispBuiltIn(name = "or", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true, doc = "Eval args until one of them yields non-nil, then return that value.\nThe remaining args are not evalled at all.\nIf all args return nil, return nil.\nusage: (or CONDITIONS...)")
     @GenerateNodeFactory
     public abstract static class FOr extends ELispBuiltInBaseNode {
         @Specialization
         public static Object or(Object[] args) {
-            throw new UnsupportedOperationException();
+            for (Object arg : args) {
+                Object result = evalSub(arg);
+                if (result != NIL) {
+                    return result;
+                }
+            }
+            return NIL;
         }
     }
 
@@ -29,7 +69,14 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FAnd extends ELispBuiltInBaseNode {
         @Specialization
         public static Object and(Object[] args) {
-            throw new UnsupportedOperationException();
+            Object lastResult = NIL;
+            for (Object arg : args) {
+                lastResult = evalSub(arg);
+                if (lastResult == NIL) {
+                    return NIL;
+                }
+            }
+            return lastResult;
         }
     }
 
@@ -37,8 +84,16 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIf extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object if_(Object a, Object b, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object if_(Object cond, Object then, Object[] args) {
+            if (evalSub(cond) == NIL) {
+                Object lastResult = NIL;
+                for (Object arg : args) {
+                    lastResult = evalSub(arg);
+                }
+                return lastResult;
+            } else {
+                return evalSub(then);
+            }
         }
     }
 
@@ -47,7 +102,18 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FCond extends ELispBuiltInBaseNode {
         @Specialization
         public static Object cond(Object[] args) {
-            throw new UnsupportedOperationException();
+            for (Object arg : args) {
+                ELispCons cons = (ELispCons) arg;
+                Object result = evalSub(cons.car());
+                if (result != NIL) {
+                    ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(1);
+                    while (iterator.hasNext()) {
+                        result = evalSub(iterator.next());
+                    }
+                    return result;
+                }
+            }
+            return NIL;
         }
     }
 
@@ -56,7 +122,11 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FProgn extends ELispBuiltInBaseNode {
         @Specialization
         public static Object progn(Object[] args) {
-            throw new UnsupportedOperationException();
+            Object lastResult = NIL;
+            for (Object arg : args) {
+                lastResult = evalSub(arg);
+            }
+            return lastResult;
         }
     }
 
@@ -65,7 +135,11 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FProg1 extends ELispBuiltInBaseNode {
         @Specialization
         public static Object prog1(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+            Object result = evalSub(a);
+            for (Object arg : args) {
+                evalSub(arg);
+            }
+            return result;
         }
     }
 
@@ -74,7 +148,16 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FSetq extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setq(Object[] args) {
-            throw new UnsupportedOperationException();
+            if (args.length % 2 == 0) {
+                throw new IllegalArgumentException();
+            }
+            Object last = NIL;
+            for (int i = 0; i < args.length; i += 2) {
+                ELispSymbol symbol = (ELispSymbol) args[i];
+                last = evalSub(args[i + 1]);
+                symbol.setValue(last);
+            }
+            return last;
         }
     }
 
@@ -82,8 +165,8 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FQuote extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object quote(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object quote(Object a) {
+            return a;
         }
     }
 
@@ -91,8 +174,14 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeInterpretedClosure extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object makeInterpretedClosure(Object a, Object b, Object c, Object d, Object e) {
-            throw new UnsupportedOperationException();
+        public static Object makeInterpretedClosure(Object args, ELispCons body, Object env, Object doc, Object iForm) {
+            return new ELispInterpretedClosure(
+                    args,
+                    body,
+                    env,
+                    doc,
+                    iForm
+            );
         }
     }
 
@@ -100,8 +189,41 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFunction extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object function(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object function(Object quoted) {
+            if (quoted instanceof ELispCons def && def.car() == LAMBDA) {
+                ELispCons.BrentTortoiseHareIterator iterator = def.listIterator(1);
+                Object args = iterator.next();
+                Object docString = null;
+                if (iterator.hasNext()) {
+                    docString = switch (iterator.currentCons().car()) {
+                        case ELispString s -> s;
+                        case ELispCons cons when cons.car() == CDOCUMENTATION && cons.cdr() instanceof ELispCons doc ->
+                                evalSub(doc.car());
+                        default -> null;
+                    };
+                }
+                if (docString == null) {
+                    docString = NIL;
+                } else {
+                    iterator.next();
+                }
+                Object interactive = NIL;
+                if (iterator.hasNext()) {
+                    if (iterator.currentCons().car() instanceof ELispCons cons && cons.car() == INTERACTIVE) {
+                        interactive = cons;
+                        iterator.next();
+                    }
+                }
+                ELispCons body = iterator.hasNext() ? iterator.currentCons() : new ELispCons(NIL);
+                return FMakeInterpretedClosure.makeInterpretedClosure(
+                        args,
+                        body,
+                        INTERNAL_INTERPRETER_ENVIRONMENT.getValue(),
+                        docString,
+                        interactive
+                );
+            }
+            return quoted;
         }
     }
 
@@ -109,8 +231,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefvaralias extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object defvaralias(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object defvaralias(ELispSymbol newAlias, ELispSymbol baseVar, Object doc) {
+            if (newAlias.isConstant()) {
+                throw new IllegalArgumentException();
+            }
+            newAlias.aliasSymbol(baseVar);
+            return baseVar;
         }
     }
 

@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -10,16 +11,21 @@ import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class ELispParserTest {
 
-    private final ELispContext context = new ELispContext();
+    private final static ELispContext context = new ELispContext();
+
+    @BeforeAll
+    public static void setup() {
+        context.initGlobal(null);
+    }
 
     private Object read(String content) throws IOException {
         context.initGlobal(null);
         return ELispParser.read(
-                Source.newBuilder("elisp", content, null).build(),
-                context
+                Source.newBuilder("elisp", content, null).build()
         );
     }
 
@@ -27,9 +33,9 @@ public class ELispParserTest {
             "1", 1L,
             "1.5", 1.5,
             "#xFFFFFFFFFFFFFFFFFFFF", new ELispBigNum(BigInteger.ONE.shiftLeft(80).subtract(BigInteger.ONE)),
-            "t", true,
-            "nil", false,
-            "#@00", false,
+            "t", T,
+            "nil", NIL,
+            "#@00", NIL,
             "?a", (long) 'a',
     };
 
@@ -48,20 +54,20 @@ public class ELispParserTest {
         assertEquals("string abcdefg", s.toString());
 
         ELispSymbol interned = assertInstanceOf(ELispSymbol.class, read("float"));
-        assertSame(context.FLOAT, interned);
+        assertSame(FLOAT, interned);
         ELispSymbol uninterned = assertInstanceOf(ELispSymbol.class, read("#:float"));
-        assertNotSame(context.FLOAT, uninterned);
-        assertEquals(context.FLOAT.name(), uninterned.name());
+        assertNotSame(FLOAT, uninterned);
+        assertEquals(FLOAT.name(), uninterned.name());
         ELispSymbol noShorthand = assertInstanceOf(ELispSymbol.class, read("#_float"));
-        assertSame(context.FLOAT, noShorthand);
+        assertSame(FLOAT, noShorthand);
 
         ELispSymbol dot = assertInstanceOf(ELispSymbol.class, read("."));
         assertEquals(".", dot.name());
 
         ELispBoolVector bVec = assertInstanceOf(ELispBoolVector.class, read("#&2\"\\1\""));
         assertEquals(2, bVec.size());
-        assertTrue(bVec.get(0));
-        assertFalse(bVec.get(1));
+        assertTrue(ELispSymbol.isT(bVec.get(0)));
+        assertTrue(ELispSymbol.isNil(bVec.get(1)));
     }
 
     private void assertCons(String expr, String[] symbols) throws IOException {
@@ -75,7 +81,7 @@ public class ELispParserTest {
 
     @Test
     public void testCons() throws IOException {
-        assertEquals(false, read("()"));
+        assertSame(NIL, read("()"));
         ELispCons cons = assertInstanceOf(ELispCons.class, read("(1024 . 4321)"));
         assertEquals(1024L, cons.car());
         assertEquals(4321L, cons.cdr());
@@ -96,7 +102,7 @@ public class ELispParserTest {
     @Test
     public void testByteCode() throws IOException {
         ELispByteCode bc = assertInstanceOf(ELispByteCode.class, read("#[() \"\" [] 0]"));
-        assertEquals(false, bc.getFirst());
+        assertSame(NIL, bc.getFirst());
     }
 
     @Test
@@ -106,10 +112,9 @@ public class ELispParserTest {
                         "elisp",
                         ";; -*- lexical-binding: t -*-\nnil",
                         null
-                ).build(),
-                context
+                ).build()
         );
-        assertEquals(false, parser.nextLisp());
+        assertSame(NIL, parser.nextLisp());
         assertTrue(parser.getLexicalBinding());
     }
 
@@ -142,14 +147,14 @@ public class ELispParserTest {
         assertEquals(3, table.size());
         assertEquals(
                 "v1",
-                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k1"))).name()
+                assertInstanceOf(ELispSymbol.class, table.get(ELispContext.intern("k1"))).name()
         );
         assertEquals(
                 "v2",
-                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k2"))).name()
+                assertInstanceOf(ELispSymbol.class, table.get(ELispContext.intern("k2"))).name()
         );
-        ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(context.intern("k3")));
-        assertTrue(ELispSymbol.isNil(placeholder.car()));
+        ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(ELispContext.intern("k3")));
+         assertSame(NIL, placeholder.car());
 
         ELispString str = assertInstanceOf(ELispString.class, read("#1=#(\"text here\" 0 1 (key #1#))"));
         assertEquals(1, str.intervals());
@@ -157,7 +162,7 @@ public class ELispParserTest {
         str.forRangeProperties(0, (props) -> {
             propCount.incrementAndGet();
             ELispCons properties = assertInstanceOf(ELispCons.class, props);
-            assertSame(context.KEY, properties.getFirst());
+            assertSame(ELispContext.KEY, properties.getFirst());
             assertSame(str, properties.get(1));
         });
         assertEquals(1, propCount.get());
@@ -173,7 +178,7 @@ public class ELispParserTest {
         String charTableString = "#^[" + "t ".repeat(ELispCharTable.CHARTAB_STANDARD_SLOTS) + "]";
         ELispCharTable table = assertInstanceOf(ELispCharTable.class, read(charTableString));
         assertEquals(ELispCharTable.CHARTAB_STANDARD_SLOTS, table.size());
-        table.forEach((ele) -> assertSame(Boolean.TRUE, ele));
+        table.forEach((ele) -> assertSame(T, ele));
         String subTableString = "#^^[1 1024 " + "t ".repeat(1 << ELispCharTable.CHARTAB_SIZE_BITS_1) + "]";
         ELispCharTable.SubTable sub = assertInstanceOf(ELispCharTable.SubTable.class, read(subTableString));
         assertEquals(2 + (1 << ELispCharTable.CHARTAB_SIZE_BITS_1), sub.size());
@@ -181,7 +186,7 @@ public class ELispParserTest {
         assertEquals(1024, sub.getMinChar());
         sub.forEach((ele) -> {
             if (!(ele instanceof Long)) {
-                assertSame(Boolean.TRUE, ele);
+                assertSame(T, ele);
             }
         });
     }

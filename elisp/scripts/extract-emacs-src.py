@@ -164,18 +164,9 @@ with open(args.java, 'w') as f:
 
 
 JAVA_SYMBOL_DETECT = re.compile(
-    r'public final ELispSymbol (\S+?) = new ELispSymbol',
+    r'public final static ELispSymbol (\S+?) = new ELispSymbol',
     re.MULTILINE | re.DOTALL,
 )
-
-
-def symbol_scope(symbol: str):
-    if symbol == 'NIL' or symbol == 'T':
-        return '''/**
-     * Special symbol: {@code t / nil} mapped to {@code true / false}.
-     */
-    private'''
-    return 'public'
 
 
 with open(args.context, 'r') as f:
@@ -203,15 +194,15 @@ with open(args.context, 'r') as f:
         already_defined = JAVA_SYMBOL_DETECT.findall(contents)
     duplicates = set(already_defined)
     java_symbols = '\n'.join(
-        f'    {symbol_scope(varname)} final ELispSymbol {varname} = '
+        f'    public final static ELispSymbol {varname} = '
         f'new ELispSymbol("{symbol}");'
         for varname, symbol in sorted(symbols.items())
         if varname not in duplicates
     )
     gather_symbols = f'''
-    private ELispSymbol[] {stem}Symbols() {{
-        return new ELispSymbol[] {{
-{'\n'.join(f'            {k},' for k in sorted(symbols.keys()))}
+    private ELispSymbol[] {stem}Symbols(){{
+        return new ELispSymbol[]{{
+{'\n'.join(f'                {k},' for k in sorted(symbols.keys()))}
         }};
     }}
 '''

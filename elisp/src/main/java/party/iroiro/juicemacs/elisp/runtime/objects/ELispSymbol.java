@@ -1,46 +1,131 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispSymbolNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import org.eclipse.jdt.annotation.Nullable;
 
+import java.util.function.Supplier;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+
+/**
+ * Port of {@code struct Lisp_Symbol} to Java
+ */
 public final class ELispSymbol implements ELispValue {
+    public enum Redirection {
+        PLAIN_VAL,
+        VAR_ALIAS,
+        LOCALIZED,
+        FORWARDED,
+    }
+    public enum TrappedWrite {
+        NORMAL_WRITE,
+        NO_WRITE,
+        TRAPPED_WRITE,
+    }
+    public enum Interned {
+        UNINTERNED,
+        INTERNED,
+        INTERNED_IN_INITIAL_OBARRAY,
+    }
 
+    /** Indicates where the value can be found.  */
+    private Redirection redirect;
+    /** Indicates whether operations are needed before any writes.  */
+    private TrappedWrite trappedWrite;
+    /** Interned state of the symbol.  */
+    private Interned interned;
+    /** True means that this variable has been explicitly declared
+   special (with `defvar' etc.), and shouldn't be lexically bound.  */
+    private boolean special;
+
+    // NOTE: Is Emacs symbol names immutable?
     private final String name;
 
-    private final Object properties;
+    /** Value of the symbol or Qunbound if unbound.  Which alternative of the
+   union is used depends on the `redirect' field above.  */
+    private Object value; // TODO: value, alias, blv (buffer-local), fwd (what?)
 
-    private Object value;
-
+    /** Function value of the symbol or Qnil if not fboundp.  */
     private ELispValue function;
 
+    /** The symbol's property list.  */
+    private Object properties;
+
+    /** Next symbol in obarray bucket, if the symbol is interned.  */
+    @Nullable
+    ELispSymbol next = null;
+
     public ELispSymbol(String name) {
+        this.redirect = Redirection.PLAIN_VAL;
+        this.trappedWrite = TrappedWrite.NORMAL_WRITE;
+        this.interned = Interned.UNINTERNED;
         this.name = name;
-        properties = false;
+        this.value = UNBOUND; // TODO: Make Qunbound uninterned
+        this.properties = NIL;
     }
 
     public Object getProperties() {
         return properties;
     }
 
-    public static boolean isSymbol(Object purpose) {
-        return purpose instanceof Boolean || purpose instanceof ELispSymbol;
+    public boolean isConstant() {
+        return false;
     }
 
     public Object getValue() {
-        return value;
+        return switch (this.redirect) {
+            case PLAIN_VAL -> value;
+            case VAR_ALIAS -> getAliased().getValue();
+            case FORWARDED -> ((Supplier<?>) value).get();
+            case LOCALIZED -> NIL;
+        };
     }
 
-    public void setValue(ELispValue value) {
-        this.value = value;
+    private ELispSymbol getAliased() {
+        ELispSymbol alias = this;
+        while (alias.redirect == Redirection.VAR_ALIAS) {
+            alias = (ELispSymbol) alias.value;
+        }
+        return alias;
+    }
+
+    public void setValue(Object value) {
+        if (trappedWrite == TrappedWrite.NO_WRITE) {
+            throw new UnsupportedOperationException();
+        }
+        switch (this.redirect) {
+            case PLAIN_VAL -> this.value = value;
+            case VAR_ALIAS -> this.getAliased().setValue(value);
+            case LOCALIZED, FORWARDED -> throw new UnsupportedOperationException();
+        }
+    }
+
+    public void aliasSymbol(ELispSymbol symbol) {
+        switch (this.redirect) {
+            case PLAIN_VAL, VAR_ALIAS -> {
+                this.value = symbol;
+                this.redirect = Redirection.VAR_ALIAS;
+            }
+            default -> throw new UnsupportedOperationException();
+        }
     }
 
     public ELispValue getFunction() {
-        return function;
+        return switch (this.redirect) {
+            case PLAIN_VAL -> this.function;
+            case VAR_ALIAS -> getAliased().getFunction();
+            default -> throw new UnsupportedOperationException();
+        };
     }
 
     public void setFunction(ELispValue function) {
-        this.function = function;
+        if (trappedWrite == TrappedWrite.NO_WRITE) {
+            throw new UnsupportedOperationException();
+        }
+        switch (this.redirect) {
+            case PLAIN_VAL -> this.function = function;
+            case VAR_ALIAS -> getAliased().setFunction(function);
+            default -> throw new UnsupportedOperationException();
+        }
     }
 
     @Override
@@ -48,17 +133,15 @@ public final class ELispSymbol implements ELispValue {
         return "symbol";
     }
 
-    @Override
-    public ELispExpressionNode eval(ELispContext context) {
-        return new ELispSymbolNode(this);
-    }
-
     public String name() {
         return name;
     }
 
-    public static boolean isNil(Object object) {
-        return object instanceof Boolean b && !b;
+    public static boolean isNil(Object nil) {
+        return nil == NIL || nil == Boolean.FALSE;
     }
 
+    public static boolean isT(Object nil) {
+        return nil == T || nil == Boolean.TRUE;
+    }
 }

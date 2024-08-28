@@ -30,7 +30,10 @@ public abstract class ELispBuiltIns {
                 }
                 ELispBuiltInBaseNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));
                 FunctionRootNode rootNode = new FunctionRootNode(language, function);
-                context.registerFunction(builtIn.name(), new ELispSubroutine(rootNode.getCallTarget()));
+                context.registerFunction(
+                        builtIn.name(),
+                        new ELispSubroutine(rootNode.getCallTarget(), builtIn.rawArg())
+                );
             }
         }
     }

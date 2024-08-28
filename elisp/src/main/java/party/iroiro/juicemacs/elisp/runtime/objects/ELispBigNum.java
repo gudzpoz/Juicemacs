@@ -9,9 +9,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.ELispBigNumLiteralNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -186,11 +183,6 @@ public record ELispBigNum(BigInteger value) implements TruffleObject, Comparable
     @TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return value.toString();
-    }
-
-    @Override
-    public ELispExpressionNode eval(ELispContext context) {
-        return new ELispBigNumLiteralNode(value);
     }
 
     @Override

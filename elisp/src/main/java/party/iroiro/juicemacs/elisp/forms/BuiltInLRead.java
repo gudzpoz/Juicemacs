@@ -7,12 +7,13 @@ import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
  * Built-in functions from {@code src/lread.c}
@@ -99,30 +100,29 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRead extends ELispBuiltInBaseNode {
         @Specialization
-        public Object read(Object a) {
+        public static Object read(Object a) {
             if (ELispSymbol.isNil(a)) {
                 // TODO: Vstandard_input
                 throw new UnsupportedOperationException();
             }
-            if (ctx().isT(a)) {
-                a = ctx().READ_CHAR;
+            if (ELispSymbol.isT(a)) {
+                a = READ_CHAR;
             }
-            if (a == ctx().READ_CHAR) {
+            if (a == READ_CHAR) {
                 throw new UnsupportedOperationException();
             }
-            return readInternalStart(ctx(), a, false, false, false);
+            return readInternalStart(a, NIL, NIL, false);
         }
     }
 
     public static Object readInternalStart(
-            ELispContext context,
             Object stream, Object start, Object end, boolean locateSymbols
     ) {
         // TODO: Handle stream instanceof ELispBuffer, ELispCons
         ELispString s = (ELispString) stream;
         Source source = Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
         try {
-            return ELispParser.read(source, context);
+            return ELispParser.read(source);
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
         }
@@ -157,7 +157,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                     recursive instanceof ELispHashtable t ? t : null,
                     recursive instanceof ELispHashtable ? null : new HashSet<>()
             ).substitute(obj);
-            return false; // return Qnil;
+            return NIL; // return Qnil;
         }
     }
 

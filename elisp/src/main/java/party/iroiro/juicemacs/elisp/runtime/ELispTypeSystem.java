@@ -6,6 +6,9 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.math.BigInteger;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
+
 /**
  * Type system for ELisp
  *
@@ -28,7 +31,7 @@ import java.math.BigInteger;
  *     <li>{@link ELispSymbol} is {@code symbol}.</li>
  *     <li>{@link ELispCons} is always {@code cons}.
  *     When a {@code nil (car=null, cdr=null)} is obtained,
- *     it must be converted to {@code boolean} or a symbol immediately.</li>
+ *     it must be converted to a symbol immediately.</li>
  * </ul>
  */
 @TypeSystem({
@@ -43,6 +46,7 @@ import java.math.BigInteger;
         /* Vector or vector-like */
         ELispString.class,
         ELispBoolVector.class,
+        ELispCharTable.class,
         ELispHashtable.class,
         ELispRecord.class,
         ELispVector.class,
@@ -50,18 +54,29 @@ import java.math.BigInteger;
         /* Others */
         ELispCons.class,
         ELispFunctionObject.class,
+        ELispSubroutine.class,
         ELispSymbol.class,
 })
 public abstract class ELispTypeSystem {
 
     @ImplicitCast
-    public static ELispBigNum castLongToBigNum(long value) {
-        return new ELispBigNum(BigInteger.valueOf(value));
+    public static ELispSymbol castBooleanToSymbol(boolean bool) {
+        return bool ? T : NIL;
     }
 
     @ImplicitCast
-    public static double castLongToDouble(long value) {
-        return value;
+    public static boolean castObjectToBoolean(ELispValue object) {
+        return object != NIL;
+    }
+
+    @ImplicitCast
+    public static boolean castNumberToBoolean(Number ignored) {
+        return true;
+    }
+
+    @ImplicitCast
+    public static ELispBigNum castLongToBigNum(long value) {
+        return new ELispBigNum(BigInteger.valueOf(value));
     }
 
     @ImplicitCast

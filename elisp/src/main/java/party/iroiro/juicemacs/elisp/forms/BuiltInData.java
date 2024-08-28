@@ -3,13 +3,14 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Objects;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
  * Built-in functions from {@code src/data.c}
@@ -42,37 +43,36 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTypeOf extends ELispBuiltInBaseNode {
         @Specialization
-        public Object typeOf(Object a) {
+        public static ELispSymbol typeOf(Object a) {
             return switch (a) {
-                case ELispSymbol _ -> ctx().SYMBOL;
-                case Long _, ELispBigNum _ -> ctx().INTEGER;
-                case ELispSubroutine _ -> ctx().SUBR;
-                default -> clTypeOf(ctx(), a);
+                case Boolean _, ELispSymbol _ -> SYMBOL;
+                case Long _, ELispBigNum _ -> INTEGER;
+                case ELispSubroutine _ -> SUBR;
+                default -> FClTypeOf.clTypeOf(a);
             };
         }
-    }
-
-    public static ELispSymbol clTypeOf(ELispContext ctx, Object a) {
-        return switch (a) {
-            case Boolean b -> b ? ctx.BOOLEAN : ctx.NULL;
-            case Long _ -> ctx.FIXNUM;
-            case ELispBigNum _ -> ctx.BIGNUM;
-            case ELispSymbol _ -> ctx.SYMBOL;
-            case ELispString _ -> ctx.STRING;
-            case ELispVector _ -> ctx.VECTOR;
-            // TODO: Handle other pseudo-vectors
-            case ELispCons _ -> ctx.CONS;
-            case Double _ -> ctx.FLOAT;
-            default -> throw new IllegalArgumentException();
-        };
     }
 
     @ELispBuiltIn(name = "cl-type-of", minArgs = 1, maxArgs = 1, doc = "Return a symbol representing the type of OBJECT.\nThe returned symbol names the most specific possible type of the object.\nfor example, (cl-type-of nil) returns `null'.\nThe specific type returned may change depending on Emacs versions,\nso we recommend you use `cl-typep', `cl-typecase', or other predicates\nrather than compare the return value of this function against\na fixed set of types.")
     @GenerateNodeFactory
     public abstract static class FClTypeOf extends ELispBuiltInBaseNode {
         @Specialization
-        public Object clTypeOf(Object a) {
-            return BuiltInData.clTypeOf(ctx(), a);
+        public static ELispSymbol clTypeOf(Object a) {
+            return switch (a) {
+                case Long _ -> FIXNUM;
+                case ELispBigNum _ -> BIGNUM;
+                case Boolean b when (boolean) b -> BOOLEAN;
+                case ELispSymbol sym when sym == T -> BOOLEAN;
+                case Boolean _ -> NULL;
+                case ELispSymbol sym when sym == NIL -> NULL;
+                case ELispSymbol _ -> SYMBOL;
+                case ELispString _ -> STRING;
+                case ELispVector _ -> VECTOR;
+                // TODO: Handle other pseudo-vectors
+                case ELispCons _ -> CONS;
+                case Double _ -> FLOAT;
+                default -> throw new IllegalArgumentException();
+            };
         }
     }
 
@@ -99,12 +99,8 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FListp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean listp(Object a) {
-            return BuiltInData.listp(a);
+            return a instanceof ELispCons || ELispSymbol.isNil(a);
         }
-    }
-
-    public static boolean listp(Object a) {
-        return a instanceof ELispCons || ELispSymbol.isNil(a);
     }
 
     @ELispBuiltIn(name = "nlistp", minArgs = 1, maxArgs = 1, doc = "Return t if OBJECT is not a list.  Lists include nil.")
@@ -112,7 +108,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FNlistp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean nlistp(Object a) {
-            return !listp(a);
+            return !FListp.listp(a);
         }
     }
 
@@ -172,7 +168,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FRecordp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean recordp(Object a) {
-            throw new UnsupportedOperationException();
+            return a instanceof ELispRecord;
         }
     }
 
@@ -189,7 +185,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMultibyteStringP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object multibyteStringP(Object a) {
+        public static boolean multibyteStringP(Object a) {
             return a instanceof ELispString s && s.isMultibyte();
         }
     }
@@ -198,8 +194,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharTableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object charTableP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean charTableP(Object a) {
+            return a instanceof ELispCharTable;
         }
     }
 
@@ -207,8 +203,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FVectorOrCharTableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object vectorOrCharTableP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean vectorOrCharTableP(Object a) {
+            return a instanceof ELispVector || FCharTableP.charTableP(a);
         }
     }
 
@@ -216,8 +212,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object boolVectorP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean boolVectorP(Object a) {
+            return a instanceof ELispBoolVector;
         }
     }
 
@@ -343,7 +339,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNatnump extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object natnump(Object a) {
+        public static boolean natnump(Object a) {
             return (a instanceof Long l && l >= 0)
                     || (a instanceof ELispBigNum n && n.value().signum() >= 0);
         }
@@ -353,7 +349,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNumberp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object numberp(Object a) {
+        public static boolean numberp(Object a) {
             return FIntegerp.integerp(a) || FFloatp.floatp(a);
         }
     }
@@ -407,10 +403,11 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCar extends ELispBuiltInBaseNode {
         @Specialization
-        public Object car(Object a) {
+        public static Object car(Object a) {
             return switch (a) {
                 case ELispCons cons -> cons.car();
                 case Boolean b when !b -> false;
+                case ELispSymbol sym when sym == NIL -> NIL;
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -424,7 +421,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (a instanceof ELispCons cons) {
                 return cons.car();
             }
-            return false;
+            return NIL;
         }
     }
 
@@ -436,6 +433,7 @@ public class BuiltInData extends ELispBuiltIns {
             return switch (a) {
                 case ELispCons cons -> cons.cdr();
                 case Boolean b when !b -> false;
+                case ELispSymbol sym when sym == NIL -> NIL;
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -449,7 +447,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (a instanceof ELispCons cons) {
                 return cons.cdr();
             }
-            return false;
+            return NIL;
         }
     }
 

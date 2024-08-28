@@ -11,6 +11,8 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+
 public final class ELispString implements ELispValue {
 
     public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_16;
@@ -31,7 +33,7 @@ public final class ELispString implements ELispValue {
 
         @Override
         protected Properties create() {
-            return new Properties(0, 0, false);
+            return new Properties(0, 0, NIL);
         }
 
         @Override
