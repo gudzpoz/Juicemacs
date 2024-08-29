@@ -1,18 +1,26 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.evalSub;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
@@ -64,8 +72,36 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLoad extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object load(Object a, Object b, Object c, Object d, Object e) {
-            throw new UnsupportedOperationException();
+        public static boolean load(ELispString file, boolean noError, boolean noMessage,
+                                   boolean noSuffix, boolean mustSuffix) {
+            Object loadPath = ELispGlobals.loadPath;
+            if (ELispSymbol.isNil(loadPath)) {
+                return false;
+            }
+            String stem = file.toString();
+            for (Object path : ((ELispCons) loadPath)) {
+                Path directory = Path.of(((ELispString) path).toString());
+                Path target = directory.resolve(stem + ".elc");
+                if (!target.toFile().isFile()) {
+                    target = directory.resolve(stem + ".el");
+                }
+                if (target.toFile().isFile()) {
+                    try {
+                        ELispParser parser = new ELispParser(Source.newBuilder(
+                                "elisp",
+                                new FileReader(target.toFile()),
+                                target.toFile().getName()
+                        ).build());
+                        while (true) {
+                            Object lisp = parser.nextLisp();
+                            evalSub(lisp);
+                        }
+                    } catch (IOException e) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 

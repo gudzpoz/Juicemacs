@@ -160,4 +160,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
     }
 
+    public static Object of(Object a, Object b) {
+        ELispCons cons = new ELispCons(a);
+        cons.setCdr(new ELispCons(b));
+        return cons;
+    }
+
 }

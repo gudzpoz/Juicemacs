@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.util.List;
 
@@ -44,7 +45,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FCons extends ELispBuiltInBaseNode {
         @Specialization
         public static Object cons(Object a, Object b) {
-            throw new UnsupportedOperationException();
+            return ELispCons.of(a, b);
         }
     }
 

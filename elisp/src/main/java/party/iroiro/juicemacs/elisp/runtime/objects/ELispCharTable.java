@@ -121,12 +121,12 @@ public class ELispCharTable extends AbstractELispVector {
         set(PARENT_SLOT, parent);
     }
 
-    public void setPurpose(Object purpose) {
+    public void setPurpose(ELispSymbol purpose) {
         set(PURPOSE_SLOT, purpose);
     }
 
-    public Object getPurpose() {
-        return get(PURPOSE_SLOT);
+    public ELispSymbol getPurpose() {
+        return (ELispSymbol) get(PURPOSE_SLOT);
     }
 
     public Object getParent() {

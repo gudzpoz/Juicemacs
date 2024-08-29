@@ -38,7 +38,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharTableSubtype extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object charTableSubtype(ELispCharTable table) {
+        public static ELispSymbol charTableSubtype(ELispCharTable table) {
             return table.getPurpose();
         }
     }
@@ -66,8 +66,8 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharTableExtraSlot extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object charTableExtraSlot(ELispCharTable table, Long n) {
-            return table.getExtra((int) (long) n);
+        public static Object charTableExtraSlot(ELispCharTable table, long n) {
+            return table.getExtra((int) n);
         }
     }
 
@@ -75,8 +75,8 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetCharTableExtraSlot extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object setCharTableExtraSlot(ELispCharTable table, Long n, Object value) {
-            table.setExtra((int) (long) n, value);
+        public static Object setCharTableExtraSlot(ELispCharTable table, long n, Object value) {
+            table.setExtra((int) n, value);
             return value;
         }
     }

@@ -10,6 +10,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
  * Port of {@code struct Lisp_Symbol} to Java
  */
 public final class ELispSymbol implements ELispValue {
+
     public enum Redirection {
         PLAIN_VAL,
         VAR_ALIAS,
@@ -97,6 +98,12 @@ public final class ELispSymbol implements ELispValue {
             case VAR_ALIAS -> this.getAliased().setValue(value);
             case LOCALIZED, FORWARDED -> throw new UnsupportedOperationException();
         }
+    }
+
+    public void forwardTo(Supplier<?> forward) {
+        this.special = true;
+        this.redirect = Redirection.FORWARDED;
+        this.value = forward;
     }
 
     public void aliasSymbol(ELispSymbol symbol) {

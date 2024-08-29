@@ -20,15 +20,18 @@ dependencies {
 // Template generation from Emacs sources
 var templateTasks = [
         ['Alloc', 'alloc.c'],
+        ['CharSet', 'charset.c'],
         ['CharTab', 'chartab.c'],
         ['Comp', 'comp.c'],
         ['Data', 'data.c'],
+        ['EditFns', 'editfns.c'],
         ['Eval', 'eval.c'],
+        ['FileIO', 'fileio.c'],
         ['Fns', 'fns.c'],
         ['LRead', 'lread.c'],
         ['Process', 'process.c'],
 ]
-
+// Force sequential evaluation
 templateTasks.each {
     var templateScript = file("scripts/extract-emacs-src.py")
     var input = file("emacs/src/${it[1]}")
@@ -36,13 +39,15 @@ templateTasks.each {
     var base = "src/main/java/party/iroiro/juicemacs/elisp"
     var target = file("${base}/forms/${clazz}.java")
     var context = file("${base}/runtime/ELispContext.java")
+    var globals = file("${base}/runtime/ELispGlobals.java")
     tasks.register("emacsGen${it[0]}") {
         description = "${input}"
         inputs.files input, templateScript
         outputs.files target, context
         doLast {
             exec {
-                commandLine 'python', templateScript, '-j', target, '-c', context, input
+                commandLine 'python', templateScript,
+                        '-j', target, '-c', context, '-g', globals, input
             }
         }
     }

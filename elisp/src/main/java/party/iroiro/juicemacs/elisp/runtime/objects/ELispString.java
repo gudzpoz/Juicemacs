@@ -61,6 +61,10 @@ public final class ELispString implements ELispValue {
         this.intervals = new IntervalTree<>();
     }
 
+    public ELispString(String init) {
+        this(from(init));
+    }
+
     @Nullable
     public static Long toValidChar(Object a) {
         return switch (a) {

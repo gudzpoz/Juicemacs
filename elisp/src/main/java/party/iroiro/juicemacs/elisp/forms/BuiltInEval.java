@@ -148,7 +148,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FSetq extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setq(Object[] args) {
-            if (args.length % 2 == 0) {
+            if (args.length % 2 != 0) {
                 throw new IllegalArgumentException();
             }
             Object last = NIL;

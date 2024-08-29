@@ -4,6 +4,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispHashtable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.Iterator;
@@ -768,8 +769,9 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeHashTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object makeHashTable(Object[] args) {
-            throw new UnsupportedOperationException();
+        public static ELispHashtable makeHashTable(Object[] args) {
+            // TODO
+            return new ELispHashtable();
         }
     }
 

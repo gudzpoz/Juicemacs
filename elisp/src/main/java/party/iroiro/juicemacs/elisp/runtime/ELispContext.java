@@ -51,22 +51,30 @@ public final class ELispContext {
 
     public void initGlobal(ELispLanguage language) {
         initSymbols(allocSymbols());
+        initSymbols(charsetSymbols());
         initSymbols(chartabSymbols());
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
+        initSymbols(editfnsSymbols());
         initSymbols(evalSymbols());
+        initSymbols(fileioSymbols());
         initSymbols(fnsSymbols());
         initSymbols(lreadSymbols());
         initSymbols(processSymbols());
 
         initBuiltIns(language, new BuiltInAlloc());
+        initBuiltIns(language, new BuiltInCharSet());
         initBuiltIns(language, new BuiltInCharTab());
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
+        initBuiltIns(language, new BuiltInEditFns());
         initBuiltIns(language, new BuiltInEval());
+        initBuiltIns(language, new BuiltInFileIO());
         initBuiltIns(language, new BuiltInFns());
         initBuiltIns(language, new BuiltInLRead());
         initBuiltIns(language, new BuiltInProcess());
+
+        ELispGlobals.initGlobalVariables();
     }
 
     private void initBuiltIns(ELispLanguage language, ELispBuiltIns builtIns) {
@@ -149,6 +157,8 @@ public final class ELispContext {
     public final static ELispSymbol MARK_INACTIVE = new ELispSymbol("mark-inactive");
     public final static ELispSymbol MINIBUFFER_QUIT = new ELispSymbol("minibuffer-quit");
     public final static ELispSymbol MODULE_FUNCTION = new ELispSymbol("module-function");
+    public final static ELispSymbol MOST_NEGATIVE_FIXNUM = new ELispSymbol("most-negative-fixnum");
+    public final static ELispSymbol MOST_POSITIVE_FIXNUM = new ELispSymbol("most-positive-fixnum");
     public final static ELispSymbol MUTEX = new ELispSymbol("mutex");
     public final static ELispSymbol NATIVE_COMP_FUNCTION = new ELispSymbol("native-comp-function");
     public final static ELispSymbol NATIVE_COMP_UNIT = new ELispSymbol("native-comp-unit");
@@ -217,7 +227,7 @@ public final class ELispContext {
     public final static ELispSymbol WRONG_TYPE_ARGUMENT = new ELispSymbol("wrong-type-argument");
     public final static ELispSymbol XWIDGET = new ELispSymbol("xwidget");
     public final static ELispSymbol XWIDGET_VIEW = new ELispSymbol("xwidget-view");
-    private ELispSymbol[] dataSymbols(){
+    private ELispSymbol[] dataSymbols() {
         return new ELispSymbol[]{
                 AREF,
                 ARGS_OUT_OF_RANGE,
@@ -289,6 +299,8 @@ public final class ELispContext {
                 MARK_INACTIVE,
                 MINIBUFFER_QUIT,
                 MODULE_FUNCTION,
+                MOST_NEGATIVE_FIXNUM,
+                MOST_POSITIVE_FIXNUM,
                 MUTEX,
                 NATIVE_COMP_FUNCTION,
                 NATIVE_COMP_UNIT,
@@ -361,9 +373,12 @@ public final class ELispContext {
     }
     /* @end region="data.c" */
     /* @generated region="lread.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol AFTER_LOAD_ALIST = new ELispSymbol("after-load-alist");
     public final static ELispSymbol ASCII_CHARACTER = new ELispSymbol("ascii-character");
     public final static ELispSymbol BACKQUOTE = new ELispSymbol("`");
-    public final static ELispSymbol BYTE_RUN_UNESCAPED_CHARACTER_LITERALS_WARNING = new ELispSymbol("byte-run--unescaped-character-literals-warning");
+    public final static ELispSymbol BYTECOMP_VERSION_REGEXP = new ELispSymbol("bytecomp-version-regexp");
+    public final static ELispSymbol BYTE_BOOLEAN_VARS = new ELispSymbol("byte-boolean-vars");
+    public final static ELispSymbol BYTE_RUN__UNESCAPED_CHARACTER_LITERALS_WARNING = new ELispSymbol("byte-run--unescaped-character-literals-warning");
     public final static ELispSymbol CHAR_FROM_NAME = new ELispSymbol("char-from-name");
     public final static ELispSymbol COMMA = new ELispSymbol(",");
     public final static ELispSymbol COMMA_AT = new ELispSymbol(",@");
@@ -371,7 +386,9 @@ public final class ELispContext {
     public final static ELispSymbol DATA = new ELispSymbol("data");
     public final static ELispSymbol DIR_OK = new ELispSymbol("dir-ok");
     public final static ELispSymbol DO_AFTER_LOAD_EVALUATION = new ELispSymbol("do-after-load-evaluation");
+    public final static ELispSymbol DYNAMIC_LIBRARY_SUFFIXES = new ELispSymbol("dynamic-library-suffixes");
     public final static ELispSymbol EVAL_BUFFER_LIST = new ELispSymbol("eval-buffer-list");
+    public final static ELispSymbol FORCE_LOAD_MESSAGES = new ELispSymbol("force-load-messages");
     public final static ELispSymbol FUNCTION = new ELispSymbol("function");
     public final static ELispSymbol GET_EMACS_MULE_FILE_CHAR = new ELispSymbol("get-emacs-mule-file-char");
     public final static ELispSymbol GET_FILE_CHAR = new ELispSymbol("get-file-char");
@@ -380,31 +397,51 @@ public final class ELispContext {
     public final static ELispSymbol INTERNAL_MACROEXPAND_FOR_LOAD = new ELispSymbol("internal-macroexpand-for-load");
     public final static ELispSymbol LEXICAL_BINDING = new ELispSymbol("lexical-binding");
     public final static ELispSymbol LOAD = new ELispSymbol("load");
+    public final static ELispSymbol LOAD_CONVERT_TO_UNIBYTE = new ELispSymbol("load-convert-to-unibyte");
+    public final static ELispSymbol LOAD_DANGEROUS_LIBRARIES = new ELispSymbol("load-dangerous-libraries");
     public final static ELispSymbol LOAD_FILE_NAME = new ELispSymbol("load-file-name");
+    public final static ELispSymbol LOAD_FILE_REP_SUFFIXES = new ELispSymbol("load-file-rep-suffixes");
     public final static ELispSymbol LOAD_FORCE_DOC_STRINGS = new ELispSymbol("load-force-doc-strings");
+    public final static ELispSymbol LOAD_HISTORY = new ELispSymbol("load-history");
     public final static ELispSymbol LOAD_IN_PROGRESS = new ELispSymbol("load-in-progress");
+    public final static ELispSymbol LOAD_NO_NATIVE = new ELispSymbol("load-no-native");
+    public final static ELispSymbol LOAD_PATH = new ELispSymbol("load-path");
+    public final static ELispSymbol LOAD_PREFER_NEWER = new ELispSymbol("load-prefer-newer");
+    public final static ELispSymbol LOAD_READ_FUNCTION = new ELispSymbol("load-read-function");
+    public final static ELispSymbol LOAD_SOURCE_FILE_FUNCTION = new ELispSymbol("load-source-file-function");
+    public final static ELispSymbol LOAD_SUFFIXES = new ELispSymbol("load-suffixes");
     public final static ELispSymbol LOAD_TRUE_FILE_NAME = new ELispSymbol("load-true-file-name");
-    public final static ELispSymbol LREAD_UNESCAPED_CHARACTER_LITERALS = new ELispSymbol("lread--unescaped-character-literals");
+    public final static ELispSymbol LREAD__UNESCAPED_CHARACTER_LITERALS = new ELispSymbol("lread--unescaped-character-literals");
     public final static ELispSymbol MACROEXP__DYNVARS = new ELispSymbol("macroexp--dynvars");
+    public final static ELispSymbol MODULE_FILE_SUFFIX = new ELispSymbol("module-file-suffix");
     public final static ELispSymbol NIL = new ELispSymbol("nil");
     public final static ELispSymbol OBARRAYP = new ELispSymbol("obarrayp");
     public final static ELispSymbol OBARRAY_CACHE = new ELispSymbol("obarray-cache");
+    public final static ELispSymbol PRELOADED_FILE_LIST = new ELispSymbol("preloaded-file-list");
     public final static ELispSymbol PURECOPY = new ELispSymbol("purecopy");
     public final static ELispSymbol READ = new ELispSymbol("read");
     public final static ELispSymbol READ_CHAR = new ELispSymbol("read-char");
+    public final static ELispSymbol READ_CIRCLE = new ELispSymbol("read-circle");
     public final static ELispSymbol READ_MINIBUFFER = new ELispSymbol("read-minibuffer");
+    public final static ELispSymbol READ_SYMBOL_SHORTHANDS = new ELispSymbol("read-symbol-shorthands");
     public final static ELispSymbol SIZE = new ELispSymbol("size");
+    public final static ELispSymbol SOURCE_DIRECTORY = new ELispSymbol("source-directory");
     public final static ELispSymbol STANDARD_INPUT = new ELispSymbol("standard-input");
     public final static ELispSymbol T = new ELispSymbol("t");
     public final static ELispSymbol TEST = new ELispSymbol("test");
     public final static ELispSymbol UNBOUND = new ELispSymbol("unbound");
+    public final static ELispSymbol USER_INIT_FILE = new ELispSymbol("user-init-file");
+    public final static ELispSymbol VALUES = new ELispSymbol("values");
     public final static ELispSymbol VARIABLE_DOCUMENTATION = new ELispSymbol("variable-documentation");
     public final static ELispSymbol WEAKNESS = new ELispSymbol("weakness");
-    private ELispSymbol[] lreadSymbols(){
+    private ELispSymbol[] lreadSymbols() {
         return new ELispSymbol[]{
+                AFTER_LOAD_ALIST,
                 ASCII_CHARACTER,
                 BACKQUOTE,
-                BYTE_RUN_UNESCAPED_CHARACTER_LITERALS_WARNING,
+                BYTECOMP_VERSION_REGEXP,
+                BYTE_BOOLEAN_VARS,
+                BYTE_RUN__UNESCAPED_CHARACTER_LITERALS_WARNING,
                 CHAR_FROM_NAME,
                 COMMA,
                 COMMA_AT,
@@ -412,7 +449,9 @@ public final class ELispContext {
                 DATA,
                 DIR_OK,
                 DO_AFTER_LOAD_EVALUATION,
+                DYNAMIC_LIBRARY_SUFFIXES,
                 EVAL_BUFFER_LIST,
+                FORCE_LOAD_MESSAGES,
                 FUNCTION,
                 GET_EMACS_MULE_FILE_CHAR,
                 GET_FILE_CHAR,
@@ -421,24 +460,42 @@ public final class ELispContext {
                 INTERNAL_MACROEXPAND_FOR_LOAD,
                 LEXICAL_BINDING,
                 LOAD,
+                LOAD_CONVERT_TO_UNIBYTE,
+                LOAD_DANGEROUS_LIBRARIES,
                 LOAD_FILE_NAME,
+                LOAD_FILE_REP_SUFFIXES,
                 LOAD_FORCE_DOC_STRINGS,
+                LOAD_HISTORY,
                 LOAD_IN_PROGRESS,
+                LOAD_NO_NATIVE,
+                LOAD_PATH,
+                LOAD_PREFER_NEWER,
+                LOAD_READ_FUNCTION,
+                LOAD_SOURCE_FILE_FUNCTION,
+                LOAD_SUFFIXES,
                 LOAD_TRUE_FILE_NAME,
-                LREAD_UNESCAPED_CHARACTER_LITERALS,
+                LREAD__UNESCAPED_CHARACTER_LITERALS,
                 MACROEXP__DYNVARS,
+                MODULE_FILE_SUFFIX,
                 NIL,
+                OBARRAY,
                 OBARRAYP,
                 OBARRAY_CACHE,
+                PRELOADED_FILE_LIST,
                 PURECOPY,
                 READ,
                 READ_CHAR,
+                READ_CIRCLE,
                 READ_MINIBUFFER,
+                READ_SYMBOL_SHORTHANDS,
                 SIZE,
+                SOURCE_DIRECTORY,
                 STANDARD_INPUT,
                 T,
                 TEST,
                 UNBOUND,
+                USER_INIT_FILE,
+                VALUES,
                 VARIABLE_DOCUMENTATION,
                 WEAKNESS,
         };
@@ -451,10 +508,22 @@ public final class ELispContext {
     public final static ELispSymbol CALLREF = new ELispSymbol("callref");
     public final static ELispSymbol CATCHER = new ELispSymbol("catcher");
     public final static ELispSymbol COMMENT = new ELispSymbol("comment");
+    public final static ELispSymbol COMP_ABI_HASH = new ELispSymbol("comp-abi-hash");
+    public final static ELispSymbol COMP_CTXT = new ELispSymbol("comp-ctxt");
+    public final static ELispSymbol COMP_DEFERRED_PENDING_H = new ELispSymbol("comp-deferred-pending-h");
+    public final static ELispSymbol COMP_ELN_TO_EL_H = new ELispSymbol("comp-eln-to-el-h");
+    public final static ELispSymbol COMP_FILE_PRELOADED_P = new ELispSymbol("comp-file-preloaded-p");
+    public final static ELispSymbol COMP_INSTALLED_TRAMPOLINES_H = new ELispSymbol("comp-installed-trampolines-h");
     public final static ELispSymbol COMP_LIBGCCJIT_REPRODUCER = new ELispSymbol("comp-libgccjit-reproducer");
+    public final static ELispSymbol COMP_LOADED_COMP_UNITS_H = new ELispSymbol("comp-loaded-comp-units-h");
     public final static ELispSymbol COMP_MAYBE_GC_OR_QUIT = new ELispSymbol("comp-maybe-gc-or-quit");
     public final static ELispSymbol COMP_MVAR = new ELispSymbol("comp-mvar");
+    public final static ELispSymbol COMP_NATIVE_VERSION_DIR = new ELispSymbol("comp-native-version-dir");
+    public final static ELispSymbol COMP_NO_NATIVE_FILE_H = new ELispSymbol("comp-no-native-file-h");
+    public final static ELispSymbol COMP_SANITIZER_ACTIVE = new ELispSymbol("comp-sanitizer-active");
     public final static ELispSymbol COMP_SANITIZER_ERROR = new ELispSymbol("comp-sanitizer-error");
+    public final static ELispSymbol COMP_SUBR_ARITIES_H = new ELispSymbol("comp-subr-arities-h");
+    public final static ELispSymbol COMP_SUBR_LIST = new ELispSymbol("comp-subr-list");
     public final static ELispSymbol COMP_SUBR_TRAMPOLINE_INSTALL = new ELispSymbol("comp-subr-trampoline-install");
     public final static ELispSymbol CONDITION_CASE = new ELispSymbol("condition-case");
     public final static ELispSymbol COND_JUMP = new ELispSymbol("cond-jump");
@@ -481,6 +550,9 @@ public final class ELispContext {
     public final static ELispSymbol NATIVE_COMP_COMPILER_OPTIONS = new ELispSymbol("native-comp-compiler-options");
     public final static ELispSymbol NATIVE_COMP_DEBUG = new ELispSymbol("native-comp-debug");
     public final static ELispSymbol NATIVE_COMP_DRIVER_OPTIONS = new ELispSymbol("native-comp-driver-options");
+    public final static ELispSymbol NATIVE_COMP_ELN_LOAD_PATH = new ELispSymbol("native-comp-eln-load-path");
+    public final static ELispSymbol NATIVE_COMP_ENABLE_SUBR_TRAMPOLINES = new ELispSymbol("native-comp-enable-subr-trampolines");
+    public final static ELispSymbol NATIVE_COMP_JIT_COMPILATION = new ELispSymbol("native-comp-jit-compilation");
     public final static ELispSymbol NATIVE_COMP_SPEED = new ELispSymbol("native-comp-speed");
     public final static ELispSymbol NATIVE_COMP_WARNING_ON_MISSING_SOURCE = new ELispSymbol("native-comp-warning-on-missing-source");
     public final static ELispSymbol NATIVE_ICE = new ELispSymbol("native-ice");
@@ -504,7 +576,7 @@ public final class ELispContext {
     public final static ELispSymbol SUB1 = new ELispSymbol("1-");
     public final static ELispSymbol UNREACHABLE = new ELispSymbol("unreachable");
     public final static ELispSymbol WRONG_REGISTER_SUBR_CALL = new ELispSymbol("wrong-register-subr-call");
-    private ELispSymbol[] compSymbols(){
+    private ELispSymbol[] compSymbols() {
         return new ELispSymbol[]{
                 ADD1,
                 ASSUME,
@@ -514,10 +586,22 @@ public final class ELispContext {
                 CATCHER,
                 CDR,
                 COMMENT,
+                COMP_ABI_HASH,
+                COMP_CTXT,
+                COMP_DEFERRED_PENDING_H,
+                COMP_ELN_TO_EL_H,
+                COMP_FILE_PRELOADED_P,
+                COMP_INSTALLED_TRAMPOLINES_H,
                 COMP_LIBGCCJIT_REPRODUCER,
+                COMP_LOADED_COMP_UNITS_H,
                 COMP_MAYBE_GC_OR_QUIT,
                 COMP_MVAR,
+                COMP_NATIVE_VERSION_DIR,
+                COMP_NO_NATIVE_FILE_H,
+                COMP_SANITIZER_ACTIVE,
                 COMP_SANITIZER_ERROR,
+                COMP_SUBR_ARITIES_H,
+                COMP_SUBR_LIST,
                 COMP_SUBR_TRAMPOLINE_INSTALL,
                 CONDITION_CASE,
                 COND_JUMP,
@@ -546,6 +630,9 @@ public final class ELispContext {
                 NATIVE_COMP_COMPILER_OPTIONS,
                 NATIVE_COMP_DEBUG,
                 NATIVE_COMP_DRIVER_OPTIONS,
+                NATIVE_COMP_ELN_LOAD_PATH,
+                NATIVE_COMP_ENABLE_SUBR_TRAMPOLINES,
+                NATIVE_COMP_JIT_COMPILATION,
                 NATIVE_COMP_SPEED,
                 NATIVE_COMP_WARNING_ON_MISSING_SOURCE,
                 NATIVE_ICE,
@@ -618,17 +705,20 @@ public final class ELispContext {
     public final static ELispSymbol CUSE_EXTERNAL_SOCKET = new ELispSymbol(":use-external-socket");
     public final static ELispSymbol CUTIME = new ELispSymbol("cutime");
     public final static ELispSymbol DATAGRAM = new ELispSymbol("datagram");
+    public final static ELispSymbol DELETE_EXITED_PROCESSES = new ELispSymbol("delete-exited-processes");
     public final static ELispSymbol EGID = new ELispSymbol("egid");
     public final static ELispSymbol ETIME = new ELispSymbol("etime");
     public final static ELispSymbol EUID = new ELispSymbol("euid");
     public final static ELispSymbol EVEN = new ELispSymbol("even");
     public final static ELispSymbol FAILED = new ELispSymbol("failed");
+    public final static ELispSymbol FAST_READ_PROCESS_OUTPUT = new ELispSymbol("fast-read-process-output");
     public final static ELispSymbol GROUP = new ELispSymbol("group");
     public final static ELispSymbol HW = new ELispSymbol("hw");
     public final static ELispSymbol INTERNAL_DEFAULT_INTERRUPT_PROCESS = new ELispSymbol("internal-default-interrupt-process");
     public final static ELispSymbol INTERNAL_DEFAULT_PROCESS_FILTER = new ELispSymbol("internal-default-process-filter");
     public final static ELispSymbol INTERNAL_DEFAULT_PROCESS_SENTINEL = new ELispSymbol("internal-default-process-sentinel");
     public final static ELispSymbol INTERNAL_DEFAULT_SIGNAL_PROCESS = new ELispSymbol("internal-default-signal-process");
+    public final static ELispSymbol INTERNAL__DAEMON_SOCKNAME = new ELispSymbol("internal--daemon-sockname");
     public final static ELispSymbol INTERRUPT_PROCESS_FUNCTIONS = new ELispSymbol("interrupt-process-functions");
     public final static ELispSymbol IPV4 = new ELispSymbol("ipv4");
     public final static ELispSymbol IPV6 = new ELispSymbol("ipv6");
@@ -655,8 +745,13 @@ public final class ELispContext {
     public final static ELispSymbol PPID = new ELispSymbol("ppid");
     public final static ELispSymbol PRI = new ELispSymbol("pri");
     public final static ELispSymbol PROCESSP = new ELispSymbol("processp");
+    public final static ELispSymbol PROCESS_ADAPTIVE_READ_BUFFERING = new ELispSymbol("process-adaptive-read-buffering");
     public final static ELispSymbol PROCESS_ATTRIBUTES = new ELispSymbol("process-attributes");
+    public final static ELispSymbol PROCESS_CONNECTION_TYPE = new ELispSymbol("process-connection-type");
+    public final static ELispSymbol PROCESS_ERROR_PAUSE_TIME = new ELispSymbol("process-error-pause-time");
+    public final static ELispSymbol PROCESS_PRIORITIZE_LOWER_FDS = new ELispSymbol("process-prioritize-lower-fds");
     public final static ELispSymbol PTY = new ELispSymbol("pty");
+    public final static ELispSymbol READ_PROCESS_OUTPUT_MAX = new ELispSymbol("read-process-output-max");
     public final static ELispSymbol REAL = new ELispSymbol("real");
     public final static ELispSymbol RSS = new ELispSymbol("rss");
     public final static ELispSymbol RUN = new ELispSymbol("run");
@@ -677,7 +772,7 @@ public final class ELispContext {
     public final static ELispSymbol USER = new ELispSymbol("user");
     public final static ELispSymbol UTIME = new ELispSymbol("utime");
     public final static ELispSymbol VSIZE = new ELispSymbol("vsize");
-    private ELispSymbol[] processSymbols(){
+    private ELispSymbol[] processSymbols() {
         return new ELispSymbol[]{
                 ALL,
                 ARGS,
@@ -720,17 +815,20 @@ public final class ELispContext {
                 CUSE_EXTERNAL_SOCKET,
                 CUTIME,
                 DATAGRAM,
+                DELETE_EXITED_PROCESSES,
                 EGID,
                 ETIME,
                 EUID,
                 EVEN,
                 FAILED,
+                FAST_READ_PROCESS_OUTPUT,
                 GROUP,
                 HW,
                 INTERNAL_DEFAULT_INTERRUPT_PROCESS,
                 INTERNAL_DEFAULT_PROCESS_FILTER,
                 INTERNAL_DEFAULT_PROCESS_SENTINEL,
                 INTERNAL_DEFAULT_SIGNAL_PROCESS,
+                INTERNAL__DAEMON_SOCKNAME,
                 INTERRUPT_PROCESS_FUNCTIONS,
                 IPV4,
                 IPV6,
@@ -757,8 +855,13 @@ public final class ELispContext {
                 PPID,
                 PRI,
                 PROCESSP,
+                PROCESS_ADAPTIVE_READ_BUFFERING,
                 PROCESS_ATTRIBUTES,
+                PROCESS_CONNECTION_TYPE,
+                PROCESS_ERROR_PAUSE_TIME,
+                PROCESS_PRIORITIZE_LOWER_FDS,
                 PTY,
+                READ_PROCESS_OUTPUT_MAX,
                 REAL,
                 RSS,
                 RUN,
@@ -786,6 +889,8 @@ public final class ELispContext {
     public final static ELispSymbol AND_OPTIONAL = new ELispSymbol("&optional");
     public final static ELispSymbol AND_REST = new ELispSymbol("&rest");
     public final static ELispSymbol AUTOLOAD = new ELispSymbol("autoload");
+    public final static ELispSymbol BACKTRACE_ON_ERROR_NONINTERACTIVE = new ELispSymbol("backtrace-on-error-noninteractive");
+    public final static ELispSymbol BACKTRACE_ON_REDISPLAY_ERROR = new ELispSymbol("backtrace-on-redisplay-error");
     public final static ELispSymbol CDEBUG_ON_EXIT = new ELispSymbol(":debug-on-exit");
     public final static ELispSymbol CDOCUMENTATION = new ELispSymbol(":documentation");
     public final static ELispSymbol COMMANDP = new ELispSymbol("commandp");
@@ -793,8 +898,14 @@ public final class ELispContext {
     public final static ELispSymbol DEBUG = new ELispSymbol("debug");
     public final static ELispSymbol DEBUGGER = new ELispSymbol("debugger");
     public final static ELispSymbol DEBUGGER_MAY_CONTINUE = new ELispSymbol("debugger-may-continue");
+    public final static ELispSymbol DEBUGGER_STACK_FRAME_AS_LIST = new ELispSymbol("debugger-stack-frame-as-list");
     public final static ELispSymbol DEBUG_EARLY = new ELispSymbol("debug-early");
     public final static ELispSymbol DEBUG_EARLY__HANDLER = new ELispSymbol("debug-early--handler");
+    public final static ELispSymbol DEBUG_IGNORED_ERRORS = new ELispSymbol("debug-ignored-errors");
+    public final static ELispSymbol DEBUG_ON_ERROR = new ELispSymbol("debug-on-error");
+    public final static ELispSymbol DEBUG_ON_NEXT_CALL = new ELispSymbol("debug-on-next-call");
+    public final static ELispSymbol DEBUG_ON_QUIT = new ELispSymbol("debug-on-quit");
+    public final static ELispSymbol DEBUG_ON_SIGNAL = new ELispSymbol("debug-on-signal");
     public final static ELispSymbol DEFVARALIAS = new ELispSymbol("defvaralias");
     public final static ELispSymbol DISPLAY_WARNING = new ELispSymbol("display-warning");
     public final static ELispSymbol EXIT = new ELispSymbol("exit");
@@ -803,15 +914,22 @@ public final class ELispContext {
     public final static ELispSymbol INHIBIT_QUIT = new ELispSymbol("inhibit-quit");
     public final static ELispSymbol INTERACTIVE = new ELispSymbol("interactive");
     public final static ELispSymbol INTERNAL_INTERPRETER_ENVIRONMENT = new ELispSymbol("internal-interpreter-environment");
+    public final static ELispSymbol INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION = new ELispSymbol("internal-make-interpreted-closure-function");
     public final static ELispSymbol INTERNAL_WHEN_ENTERED_DEBUGGER = new ELispSymbol("internal-when-entered-debugger");
+    public final static ELispSymbol LISP_EVAL_DEPTH_RESERVE = new ELispSymbol("lisp-eval-depth-reserve");
     public final static ELispSymbol LOSING_VALUE = new ELispSymbol("losing-value");
     public final static ELispSymbol MACRO = new ELispSymbol("macro");
+    public final static ELispSymbol MAX_LISP_EVAL_DEPTH = new ELispSymbol("max-lisp-eval-depth");
+    public final static ELispSymbol QUIT_FLAG = new ELispSymbol("quit-flag");
     public final static ELispSymbol SETQ = new ELispSymbol("setq");
-    private ELispSymbol[] evalSymbols(){
+    public final static ELispSymbol SIGNAL_HOOK_FUNCTION = new ELispSymbol("signal-hook-function");
+    private ELispSymbol[] evalSymbols() {
         return new ELispSymbol[]{
                 AND_OPTIONAL,
                 AND_REST,
                 AUTOLOAD,
+                BACKTRACE_ON_ERROR_NONINTERACTIVE,
+                BACKTRACE_ON_REDISPLAY_ERROR,
                 CDEBUG_ON_EXIT,
                 CDOCUMENTATION,
                 COMMANDP,
@@ -819,8 +937,14 @@ public final class ELispContext {
                 DEBUG,
                 DEBUGGER,
                 DEBUGGER_MAY_CONTINUE,
+                DEBUGGER_STACK_FRAME_AS_LIST,
                 DEBUG_EARLY,
                 DEBUG_EARLY__HANDLER,
+                DEBUG_IGNORED_ERRORS,
+                DEBUG_ON_ERROR,
+                DEBUG_ON_NEXT_CALL,
+                DEBUG_ON_QUIT,
+                DEBUG_ON_SIGNAL,
                 DEFVARALIAS,
                 DISPLAY_WARNING,
                 EXIT,
@@ -829,10 +953,15 @@ public final class ELispContext {
                 INHIBIT_QUIT,
                 INTERACTIVE,
                 INTERNAL_INTERPRETER_ENVIRONMENT,
+                INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION,
                 INTERNAL_WHEN_ENTERED_DEBUGGER,
+                LISP_EVAL_DEPTH_RESERVE,
                 LOSING_VALUE,
                 MACRO,
+                MAX_LISP_EVAL_DEPTH,
+                QUIT_FLAG,
                 SETQ,
+                SIGNAL_HOOK_FUNCTION,
         };
     }
     /* @end region="eval.c" */
@@ -878,13 +1007,17 @@ public final class ELispContext {
     public final static ELispSymbol SHA512 = new ELispSymbol("sha512");
     public final static ELispSymbol STRING_LESSP = new ELispSymbol("string-lessp");
     public final static ELispSymbol SUBFEATURES = new ELispSymbol("subfeatures");
+    public final static ELispSymbol USE_DIALOG_BOX = new ELispSymbol("use-dialog-box");
+    public final static ELispSymbol USE_FILE_DIALOG = new ELispSymbol("use-file-dialog");
+    public final static ELispSymbol USE_SHORT_ANSWERS = new ELispSymbol("use-short-answers");
     public final static ELispSymbol VALUE = new ELispSymbol("value");
     public final static ELispSymbol VALUELT = new ELispSymbol("value<");
     public final static ELispSymbol WIDGET_TYPE = new ELispSymbol("widget-type");
     public final static ELispSymbol YES_OR_NO_P = new ELispSymbol("yes-or-no-p");
+    public final static ELispSymbol YES_OR_NO_PROMPT = new ELispSymbol("yes-or-no-prompt");
     public final static ELispSymbol YES_OR_NO_P_HISTORY = new ELispSymbol("yes-or-no-p-history");
     public final static ELispSymbol Y_OR_N_P = new ELispSymbol("y-or-n-p");
-    private ELispSymbol[] fnsSymbols(){
+    private ELispSymbol[] fnsSymbols() {
         return new ELispSymbol[]{
                 CIN_PLACE,
                 CKEY,
@@ -927,19 +1060,25 @@ public final class ELispContext {
                 SHA512,
                 STRING_LESSP,
                 SUBFEATURES,
+                USE_DIALOG_BOX,
+                USE_FILE_DIALOG,
+                USE_SHORT_ANSWERS,
                 VALUE,
                 VALUELT,
                 WIDGET_TYPE,
                 YES_OR_NO_P,
+                YES_OR_NO_PROMPT,
                 YES_OR_NO_P_HISTORY,
                 Y_OR_N_P,
         };
     }
     /* @end region="fns.c" */
     /* @generated region="chartab.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol CHAR_CODE_PROPERTY_ALIST = new ELispSymbol("char-code-property-alist");
     public final static ELispSymbol CHAR_CODE_PROPERTY_TABLE = new ELispSymbol("char-code-property-table");
-    private ELispSymbol[] chartabSymbols(){
+    private ELispSymbol[] chartabSymbols() {
         return new ELispSymbol[]{
+                CHAR_CODE_PROPERTY_ALIST,
                 CHAR_CODE_PROPERTY_TABLE,
         };
     }
@@ -951,19 +1090,34 @@ public final class ELispContext {
     public final static ELispSymbol CEMERGENCY = new ELispSymbol(":emergency");
     public final static ELispSymbol CHAR_TABLE_EXTRA_SLOTS = new ELispSymbol("char-table-extra-slots");
     public final static ELispSymbol CONSES = new ELispSymbol("conses");
+    public final static ELispSymbol CONS_CELLS_CONSED = new ELispSymbol("cons-cells-consed");
     public final static ELispSymbol FLOATS = new ELispSymbol("floats");
+    public final static ELispSymbol FLOATS_CONSED = new ELispSymbol("floats-consed");
+    public final static ELispSymbol GARBAGE_COLLECTION_MESSAGES = new ELispSymbol("garbage-collection-messages");
+    public final static ELispSymbol GCS_DONE = new ELispSymbol("gcs-done");
     public final static ELispSymbol GC_CONS_PERCENTAGE = new ELispSymbol("gc-cons-percentage");
     public final static ELispSymbol GC_CONS_THRESHOLD = new ELispSymbol("gc-cons-threshold");
+    public final static ELispSymbol GC_ELAPSED = new ELispSymbol("gc-elapsed");
     public final static ELispSymbol HEAP = new ELispSymbol("heap");
+    public final static ELispSymbol INTEGER_WIDTH = new ELispSymbol("integer-width");
     public final static ELispSymbol INTERVALS = new ELispSymbol("intervals");
+    public final static ELispSymbol INTERVALS_CONSED = new ELispSymbol("intervals-consed");
+    public final static ELispSymbol MEMORY_FULL = new ELispSymbol("memory-full");
     public final static ELispSymbol MEMORY_INFO = new ELispSymbol("memory-info");
+    public final static ELispSymbol MEMORY_SIGNAL_DATA = new ELispSymbol("memory-signal-data");
     public final static ELispSymbol POST_GC_HOOK = new ELispSymbol("post-gc-hook");
+    public final static ELispSymbol PURE_BYTES_USED = new ELispSymbol("pure-bytes-used");
+    public final static ELispSymbol PURIFY_FLAG = new ELispSymbol("purify-flag");
     public final static ELispSymbol STRINGS = new ELispSymbol("strings");
+    public final static ELispSymbol STRINGS_CONSED = new ELispSymbol("strings-consed");
     public final static ELispSymbol STRING_BYTES = new ELispSymbol("string-bytes");
+    public final static ELispSymbol STRING_CHARS_CONSED = new ELispSymbol("string-chars-consed");
     public final static ELispSymbol SYMBOLS = new ELispSymbol("symbols");
+    public final static ELispSymbol SYMBOLS_CONSED = new ELispSymbol("symbols-consed");
     public final static ELispSymbol VECTORS = new ELispSymbol("vectors");
+    public final static ELispSymbol VECTOR_CELLS_CONSED = new ELispSymbol("vector-cells-consed");
     public final static ELispSymbol VECTOR_SLOTS = new ELispSymbol("vector-slots");
-    private ELispSymbol[] allocSymbols(){
+    private ELispSymbol[] allocSymbols() {
         return new ELispSymbol[]{
                 ALLOC,
                 AUTOMATIC_GC,
@@ -971,19 +1125,265 @@ public final class ELispContext {
                 CEMERGENCY,
                 CHAR_TABLE_EXTRA_SLOTS,
                 CONSES,
+                CONS_CELLS_CONSED,
                 FLOATS,
+                FLOATS_CONSED,
+                GARBAGE_COLLECTION_MESSAGES,
+                GCS_DONE,
                 GC_CONS_PERCENTAGE,
                 GC_CONS_THRESHOLD,
+                GC_ELAPSED,
                 HEAP,
+                INTEGER_WIDTH,
                 INTERVALS,
+                INTERVALS_CONSED,
+                MEMORY_FULL,
                 MEMORY_INFO,
+                MEMORY_SIGNAL_DATA,
                 POST_GC_HOOK,
+                PURE_BYTES_USED,
+                PURIFY_FLAG,
                 STRINGS,
+                STRINGS_CONSED,
                 STRING_BYTES,
+                STRING_CHARS_CONSED,
                 SYMBOLS,
+                SYMBOLS_CONSED,
                 VECTORS,
+                VECTOR_CELLS_CONSED,
                 VECTOR_SLOTS,
         };
     }
     /* @end region="alloc.c" */
+    /* @generated region="charset.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol ASCII = new ELispSymbol("ascii");
+    public final static ELispSymbol CHARSETP = new ELispSymbol("charsetp");
+    public final static ELispSymbol CHARSET_LIST = new ELispSymbol("charset-list");
+    public final static ELispSymbol CHARSET_MAP_PATH = new ELispSymbol("charset-map-path");
+    public final static ELispSymbol CURRENT_ISO639_LANGUAGE = new ELispSymbol("current-iso639-language");
+    public final static ELispSymbol DEFINE_CHARSET_INTERNAL = new ELispSymbol("define-charset-internal");
+    public final static ELispSymbol EIGHT_BIT = new ELispSymbol("eight-bit");
+    public final static ELispSymbol EMACS = new ELispSymbol("emacs");
+    public final static ELispSymbol INHIBIT_LOAD_CHARSET_MAP = new ELispSymbol("inhibit-load-charset-map");
+    public final static ELispSymbol ISO_8859_1 = new ELispSymbol("iso-8859-1");
+    public final static ELispSymbol UNICODE = new ELispSymbol("unicode");
+    private ELispSymbol[] charsetSymbols() {
+        return new ELispSymbol[]{
+                ASCII,
+                CHARSETP,
+                CHARSET_LIST,
+                CHARSET_MAP_PATH,
+                CURRENT_ISO639_LANGUAGE,
+                DEFINE_CHARSET_INTERNAL,
+                EIGHT_BIT,
+                EMACS,
+                INHIBIT_LOAD_CHARSET_MAP,
+                ISO_8859_1,
+                UNICODE,
+        };
+    }
+    /* @end region="charset.c" */
+    /* @generated region="fileio.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol ACCESS_FILE = new ELispSymbol("access-file");
+    public final static ELispSymbol ADD_NAME_TO_FILE = new ELispSymbol("add-name-to-file");
+    public final static ELispSymbol AFTER_INSERT_FILE_FUNCTIONS = new ELispSymbol("after-insert-file-functions");
+    public final static ELispSymbol AFTER_INSERT_FILE_SET_CODING = new ELispSymbol("after-insert-file-set-coding");
+    public final static ELispSymbol AUTO_SAVE = new ELispSymbol("auto-save");
+    public final static ELispSymbol AUTO_SAVE_CODING = new ELispSymbol("auto-save-coding");
+    public final static ELispSymbol AUTO_SAVE_HOOK = new ELispSymbol("auto-save-hook");
+    public final static ELispSymbol AUTO_SAVE_INCLUDE_BIG_DELETIONS = new ELispSymbol("auto-save-include-big-deletions");
+    public final static ELispSymbol AUTO_SAVE_LIST_FILE_NAME = new ELispSymbol("auto-save-list-file-name");
+    public final static ELispSymbol AUTO_SAVE_VISITED_FILE_NAME = new ELispSymbol("auto-save-visited-file-name");
+    public final static ELispSymbol BUFFER_FILE_NAME = new ELispSymbol("buffer-file-name");
+    public final static ELispSymbol CAR_LESS_THAN_CAR = new ELispSymbol("car-less-than-car");
+    public final static ELispSymbol CERROR = new ELispSymbol(":error");
+    public final static ELispSymbol COPY_DIRECTORY = new ELispSymbol("copy-directory");
+    public final static ELispSymbol COPY_FILE = new ELispSymbol("copy-file");
+    public final static ELispSymbol DEFAULT_FILE_NAME_CODING_SYSTEM = new ELispSymbol("default-file-name-coding-system");
+    public final static ELispSymbol DELETE_BY_MOVING_TO_TRASH = new ELispSymbol("delete-by-moving-to-trash");
+    public final static ELispSymbol DELETE_DIRECTORY = new ELispSymbol("delete-directory");
+    public final static ELispSymbol DELETE_FILE = new ELispSymbol("delete-file");
+    public final static ELispSymbol DELETE_FILE_INTERNAL = new ELispSymbol("delete-file-internal");
+    public final static ELispSymbol DIRECTORY_FILE_NAME = new ELispSymbol("directory-file-name");
+    public final static ELispSymbol EXCL = new ELispSymbol("excl");
+    public final static ELispSymbol EXPAND_FILE_NAME = new ELispSymbol("expand-file-name");
+    public final static ELispSymbol FILE_ACCESSIBLE_DIRECTORY_P = new ELispSymbol("file-accessible-directory-p");
+    public final static ELispSymbol FILE_ACL = new ELispSymbol("file-acl");
+    public final static ELispSymbol FILE_ALREADY_EXISTS = new ELispSymbol("file-already-exists");
+    public final static ELispSymbol FILE_DATE_ERROR = new ELispSymbol("file-date-error");
+    public final static ELispSymbol FILE_DIRECTORY_P = new ELispSymbol("file-directory-p");
+    public final static ELispSymbol FILE_ERROR = new ELispSymbol("file-error");
+    public final static ELispSymbol FILE_EXECUTABLE_P = new ELispSymbol("file-executable-p");
+    public final static ELispSymbol FILE_EXISTS_P = new ELispSymbol("file-exists-p");
+    public final static ELispSymbol FILE_MISSING = new ELispSymbol("file-missing");
+    public final static ELispSymbol FILE_MODES = new ELispSymbol("file-modes");
+    public final static ELispSymbol FILE_NAME_AS_DIRECTORY = new ELispSymbol("file-name-as-directory");
+    public final static ELispSymbol FILE_NAME_CASE_INSENSITIVE_P = new ELispSymbol("file-name-case-insensitive-p");
+    public final static ELispSymbol FILE_NAME_CODING_SYSTEM = new ELispSymbol("file-name-coding-system");
+    public final static ELispSymbol FILE_NAME_DIRECTORY = new ELispSymbol("file-name-directory");
+    public final static ELispSymbol FILE_NAME_HANDLER_ALIST = new ELispSymbol("file-name-handler-alist");
+    public final static ELispSymbol FILE_NAME_HISTORY = new ELispSymbol("file-name-history");
+    public final static ELispSymbol FILE_NAME_NONDIRECTORY = new ELispSymbol("file-name-nondirectory");
+    public final static ELispSymbol FILE_NEWER_THAN_FILE_P = new ELispSymbol("file-newer-than-file-p");
+    public final static ELispSymbol FILE_NOTIFY_ERROR = new ELispSymbol("file-notify-error");
+    public final static ELispSymbol FILE_OFFSET = new ELispSymbol("file-offset");
+    public final static ELispSymbol FILE_READABLE_P = new ELispSymbol("file-readable-p");
+    public final static ELispSymbol FILE_REGULAR_P = new ELispSymbol("file-regular-p");
+    public final static ELispSymbol FILE_SELINUX_CONTEXT = new ELispSymbol("file-selinux-context");
+    public final static ELispSymbol FILE_SYMLINK_P = new ELispSymbol("file-symlink-p");
+    public final static ELispSymbol FILE_SYSTEM_INFO = new ELispSymbol("file-system-info");
+    public final static ELispSymbol FILE_WRITABLE_P = new ELispSymbol("file-writable-p");
+    public final static ELispSymbol FORMAT_ANNOTATE_FUNCTION = new ELispSymbol("format-annotate-function");
+    public final static ELispSymbol FORMAT_DECODE = new ELispSymbol("format-decode");
+    public final static ELispSymbol GET_BUFFER_WINDOW_LIST = new ELispSymbol("get-buffer-window-list");
+    public final static ELispSymbol IF_REGULAR = new ELispSymbol("if-regular");
+    public final static ELispSymbol INHIBIT_FILE_NAME_HANDLERS = new ELispSymbol("inhibit-file-name-handlers");
+    public final static ELispSymbol INSERTED_CHARS = new ELispSymbol("inserted-chars");
+    public final static ELispSymbol INSERT_FILE_CONTENTS = new ELispSymbol("insert-file-contents");
+    public final static ELispSymbol MAKE_DIRECTORY = new ELispSymbol("make-directory");
+    public final static ELispSymbol MAKE_DIRECTORY_INTERNAL = new ELispSymbol("make-directory-internal");
+    public final static ELispSymbol MAKE_SYMBOLIC_LINK = new ELispSymbol("make-symbolic-link");
+    public final static ELispSymbol OPERATIONS = new ELispSymbol("operations");
+    public final static ELispSymbol PERMISSION_DENIED = new ELispSymbol("permission-denied");
+    public final static ELispSymbol REMOTE_FILE_ERROR = new ELispSymbol("remote-file-error");
+    public final static ELispSymbol RENAME_FILE = new ELispSymbol("rename-file");
+    public final static ELispSymbol SET_AUTO_CODING_FUNCTION = new ELispSymbol("set-auto-coding-function");
+    public final static ELispSymbol SET_FILE_ACL = new ELispSymbol("set-file-acl");
+    public final static ELispSymbol SET_FILE_MODES = new ELispSymbol("set-file-modes");
+    public final static ELispSymbol SET_FILE_SELINUX_CONTEXT = new ELispSymbol("set-file-selinux-context");
+    public final static ELispSymbol SET_FILE_TIMES = new ELispSymbol("set-file-times");
+    public final static ELispSymbol SET_VISITED_FILE_MODTIME = new ELispSymbol("set-visited-file-modtime");
+    public final static ELispSymbol STDERR = new ELispSymbol("stderr");
+    public final static ELispSymbol STDIN = new ELispSymbol("stdin");
+    public final static ELispSymbol STDOUT = new ELispSymbol("stdout");
+    public final static ELispSymbol SUBSTITUTE_ENV_IN_FILE_NAME = new ELispSymbol("substitute-env-in-file-name");
+    public final static ELispSymbol SUBSTITUTE_IN_FILE_NAME = new ELispSymbol("substitute-in-file-name");
+    public final static ELispSymbol UNHANDLED_FILE_NAME_DIRECTORY = new ELispSymbol("unhandled-file-name-directory");
+    public final static ELispSymbol VERIFY_VISITED_FILE_MODTIME = new ELispSymbol("verify-visited-file-modtime");
+    public final static ELispSymbol WRITE_REGION = new ELispSymbol("write-region");
+    public final static ELispSymbol WRITE_REGION_ANNOTATE_FUNCTIONS = new ELispSymbol("write-region-annotate-functions");
+    public final static ELispSymbol WRITE_REGION_ANNOTATIONS_SO_FAR = new ELispSymbol("write-region-annotations-so-far");
+    public final static ELispSymbol WRITE_REGION_INHIBIT_FSYNC = new ELispSymbol("write-region-inhibit-fsync");
+    public final static ELispSymbol WRITE_REGION_POST_ANNOTATION_FUNCTION = new ELispSymbol("write-region-post-annotation-function");
+    private ELispSymbol[] fileioSymbols() {
+        return new ELispSymbol[]{
+                ACCESS_FILE,
+                ADD_NAME_TO_FILE,
+                AFTER_INSERT_FILE_FUNCTIONS,
+                AFTER_INSERT_FILE_SET_CODING,
+                AUTO_SAVE,
+                AUTO_SAVE_CODING,
+                AUTO_SAVE_HOOK,
+                AUTO_SAVE_INCLUDE_BIG_DELETIONS,
+                AUTO_SAVE_LIST_FILE_NAME,
+                AUTO_SAVE_VISITED_FILE_NAME,
+                BUFFER_FILE_NAME,
+                CAR_LESS_THAN_CAR,
+                CERROR,
+                COPY_DIRECTORY,
+                COPY_FILE,
+                DEFAULT_FILE_NAME_CODING_SYSTEM,
+                DELETE_BY_MOVING_TO_TRASH,
+                DELETE_DIRECTORY,
+                DELETE_FILE,
+                DELETE_FILE_INTERNAL,
+                DIRECTORY_FILE_NAME,
+                EXCL,
+                EXPAND_FILE_NAME,
+                FILE_ACCESSIBLE_DIRECTORY_P,
+                FILE_ACL,
+                FILE_ALREADY_EXISTS,
+                FILE_DATE_ERROR,
+                FILE_DIRECTORY_P,
+                FILE_ERROR,
+                FILE_EXECUTABLE_P,
+                FILE_EXISTS_P,
+                FILE_MISSING,
+                FILE_MODES,
+                FILE_NAME_AS_DIRECTORY,
+                FILE_NAME_CASE_INSENSITIVE_P,
+                FILE_NAME_CODING_SYSTEM,
+                FILE_NAME_DIRECTORY,
+                FILE_NAME_HANDLER_ALIST,
+                FILE_NAME_HISTORY,
+                FILE_NAME_NONDIRECTORY,
+                FILE_NEWER_THAN_FILE_P,
+                FILE_NOTIFY_ERROR,
+                FILE_OFFSET,
+                FILE_READABLE_P,
+                FILE_REGULAR_P,
+                FILE_SELINUX_CONTEXT,
+                FILE_SYMLINK_P,
+                FILE_SYSTEM_INFO,
+                FILE_WRITABLE_P,
+                FORMAT_ANNOTATE_FUNCTION,
+                FORMAT_DECODE,
+                GET_BUFFER_WINDOW_LIST,
+                IF_REGULAR,
+                INHIBIT_FILE_NAME_HANDLERS,
+                INHIBIT_FILE_NAME_OPERATION,
+                INSERTED_CHARS,
+                INSERT_FILE_CONTENTS,
+                MAKE_DIRECTORY,
+                MAKE_DIRECTORY_INTERNAL,
+                MAKE_SYMBOLIC_LINK,
+                OPERATIONS,
+                PERMISSION_DENIED,
+                REMOTE_FILE_ERROR,
+                RENAME_FILE,
+                SET_AUTO_CODING_FUNCTION,
+                SET_FILE_ACL,
+                SET_FILE_MODES,
+                SET_FILE_SELINUX_CONTEXT,
+                SET_FILE_TIMES,
+                SET_VISITED_FILE_MODTIME,
+                STDERR,
+                STDIN,
+                STDOUT,
+                SUBSTITUTE_ENV_IN_FILE_NAME,
+                SUBSTITUTE_IN_FILE_NAME,
+                UNHANDLED_FILE_NAME_DIRECTORY,
+                VERIFY_VISITED_FILE_MODTIME,
+                WRITE_REGION,
+                WRITE_REGION_ANNOTATE_FUNCTIONS,
+                WRITE_REGION_ANNOTATIONS_SO_FAR,
+                WRITE_REGION_INHIBIT_FSYNC,
+                WRITE_REGION_POST_ANNOTATION_FUNCTION,
+        };
+    }
+    /* @end region="fileio.c" */
+    /* @generated region="editfns.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol BINARY_AS_UNSIGNED = new ELispSymbol("binary-as-unsigned");
+    public final static ELispSymbol BOUNDARY = new ELispSymbol("boundary");
+    public final static ELispSymbol BUFFER_ACCESS_FONTIFIED_PROPERTY = new ELispSymbol("buffer-access-fontified-property");
+    public final static ELispSymbol BUFFER_ACCESS_FONTIFY_FUNCTIONS = new ELispSymbol("buffer-access-fontify-functions");
+    public final static ELispSymbol FIELD = new ELispSymbol("field");
+    public final static ELispSymbol INHIBIT_FIELD_TEXT_MOTION = new ELispSymbol("inhibit-field-text-motion");
+    public final static ELispSymbol OPERATING_SYSTEM_RELEASE = new ELispSymbol("operating-system-release");
+    public final static ELispSymbol OUTERMOST_RESTRICTION = new ELispSymbol("outermost-restriction");
+    public final static ELispSymbol PROPERTIZE = new ELispSymbol("propertize");
+    public final static ELispSymbol SYSTEM_NAME = new ELispSymbol("system-name");
+    public final static ELispSymbol USER_FULL_NAME = new ELispSymbol("user-full-name");
+    public final static ELispSymbol USER_LOGIN_NAME = new ELispSymbol("user-login-name");
+    public final static ELispSymbol USER_REAL_LOGIN_NAME = new ELispSymbol("user-real-login-name");
+    public final static ELispSymbol WALL = new ELispSymbol("wall");
+    private ELispSymbol[] editfnsSymbols() {
+        return new ELispSymbol[]{
+                BINARY_AS_UNSIGNED,
+                BOUNDARY,
+                BUFFER_ACCESS_FONTIFIED_PROPERTY,
+                BUFFER_ACCESS_FONTIFY_FUNCTIONS,
+                FIELD,
+                INHIBIT_FIELD_TEXT_MOTION,
+                OPERATING_SYSTEM_RELEASE,
+                OUTERMOST_RESTRICTION,
+                PROPERTIZE,
+                SYSTEM_NAME,
+                USER_FULL_NAME,
+                USER_LOGIN_NAME,
+                USER_REAL_LOGIN_NAME,
+                WALL,
+        };
+    }
+    /* @end region="editfns.c" */
 }
