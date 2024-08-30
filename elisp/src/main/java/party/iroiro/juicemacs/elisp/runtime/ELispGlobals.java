@@ -1,7 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc.*;
-import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -16,11 +15,13 @@ public class ELispGlobals {
         compVars();
         dataVars();
         editfnsVars();
+        emacsVars();
         evalVars();
         fileioVars();
         fnsVars();
         lreadVars();
         processVars();
+        searchVars();
     }
 
     /* @generated region="alloc.c" by="extract-emacs-src.py" */
@@ -198,7 +199,7 @@ public class ELispGlobals {
     public static Object loadSourceFileFunction = NIL;
     public static boolean loadForceDocStrings = false;
     public static boolean loadConvertToUnibyte = false;
-    public static Object sourceDirectory = FExpandFileName.expandFileName(new ELispString("../"), new ELispString(""));
+    public static Object sourceDirectory = new ELispString("");
     public static Object preloadedFileList = NIL;
     public static Object byteBooleanVars = NIL;
     public static boolean loadDangerousLibraries = false;
@@ -344,4 +345,60 @@ public class ELispGlobals {
         BINARY_AS_UNSIGNED.forwardTo(() -> binaryAsUnsigned);
     }
     /* @end region="editfns.c" */
+    /* @generated region="emacs.c" by="extract-emacs-src.py" */
+    public static Object commandLineArgs = NIL /* uninitialized */;
+    public static Object systemType = new ELispString("jvm");
+    public static Object systemConfiguration = new ELispString("");
+    public static Object systemConfigurationOptions = new ELispString("");
+    public static Object systemConfigurationFeatures = new ELispString("");
+    public static boolean noninteractive1 = false;
+    public static Object killEmacsHook = NIL;
+    public static Object pathSeparator = new ELispString("/");
+    public static Object invocationName = NIL /* uninitialized */;
+    public static Object invocationDirectory = NIL /* uninitialized */;
+    public static Object installationDirectory = NIL;
+    public static Object systemMessagesLocale = NIL;
+    public static Object systemTimeLocale = NIL;
+    public static Object beforeInitTime = NIL;
+    public static Object afterInitTime = NIL;
+    public static boolean inhibitXResources = false;
+    public static Object emacsCopyright = new ELispString("TODO: Copy over GPL");
+    public static Object emacsVersion = new ELispString("30.0");
+    public static Object reportEmacsBugAddress = new ELispString("");
+    public static Object dumpMode = NIL /* uninitialized */;
+    public static Object dynamicLibraryAlist = NIL /* uninitialized */;
+
+    private static void emacsVars() {
+        COMMAND_LINE_ARGS.forwardTo(() -> commandLineArgs);
+        SYSTEM_TYPE.forwardTo(() -> systemType);
+        SYSTEM_CONFIGURATION.forwardTo(() -> systemConfiguration);
+        SYSTEM_CONFIGURATION_OPTIONS.forwardTo(() -> systemConfigurationOptions);
+        SYSTEM_CONFIGURATION_FEATURES.forwardTo(() -> systemConfigurationFeatures);
+        NONINTERACTIVE.forwardTo(() -> noninteractive1);
+        KILL_EMACS_HOOK.forwardTo(() -> killEmacsHook);
+        PATH_SEPARATOR.forwardTo(() -> pathSeparator);
+        INVOCATION_NAME.forwardTo(() -> invocationName);
+        INVOCATION_DIRECTORY.forwardTo(() -> invocationDirectory);
+        INSTALLATION_DIRECTORY.forwardTo(() -> installationDirectory);
+        SYSTEM_MESSAGES_LOCALE.forwardTo(() -> systemMessagesLocale);
+        SYSTEM_TIME_LOCALE.forwardTo(() -> systemTimeLocale);
+        BEFORE_INIT_TIME.forwardTo(() -> beforeInitTime);
+        AFTER_INIT_TIME.forwardTo(() -> afterInitTime);
+        INHIBIT_X_RESOURCES.forwardTo(() -> inhibitXResources);
+        EMACS_COPYRIGHT.forwardTo(() -> emacsCopyright);
+        EMACS_VERSION.forwardTo(() -> emacsVersion);
+        REPORT_EMACS_BUG_ADDRESS.forwardTo(() -> reportEmacsBugAddress);
+        DUMP_MODE.forwardTo(() -> dumpMode);
+        DYNAMIC_LIBRARY_ALIST.forwardTo(() -> dynamicLibraryAlist);
+    }
+    /* @end region="emacs.c" */
+    /* @generated region="search.c" by="extract-emacs-src.py" */
+    public static Object searchSpacesRegexp = NIL;
+    public static Object inhibitChangingMatchData = NIL;
+
+    private static void searchVars() {
+        SEARCH_SPACES_REGEXP.forwardTo(() -> searchSpacesRegexp);
+        INHIBIT_CHANGING_MATCH_DATA.forwardTo(() -> inhibitChangingMatchData);
+    }
+    /* @end region="search.c" */
 }

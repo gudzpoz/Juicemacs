@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.lodborg.intervaltree.IntegerInterval;
 import com.lodborg.intervaltree.IntervalTree;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
@@ -21,6 +22,19 @@ public final class ELispString implements ELispValue {
         Builder builder = new Builder();
         builder.appendString(str);
         return builder.toTruffleString();
+    }
+
+    @Override
+    public boolean lispEquals(Object other) {
+        return other instanceof ELispString s && value.equals(s.value);
+    }
+
+    public int size() {
+        return value.byteLength(ENCODING) / 2;
+    }
+
+    public AbstractTruffleString value() {
+        return value;
     }
 
     public static final class Properties extends IntegerInterval {
@@ -73,11 +87,6 @@ public final class ELispString implements ELispValue {
                     Character.isValidCodePoint(i.intValue()) ? i.longValue() : null;
             default -> null;
         };
-    }
-
-    @Override
-    public String type() {
-        return "string";
     }
 
     @Override

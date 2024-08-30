@@ -8,7 +8,6 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.math.BigInteger;
 import java.util.List;
-import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
@@ -26,7 +25,8 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FEq extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean eq(Object a, Object b) {
-            return Objects.equals(a, b);
+            // Simulate the Emacs behavior of packed integers
+            return a instanceof Long ? a.equals(b) : a == b;
         }
     }
 
@@ -60,6 +60,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static ELispSymbol clTypeOf(Object a) {
             return switch (a) {
                 case Long _ -> FIXNUM;
+                case Double _ -> FLOAT;
                 case ELispBigNum _ -> BIGNUM;
                 case Boolean b when (boolean) b -> BOOLEAN;
                 case ELispSymbol sym when sym == T -> BOOLEAN;
@@ -68,9 +69,9 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispSymbol _ -> SYMBOL;
                 case ELispString _ -> STRING;
                 case ELispVector _ -> VECTOR;
+                case ELispBoolVector _ -> BOOL_VECTOR;
                 // TODO: Handle other pseudo-vectors
                 case ELispCons _ -> CONS;
-                case Double _ -> FLOAT;
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -221,8 +222,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FArrayp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object arrayp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean arrayp(Object a) {
+            return a instanceof ELispString || a instanceof ELispVector;
         }
     }
 
@@ -230,8 +231,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSequencep extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object sequencep(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean sequencep(Object a) {
+            return FListp.listp(a) || FArrayp.arrayp(a);
         }
     }
 
@@ -475,8 +476,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoundp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object boundp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean boundp(ELispSymbol a) {
+            return a.isBound();
         }
     }
 
@@ -484,8 +485,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFboundp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object fboundp(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean fboundp(ELispSymbol a) {
+            return a.getFunction() != NIL;
         }
     }
 
@@ -493,8 +494,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakunbound extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object makunbound(Object a) {
-            throw new UnsupportedOperationException();
+        public static Object makunbound(ELispSymbol a) {
+            a.makeUnbound();
+            return a;
         }
     }
 
@@ -502,8 +504,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFmakunbound extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object fmakunbound(Object a) {
-            throw new UnsupportedOperationException();
+        public static Object fmakunbound(ELispSymbol a) {
+            a.setFunction(NIL);
+            return a;
         }
     }
 
@@ -511,8 +514,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolFunction extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolFunction(Object a) {
-            throw new UnsupportedOperationException();
+        public static Object symbolFunction(ELispSymbol a) {
+            return a.getFunction();
         }
     }
 
@@ -520,8 +523,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolPlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolPlist(Object a) {
-            throw new UnsupportedOperationException();
+        public static Object symbolPlist(ELispSymbol a) {
+            return a.getProperties();
         }
     }
 
@@ -529,8 +532,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolName(Object a) {
-            throw new UnsupportedOperationException();
+        public static ELispString symbolName(ELispSymbol a) {
+            return new ELispString(a.name());
         }
     }
 
@@ -538,8 +541,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBareSymbol extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object bareSymbol(Object a) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol bareSymbol(ELispSymbol a) {
+            return a;
         }
     }
 
@@ -849,12 +852,70 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    public static double toDouble(Object a) {
+        return switch (a) {
+            case Long l -> l;
+            case ELispBigNum(BigInteger value) -> value.doubleValue();
+            default -> (Double) a;
+        };
+    }
+
+    public static BigInteger toBigInteger(Object a) {
+        if (a instanceof ELispBigNum(BigInteger value)) {
+            return value;
+        } else {
+            return BigInteger.valueOf((Long) a);
+        }
+    }
+
+    public static boolean equals(Object a, Object b) {
+        if (!FNumberp.numberp(a)) {
+            throw new IllegalArgumentException();
+        }
+        return switch (a) {
+            case Double d -> d.equals(toDouble(b));
+            case ELispBigNum(BigInteger i) when !(b instanceof Double) ->
+                    i.equals(toBigInteger(b));
+            case Long l when b instanceof Long -> l.equals(b);
+            default -> equals(b, a);
+        };
+    }
+
     @ELispBuiltIn(name = "=", minArgs = 1, maxArgs = 1, varArgs = true, doc = "Return t if args, all numbers or markers, are equal.\nusage: (= NUMBER-OR-MARKER &rest NUMBERS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FEqlsign extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Object eqlsign(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        @Specialization(rewriteOn = ClassCastException.class)
+        public static boolean eqlsignLong(long a, Object[] args) {
+            for (Object arg : args) {
+                if (a != (Long) arg) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Specialization(rewriteOn = ClassCastException.class)
+        public static boolean eqlsignDouble(double a, Object[] args) {
+            for (Object arg : args) {
+                if (arg instanceof Long l) {
+                    if (a != l) {
+                        return false;
+                    }
+                } else if (a != (Double) arg) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Specialization(replaces = {"eqlsignLong", "eqlsignDouble"})
+        public static boolean eqlsign(Object a, Object[] args) {
+            for (Object arg : args) {
+                if (!BuiltInData.equals(a, arg)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

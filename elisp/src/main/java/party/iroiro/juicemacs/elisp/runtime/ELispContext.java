@@ -56,11 +56,13 @@ public final class ELispContext {
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
         initSymbols(editfnsSymbols());
+        initSymbols(emacsSymbols());
         initSymbols(evalSymbols());
         initSymbols(fileioSymbols());
         initSymbols(fnsSymbols());
         initSymbols(lreadSymbols());
         initSymbols(processSymbols());
+        initSymbols(searchSymbols());
 
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInCharSet());
@@ -68,11 +70,13 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
         initBuiltIns(language, new BuiltInEditFns());
+        initBuiltIns(language, new BuiltInEmacs());
         initBuiltIns(language, new BuiltInEval());
         initBuiltIns(language, new BuiltInFileIO());
         initBuiltIns(language, new BuiltInFns());
         initBuiltIns(language, new BuiltInLRead());
         initBuiltIns(language, new BuiltInProcess());
+        initBuiltIns(language, new BuiltInSearch());
 
         ELispGlobals.initGlobalVariables();
     }
@@ -1386,4 +1390,81 @@ public final class ELispContext {
         };
     }
     /* @end region="editfns.c" */
+    /* @generated region="emacs.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol AFTER_INIT_TIME = new ELispSymbol("after-init-time");
+    public final static ELispSymbol BEFORE_INIT_TIME = new ELispSymbol("before-init-time");
+    public final static ELispSymbol COMMAND_LINE_ARGS = new ELispSymbol("command-line-args");
+    public final static ELispSymbol COMMAND_LINE_PROCESSED = new ELispSymbol("command-line-processed");
+    public final static ELispSymbol DUMP_MODE = new ELispSymbol("dump-mode");
+    public final static ELispSymbol DYNAMIC_LIBRARY_ALIST = new ELispSymbol("dynamic-library-alist");
+    public final static ELispSymbol EMACS_COPYRIGHT = new ELispSymbol("emacs-copyright");
+    public final static ELispSymbol EMACS_VERSION = new ELispSymbol("emacs-version");
+    public final static ELispSymbol FILE_TRUENAME = new ELispSymbol("file-truename");
+    public final static ELispSymbol INHIBIT_X_RESOURCES = new ELispSymbol("inhibit-x-resources");
+    public final static ELispSymbol INSTALLATION_DIRECTORY = new ELispSymbol("installation-directory");
+    public final static ELispSymbol INVOCATION_DIRECTORY = new ELispSymbol("invocation-directory");
+    public final static ELispSymbol INVOCATION_NAME = new ELispSymbol("invocation-name");
+    public final static ELispSymbol KILL_EMACS = new ELispSymbol("kill-emacs");
+    public final static ELispSymbol KILL_EMACS_HOOK = new ELispSymbol("kill-emacs-hook");
+    public final static ELispSymbol NONINTERACTIVE = new ELispSymbol("noninteractive");
+    public final static ELispSymbol PATH_SEPARATOR = new ELispSymbol("path-separator");
+    public final static ELispSymbol REPORT_EMACS_BUG_ADDRESS = new ELispSymbol("report-emacs-bug-address");
+    public final static ELispSymbol RISKY_LOCAL_VARIABLE = new ELispSymbol("risky-local-variable");
+    public final static ELispSymbol RUN_HOOK_QUERY_ERROR_WITH_TIMEOUT = new ELispSymbol("run-hook-query-error-with-timeout");
+    public final static ELispSymbol SAFE_MAGIC = new ELispSymbol("safe-magic");
+    public final static ELispSymbol SYSTEM_CONFIGURATION = new ELispSymbol("system-configuration");
+    public final static ELispSymbol SYSTEM_CONFIGURATION_FEATURES = new ELispSymbol("system-configuration-features");
+    public final static ELispSymbol SYSTEM_CONFIGURATION_OPTIONS = new ELispSymbol("system-configuration-options");
+    public final static ELispSymbol SYSTEM_MESSAGES_LOCALE = new ELispSymbol("system-messages-locale");
+    public final static ELispSymbol SYSTEM_TIME_LOCALE = new ELispSymbol("system-time-locale");
+    public final static ELispSymbol SYSTEM_TYPE = new ELispSymbol("system-type");
+    private ELispSymbol[] emacsSymbols() {
+        return new ELispSymbol[]{
+                AFTER_INIT_TIME,
+                BEFORE_INIT_TIME,
+                COMMAND_LINE_ARGS,
+                COMMAND_LINE_PROCESSED,
+                DUMP_MODE,
+                DYNAMIC_LIBRARY_ALIST,
+                EMACS_COPYRIGHT,
+                EMACS_VERSION,
+                FILE_NAME_HANDLER_ALIST,
+                FILE_TRUENAME,
+                INHIBIT_X_RESOURCES,
+                INSTALLATION_DIRECTORY,
+                INVOCATION_DIRECTORY,
+                INVOCATION_NAME,
+                KILL_EMACS,
+                KILL_EMACS_HOOK,
+                NONINTERACTIVE,
+                PATH_SEPARATOR,
+                REPORT_EMACS_BUG_ADDRESS,
+                RISKY_LOCAL_VARIABLE,
+                RUN_HOOK_QUERY_ERROR_WITH_TIMEOUT,
+                SAFE_MAGIC,
+                SYSTEM_CONFIGURATION,
+                SYSTEM_CONFIGURATION_FEATURES,
+                SYSTEM_CONFIGURATION_OPTIONS,
+                SYSTEM_MESSAGES_LOCALE,
+                SYSTEM_TIME_LOCALE,
+                SYSTEM_TYPE,
+        };
+    }
+    /* @end region="emacs.c" */
+    /* @generated region="search.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol INHIBIT_CHANGING_MATCH_DATA = new ELispSymbol("inhibit-changing-match-data");
+    public final static ELispSymbol INVALID_REGEXP = new ELispSymbol("invalid-regexp");
+    public final static ELispSymbol SEARCH_FAILED = new ELispSymbol("search-failed");
+    public final static ELispSymbol SEARCH_SPACES_REGEXP = new ELispSymbol("search-spaces-regexp");
+    public final static ELispSymbol USER_SEARCH_FAILED = new ELispSymbol("user-search-failed");
+    private ELispSymbol[] searchSymbols() {
+        return new ELispSymbol[]{
+                INHIBIT_CHANGING_MATCH_DATA,
+                INVALID_REGEXP,
+                SEARCH_FAILED,
+                SEARCH_SPACES_REGEXP,
+                USER_SEARCH_FAILED,
+        };
+    }
+    /* @end region="search.c" */
 }

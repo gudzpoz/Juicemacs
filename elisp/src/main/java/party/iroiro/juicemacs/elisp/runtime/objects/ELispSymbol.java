@@ -11,6 +11,13 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
  */
 public final class ELispSymbol implements ELispValue {
 
+    private final static ELispSymbol UNBOUND = new ELispSymbol("unbound");
+
+    @Override
+    public boolean lispEquals(Object other) {
+        return this.equals(other);
+    }
+
     public enum Redirection {
         PLAIN_VAL,
         VAR_ALIAS,
@@ -60,8 +67,17 @@ public final class ELispSymbol implements ELispValue {
         this.trappedWrite = TrappedWrite.NORMAL_WRITE;
         this.interned = Interned.UNINTERNED;
         this.name = name;
-        this.value = UNBOUND; // TODO: Make Qunbound uninterned
+        this.value = ELispSymbol.UNBOUND;
+        this.function = NIL;
         this.properties = NIL;
+    }
+
+    public boolean isBound() {
+        return this.value != ELispSymbol.UNBOUND;
+    }
+
+    public void makeUnbound() {
+        this.value = ELispSymbol.UNBOUND;
     }
 
     public Object getProperties() {
@@ -74,7 +90,12 @@ public final class ELispSymbol implements ELispValue {
 
     public Object getValue() {
         return switch (this.redirect) {
-            case PLAIN_VAL -> value;
+            case PLAIN_VAL -> {
+                if (value == ELispSymbol.UNBOUND) {
+                    throw new IllegalArgumentException();
+                }
+                yield value;
+            }
             case VAR_ALIAS -> getAliased().getValue();
             case FORWARDED -> ((Supplier<?>) value).get();
             case LOCALIZED -> NIL;
@@ -133,11 +154,6 @@ public final class ELispSymbol implements ELispValue {
             case VAR_ALIAS -> getAliased().setFunction(function);
             default -> throw new UnsupportedOperationException();
         }
-    }
-
-    @Override
-    public String type() {
-        return "symbol";
     }
 
     public String name() {

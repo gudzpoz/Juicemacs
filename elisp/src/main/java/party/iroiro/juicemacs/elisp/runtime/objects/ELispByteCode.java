@@ -8,11 +8,6 @@ public final class ELispByteCode extends AbstractELispVector {
         super(inner);
     }
 
-    @Override
-    public String type() {
-        return "compiled-function";
-    }
-
     public static ELispByteCode create(List<Object> inner) {
         Object argList = inner.get(0);
         Object byteCode = inner.get(1);

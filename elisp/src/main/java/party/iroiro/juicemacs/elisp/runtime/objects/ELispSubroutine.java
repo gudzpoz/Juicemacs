@@ -4,12 +4,12 @@ import com.oracle.truffle.api.CallTarget;
 
 public record ELispSubroutine(CallTarget body, boolean specialForm) implements ELispValue {
     @Override
-    public String type() {
-        return "subr";
+    public CallTarget getCallTarget() {
+        return body;
     }
 
     @Override
-    public CallTarget getCallTarget() {
-        return body;
+    public boolean lispEquals(Object other) {
+        return this.equals(other);
     }
 }

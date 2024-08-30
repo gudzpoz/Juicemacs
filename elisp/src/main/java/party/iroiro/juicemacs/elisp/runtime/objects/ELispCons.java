@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
@@ -64,8 +66,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     @Override
-    public String type() {
-        return "cons";
+    public boolean lispEquals(Object other) {
+        return other instanceof ELispCons cons
+                && BuiltInFns.FEqual.equal(car(), cons.car())
+                && BuiltInFns.FEqual.equal(cdr(), cons.cdr());
     }
 
     public final class BrentTortoiseHareIterator implements ListIterator<Object> {

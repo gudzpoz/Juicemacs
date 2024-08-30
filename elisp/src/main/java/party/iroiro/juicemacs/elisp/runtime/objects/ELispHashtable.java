@@ -1,6 +1,8 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -40,6 +42,11 @@ public final class ELispHashtable implements ELispValue {
         return inner.size();
     }
 
+    @Override
+    public boolean lispEquals(Object other) {
+        return other instanceof ELispHashtable t && eq == t.eq && inner.equals(t.inner);
+    }
+
     protected final class ELispHashtableKey {
         private final Object key;
 
@@ -65,11 +72,11 @@ public final class ELispHashtable implements ELispValue {
         Object testSym = getFromPseudoPlist(list, TEST);
         BiPredicate<Object, Object> test = null;
         if (testSym == EQ) {
-            test = Objects::equals;
+            test = BuiltInData.FEq::eq;
         } else if (testSym == EQL) {
-            // TODO: Implement eql
+            test = BuiltInFns.FEql::eql;
         } else if (testSym == EQUAL) {
-            // TODO: Implement equal
+            test = BuiltInFns.FEqual::equal;
         }
         ELispHashtable table = test == null ? new ELispHashtable() : new ELispHashtable(test);
         Object data = getFromPseudoPlist(list, DATA);
@@ -96,10 +103,5 @@ public final class ELispHashtable implements ELispValue {
             }
         }
         return null;
-    }
-
-    @Override
-    public String type() {
-        return "hash-table";
     }
 }

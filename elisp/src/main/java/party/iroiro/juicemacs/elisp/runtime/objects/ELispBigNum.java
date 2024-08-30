@@ -186,7 +186,8 @@ public record ELispBigNum(BigInteger value) implements TruffleObject, Comparable
     }
 
     @Override
-    public String type() {
-        return "bignum";
+    public boolean lispEquals(Object other) {
+        return (other instanceof Long l && value.equals(BigInteger.valueOf(l)))
+                || (other instanceof ELispBigNum(BigInteger i) && value.equals(i));
     }
 }

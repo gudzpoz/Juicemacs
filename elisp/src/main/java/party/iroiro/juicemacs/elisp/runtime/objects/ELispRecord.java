@@ -9,9 +9,4 @@ public class ELispRecord extends AbstractELispVector {
             throw new IllegalArgumentException();
         }
     }
-
-    @Override
-    public String type() {
-        return "record";
-    }
 }

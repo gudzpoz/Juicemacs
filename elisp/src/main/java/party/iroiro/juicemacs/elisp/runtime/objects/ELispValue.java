@@ -9,5 +9,5 @@ public interface ELispValue {
         return null;
     }
 
-    String type();
+    boolean lispEquals(Object other);
 }

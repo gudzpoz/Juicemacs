@@ -25,11 +25,13 @@ var templateTasks = [
         ['Comp', 'comp.c'],
         ['Data', 'data.c'],
         ['EditFns', 'editfns.c'],
+        ['Emacs', 'emacs.c'],
         ['Eval', 'eval.c'],
         ['FileIO', 'fileio.c'],
         ['Fns', 'fns.c'],
         ['LRead', 'lread.c'],
         ['Process', 'process.c'],
+        ['Search', 'search.c'],
 ]
 // Force sequential evaluation
 templateTasks.each {

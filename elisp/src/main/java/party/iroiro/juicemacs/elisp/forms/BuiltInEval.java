@@ -21,6 +21,8 @@ public class BuiltInEval extends ELispBuiltIns {
 
     public static Object evalSub(Object form) {
         return switch (form) {
+            case ELispSymbol symbol when symbol == T -> false;
+            case ELispSymbol symbol when symbol == NIL -> false;
             case ELispSymbol symbol -> symbol.getValue();
             case ELispCons cons -> evalCons(cons);
             default -> form;
@@ -32,9 +34,6 @@ public class BuiltInEval extends ELispBuiltIns {
         Object[] args = cons.cdr() instanceof ELispCons rest ? rest.toArray() : new Object[0];
         if (function instanceof ELispSymbol symbol) {
             function = symbol.getFunction();
-            while (function instanceof ELispSymbol indirection) {
-                function = indirection.getFunction();
-            }
         } else {
             function = FFunction.function(function);
         }
@@ -46,7 +45,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             return body.call(args);
         }
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException(function.toString());
     }
 
     @ELispBuiltIn(name = "or", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true, doc = "Eval args until one of them yields non-nil, then return that value.\nThe remaining args are not evalled at all.\nIf all args return nil, return nil.\nusage: (or CONDITIONS...)")
@@ -56,7 +55,7 @@ public class BuiltInEval extends ELispBuiltIns {
         public static Object or(Object[] args) {
             for (Object arg : args) {
                 Object result = evalSub(arg);
-                if (result != NIL) {
+                if (ELispSymbol.isNil(result)) {
                     return result;
                 }
             }
@@ -72,7 +71,7 @@ public class BuiltInEval extends ELispBuiltIns {
             Object lastResult = NIL;
             for (Object arg : args) {
                 lastResult = evalSub(arg);
-                if (lastResult == NIL) {
+                if (ELispSymbol.isNil(lastResult)) {
                     return NIL;
                 }
             }
@@ -85,7 +84,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FIf extends ELispBuiltInBaseNode {
         @Specialization
         public static Object if_(Object cond, Object then, Object[] args) {
-            if (evalSub(cond) == NIL) {
+            if (ELispSymbol.isNil(evalSub(cond))) {
                 Object lastResult = NIL;
                 for (Object arg : args) {
                     lastResult = evalSub(arg);

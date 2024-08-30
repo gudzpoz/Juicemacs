@@ -233,6 +233,7 @@ with open(args.filename, 'r') as f:
         'Vload_suffixes',
         'Vmodule_file_suffix',
         'Vdynamic_library_suffixes',
+        'Vdynamic_library_alist',
     ]
 
     class LazyDict(dict):
@@ -262,6 +263,7 @@ with open(args.filename, 'r') as f:
         'build_string': ID,
         'build_unibyte_string': ID,
         'empty_unibyte_string': '',
+        'intern_c_string': ID,
         'true': True,
         'false': False,
         'pure_list': lambda *items: tuple(items),
@@ -270,6 +272,13 @@ with open(args.filename, 'r') as f:
         'list1': lambda a: (a,),
         'decode_env_path': lambda *args: ('',),
         'PATH_DUMPLOADSEARCH': '',
+        'SYSTEM_TYPE': 'jvm',
+        'EMACS_CONFIGURATION': '',
+        'EMACS_CONFIG_OPTIONS': '',
+        'EMACS_CONFIG_FEATURES': '',
+        'emacs_copyright': 'TODO: Copy over GPL',
+        'emacs_version': '30.0',
+        'emacs_bugreport': '',
     })
     detected = DEFVAR_DETECT.findall(contents)
     count = len(detected)
@@ -279,7 +288,8 @@ with open(args.filename, 'r') as f:
     ), set(detected) - set(m[1] for m in matches)
     assert len(matches) == count
     init_section = contents[contents.find('\nsyms_of_') + 9:]
-    assert '\nsyms_of_' not in init_section
+    if Path(args.filename).stem != 'search':
+        assert '\nsyms_of_' not in init_section
     variables: list[Variable] = []
     for lisp_type, name, c_name in matches:
         init = re.compile(
@@ -293,6 +303,10 @@ with open(args.filename, 'r') as f:
                 init_value = \
                     "^;;;.\\(?:in Emacs version\\|bytecomp version FSF\\)"
                 assert json.dumps(init_value) in contents
+            elif c_name == 'Vsource_directory':
+                init_value = {'raw': 'new ELispString("")'}
+            elif c_name == 'Vpath_separator':
+                init_value = '/'
             elif len(init) > 0:
                 try:
                     init_value = eval(

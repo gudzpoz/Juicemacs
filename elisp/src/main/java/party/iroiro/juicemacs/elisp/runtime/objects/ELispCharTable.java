@@ -112,11 +112,6 @@ public class ELispCharTable extends AbstractELispVector {
         return objects;
     }
 
-    @Override
-    public String type() {
-        return "char-table";
-    }
-
     public void setParent(Object parent) {
         set(PARENT_SLOT, parent);
     }
@@ -191,11 +186,6 @@ public class ELispCharTable extends AbstractELispVector {
                 case 3 -> CHARTAB_SIZE_BITS_3;
                 default -> throw new IllegalArgumentException();
             };
-        }
-
-        @Override
-        public String type() {
-            return "sub-char-table";
         }
 
         public static SubTable create(List<Object> objects) {

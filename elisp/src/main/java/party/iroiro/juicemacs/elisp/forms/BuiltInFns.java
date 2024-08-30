@@ -1,16 +1,17 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispHashtable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-
+import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.dsl.Specialization;
+
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.isNil;
+
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 /**
  * Built-in functions from {@code src/comp.c}
@@ -313,8 +314,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNth extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object nth(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static Object nth(long a, Object b) {
+            if (isNil(b)) {
+                return NIL;
+            }
+            try {
+                return ((ELispCons) b).get((int) a);
+            } catch (IndexOutOfBoundsException ignored) {
+                return NIL;
+            }
         }
     }
 
@@ -332,7 +340,17 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FMember extends ELispBuiltInBaseNode {
         @Specialization
         public static Object member(Object a, Object b) {
-            throw new UnsupportedOperationException();
+            if (isNil(b)) {
+                return NIL;
+            }
+            ELispCons.BrentTortoiseHareIterator iterator = ((ELispCons) b).listIterator(0);
+            while (iterator.hasNext()) {
+                if (FEqual.equal(iterator.currentCons().car(), a)) {
+                    return iterator.currentCons();
+                }
+                iterator.next();
+            }
+            return NIL;
         }
     }
 
@@ -499,8 +517,10 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEql extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object eql(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean eql(Object a, Object b) {
+            return BuiltInData.FEq.eq(a, b)
+                    || (a instanceof Double da && b instanceof Double db && Double.doubleToLongBits(da) == Double.doubleToLongBits(db))
+                    || (a instanceof ELispBigNum(BigInteger ia) && b instanceof ELispBigNum(BigInteger ib) && ia.equals(ib));
         }
     }
 
@@ -508,8 +528,16 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEqual extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object equal(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean equal(Object a, Object b) {
+            return switch (a) {
+                case Long l when b instanceof Long n -> l.equals(n);
+                case Long _ -> equal(b, a);
+                case Double d when b instanceof Long n -> d.equals((double) n);
+                case Double d when b instanceof Double n -> d.equals(n);
+                case Double _ -> equal(b, a);
+                case ELispValue v -> v.lispEquals(b);
+                default -> false;
+            };
         }
     }
 
