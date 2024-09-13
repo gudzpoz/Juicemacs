@@ -22,8 +22,8 @@ public class BuiltInCharTab extends ELispBuiltIns {
     public abstract static class FMakeCharTable extends ELispBuiltInBaseNode {
         @Specialization
         public static Object makeCharTable(ELispSymbol purpose, Object init) {
-            int extraSlots;
-            extraSlots = (int) (long) (Long) BuiltInFns.FGet.get(purpose, CHAR_TABLE_EXTRA_SLOTS);
+            Object slotProp = BuiltInFns.FGet.get(purpose, CHAR_TABLE_EXTRA_SLOTS);
+            int extraSlots = ELispSymbol.isNil(slotProp) ? 0 : (int) (long) slotProp;
             if (extraSlots < 0 || 10 < extraSlots) {
                 throw new IllegalArgumentException();
             }

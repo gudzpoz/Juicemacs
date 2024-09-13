@@ -18,7 +18,35 @@ import java.math.BigInteger;
  * SLBigInteger.java</a>
  */
 @ExportLibrary(InteropLibrary.class)
-public record ELispBigNum(BigInteger value) implements TruffleObject, Comparable<ELispBigNum>, ELispValue {
+public final class ELispBigNum implements TruffleObject, Comparable<ELispBigNum>, ELispValue {
+    public final BigInteger value;
+
+    private ELispBigNum(BigInteger value) {
+        this.value = value;
+    }
+
+    /**
+     * Wrap a BigInteger into an ELispBigNum or a long if it fits.
+     *
+     * @param value the BigInteger to wrap
+     * @return the wrapped BigInteger or a long if it fits
+     */
+    public static Object wrap(BigInteger value) {
+        if (value.bitLength() < 64) {
+            return value.longValueExact();
+        }
+        return new ELispBigNum(value);
+    }
+
+    /**
+     * Wrap a BigDecimal into an ELispBigNum (use {@link #wrap(BigInteger)} if possible)
+     *
+     * @param value the BigDecimal to wrap
+     * @return the wrapped BigDecimal
+     */
+    public static ELispBigNum forceWrap(BigInteger value) {
+        return new ELispBigNum(value);
+    }
 
     @Override
     @TruffleBoundary
@@ -188,6 +216,6 @@ public record ELispBigNum(BigInteger value) implements TruffleObject, Comparable
     @Override
     public boolean lispEquals(Object other) {
         return (other instanceof Long l && value.equals(BigInteger.valueOf(l)))
-                || (other instanceof ELispBigNum(BigInteger i) && value.equals(i));
+                || ((other instanceof ELispBigNum n) && value.equals(n.value));
     }
 }

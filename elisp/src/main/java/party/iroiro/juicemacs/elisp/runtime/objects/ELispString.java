@@ -8,7 +8,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import org.eclipse.jdt.annotation.Nullable;
 
-import java.math.BigInteger;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -81,12 +80,10 @@ public final class ELispString implements ELispValue {
 
     @Nullable
     public static Long toValidChar(Object a) {
-        return switch (a) {
-            case Long l -> Character.isValidCodePoint(Math.toIntExact(l)) ? l : null;
-            case ELispBigNum(BigInteger i) when i.bitLength() < 32 ->
-                    Character.isValidCodePoint(i.intValue()) ? i.longValue() : null;
-            default -> null;
-        };
+        if (a instanceof Long l) {
+            return Character.isValidCodePoint(Math.toIntExact(l)) ? l : null;
+        }
+        return null;
     }
 
     @Override

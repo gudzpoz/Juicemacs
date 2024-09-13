@@ -71,7 +71,7 @@ public class ELispParser {
                 yield nextObject();
             }
             case Num(NumberVariant.FixNum(long value)) -> value;
-            case Num(NumberVariant.BigNum(BigInteger value)) -> new ELispBigNum(value);
+            case Num(NumberVariant.BigNum(BigInteger value)) -> ELispBigNum.wrap(value);
             case Num(NumberVariant.Float(double value)) -> value;
             case Char(int value) -> (long) value;
             case Str(MutableTruffleString value) -> new ELispString(value);

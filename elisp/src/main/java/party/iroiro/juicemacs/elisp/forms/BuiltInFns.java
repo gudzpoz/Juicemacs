@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.List;
 
@@ -520,7 +519,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean eql(Object a, Object b) {
             return BuiltInData.FEq.eq(a, b)
                     || (a instanceof Double da && b instanceof Double db && Double.doubleToLongBits(da) == Double.doubleToLongBits(db))
-                    || (a instanceof ELispBigNum(BigInteger ia) && b instanceof ELispBigNum(BigInteger ib) && ia.equals(ib));
+                    || (a instanceof ELispBigNum ia && b instanceof ELispBigNum ib && ia.value.equals(ib.value));
         }
     }
 

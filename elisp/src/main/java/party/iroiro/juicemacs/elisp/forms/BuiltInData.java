@@ -136,7 +136,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSymbolp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean symbolp(Object a) {
-            return a instanceof ELispSymbol;
+            return a instanceof ELispSymbol || a instanceof Boolean;
         }
     }
 
@@ -342,7 +342,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static boolean natnump(Object a) {
             return (a instanceof Long l && l >= 0)
-                    || (a instanceof ELispBigNum n && n.value().signum() >= 0);
+                    || (a instanceof ELispBigNum n && n.value.signum() >= 0);
         }
     }
 
@@ -422,7 +422,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (a instanceof ELispCons cons) {
                 return cons.car();
             }
-            return NIL;
+            return false;
         }
     }
 
@@ -448,7 +448,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (a instanceof ELispCons cons) {
                 return cons.cdr();
             }
-            return NIL;
+            return false;
         }
     }
 
@@ -852,32 +852,17 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    public static double toDouble(Object a) {
-        return switch (a) {
-            case Long l -> l;
-            case ELispBigNum(BigInteger value) -> value.doubleValue();
-            default -> (Double) a;
-        };
-    }
-
-    public static BigInteger toBigInteger(Object a) {
-        if (a instanceof ELispBigNum(BigInteger value)) {
-            return value;
-        } else {
-            return BigInteger.valueOf((Long) a);
-        }
-    }
-
-    public static boolean equals(Object a, Object b) {
+    public static int compareTo(Object a, Object b) {
         if (!FNumberp.numberp(a)) {
             throw new IllegalArgumentException();
         }
         return switch (a) {
-            case Double d -> d.equals(toDouble(b));
-            case ELispBigNum(BigInteger i) when !(b instanceof Double) ->
-                    i.equals(toBigInteger(b));
-            case Long l when b instanceof Long -> l.equals(b);
-            default -> equals(b, a);
+            case Double d -> d.compareTo(ELispTypeSystemGen.asImplicitDouble(b));
+            case ELispBigNum n when !(b instanceof Double) -> n.value.compareTo(
+                    ELispTypeSystemGen.asImplicitELispBigNum(b).value
+            );
+            case Long l when b instanceof Long lb -> l.compareTo(lb);
+            default -> -compareTo(b, a);
         };
     }
 
@@ -911,7 +896,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization(replaces = {"eqlsignLong", "eqlsignDouble"})
         public static boolean eqlsign(Object a, Object[] args) {
             for (Object arg : args) {
-                if (!BuiltInData.equals(a, arg)) {
+                if (compareTo(a, arg) != 0) {
                     return false;
                 }
             }
@@ -923,8 +908,15 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLss extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object lss(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean lss(Object a, Object[] args) {
+            Object prev = a;
+            for (Object arg : args) {
+                if (compareTo(prev, arg) >= 0) {
+                    return false;
+                }
+                prev = arg;
+            }
+            return true;
         }
     }
 
@@ -932,8 +924,15 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGtr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object gtr(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean gtr(Object a, Object[] args) {
+            Object prev = a;
+            for (Object arg : args) {
+                if (compareTo(prev, arg) <= 0) {
+                    return false;
+                }
+                prev = arg;
+            }
+            return true;
         }
     }
 
@@ -941,8 +940,15 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLeq extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object leq(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean leq(Object a, Object[] args) {
+            Object prev = a;
+            for (Object arg : args) {
+                if (compareTo(prev, arg) > 0) {
+                    return false;
+                }
+                prev = arg;
+            }
+            return true;
         }
     }
 
@@ -950,8 +956,15 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGeq extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object geq(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean geq(Object a, Object[] args) {
+            Object prev = a;
+            for (Object arg : args) {
+                if (compareTo(prev, arg) < 0) {
+                    return false;
+                }
+                prev = arg;
+            }
+            return true;
         }
     }
 
@@ -959,8 +972,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNeq extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object neq(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean neq(Object a, Object b) {
+            return compareTo(a, b) != 0;
         }
     }
 
@@ -995,11 +1008,11 @@ public class BuiltInData extends ELispBuiltIns {
         }
 
         @Specialization(replaces = "plusLong")
-        public Object plusAny(Object[] args) {
+        public static Object plusAny(Object[] args) {
             return tryAddLong(args);
         }
 
-        public Object tryAddLong(Object[] args) {
+        public static Object tryAddLong(Object[] args) {
             long sum = 0;
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -1022,11 +1035,11 @@ public class BuiltInData extends ELispBuiltIns {
             return sum;
         }
 
-        private Object tryAddBigNum(long prev, int i, Object[] args) {
+        private static Object tryAddBigNum(long prev, int i, Object[] args) {
             BigInteger sum = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
                 switch (args[i]) {
-                    case ELispBigNum(BigInteger n) -> sum = sum.add(n);
+                    case ELispBigNum n -> sum = sum.add(n.value);
                     case Long l -> sum = sum.add(BigInteger.valueOf(l));
                     case Double _ -> {
                         return tryAddDouble(sum.doubleValue(), i, args);
@@ -1034,11 +1047,10 @@ public class BuiltInData extends ELispBuiltIns {
                     case null, default -> throw new IllegalArgumentException();
                 }
             }
-            ELispBigNum result = new ELispBigNum(sum);
-            return result.fitsInLong() ? result.value().longValue() : result;
+            return ELispBigNum.wrap(sum);
         }
 
-        private double tryAddDouble(double prev, int i, Object[] args) {
+        private static double tryAddDouble(double prev, int i, Object[] args) {
             double sum = prev;
             for (; i < args.length; i++) {
                 sum += ELispTypeSystemGen.asImplicitDouble(args[i]);
@@ -1050,27 +1062,217 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "-", minArgs = 0, maxArgs = 0, varArgs = true, doc = "Negate number or subtract numbers or markers and return the result.\nWith one arg, negates it.  With more than one arg,\nsubtracts all but the first from the first.\nusage: (- &optional NUMBER-OR-MARKER &rest MORE-NUMBERS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FMinus extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Object minus(Object[] args) {
-            throw new UnsupportedOperationException();
+        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
+        public static long minusLong(Object[] args) {
+            if (args.length == 0) {
+                return 0;
+            }
+            long result = (Long) args[0];
+            if (args.length == 1) {
+                return Math.negateExact(result);
+            }
+            for (int i = 1; i < args.length; i++) {
+                result = Math.subtractExact(result, (Long) args[i]);
+            }
+            return result;
+        }
+
+        @Specialization(replaces = "minusLong")
+        public static Object minusAny(Object[] args) {
+            if (args.length == 0) {
+                return 0L;
+            }
+            if (args.length == 1) {
+                return switch (args[0]) {
+                    case Long l when l > Long.MIN_VALUE -> Math.negateExact(l);
+                    case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).negate());
+                    case Double d -> -d;
+                    case ELispBigNum n -> ELispBigNum.wrap(n.value.negate());
+                    default -> throw new IllegalArgumentException();
+                };
+            }
+            return switch (args[0]) {
+                case Long l -> tryMinusLong(l, 1, args);
+                case ELispBigNum n -> tryMinusBigNum(n.value, 1, args);
+                case Double d -> tryMinusDouble(d, 1, args);
+                default -> throw new IllegalArgumentException();
+            };
+        }
+
+        public static Object tryMinusLong(long result, int i, Object[] args) {
+            for (; i < args.length; i++) {
+                switch (args[i]) {
+                    case Long l -> {
+                        try {
+                            result = Math.subtractExact(result, l);
+                        } catch (ArithmeticException e) {
+                            return tryMinusBigNum(BigInteger.valueOf(result), i, args);
+                        }
+                    }
+                    case Double _ -> {
+                        return tryMinusDouble((double) result, i, args);
+                    }
+                    case ELispBigNum _ -> {
+                        return tryMinusBigNum(BigInteger.valueOf(result), i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return result;
+        }
+
+        private static Object tryMinusBigNum(BigInteger result, int i, Object[] args) {
+            for (; i < args.length; i++) {
+                switch (args[i]) {
+                    case ELispBigNum n -> result = result.subtract(n.value);
+                    case Long l -> result = result.subtract(BigInteger.valueOf(l));
+                    case Double _ -> {
+                        return tryMinusDouble(result.doubleValue(), i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return ELispBigNum.wrap(result);
+        }
+
+        private static double tryMinusDouble(double prev, int i, Object[] args) {
+            double result = prev;
+            for (; i < args.length; i++) {
+                result -= ELispTypeSystemGen.asImplicitDouble(args[i]);
+            }
+            return result;
         }
     }
 
     @ELispBuiltIn(name = "*", minArgs = 0, maxArgs = 0, varArgs = true, doc = "Return product of any number of arguments, which are numbers or markers.\nusage: (* &rest NUMBERS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FTimes extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Object times(Object[] args) {
-            throw new UnsupportedOperationException();
+        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
+        public static long timesLong(Object[] args) {
+            long result = 1;
+            for (Object arg : args) {
+                result = Math.multiplyExact(result, (Long) arg);
+            }
+            return result;
+        }
+
+        @Specialization(replaces = "timesLong")
+        public static Object timesAny(Object[] args) {
+            return tryTimesLong(args);
+        }
+
+        public static Object tryTimesLong(Object[] args) {
+            long product = 1;
+            for (int i = 0; i < args.length; i++) {
+                switch (args[i]) {
+                    case Long l -> {
+                        try {
+                            product = Math.multiplyExact(product, l);
+                        } catch (ArithmeticException e) {
+                            return tryTimesBigNum(product, i, args);
+                        }
+                    }
+                    case Double _ -> {
+                        return tryTimesDouble((double) product, i, args);
+                    }
+                    case ELispBigNum _ -> {
+                        return tryTimesBigNum(product, i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return product;
+        }
+
+        private static Object tryTimesBigNum(long prev, int i, Object[] args) {
+            BigInteger product = BigInteger.valueOf(prev);
+            for (; i < args.length; i++) {
+                switch (args[i]) {
+                    case ELispBigNum n -> product = product.multiply(n.value);
+                    case Long l -> product = product.multiply(BigInteger.valueOf(l));
+                    case Double _ -> {
+                        return tryTimesDouble(product.doubleValue(), i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return ELispBigNum.wrap(product);
+        }
+
+        private static double tryTimesDouble(double prev, int i, Object[] args) {
+            double product = prev;
+            for (; i < args.length; i++) {
+                product *= ELispTypeSystemGen.asImplicitDouble(args[i]);
+            }
+            return product;
         }
     }
 
     @ELispBuiltIn(name = "/", minArgs = 1, maxArgs = 1, varArgs = true, doc = "Divide number by divisors and return the result.\nWith two or more arguments, return first argument divided by the rest.\nWith one argument, return 1 divided by the argument.\nThe arguments must be numbers or markers.\nusage: (/ NUMBER &rest DIVISORS)")
     @GenerateNodeFactory
     public abstract static class FQuo extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Object quo(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
+        public static long quoLong(long a, Object[] args) {
+            long result = a;
+            for (Object arg : args) {
+                result /= (Long) arg;
+            }
+            return result;
+        }
+
+        @Specialization(replaces = "quoLong")
+        public static Object quoAny(Object a, Object[] args) {
+            for (Object arg : args) {
+                if (arg instanceof Double) {
+                    return tryQuoDouble(ELispTypeSystemGen.asImplicitDouble(a), args);
+                }
+            }
+            return switch (a) {
+                case Long l -> tryQuoLong(l, args);
+                case ELispBigNum n -> tryQuoBigNum(n.value, 0, args);
+                case Double d -> tryQuoDouble(d, args);
+                default -> throw new IllegalArgumentException();
+            };
+        }
+
+        public static Object tryQuoLong(long a, Object[] args) {
+            long quo = a;
+            for (int i = 0; i < args.length; i++) {
+                switch (args[i]) {
+                    case Long l -> {
+                        try {
+                            quo = Math.divideExact(quo, l);
+                        } catch (ArithmeticException e) {
+                            return tryQuoBigNum(BigInteger.valueOf(quo), i, args);
+                        }
+                    }
+                    case ELispBigNum _ -> {
+                        return tryQuoBigNum(BigInteger.valueOf(quo), i, args);
+                    }
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return quo;
+        }
+
+        private static Object tryQuoBigNum(BigInteger prev, int i, Object[] args) {
+            BigInteger quo = prev;
+            for (; i < args.length; i++) {
+                switch (args[i]) {
+                    case ELispBigNum n -> quo = quo.divide(n.value);
+                    case Long l -> quo = quo.divide(BigInteger.valueOf(l));
+                    case null, default -> throw new IllegalArgumentException();
+                }
+            }
+            return ELispBigNum.wrap(quo);
+        }
+
+        private static double tryQuoDouble(double prev, Object[] args) {
+            double quo = prev;
+            for (Object arg : args) {
+                quo /= ELispTypeSystemGen.asImplicitDouble(arg);
+            }
+            return quo;
         }
     }
 
@@ -1078,8 +1280,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRem extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object rem(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static long remLong(long a, long b) {
+            return a % b;
+        }
+
+        @Specialization
+        public static Object rem(ELispBigNum a, ELispBigNum b) {
+            return ELispBigNum.wrap(a.value.remainder(b.value));
         }
     }
 
@@ -1087,8 +1294,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMod extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object mod(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static long modLong(long a, long b) {
+            return Long.remainderUnsigned(a, b);
+        }
+
+        @Specialization
+        public static Object mod(ELispBigNum a, ELispBigNum b) {
+            return ELispBigNum.wrap(a.value.mod(b.value));
         }
     }
 
@@ -1097,7 +1309,13 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMax extends ELispBuiltInBaseNode {
         @Specialization
         public static Object max(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+            Object result = a;
+            for (Object arg : args) {
+                if (compareTo(result, arg) < 0) {
+                    result = arg;
+                }
+            }
+            return result;
         }
     }
 
@@ -1106,34 +1324,91 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMin extends ELispBuiltInBaseNode {
         @Specialization
         public static Object min(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+            Object result = a;
+            for (Object arg : args) {
+                if (compareTo(result, arg) > 0) {
+                    result = arg;
+                }
+            }
+            return result;
         }
     }
 
     @ELispBuiltIn(name = "logand", minArgs = 0, maxArgs = 0, varArgs = true, doc = "Return bitwise-and of all the arguments.\nArguments may be integers, or markers converted to integers.\nusage: (logand &rest INTS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FLogand extends ELispBuiltInBaseNode {
-        @Specialization
+        @Specialization(rewriteOn = ClassCastException.class)
+        public static long logandLong(Object[] args) {
+            long result = -1;
+            for (Object arg : args) {
+                result &= (long) arg;
+            }
+            return result;
+        }
+
+        @Specialization(replaces = "logandLong")
         public static Object logand(Object[] args) {
-            throw new UnsupportedOperationException();
+            BigInteger result = BigInteger.ONE.negate();
+            for (Object arg : args) {
+                result = result.and(switch (arg) {
+                    case Long l -> BigInteger.valueOf(l);
+                    case ELispBigNum n -> n.value;
+                    default -> throw new IllegalArgumentException();
+                });
+            }
+            return ELispBigNum.wrap(result);
         }
     }
 
     @ELispBuiltIn(name = "logior", minArgs = 0, maxArgs = 0, varArgs = true, doc = "Return bitwise-or of all the arguments.\nArguments may be integers, or markers converted to integers.\nusage: (logior &rest INTS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FLogior extends ELispBuiltInBaseNode {
-        @Specialization
+        @Specialization(rewriteOn = ClassCastException.class)
+        public static long logorLong(Object[] args) {
+            long result = 0;
+            for (Object arg : args) {
+                result |= (long) arg;
+            }
+            return result;
+        }
+
+        @Specialization(replaces = "logorLong")
         public static Object logior(Object[] args) {
-            throw new UnsupportedOperationException();
+            BigInteger result = BigInteger.ZERO;
+            for (Object arg : args) {
+                result = result.or(switch (arg) {
+                    case Long l -> BigInteger.valueOf(l);
+                    case ELispBigNum n -> n.value;
+                    default -> throw new IllegalArgumentException();
+                });
+            }
+            return ELispBigNum.wrap(result);
         }
     }
 
     @ELispBuiltIn(name = "logxor", minArgs = 0, maxArgs = 0, varArgs = true, doc = "Return bitwise-exclusive-or of all the arguments.\nArguments may be integers, or markers converted to integers.\nusage: (logxor &rest INTS-OR-MARKERS)")
     @GenerateNodeFactory
     public abstract static class FLogxor extends ELispBuiltInBaseNode {
-        @Specialization
+        @Specialization(rewriteOn = ClassCastException.class)
+        public static long logxorLong(Object[] args) {
+            long result = 0;
+            for (Object arg : args) {
+                result ^= (long) arg;
+            }
+            return result;
+        }
+
+        @Specialization(replaces = "logxorLong")
         public static Object logxor(Object[] args) {
-            throw new UnsupportedOperationException();
+            BigInteger result = BigInteger.ZERO;
+            for (Object arg : args) {
+                result = result.xor(switch (arg) {
+                    case Long l -> BigInteger.valueOf(l);
+                    case ELispBigNum n -> n.value;
+                    default -> throw new IllegalArgumentException();
+                });
+            }
+            return ELispBigNum.wrap(result);
         }
     }
 
@@ -1141,8 +1416,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLogcount extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object logcount(Object a) {
-            throw new UnsupportedOperationException();
+        public static long logcountLong(long a) {
+            return a >= 0 ? Long.bitCount(a) : Long.SIZE - Long.bitCount(a);
+        }
+
+        @Specialization
+        public static long logcount(ELispBigNum a) {
+            return a.value.bitCount();
         }
     }
 
@@ -1150,8 +1430,24 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAsh extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object ash(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static Object ashLong(long a, long b) {
+            if (b == 0) {
+                return a;
+            }
+            if (b < 0) {
+                long shift = -b;
+                if (shift >= Long.SIZE) {
+                    return a < 0 ? -1L : 0L;
+                }
+                return a >> shift;
+            }
+            BigInteger v = BigInteger.valueOf(a);
+            return ELispBigNum.wrap(v.shiftLeft((int) b));
+        }
+
+        @Specialization
+        public static Object ash(ELispBigNum a, long b) {
+            return ELispBigNum.wrap(a.value.shiftLeft((int) b));
         }
     }
 
@@ -1162,9 +1458,9 @@ public class BuiltInData extends ELispBuiltIns {
         public static Object add1(Object a) {
             return switch (a) {
                 case Long l when l < Long.MAX_VALUE -> l + 1;
-                case Long l -> new ELispBigNum(BigInteger.valueOf(l).add(BigInteger.ONE));
+                case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).add(BigInteger.ONE));
                 case Double d -> d + 1;
-                case ELispBigNum(BigInteger i) -> new ELispBigNum(i.add(BigInteger.ONE));
+                case ELispBigNum n -> ELispBigNum.wrap(n.value.add(BigInteger.ONE));
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -1177,9 +1473,9 @@ public class BuiltInData extends ELispBuiltIns {
         public static Object sub1(Object a) {
             return switch (a) {
                 case Long l when l > Long.MIN_VALUE -> l - 1;
-                case Long l -> new ELispBigNum(BigInteger.valueOf(l).subtract(BigInteger.ONE));
+                case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).subtract(BigInteger.ONE));
                 case Double d -> d - 1;
-                case ELispBigNum(BigInteger i) -> new ELispBigNum(i.subtract(BigInteger.ONE));
+                case ELispBigNum n -> ELispBigNum.wrap(n.value.subtract(BigInteger.ONE));
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -1189,8 +1485,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLognot extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object lognot(Object a) {
-            throw new UnsupportedOperationException();
+        public static long lognot(long a) {
+            return ~a;
+        }
+
+        @Specialization
+        public static Object lognot(ELispBigNum a) {
+            return ELispBigNum.wrap(a.value.not());
         }
     }
 
@@ -1198,8 +1499,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FByteorder extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object byteorder() {
-            throw new UnsupportedOperationException();
+        public static long byteorder() {
+            return 'B';
         }
     }
 

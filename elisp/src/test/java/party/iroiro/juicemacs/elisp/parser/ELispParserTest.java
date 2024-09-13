@@ -32,7 +32,7 @@ public class ELispParserTest {
     private static final Object[] ATOM_TOKEN_TESTS = new Object[] {
             "1", 1L,
             "1.5", 1.5,
-            "#xFFFFFFFFFFFFFFFFFFFF", new ELispBigNum(BigInteger.ONE.shiftLeft(80).subtract(BigInteger.ONE)),
+            "#xFFFFFFFFFFFFFFFFFFFF", ELispBigNum.wrap(BigInteger.ONE.shiftLeft(80).subtract(BigInteger.ONE)),
             "t", T,
             "nil", NIL,
             "#@00", NIL,
