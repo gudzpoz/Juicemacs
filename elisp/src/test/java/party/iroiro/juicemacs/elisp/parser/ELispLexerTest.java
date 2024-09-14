@@ -66,9 +66,13 @@ public class ELispLexerTest {
             "0", 0,
             "-0", 0,
             "#b101100", 44,
+            "#b-101100", -44,
             "#o54", 44,
+            "#o-54", -44,
             "#x2c", 44,
+            "#x-2c", -44,
             "#24r1k", 44,
+            "#24r-1k", -44,
             "#xffffffffffffffffffffffffffffffffffffffffffffffff",
             new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffff", 16),
     };
@@ -479,6 +483,7 @@ public class ELispLexerTest {
         assertError("'(?\\u00)", "Expecting fixed number of digits");
         assertError("'?\\u00z", "Expecting fixed number of digits");
         assertError("?\\U0FFFFFFF", "Not a valid Unicode code point");
+        assertError("?\\U-0FFFFFFF", "Not a valid Unicode code point");
 
         assertError("#xfrf", "Invalid base");
         assertError("#40rz", "Invalid base");

@@ -21,7 +21,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
     public static Object evalSub(Object form) {
         return switch (form) {
-            case ELispSymbol symbol when symbol == T -> false;
+            case ELispSymbol symbol when symbol == T -> true;
             case ELispSymbol symbol when symbol == NIL -> false;
             case ELispSymbol symbol -> symbol.getValue();
             case ELispCons cons -> evalCons(cons);
@@ -45,6 +45,12 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             return body.call(args);
         }
+        if (function instanceof ELispInterpretedClosure) {
+            for (int i = 0; i < args.length; i++) {
+                args[i] = evalSub(args[i]);
+            }
+            return ((ELispInterpretedClosure) function).getFunction().callTarget().call(args);
+        }
         throw new UnsupportedOperationException(function.toString());
     }
 
@@ -55,11 +61,11 @@ public class BuiltInEval extends ELispBuiltIns {
         public static Object or(Object[] args) {
             for (Object arg : args) {
                 Object result = evalSub(arg);
-                if (ELispSymbol.isNil(result)) {
+                if (!ELispSymbol.isNil(result)) {
                     return result;
                 }
             }
-            return NIL;
+            return false;
         }
     }
 
@@ -68,11 +74,11 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FAnd extends ELispBuiltInBaseNode {
         @Specialization
         public static Object and(Object[] args) {
-            Object lastResult = NIL;
+            Object lastResult = true;
             for (Object arg : args) {
                 lastResult = evalSub(arg);
                 if (ELispSymbol.isNil(lastResult)) {
-                    return NIL;
+                    return false;
                 }
             }
             return lastResult;
@@ -104,7 +110,7 @@ public class BuiltInEval extends ELispBuiltIns {
             for (Object arg : args) {
                 ELispCons cons = (ELispCons) arg;
                 Object result = evalSub(cons.car());
-                if (result != NIL) {
+                if (!ELispSymbol.isNil(result)) {
                     ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(1);
                     while (iterator.hasNext()) {
                         result = evalSub(iterator.next());
@@ -112,7 +118,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     return result;
                 }
             }
-            return NIL;
+            return false;
         }
     }
 
@@ -150,7 +156,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (args.length % 2 != 0) {
                 throw new IllegalArgumentException();
             }
-            Object last = NIL;
+            Object last = false;
             for (int i = 0; i < args.length; i += 2) {
                 ELispSymbol symbol = (ELispSymbol) args[i];
                 last = evalSub(args[i + 1]);

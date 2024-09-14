@@ -486,7 +486,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FFboundp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean fboundp(ELispSymbol a) {
-            return a.getFunction() != NIL;
+            return !ELispSymbol.isNil(a.getFunction());
         }
     }
 

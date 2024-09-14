@@ -35,6 +35,6 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
 
     @Override
     public void setUntyped(int i, Object object) {
-        set(i, object != Boolean.FALSE && object != NIL);
+        set(i, !ELispSymbol.isNil(object));
     }
 }

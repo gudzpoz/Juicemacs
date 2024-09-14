@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 public class ReadFunctionArgNode extends ELispExpressionNode {
 
@@ -35,6 +36,27 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             Object[] varArgs = new Object[arguments.length - index];
             System.arraycopy(arguments, index, varArgs, 0, arguments.length - index);
             return varArgs;
+        }
+    }
+
+    public static class ReadFunctionRestArgsAsConsNode extends ReadFunctionRestArgsNode {
+        public ReadFunctionRestArgsAsConsNode(int index) {
+            super(index);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            Object[] arguments = (Object[]) super.executeGeneric(frame);
+            if (arguments.length == 0) {
+                return false;
+            }
+            ELispCons cons = new ELispCons(arguments[0]);
+            ELispCons tail = cons;
+            for (int i = 1; i < arguments.length; i++) {
+                tail.setCdr(new ELispCons(arguments[i]));
+                tail = (ELispCons) tail.cdr();
+            }
+            return cons;
         }
     }
 }
