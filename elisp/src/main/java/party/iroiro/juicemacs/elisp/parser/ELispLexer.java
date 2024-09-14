@@ -428,12 +428,16 @@ class ELispLexer {
 
     private BigInteger readInteger(int base, int digits, boolean earlyReturn) throws IOException {
         BigInteger value = new BigInteger("0", base);
+        boolean negative = peekCodepoint() == '-';
+        if (negative) {
+            readCodepoint();
+        }
         // When `digit == -1`, `i != digits` allows reading an infinitely large number.
         for (int i = 0; i != digits; i++) {
             int c = peekCodepoint();
             if (earlyReturn) {
                 if (c == -1) {
-                    return value;
+                    return negative ? value.negate() : value;
                 }
             } else {
                 noEOF(c);
@@ -450,19 +454,19 @@ class ELispLexer {
             }
             if (digit == -1 || digit >= base) {
                 if (earlyReturn) {
-                    return value;
+                    return negative ? value.negate() : value;
                 }
                 throw new IOException("Expecting fixed number of digits");
             }
             readCodepoint();
             value = value.multiply(BigInteger.valueOf(base)).add(BigInteger.valueOf(digit));
         }
-        return value;
+        return negative ? value.negate() : value;
     }
 
     private int readEscapedCodepoint(int base, int digits, boolean earlyReturn) throws IOException {
         BigInteger value = readInteger(base, digits, earlyReturn);
-        if (value.compareTo(BigInteger.valueOf(Character.MAX_CODE_POINT)) > 0) {
+        if (value.signum() < 0 || value.compareTo(BigInteger.valueOf(Character.MAX_CODE_POINT)) > 0) {
             throw new IOException("Not a valid Unicode code point");
         }
         return value.intValue();
