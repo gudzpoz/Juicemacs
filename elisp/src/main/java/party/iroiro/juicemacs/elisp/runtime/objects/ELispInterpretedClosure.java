@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -9,9 +10,11 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AND_OPTIONAL;
@@ -47,6 +50,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         return function;
     }
 
+    @Override
+    public CallTarget getCallTarget() {
+        return getFunction().callTarget();
+    }
+
     private class ELispClosureCallNode extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Children
@@ -55,16 +63,20 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @CompilerDirectives.CompilationFinal
         private ELispSymbol[] argSymbols;
 
+        private final ELispBindingScope.ClosableScope.@Nullable Lexical lexical;
+
         public ELispClosureCallNode() {
-            List<ReadFunctionArgNode> argNodes = new ArrayList<>();
-            List<ELispSymbol> symbols = new ArrayList<>();
-            int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
-            int argI = 0;
+            lexical = initializeLexical();
+
             if (ELispSymbol.isNil(getArgs())) {
                 this.args = new ReadFunctionArgNode[0];
                 this.argSymbols = new ELispSymbol[0];
                 return;
             }
+            List<ReadFunctionArgNode> argNodes = new ArrayList<>();
+            List<ELispSymbol> symbols = new ArrayList<>();
+            int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
+            int argI = 0;
             for (Object arg : (ELispCons) getArgs()) {
                 ELispSymbol symbol = (ELispSymbol) arg;
                 if (symbol == AND_OPTIONAL) {
@@ -92,32 +104,63 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             }
             this.args = argNodes.toArray(new ReadFunctionArgNode[0]);
             this.argSymbols = symbols.toArray(new ELispSymbol[0]);
+
+        }
+
+        private ELispBindingScope.ClosableScope.@Nullable Lexical initializeLexical() {
+            Object env = getEnv();
+            if (ELispSymbol.isNil(env)) {
+                return null;
+            }
+            if (env instanceof ELispBindingScope.ClosableScope.Lexical l) {
+                return l;
+            }
+            if (ELispSymbol.isT(env)) {
+                return ELispBindingScope.EMPTY_LEXICAL;
+            }
+            ELispCons cons = (ELispCons) env;
+            HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> map = new HashMap<>();
+            ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
+            while (i.hasNext()) {
+                ELispSymbol symbol = (ELispSymbol) i.next();
+                map.put(symbol, new ELispSymbol.Value.Forwarded(i.next()));
+            }
+            return new ELispBindingScope.ClosableScope.Lexical(map, null);
+        }
+
+        @ExplodeLoop
+        public ELispBindingScope.ClosableScope pushScope(VirtualFrame frame) {
+            Object[] newValues;
+            newValues = new Object[argSymbols.length];
+            for (int i = 0; i < args.length; i++) {
+                newValues[i] = args[i].executeGeneric(frame);
+            }
+            if (lexical == null) {
+                return ELispBindingScope.pushDynamic(argSymbols, newValues);
+            } else {
+                ELispBindingScope.ClosableScope outer = ELispBindingScope.switchLexical(lexical);
+                HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> map = new HashMap<>();
+                for (int i = 0; i < argSymbols.length; i++) {
+                    // TODO: Handle "special == true" symbols
+                    map.put(argSymbols[i], new ELispSymbol.Value.Forwarded(newValues[i]));
+                }
+                return ELispBindingScope.pushComposite(
+                        ELispBindingScope.pushLexical(map),
+                        outer
+                );
+            }
         }
 
         @Override
         @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
-            Object[] prevValues = null;
-            if (ELispSymbol.isNil(getEnv())) {
-                // Dynamic binding
-                prevValues = new Object[argSymbols.length];
-                for (int i = 0; i < args.length; i++) {
-                    Object v = args[i].executeGeneric(frame);
-                    prevValues[i] = argSymbols[i].getValue();
-                    // TODO: This should be a thread-local value
-                    argSymbols[i].setValue(v);
-                }
-            } // TODO: Handle lexical binding
             Object body = getBody();
             Object result = false;
-            if (!ELispSymbol.isNil(body)) {
-                for (Object form : ((ELispCons) body)) {
-                    result = BuiltInEval.evalSub(form);
-                }
-            }
-            if (prevValues != null) {
-                for (int i = 0; i < args.length; i++) {
-                    argSymbols[i].setValue(prevValues[i]);
+            try (ELispBindingScope.ClosableScope _ = pushScope(frame)) {
+                if (!ELispSymbol.isNil(body)) {
+                    for (Object form : ((ELispCons) body)) {
+                        result = BuiltInEval.evalSub(form);
+                    }
                 }
             }
             return result;

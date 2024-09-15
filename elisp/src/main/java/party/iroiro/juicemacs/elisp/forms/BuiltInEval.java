@@ -4,9 +4,11 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
-import java.util.List;
+import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
@@ -223,7 +225,8 @@ public class BuiltInEval extends ELispBuiltIns {
                 return FMakeInterpretedClosure.makeInterpretedClosure(
                         args,
                         body,
-                        INTERNAL_INTERPRETER_ENVIRONMENT.getValue(),
+                        ELispSymbol.isNil(LEXICAL_BINDING.getValue()) ? false
+                                : Objects.requireNonNullElse(ELispBindingScope.getCurrentLexical(), true),
                         docString,
                         interactive
                 );
@@ -276,8 +279,14 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefvar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object defvar(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object defvar(ELispSymbol symbol, Object[] args) {
+            symbol.setSpecial(true);
+            if (args.length > 0) {
+                symbol.setValue(evalSub(args[0]));
+            }
+            // TODO: If SYMBOL is let-bound, then this form does not affect the local let\nbinding but the toplevel default binding instead
+            // TODO: If INITVALUE is missing, the form marks the\nvariable \\\"special\\\" locally (i.e., within the current\nlexical scope, or the current file, if the form is at top-level)
+            return symbol;
         }
     }
 
@@ -294,8 +303,11 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefconst extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object defconst(Object a, Object b, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object defconst(ELispSymbol symbol, Object init, Object[] args) {
+            symbol.setValue(evalSub(init));
+            symbol.setSpecial(true);
+            symbol.setConstant(true);
+            return symbol;
         }
     }
 
@@ -322,16 +334,56 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FLetx extends ELispBuiltInBaseNode {
         @Specialization
         public static Object letx(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+            try (ELispBindingScope.@Nullable ClosableScope _ = FLet.makeScope(a, true)) {
+                return FProgn.progn(args);
+            }
         }
     }
 
     @ELispBuiltIn(name = "let", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true, doc = "Bind variables according to VARLIST then eval BODY.\nThe value of the last form in BODY is returned.\nEach element of VARLIST is a symbol (which is bound to nil)\nor a list (SYMBOL VALUEFORM) (which binds SYMBOL to the value of VALUEFORM).\nAll the VALUEFORMs are evalled before any symbols are bound.\nusage: (let VARLIST BODY...)")
     @GenerateNodeFactory
     public abstract static class FLet extends ELispBuiltInBaseNode {
+        public static ELispBindingScope.@Nullable ClosableScope makeScope(Object a, boolean progressive) {
+            if (ELispSymbol.isNil(a)) {
+                return null;
+            }
+            HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> lexicalBindings = new HashMap<>();
+            ELispBindingScope.ClosableScope handle = null;
+            if (progressive) {
+                handle = ELispBindingScope.pushLexical(lexicalBindings);
+            }
+            try {
+                for (Object assignment : (ELispCons) a) {
+                    // TODO: Handle "special == true" symbols
+                    if (assignment instanceof ELispSymbol symbol) {
+                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(NIL));
+                    } else {
+                        ELispCons cons = (ELispCons) assignment;
+                        ELispSymbol symbol = (ELispSymbol) cons.car();
+                        ELispCons cdr = (ELispCons) cons.cdr();
+                        if (!ELispSymbol.isNil(cdr.cdr())) {
+                            throw new IllegalArgumentException();
+                        }
+                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(evalSub(cdr.car())));
+                    }
+                }
+            } catch (Throwable e) {
+                if (progressive) {
+                    handle.close();
+                }
+                throw e;
+            }
+            if (!progressive) {
+                handle = ELispBindingScope.pushLexical(lexicalBindings);
+            }
+            return handle;
+        }
+
         @Specialization
         public static Object let(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+            try (ELispBindingScope.@Nullable ClosableScope _ = makeScope(a, false)) {
+                return FProgn.progn(args);
+            }
         }
     }
 
@@ -456,8 +508,14 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FApply extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object apply(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object apply(Object f, Object[] args) {
+            List<Object> objects = new ArrayList<>(Arrays.asList(args).subList(0, args.length - 1));
+            Object last = args[args.length - 1];
+            if (!ELispSymbol.isNil(last)) {
+                objects.addAll((ELispCons) last);
+            }
+            args = objects.toArray();
+            return FFuncall.funcall(f, args);
         }
     }
 
@@ -519,7 +577,16 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFuncall extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object funcall(Object a, Object[] args) {
+        public static Object funcall(Object f, Object[] args) {
+            if (f instanceof ELispSymbol symbol) {
+                f = symbol.getFunction();
+            }
+            if (f instanceof ELispSubroutine subroutine) {
+                return subroutine.body().call(args);
+            }
+            if (f instanceof ELispInterpretedClosure closure) {
+                return closure.getCallTarget().call(args);
+            }
             throw new UnsupportedOperationException();
         }
     }

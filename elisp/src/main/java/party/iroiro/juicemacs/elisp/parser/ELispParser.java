@@ -31,9 +31,20 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 public class ELispParser {
 
     private final ELispLexer lexer;
+    private boolean lexicalBinding;
 
     public ELispParser(Source source) {
         this.lexer = new ELispLexer(source);
+        try {
+            if (peek().data() instanceof SetLexicalBindingMode(boolean value)) {
+                lexicalBinding = value;
+                read();
+            } else {
+                lexicalBinding = false;
+            }
+        } catch (IOException e) {
+            lexicalBinding = false;
+        }
     }
 
     @Nullable
@@ -52,8 +63,6 @@ public class ELispParser {
         return token;
     }
 
-    private boolean lexicalBinding = false;
-
     public boolean getLexicalBinding() {
         return lexicalBinding;
     }
@@ -66,10 +75,7 @@ public class ELispParser {
         return switch (token.data()) {
             case EOF() -> throw new IOException("Unexpected EOF");
             case SkipToEnd() -> NIL; // TODO: Skip to EOF
-            case SetLexicalBindingMode(boolean value) -> {
-                lexicalBinding = value;
-                yield nextObject();
-            }
+            case SetLexicalBindingMode _ -> throw new IOException("Unexpected lexical binding mode");
             case Num(NumberVariant.FixNum(long value)) -> value;
             case Num(NumberVariant.BigNum(BigInteger value)) -> ELispBigNum.wrap(value);
             case Num(NumberVariant.Float(double value)) -> value;
@@ -206,15 +212,20 @@ public class ELispParser {
         return vector;
     }
 
+    public boolean hasNext() throws IOException {
+        return !(peek().data() instanceof EOF);
+    }
+
     public Object nextLisp() throws IOException {
-        lexicalBinding = false;
         cyclicReferences.clear();
         readObjectsCompleted.clear();
         return nextObject();
     }
 
     public static ELispExpressionNode parse(Source source) throws IOException {
-        return ELispContext.valueToExpression(read(source));
+        ELispParser parser = new ELispParser(source);
+        // TODO: Handle multiple expressions
+        return ELispContext.valueToExpression(parser.nextLisp(), parser.getLexicalBinding());
     }
 
     public static Object read(Source source) throws IOException {

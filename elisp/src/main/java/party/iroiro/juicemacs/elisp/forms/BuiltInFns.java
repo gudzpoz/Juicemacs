@@ -478,10 +478,10 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FGet extends ELispBuiltInBaseNode {
         @Specialization
         public static Object get(Object symbol, Object prop) {
-            if (symbol instanceof ELispSymbol sym && sym.getProperties() instanceof ELispCons) {
-                FPlistGet.plistGet((ELispCons) sym.getProperties(), prop, NIL);
+            if (symbol instanceof ELispSymbol sym) {
+                return sym.getProperty(prop);
             }
-            return NIL;
+            return false;
         }
     }
 
@@ -498,8 +498,9 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPut extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object put(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object put(ELispSymbol symbol, Object k, Object v) {
+            symbol.putProperty(k, v);
+            return v;
         }
     }
 

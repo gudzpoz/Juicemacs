@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
 import java.util.*;
@@ -18,10 +19,16 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     public ELispCons(Object car) {
         this.car = Objects.requireNonNull(car);
+        this.cdr = NIL;
+    }
+
+    public ELispCons(Object car, Object cdr) {
+        this.car = Objects.requireNonNull(car);
+        this.cdr = Objects.requireNonNull(cdr);
     }
 
     private Object car;
-    private Object cdr = NIL;
+    private Object cdr;
 
     public Object car() {
         return car;
@@ -72,6 +79,14 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 && BuiltInFns.FEqual.equal(cdr(), cons.cdr());
     }
 
+    public ELispCons tail() {
+        BrentTortoiseHareIterator i = listIterator(0);
+        while (i.hasNext() && i.currentCons().cdr() instanceof ELispCons) {
+            i.next();
+        }
+        return i.currentCons();
+    }
+
     public final class BrentTortoiseHareIterator implements ListIterator<Object> {
         private Object tortoise = ELispCons.this;
         private Object tail = ELispCons.this;
@@ -84,7 +99,15 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         @Override
         public boolean hasNext() {
+            return tail instanceof ELispCons;
+        }
+
+        public boolean hasNextCdr() {
             return !ELispSymbol.isNil(tail);
+        }
+
+        public Object current() {
+            return tail;
         }
 
         public ELispCons currentCons() {
@@ -164,10 +187,48 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
     }
 
-    public static Object of(Object a, Object b) {
+    public static ELispCons listOf(Object a, Object b) {
         ELispCons cons = new ELispCons(a);
         cons.setCdr(new ELispCons(b));
         return cons;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("(").append(car());
+        BrentTortoiseHareIterator i = listIterator(1);
+        while (i.hasNextCdr()) {
+            if (i.hasNext()) {
+                sb.append(" ").append(i.next());
+            } else {
+                sb.append(" . ").append(i.current());
+                break;
+            }
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    public static class ListBuilder {
+        @Nullable
+        private ELispCons cons = null;
+        @Nullable
+        private ELispCons tail = null;
+
+        public ListBuilder add(Object obj) {
+            if (tail == null) {
+                cons = new ELispCons(obj);
+                tail = cons;
+            } else {
+                ELispCons next = new ELispCons(obj);
+                tail.setCdr(next);
+                tail = next;
+            }
+            return this;
+        }
+
+        public Object build() {
+            return cons == null ? false : cons;
+        }
+    }
 }

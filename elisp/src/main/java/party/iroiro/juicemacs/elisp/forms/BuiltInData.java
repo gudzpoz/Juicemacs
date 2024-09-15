@@ -586,8 +586,14 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefalias extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object defalias(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object defalias(ELispSymbol symbol, ELispValue def, Object c) {
+            // TODO: Handle defalias-fset-function
+            if (def instanceof ELispSymbol target) {
+                symbol.aliasSymbol(target);
+            } else {
+                symbol.setFunction(def);
+            }
+            return symbol;
         }
     }
 
@@ -829,8 +835,11 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIndirectFunction extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object indirectFunction(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static Object indirectFunction(Object a, Object _noError) {
+            if (a instanceof ELispSymbol symbol) {
+                return symbol.getFunction();
+            }
+            return a;
         }
     }
 

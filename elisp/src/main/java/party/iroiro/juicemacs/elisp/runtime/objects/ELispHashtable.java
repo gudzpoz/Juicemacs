@@ -5,6 +5,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
@@ -14,7 +15,7 @@ public final class ELispHashtable implements ELispValue {
     private final HashMap<ELispHashtable.ELispHashtableKey, Object> inner;
 
     public ELispHashtable() {
-        this(Objects::equals);
+        this(BuiltInData.FEq::eq);
     }
 
     public ELispHashtable(BiPredicate<Object, Object> eq) {
@@ -31,7 +32,8 @@ public final class ELispHashtable implements ELispValue {
     }
 
     public Object get(Object key) {
-        return inner.get(new ELispHashtableKey(key));
+        Object o = inner.get(new ELispHashtableKey(key));
+        return o == null ? false : o;
     }
 
     public void remove(Object key) {
@@ -40,6 +42,10 @@ public final class ELispHashtable implements ELispValue {
 
     public int size() {
         return inner.size();
+    }
+
+    public void forEach(BiConsumer<Object, Object> action) {
+        inner.forEach((k, v) -> action.accept(k.key, v));
     }
 
     @Override

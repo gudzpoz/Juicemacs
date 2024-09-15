@@ -1,50 +1,60 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 
 import java.util.Objects;
-import java.util.function.Supplier;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
 
 /**
  * Port of {@code struct Lisp_Symbol} to Java
  */
 public final class ELispSymbol implements ELispValue {
 
-    private final static ELispSymbol UNBOUND = new ELispSymbol("unbound");
+    private final static ELispSymbol _UNBOUND = new ELispSymbol("unbound");
 
     @Override
     public boolean lispEquals(Object other) {
         return this.equals(other);
     }
 
+    public void setSpecial(boolean b) {
+        this.special = b;
+    }
+
+    public void putProperty(Object k, Object v) {
+        properties.put(k, v);
+    }
+
+    public Object getProperty(Object k) {
+        return properties.get(k);
+    }
+
+    public void setConstant(boolean b) {
+        trappedWrite = b ? TrappedWrite.NO_WRITE : TrappedWrite.NORMAL_WRITE;
+    }
+
+    public interface InternalValue {
+        Object getValue();
+        void setValue(Object value);
+    }
+
     /**
      * Interface with similar semantics to {@code enum symbol_redirect}
      * and the corresponding enum in Emacs
      */
-    public sealed interface SymbolValue {
-        Object getValue();
-
-        void setValue(Object value);
-
-        default ELispValue getFunction() {
-            return NIL;
-        }
-
-        default void setFunction(ELispValue function) {
-            throw new UnsupportedOperationException();
-        }
+    public sealed interface Value extends InternalValue {
 
         // TODO: value, alias, blv (buffer-local), fwd (what?)
 
-        final class PlainValue implements SymbolValue {
+        final class PlainValue implements Value {
             private Object value;
-            private ELispValue function;
 
             public PlainValue(Object value) {
                 this.value = value;
-                this.function = NIL;
             }
 
             @Override
@@ -56,19 +66,9 @@ public final class ELispSymbol implements ELispValue {
             public void setValue(Object value) {
                 this.value = value;
             }
-
-            @Override
-            public ELispValue getFunction() {
-                return function;
-            }
-
-            @Override
-            public void setFunction(ELispValue function) {
-                this.function = function;
-            }
         }
 
-        record VarAlias(ELispSymbol target) implements SymbolValue {
+        record VarAlias(ELispSymbol target) implements Value {
             @Override
             public Object getValue() {
                 return getAliased().getValue();
@@ -88,7 +88,7 @@ public final class ELispSymbol implements ELispValue {
             }
         }
 
-        final class BufferLocal implements SymbolValue {
+        final class BufferLocal implements Value {
             @Nullable
             private ELispBuffer cachedBuffer = null;
             @Nullable
@@ -124,8 +124,16 @@ public final class ELispSymbol implements ELispValue {
             }
         }
 
-        final class Forwarded implements SymbolValue {
-            public Object value = NIL;
+        final class Forwarded implements Value {
+            private Object value;
+
+            public Forwarded() {
+                this.value = NIL;
+            }
+
+            public Forwarded(Object o) {
+                this.value = o;
+            }
 
             @Override
             public Object getValue() {
@@ -135,6 +143,42 @@ public final class ELispSymbol implements ELispValue {
             @Override
             public void setValue(Object value) {
                 this.value = value;
+            }
+        }
+    }
+
+    private static class ThreadLocalValue implements InternalValue {
+        private final ThreadLocal<Value.Forwarded> threadLocal = new ThreadLocal<>();
+
+        @Override
+        public Object getValue() {
+            @Nullable Value forwarded = threadLocal.get();
+            //noinspection ConstantValue
+            return forwarded == null ? _UNBOUND : forwarded.getValue();
+        }
+
+        public boolean setIfBound(Object value) {
+            @Nullable Value forwarded = threadLocal.get();
+            //noinspection ConstantValue
+            if (forwarded != null) {
+                forwarded.setValue(value);
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public void setValue(Object value) {
+            if (value == _UNBOUND) {
+                threadLocal.remove();
+            } else {
+                Value.@Nullable Forwarded forwarded = threadLocal.get();
+                //noinspection ConstantValue
+                if (forwarded == null) {
+                    forwarded = new Value.Forwarded();
+                    threadLocal.set(forwarded);
+                }
+                forwarded.setValue(value);
             }
         }
     }
@@ -154,7 +198,12 @@ public final class ELispSymbol implements ELispValue {
     /**
      * Indicates where the value can be found.
      */
-    private SymbolValue value;
+    private Value value;
+    /**
+     * Indicates whether the value is thread-locally overridden.
+     */
+    @Nullable
+    private ThreadLocalValue threadLocalValue;
     /**
      * Indicates whether operations are needed before any writes.
      */
@@ -175,7 +224,9 @@ public final class ELispSymbol implements ELispValue {
     /**
      * The symbol's property list.
      */
-    private Object properties;
+    private final ELispHashtable properties;
+
+    private ELispValue function;
 
     /**
      * Next symbol in obarray bucket, if the symbol is interned.
@@ -184,23 +235,28 @@ public final class ELispSymbol implements ELispValue {
     ELispSymbol next = null;
 
     public ELispSymbol(String name) {
-        this.value = new SymbolValue.PlainValue(ELispSymbol.UNBOUND);
+        this.value = new Value.PlainValue(_UNBOUND);
+        this.threadLocalValue = null;
         this.trappedWrite = TrappedWrite.NORMAL_WRITE;
         this.interned = Interned.UNINTERNED;
         this.name = name;
-        this.properties = NIL;
+        this.properties = new ELispHashtable();
+        this.function = NIL;
+        this.special = name.startsWith(":");
     }
 
     public boolean isBound() {
-        return this.value.getValue() != ELispSymbol.UNBOUND;
+        return this.value.getValue() != _UNBOUND;
     }
 
     public void makeUnbound() {
-        setValue(ELispSymbol.UNBOUND);
+        setValue(_UNBOUND);
     }
 
     public Object getProperties() {
-        return properties;
+        ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+        properties.forEach((k, v) -> builder.add(k).add(v));
+        return builder.build();
     }
 
     public boolean isConstant() {
@@ -208,41 +264,77 @@ public final class ELispSymbol implements ELispValue {
     }
 
     public Object getValue() {
+        @Nullable Object lexical = ELispBindingScope.getLexical(this);
+        if (lexical != null) {
+            return lexical;
+        }
+        if (threadLocalValue != null) {
+            Object local = threadLocalValue.getValue();
+            if (local != _UNBOUND) {
+                return local;
+            }
+        }
         return value.getValue();
     }
 
+    public Object swapThreadLocalValue(Object value) {
+        if (threadLocalValue == null) {
+            threadLocalValue = new ThreadLocalValue();
+        }
+        Object prev = threadLocalValue.getValue();
+        threadLocalValue.setValue(value);
+        return prev;
+    }
+
     public void setValue(Object value) {
+        if (ELispBindingScope.setLexical(this, value)) {
+            return;
+        }
         if (trappedWrite == TrappedWrite.NO_WRITE) {
             throw new UnsupportedOperationException();
+        }
+        if (threadLocalValue != null && threadLocalValue.setIfBound(value)) {
+            return;
         }
         this.value.setValue(value);
     }
 
-    public void forwardTo(Supplier<?> forward) {
+    public void forwardTo(Value.Forwarded forwarded) {
         this.special = true;
-        this.value = new SymbolValue.Forwarded();
+        this.value = forwarded;
     }
 
     public void aliasSymbol(ELispSymbol symbol) {
         switch (this.value) {
-            case SymbolValue.PlainValue _, SymbolValue.VarAlias _ ->
-                    this.value = new SymbolValue.VarAlias(symbol);
+            case Value.PlainValue _, Value.VarAlias _ -> this.value = new Value.VarAlias(symbol);
             default -> throw new UnsupportedOperationException();
         }
     }
 
     public ELispValue getFunction() {
-        return this.value.getFunction();
+        if (this.value instanceof Value.VarAlias varAlias) {
+            return varAlias.getAliased().getFunction();
+        }
+        return this.function;
     }
 
     public void setFunction(ELispValue function) {
         if (trappedWrite == TrappedWrite.NO_WRITE) {
             throw new UnsupportedOperationException();
         }
-        this.value.setFunction(function);
+        if (this.value instanceof Value.VarAlias varAlias) {
+            varAlias.getAliased().setFunction(function);
+        } else {
+            this.function = function;
+        }
     }
 
     public String name() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
         return name;
     }
 

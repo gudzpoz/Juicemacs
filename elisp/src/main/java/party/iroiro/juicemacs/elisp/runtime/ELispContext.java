@@ -4,6 +4,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 
@@ -25,6 +26,8 @@ public final class ELispContext {
         return ELISP_CONTEXT_INSTANCE;
     }
 
+    public static ELispBuffer CURRENT_BUFFER = new ELispBuffer();
+
     // TODO: Replace this with obarray
     private final static HashMap<String, ELispSymbol> internMap = new HashMap<>();
     public static ELispSymbol intern(String symbol) {
@@ -35,11 +38,13 @@ public final class ELispContext {
         return symbol;
     }
 
-    public static ELispExpressionNode valueToExpression(Object value) {
+    public static ELispExpressionNode valueToExpression(Object value, boolean lexicalBinding) {
         return new ELispExpressionNode() {
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                return BuiltInEval.evalSub(value);
+                try (var _ = ELispBindingScope.withLexicalBinding(lexicalBinding)) {
+                    return BuiltInEval.evalSub(value);
+                }
             }
         };
     }
@@ -51,6 +56,7 @@ public final class ELispContext {
 
     public void initGlobal(ELispLanguage language) {
         initSymbols(allocSymbols());
+        initSymbols(bufferSymbols());
         initSymbols(charsetSymbols());
         initSymbols(chartabSymbols());
         initSymbols(compSymbols());
@@ -65,6 +71,7 @@ public final class ELispContext {
         initSymbols(searchSymbols());
 
         initBuiltIns(language, new BuiltInAlloc());
+        initBuiltIns(language, new BuiltInBuffer());
         initBuiltIns(language, new BuiltInCharSet());
         initBuiltIns(language, new BuiltInCharTab());
         initBuiltIns(language, new BuiltInComp());
@@ -1467,4 +1474,112 @@ public final class ELispContext {
         };
     }
     /* @end region="search.c" */
+    /* @generated region="buffer.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol AFTER_CHANGE_FUNCTIONS = new ELispSymbol("after-change-functions");
+    public final static ELispSymbol AFTER_STRING = new ELispSymbol("after-string");
+    public final static ELispSymbol AUTOSAVED = new ELispSymbol("autosaved");
+    public final static ELispSymbol BEFORE_CHANGE_FUNCTIONS = new ELispSymbol("before-change-functions");
+    public final static ELispSymbol BEFORE_STRING = new ELispSymbol("before-string");
+    public final static ELispSymbol BUFFER_FILE_NUMBER = new ELispSymbol("buffer-file-number");
+    public final static ELispSymbol BUFFER_LIST_UPDATE_HOOK = new ELispSymbol("buffer-list-update-hook");
+    public final static ELispSymbol BUFFER_SAVE_WITHOUT_QUERY = new ELispSymbol("buffer-save-without-query");
+    public final static ELispSymbol BUFFER_STALE_FUNCTION = new ELispSymbol("buffer-stale-function");
+    public final static ELispSymbol BUFFER_UNDO_LIST = new ELispSymbol("buffer-undo-list");
+    public final static ELispSymbol CASE_FOLD_SEARCH = new ELispSymbol("case-fold-search");
+    public final static ELispSymbol CHANGE_MAJOR_MODE_HOOK = new ELispSymbol("change-major-mode-hook");
+    public final static ELispSymbol CHOICE = new ELispSymbol("choice");
+    public final static ELispSymbol CLONE_INDIRECT_BUFFER_HOOK = new ELispSymbol("clone-indirect-buffer-hook");
+    public final static ELispSymbol DELETE_AUTO_SAVE_FILES = new ELispSymbol("delete-auto-save-files");
+    public final static ELispSymbol DELETE_AUTO_SAVE_FILE_IF_NECESSARY = new ELispSymbol("delete-auto-save-file-if-necessary");
+    public final static ELispSymbol EVAPORATE = new ELispSymbol("evaporate");
+    public final static ELispSymbol FIRST_CHANGE_HOOK = new ELispSymbol("first-change-hook");
+    public final static ELispSymbol FRACTION = new ELispSymbol("fraction");
+    public final static ELispSymbol FUNDAMENTAL_MODE = new ELispSymbol("fundamental-mode");
+    public final static ELispSymbol GET_FILE_BUFFER = new ELispSymbol("get-file-buffer");
+    public final static ELispSymbol GET_SCRATCH_BUFFER_CREATE = new ELispSymbol("get-scratch-buffer-create");
+    public final static ELispSymbol HORIZONTAL_SCROLL_BAR = new ELispSymbol("horizontal-scroll-bar");
+    public final static ELispSymbol INHIBIT_READ_ONLY = new ELispSymbol("inhibit-read-only");
+    public final static ELispSymbol INITIAL_MAJOR_MODE = new ELispSymbol("initial-major-mode");
+    public final static ELispSymbol INSERT_BEHIND_HOOKS = new ELispSymbol("insert-behind-hooks");
+    public final static ELispSymbol INSERT_IN_FRONT_HOOKS = new ELispSymbol("insert-in-front-hooks");
+    public final static ELispSymbol KILL_BUFFER_DELETE_AUTO_SAVE_FILES = new ELispSymbol("kill-buffer-delete-auto-save-files");
+    public final static ELispSymbol KILL_BUFFER_HOOK = new ELispSymbol("kill-buffer-hook");
+    public final static ELispSymbol KILL_BUFFER_QUERY_FUNCTIONS = new ELispSymbol("kill-buffer-query-functions");
+    public final static ELispSymbol KILL_BUFFER__POSSIBLY_SAVE = new ELispSymbol("kill-buffer--possibly-save");
+    public final static ELispSymbol LARGE_HSCROLL_THRESHOLD = new ELispSymbol("large-hscroll-threshold");
+    public final static ELispSymbol LEFT = new ELispSymbol("left");
+    public final static ELispSymbol LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT = new ELispSymbol("long-line-optimizations-bol-search-limit");
+    public final static ELispSymbol LONG_LINE_OPTIMIZATIONS_REGION_SIZE = new ELispSymbol("long-line-optimizations-region-size");
+    public final static ELispSymbol LONG_LINE_THRESHOLD = new ELispSymbol("long-line-threshold");
+    public final static ELispSymbol MODE_CLASS = new ELispSymbol("mode-class");
+    public final static ELispSymbol MODIFICATION_HOOKS = new ELispSymbol("modification-hooks");
+    public final static ELispSymbol OVERLAYP = new ELispSymbol("overlayp");
+    public final static ELispSymbol OVERWRITE_MODE = new ELispSymbol("overwrite-mode");
+    public final static ELispSymbol PERMANENT_LOCAL = new ELispSymbol("permanent-local");
+    public final static ELispSymbol PERMANENT_LOCAL_HOOK = new ELispSymbol("permanent-local-hook");
+    public final static ELispSymbol PRIORITY = new ELispSymbol("priority");
+    public final static ELispSymbol PROTECTED_FIELD = new ELispSymbol("protected-field");
+    public final static ELispSymbol RANGE = new ELispSymbol("range");
+    public final static ELispSymbol RENAME_AUTO_SAVE_FILE = new ELispSymbol("rename-auto-save-file");
+    public final static ELispSymbol RIGHT = new ELispSymbol("right");
+    public final static ELispSymbol SET_BUFFER_MULTIBYTE = new ELispSymbol("set-buffer-multibyte");
+    public final static ELispSymbol TRANSIENT_MARK_MODE = new ELispSymbol("transient-mark-mode");
+    public final static ELispSymbol UNIQUIFY__RENAME_BUFFER_ADVICE = new ELispSymbol("uniquify--rename-buffer-advice");
+    public final static ELispSymbol VERTICAL_SCROLL_BAR = new ELispSymbol("vertical-scroll-bar");
+    private ELispSymbol[] bufferSymbols() {
+        return new ELispSymbol[]{
+                AFTER_CHANGE_FUNCTIONS,
+                AFTER_STRING,
+                AUTOSAVED,
+                BEFORE_CHANGE_FUNCTIONS,
+                BEFORE_STRING,
+                BUFFER_FILE_NUMBER,
+                BUFFER_LIST_UPDATE_HOOK,
+                BUFFER_SAVE_WITHOUT_QUERY,
+                BUFFER_STALE_FUNCTION,
+                BUFFER_UNDO_LIST,
+                CASE_FOLD_SEARCH,
+                CHANGE_MAJOR_MODE_HOOK,
+                CHOICE,
+                CLONE_INDIRECT_BUFFER_HOOK,
+                DELETE_AUTO_SAVE_FILES,
+                DELETE_AUTO_SAVE_FILE_IF_NECESSARY,
+                EVAPORATE,
+                FIRST_CHANGE_HOOK,
+                FRACTION,
+                FUNDAMENTAL_MODE,
+                GET_FILE_BUFFER,
+                GET_SCRATCH_BUFFER_CREATE,
+                HORIZONTAL_SCROLL_BAR,
+                INHIBIT_READ_ONLY,
+                INITIAL_MAJOR_MODE,
+                INSERT_BEHIND_HOOKS,
+                INSERT_IN_FRONT_HOOKS,
+                KILL_BUFFER_DELETE_AUTO_SAVE_FILES,
+                KILL_BUFFER_HOOK,
+                KILL_BUFFER_QUERY_FUNCTIONS,
+                KILL_BUFFER__POSSIBLY_SAVE,
+                LARGE_HSCROLL_THRESHOLD,
+                LEFT,
+                LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT,
+                LONG_LINE_OPTIMIZATIONS_REGION_SIZE,
+                LONG_LINE_THRESHOLD,
+                MODE_CLASS,
+                MODIFICATION_HOOKS,
+                OVERLAYP,
+                OVERWRITE_MODE,
+                PERMANENT_LOCAL,
+                PERMANENT_LOCAL_HOOK,
+                PRIORITY,
+                PROTECTED_FIELD,
+                RANGE,
+                RENAME_AUTO_SAVE_FILE,
+                RIGHT,
+                SET_BUFFER_MULTIBYTE,
+                TRANSIENT_MARK_MODE,
+                UNIQUIFY__RENAME_BUFFER_ADVICE,
+                VERTICAL_SCROLL_BAR,
+        };
+    }
+    /* @end region="buffer.c" */
 }
