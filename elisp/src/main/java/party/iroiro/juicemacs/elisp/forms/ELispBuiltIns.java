@@ -22,7 +22,7 @@ public abstract class ELispBuiltIns {
                 for (int i = 0; i < builtIn.minArgs(); i++) {
                     args.add(new ReadFunctionArgNode(i, true));
                 }
-                for (int i = 0; i < builtIn.maxArgs() - builtIn.minArgs(); i++) {
+                for (int i = builtIn.minArgs(); i < builtIn.maxArgs(); i++) {
                     args.add(new ReadFunctionArgNode(i, false));
                 }
                 if (builtIn.varArgs()) {
