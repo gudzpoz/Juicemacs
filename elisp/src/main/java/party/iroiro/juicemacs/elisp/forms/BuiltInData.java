@@ -26,7 +26,16 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static boolean eq(Object a, Object b) {
             // Simulate the Emacs behavior of packed integers
-            return a instanceof Long ? a.equals(b) : a == b;
+            if (a instanceof Long) {
+                return a.equals(b);
+            }
+            if (ELispSymbol.isNil(a)) {
+                return ELispSymbol.isNil(b);
+            }
+            if (ELispSymbol.isT(a)) {
+                return ELispSymbol.isT(b);
+            }
+            return a == b;
         }
     }
 
@@ -70,6 +79,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispString _ -> STRING;
                 case ELispVector _ -> VECTOR;
                 case ELispBoolVector _ -> BOOL_VECTOR;
+                case ELispCharTable _ -> CHAR_TABLE;
                 // TODO: Handle other pseudo-vectors
                 case ELispCons _ -> CONS;
                 default -> throw new IllegalArgumentException();
@@ -588,6 +598,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static Object defalias(ELispSymbol symbol, ELispValue def, Object c) {
             // TODO: Handle defalias-fset-function
+            System.out.println(symbol);
             if (def instanceof ELispSymbol target) {
                 symbol.aliasSymbol(target);
             } else {

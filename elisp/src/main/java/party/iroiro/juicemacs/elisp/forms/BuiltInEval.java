@@ -53,6 +53,12 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             return ((ELispInterpretedClosure) function).getFunction().callTarget().call(args);
         }
+        if (function instanceof ELispCons fCons && fCons.car() == MACRO) {
+            try (var _ = ELispBindingScope.withLexicalBinding(true)) {
+                Object result = FApply.apply(fCons.cdr(), new Object[]{cons.cdr()});
+                return evalSub(result);
+            }
+        }
         throw new UnsupportedOperationException(function.toString());
     }
 
@@ -347,6 +353,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (ELispSymbol.isNil(a)) {
                 return null;
             }
+            // TODO: What about dynamic binding?
             HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> lexicalBindings = new HashMap<>();
             ELispBindingScope.ClosableScope handle = null;
             if (progressive) {
@@ -356,7 +363,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 for (Object assignment : (ELispCons) a) {
                     // TODO: Handle "special == true" symbols
                     if (assignment instanceof ELispSymbol symbol) {
-                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(NIL));
+                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(false));
                     } else {
                         ELispCons cons = (ELispCons) assignment;
                         ELispSymbol symbol = (ELispSymbol) cons.car();
@@ -392,7 +399,10 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FWhile extends ELispBuiltInBaseNode {
         @Specialization
         public static Object while_(Object a, Object[] args) {
-            throw new UnsupportedOperationException();
+            while (!ELispSymbol.isNil(evalSub(a))) {
+                FProgn.progn(args);
+            }
+            return false;
         }
     }
 
@@ -499,8 +509,10 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEval extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object eval(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static Object eval(Object form, boolean lexical) {
+            try (var _ = ELispBindingScope.withLexicalBinding(lexical)) {
+                return evalSub(form);
+            }
         }
     }
 

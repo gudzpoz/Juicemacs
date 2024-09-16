@@ -125,6 +125,8 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 next = cons.car;
                 tail = cons.cdr;
                 i++;
+            } else if (ELispSymbol.isNil(tail)) {
+                throw new NoSuchElementException();
             } else {
                 throw new RuntimeException("Not a lisp list");
             }
@@ -229,6 +231,13 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         public Object build() {
             return cons == null ? false : cons;
+        }
+
+        public Object build(Object tailCdr) {
+            if (tail != null) {
+                this.tail.setCdr(tailCdr);
+            }
+            return build();
         }
     }
 }

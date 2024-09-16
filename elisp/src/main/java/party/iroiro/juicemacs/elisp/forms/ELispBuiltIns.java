@@ -18,14 +18,15 @@ public abstract class ELispBuiltIns {
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
         for (var factory : factories) {
             for (var builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
-                List<ReadFunctionArgNode> args = new ArrayList<>(builtIn.maxArgs() + (builtIn.varArgs() ? 1 : 0));
+                boolean varArgs = builtIn.varArgs();
+                List<ReadFunctionArgNode> args = new ArrayList<>(builtIn.maxArgs() + (varArgs ? 1 : 0));
                 for (int i = 0; i < builtIn.minArgs(); i++) {
-                    args.add(new ReadFunctionArgNode(i, true));
+                    args.add(new ReadFunctionArgNode(i, true, !varArgs && i == builtIn.maxArgs() - 1));
                 }
                 for (int i = builtIn.minArgs(); i < builtIn.maxArgs(); i++) {
-                    args.add(new ReadFunctionArgNode(i, false));
+                    args.add(new ReadFunctionArgNode(i, false, !varArgs && i == builtIn.maxArgs() - 1));
                 }
-                if (builtIn.varArgs()) {
+                if (varArgs) {
                     args.add(new ReadFunctionArgNode.ReadFunctionRestArgsNode(builtIn.maxArgs()));
                 }
                 ELispBuiltInBaseNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));

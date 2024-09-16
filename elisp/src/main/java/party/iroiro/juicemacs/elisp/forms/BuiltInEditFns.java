@@ -657,8 +657,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public static Object message(Object a, Object[] args) {
             // TODO
-            System.out.println(a);
+            System.out.print(a);
             for (Object arg : args) {
+                System.out.print('\t');
                 System.out.print(arg);
             }
             System.out.println();

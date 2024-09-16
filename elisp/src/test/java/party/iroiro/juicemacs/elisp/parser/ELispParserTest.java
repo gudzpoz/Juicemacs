@@ -88,8 +88,8 @@ public class ELispParserTest {
         assertCons("'quoted-symbol", new String[]{"quote", "quoted-symbol"});
         assertCons("#'quoted-function", new String[]{"function", "quoted-function"});
         assertCons("`backquoted-expr", new String[]{"`", "backquoted-expr"});
-        assertCons("(,unquoted-symbol)", new String[]{",", "unquoted-symbol"});
-        assertCons("(,@unquoted-symbol)", new String[]{",@", "unquoted-symbol"});
+        assertCons(",unquoted-symbol", new String[]{",", "unquoted-symbol"});
+        assertCons(",@unquoted-symbol", new String[]{",@", "unquoted-symbol"});
     }
 
     @Test

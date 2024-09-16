@@ -1,11 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import org.graalvm.polyglot.Context;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-public class BuiltInEvalTest {
+public class BuiltInEvalTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
             "((lambda () 42))", 42L,
             "((lambda () (+ 1 2 3 4 5)))", 15L,
@@ -14,6 +9,7 @@ public class BuiltInEvalTest {
             "((lambda (a &optional b c) (+ a (or b 0) (or c 0))) 1 2)", 3L,
             "((lambda (a &optional b c) (+ a (or b 0) (or c 0))) 1 2 3)", 6L,
             "((lambda (a &rest b) (+ a (car b))) 1 2 3 4 5)", 3L,
+            "(progn (defalias 'a (cons 'macro #'(lambda (x) (list '1+ x)))) (a 1))", 2L,
             "(or)", false,
             "(or 1)", 1L,
             "(or nil 1)", 1L,
@@ -26,22 +22,26 @@ public class BuiltInEvalTest {
             "(cond (1 1) (t 2))", 1L,
             "(cond (nil 1) ((= 1 0) 2))", false,
             "(progn 1 2 3)", 3L,
+            "(progn (setq a 1) (setq a 2))", 2L,
+            "(prog1 (setq a 1) (setq a 2))", 1L,
             "(setq)", false,
             "(setq aaa 1)", 1L,
+            "(eq 'aaa #'aaa)", true,
+            "(progn (setq aaa 42) (defvaralias 'aaaa 'aaa) aaaa)", 42L,
+            "(progn (defvar aaa (1+ 11)) aaa)", 12L,
+            "(progn (defconst aaaconst (1+ 11)) aaaconst)", 12L,
+            "(let ((a 1)) (let* ((a 2) (b (+ a 1))) b))", 3L,
+            "(let ((a 1)) (let  ((a 2) (b (+ a 1))) b))", 2L,
+            "(let (a) a)", false,
+            "(let () 1)", 1L,
+            "(let ((sum 0) (n 100)) (while (> n 0) (setq sum (+ sum n) n (- n 1))) sum)", 5050L,
+            "(eval '(+ 1 2 3))", 6L,
+            "(apply '+ '(1 2 3))", 6L,
+            "(funcall '+ 1 2 3)", 6L,
     };
 
-    @Test
-    public void testBuiltInEval() {
-        try (Context context = Context.newBuilder("elisp")
-                .environment("ELISP_PATH", "")
-                .build()
-        ) {
-            for (int i = 0; i < TESTS.length; i += 2) {
-                String expr = (String) TESTS[i];
-                Object expected = TESTS[i + 1];
-                assertEquals(expected, context.eval("elisp", expr).as(expected.getClass()), expr);
-            }
-        }
-
+    @Override
+    protected Object[] entries() {
+        return TESTS;
     }
 }

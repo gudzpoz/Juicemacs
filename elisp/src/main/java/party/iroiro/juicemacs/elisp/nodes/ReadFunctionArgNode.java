@@ -7,10 +7,12 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
 
     protected final int index;
     private final boolean required;
+    private final boolean last;
 
-    public ReadFunctionArgNode(int index, boolean required) {
+    public ReadFunctionArgNode(int index, boolean required, boolean last) {
         this.index = index;
         this.required = required;
+        this.last = last;
     }
 
     @Override
@@ -19,12 +21,15 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         if (required && arguments.length <= index) {
             throw new IllegalArgumentException();
         }
+        if (last && arguments.length > index + 1) {
+            throw new IllegalArgumentException();
+        }
         return index < arguments.length ? arguments[this.index] : false;
     }
 
     public static class ReadFunctionRestArgsNode extends ReadFunctionArgNode {
         public ReadFunctionRestArgsNode(int index) {
-            super(index, false);
+            super(index, false, false);
         }
 
         @Override

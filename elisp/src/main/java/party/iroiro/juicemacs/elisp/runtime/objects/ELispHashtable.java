@@ -36,6 +36,10 @@ public final class ELispHashtable implements ELispValue {
         return o == null ? false : o;
     }
 
+    public Object get(Object k, Object defaultValue) {
+        return inner.getOrDefault(new ELispHashtableKey(k), defaultValue);
+    }
+
     public void remove(Object key) {
         inner.remove(new ELispHashtableKey(key));
     }

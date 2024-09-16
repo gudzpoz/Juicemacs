@@ -4,7 +4,10 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 public class BuiltInFileIO extends ELispBuiltIns {
@@ -107,9 +110,17 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FExpandFileName extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString expandFileName(ELispString a, ELispString b) {
-            // TODO
-            return new ELispString(ELispString.from(""));
+        public static ELispString expandFileName(ELispString a, Object b) {
+            String path = a.toString();
+            if (path.startsWith("~")) {
+                path = System.getProperty("user.home") + path.substring(1);
+            } else if (!path.startsWith("/")) {
+                return new ELispString(ELispString.from(
+                        Path.of(ELispSymbol.isNil(b) ? System.getProperty("user.home") : b.toString(), path)
+                                .toAbsolutePath().toString()
+                ));
+            }
+            return new ELispString(ELispString.from(Path.of(path).toAbsolutePath().toString()));
         }
     }
 
@@ -261,8 +272,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileDirectoryP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object fileDirectoryP(Object a) {
-            throw new UnsupportedOperationException();
+        public static boolean fileDirectoryP(ELispString a) {
+            String path = a.toString();
+            File file = new File(path.isEmpty() ? "." : path);
+            return file.isDirectory();
         }
     }
 

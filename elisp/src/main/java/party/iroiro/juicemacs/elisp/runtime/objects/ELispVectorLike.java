@@ -16,7 +16,7 @@ public abstract class ELispVectorLike<T> extends AbstractList<T> implements List
                 return false;
             }
             for (int i = 0; i < size(); i++) {
-                if (BuiltInFns.FEqual.equal(get(i), list.get(i))) {
+                if (!BuiltInFns.FEqual.equal(get(i), list.get(i))) {
                     return false;
                 }
             }

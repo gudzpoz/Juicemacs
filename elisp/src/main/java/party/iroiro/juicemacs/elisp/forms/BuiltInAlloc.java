@@ -4,7 +4,10 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BuiltInAlloc extends ELispBuiltIns {
@@ -45,7 +48,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FCons extends ELispBuiltInBaseNode {
         @Specialization
         public static Object cons(Object a, Object b) {
-            return ELispCons.of(a, b);
+            return new ELispCons(a, b);
         }
     }
 
@@ -54,7 +57,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FList extends ELispBuiltInBaseNode {
         @Specialization
         public static Object list(Object[] args) {
-            throw new UnsupportedOperationException();
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            for (Object arg : args) {
+                builder.add(arg);
+            }
+            return builder.build();
         }
     }
 
@@ -153,7 +160,19 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FPurecopy extends ELispBuiltInBaseNode {
         @Specialization
         public static Object purecopy(Object a) {
-            throw new UnsupportedOperationException();
+            // bool-vec, hash-table, etc. are not copied
+            return switch (a) {
+                case ELispString s -> new ELispString(s.toString());
+                case ELispVector v -> {
+                    ArrayList<Object> inner = new ArrayList<>(v.size());
+                    for (Object o : v) {
+                        inner.add(purecopy(o));
+                    }
+                    yield new ELispVector(inner);
+                }
+                case ELispCons cons -> new ELispCons(purecopy(cons.car()), purecopy(cons.cdr()));
+                default -> a;
+            };
         }
     }
 
@@ -162,7 +181,9 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FGarbageCollect extends ELispBuiltInBaseNode {
         @Specialization
         public static Object garbageCollect() {
-            throw new UnsupportedOperationException();
+            Runtime.getRuntime().gc();
+            // TODO: Return info
+            return false;
         }
     }
 

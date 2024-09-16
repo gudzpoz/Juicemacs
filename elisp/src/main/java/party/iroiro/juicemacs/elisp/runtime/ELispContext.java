@@ -95,6 +95,7 @@ public final class ELispContext {
     private void initSymbols(ELispSymbol[] symbols) {
         for (ELispSymbol symbol : symbols) {
             internMap.put(symbol.name(), symbol);
+            symbol.setInterned(ELispSymbol.Interned.INTERNED_IN_INITIAL_OBARRAY);
         }
     }
 

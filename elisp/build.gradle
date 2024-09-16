@@ -13,6 +13,7 @@ ext {
 dependencies {
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
     implementation 'com.lodborg:interval-tree:1.0.0'
+    implementation "org.graalvm.regex:regex:${truffleVersion}"
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
 }
@@ -20,6 +21,7 @@ dependencies {
 // Template generation from Emacs sources
 var templateTasks = [
         ['Alloc', 'alloc.c'],
+        ['Buffer', 'buffer.c'],
         ['CharSet', 'charset.c'],
         ['CharTab', 'chartab.c'],
         ['Comp', 'comp.c'],
@@ -41,15 +43,16 @@ templateTasks.each {
     var base = "src/main/java/party/iroiro/juicemacs/elisp"
     var target = file("${base}/forms/${clazz}.java")
     var context = file("${base}/runtime/ELispContext.java")
+    var buffer = file("${base}/runtime/ELispBuffer.java")
     var globals = file("${base}/runtime/ELispGlobals.java")
     tasks.register("emacsGen${it[0]}") {
         description = "${input}"
         inputs.files input, templateScript
         outputs.files target, context
         doLast {
-            exec {
-                commandLine 'python', templateScript,
-                        '-j', target, '-c', context, '-g', globals, input
+           exec {
+                commandLine 'python', templateScript, input,
+                        '-j', target, '-c', context, '-g', globals, '-b', buffer
             }
         }
     }

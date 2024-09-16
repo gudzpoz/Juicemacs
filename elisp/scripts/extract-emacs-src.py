@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('filename')
 parser.add_argument('-j', '--java', required=True)
 parser.add_argument('-c', '--context', required=True)
+parser.add_argument('-b', '--buffer', required=True)
 parser.add_argument('-g', '--globals', required=True)
 args = parser.parse_args()
 
@@ -117,7 +118,9 @@ class Variable:
             if len(v) == 1:
                 return f'new ELispCons({cls.value(v[0])})'
             if len(v) == 2:
-                return f'ELispCons.of({cls.value(v[0])}, {cls.value(v[1])})'
+                return (
+                    f'ELispCons.listOf({cls.value(v[0])}, {cls.value(v[1])})'
+                )
             raise Exception(v)
         if type(v) is dict:
             if 'symbol' in v:
@@ -142,10 +145,13 @@ class Variable:
                 v = 'true'
             elif v == '0':
                 v = 'false'
-        return f'{t} {self.jname()} = {v}'
+        return (
+            f'ELispSymbol.Value.Forwarded {self.jname()} = '
+            f'new ELispSymbol.Value.Forwarded(({t}) {v})'
+        )
 
     def init(self):
-        return f'{self.symbol_jname()}.forwardTo(() -> {self.jname()})'
+        return f'{self.symbol_jname()}.forwardTo({self.jname()})'
 
 
 def arg_count(n: str):
@@ -181,6 +187,12 @@ DEFVAR_REGEX = re.compile(
     r'\s*"([^"]+?)"\s*,'
     r'\s*(\w+?)\s*,',
     re.MULTILINE | re.DOTALL,
+)
+DEFVAR_BUF_REGEX = re.compile(
+    r'DEFVAR_PER_BUFFER\s*\('
+    r'\s*"([^"]+?)"\s*,'
+    r'\s*&BVAR\s*\(\s*current_buffer\s*,\s*(\w+)\s*\)\s*,'
+    r'\s*(\w+)\s*,'
 )
 DEFVAR_DETECT = re.compile(r'DEFVAR_\w+\s*\("(\S+?)"')
 
@@ -281,12 +293,15 @@ with open(args.filename, 'r') as f:
         'emacs_bugreport': '',
     })
     detected = DEFVAR_DETECT.findall(contents)
-    count = len(detected)
     matches = DEFVAR_REGEX.findall(contents)
+    buffer_local = DEFVAR_BUF_REGEX.findall(contents)
+    matched_names = set(m[1] for m in matches).union(
+        set(m[0] for m in buffer_local)
+    )
     assert (
-        set(detected) == set(m[1] for m in matches)
-    ), set(detected) - set(m[1] for m in matches)
-    assert len(matches) == count
+        set(detected) == matched_names
+    ), set(detected) - matched_names
+    assert len(matched_names) == len(detected)
     init_section = contents[contents.find('\nsyms_of_') + 9:]
     if Path(args.filename).stem != 'search':
         assert '\nsyms_of_' not in init_section

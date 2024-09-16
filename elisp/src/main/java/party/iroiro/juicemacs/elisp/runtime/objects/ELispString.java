@@ -2,12 +2,10 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.lodborg.intervaltree.IntegerInterval;
 import com.lodborg.intervaltree.IntervalTree;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.MutableTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -28,12 +26,40 @@ public final class ELispString implements ELispValue {
         return other instanceof ELispString s && value.equals(s.value);
     }
 
-    public int size() {
-        return value.byteLength(ENCODING) / 2;
+    public long codepointCount() {
+        return value.codePointLengthUncached(ENCODING);
     }
 
     public AbstractTruffleString value() {
         return value;
+    }
+
+    public ELispString reverse() {
+        TruffleStringIterator i = value.createBackwardCodePointIteratorUncached(ENCODING);
+        Builder builder = new Builder();
+        while (i.hasPrevious()) {
+            builder.appendCodePoint(i.previousUncached());
+        }
+        return new ELispString(builder.toTruffleString());
+    }
+
+    public Iterator<Object> iterator() {
+        TruffleStringIterator i = value.createCodePointIteratorUncached(ENCODING);
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return i.hasNext();
+            }
+
+            @Override
+            public Object next() {
+                return (long) i.nextUncached();
+            }
+        };
+    }
+
+    public TruffleString toTruffleString() {
+        return value.asTruffleStringUncached(ENCODING);
     }
 
     public static final class Properties extends IntegerInterval {
@@ -72,6 +98,10 @@ public final class ELispString implements ELispValue {
     public ELispString(MutableTruffleString init) {
         this.value = init;
         this.intervals = new IntervalTree<>();
+    }
+
+    public ELispString(TruffleString init) {
+        this(init.asMutableTruffleStringUncached(ENCODING));
     }
 
     public ELispString(String init) {

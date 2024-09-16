@@ -251,8 +251,11 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIntern extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object intern(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static Object intern(ELispString a, Object obarray) {
+            if (!ELispSymbol.isNil(obarray)) {
+                throw new UnsupportedOperationException();
+            }
+            return ELispContext.intern(a.toString());
         }
     }
 

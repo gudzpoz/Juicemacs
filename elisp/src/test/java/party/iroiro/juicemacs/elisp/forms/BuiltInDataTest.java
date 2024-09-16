@@ -1,26 +1,26 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import org.graalvm.polyglot.Context;
-import org.junit.jupiter.api.Test;
-
 import java.math.BigInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-public class BuiltInDataTest {
-
+public class BuiltInDataTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
+            "(eq (and) (intern \"t\"))", true,
+            "(eq (or) (intern \"nil\"))", true,
             "(eq 1 1)", true,
             "(eq 1 0)", false,
             "(eq 'a 'a)", true,
             "(eq 'a 'b)", false,
             "(eq 'symbol (type-of t))", true,
             "(eq 'symbol (type-of nil))", true,
+            "(eq 'symbol (type-of (intern \"t\")))", true,
+            "(eq 'symbol (type-of (intern \"nil\")))", true,
             "(eq 'symbol (type-of (eq 1 1)))", true,
+            "(eq 'symbol (type-of (eq 1 0)))", true,
             "(eq 'symbol (type-of 'symbol))", true,
             "(eq 'integer (type-of 1))", true,
             "(eq 'integer (type-of #xFFFFFFFFFFFFFFFFFFFF))", true,
             "(eq 'float (type-of 1.0))", true,
+            "(eq 'subr (type-of (symbol-function 'eq)))", true,
             "(eq 'string (type-of \"s\"))", true,
             "(eq 'vector (type-of [1 2 3]))", true,
             "(eq 'cons (type-of '(1)))", true,
@@ -170,18 +170,8 @@ public class BuiltInDataTest {
             "(lognot #xFFFFFFFFFFFFFFFFFFFF)", new BigInteger("100000000000000000000", 16).negate(),
     };
 
-    @Test
-    public void testBuiltInData() {
-        try (Context context = Context.newBuilder("elisp")
-                .environment("ELISP_PATH", "")
-                .build()
-        ) {
-            for (int i = 0; i < TESTS.length; i += 2) {
-                String expr = (String) TESTS[i];
-                Object expected = TESTS[i + 1];
-                assertEquals(expected, context.eval("elisp", expr).as(expected.getClass()), expr);
-            }
-        }
-
+    @Override
+    protected Object[] entries() {
+        return TESTS;
     }
 }

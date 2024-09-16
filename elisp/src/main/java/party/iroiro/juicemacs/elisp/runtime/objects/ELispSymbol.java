@@ -37,6 +37,10 @@ public final class ELispSymbol implements ELispValue {
         trappedWrite = b ? TrappedWrite.NO_WRITE : TrappedWrite.NORMAL_WRITE;
     }
 
+    public void setInterned(Interned interned) {
+        this.interned = interned;
+    }
+
     public interface InternalValue {
         Object getValue();
         void setValue(Object value);
@@ -226,7 +230,7 @@ public final class ELispSymbol implements ELispValue {
      */
     private final ELispHashtable properties;
 
-    private ELispValue function;
+    private Object function;
 
     /**
      * Next symbol in obarray bucket, if the symbol is interned.
@@ -241,8 +245,15 @@ public final class ELispSymbol implements ELispValue {
         this.interned = Interned.UNINTERNED;
         this.name = name;
         this.properties = new ELispHashtable();
-        this.function = NIL;
-        this.special = name.startsWith(":");
+        // Use false instead of NIL because ELispContext.NIL is null before initialization
+        this.function = false;
+        boolean keyword = name.startsWith(":");
+        this.special = false;
+        if (keyword) {
+            this.special = true;
+            // TODO: Figure out proper keyword logic
+            this.value.setValue(this);
+        }
     }
 
     public boolean isBound() {
@@ -315,7 +326,7 @@ public final class ELispSymbol implements ELispValue {
         if (this.value instanceof Value.VarAlias varAlias) {
             return varAlias.getAliased().getFunction();
         }
-        return this.function;
+        return this.function == Boolean.FALSE ? NIL : (ELispValue) this.function;
     }
 
     public void setFunction(ELispValue function) {
@@ -325,7 +336,7 @@ public final class ELispSymbol implements ELispValue {
         if (this.value instanceof Value.VarAlias varAlias) {
             varAlias.getAliased().setFunction(function);
         } else {
-            this.function = function;
+            this.function = Objects.requireNonNull(function);
         }
     }
 

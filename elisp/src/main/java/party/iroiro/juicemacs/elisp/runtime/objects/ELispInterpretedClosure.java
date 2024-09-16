@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AND_OPTIONAL;
@@ -60,7 +61,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Children
         private ReadFunctionArgNode[] args;
         @SuppressWarnings("FieldMayBeFinal")
-        @CompilerDirectives.CompilationFinal
+        @CompilerDirectives.CompilationFinal(dimensions = 1)
         private ELispSymbol[] argSymbols;
 
         private final ELispBindingScope.ClosableScope.@Nullable Lexical lexical;
@@ -77,7 +78,8 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             List<ELispSymbol> symbols = new ArrayList<>();
             int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
             int argI = 0;
-            for (Object arg : (ELispCons) getArgs()) {
+            for (Iterator<Object> iterator = ((ELispCons) getArgs()).iterator(); iterator.hasNext(); ) {
+                Object arg = iterator.next();
                 ELispSymbol symbol = (ELispSymbol) arg;
                 if (symbol == AND_OPTIONAL) {
                     if (state >= 2) {
@@ -95,7 +97,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         argNodes.add(new ReadFunctionArgNode.ReadFunctionRestArgsAsConsNode(argI));
                         state = 3;
                     } else if (state <= 1) {
-                        argNodes.add(new ReadFunctionArgNode(argI, state == 0));
+                        argNodes.add(new ReadFunctionArgNode(argI, state == 0, !iterator.hasNext()));
                     } else {
                         throw new IllegalArgumentException();
                     }
