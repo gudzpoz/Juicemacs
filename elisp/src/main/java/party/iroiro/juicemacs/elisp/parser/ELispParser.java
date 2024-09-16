@@ -113,8 +113,8 @@ public class ELispParser {
             case Quote() -> quote(QUOTE); // 'a -> (quote a)
             case Function() -> quote(FUNCTION); // #'a -> (function a)
             case BackQuote() -> quote(BACKQUOTE); // `a -> (` a)
-            case Unquote() -> COMMA;
-            case UnquoteSplicing() -> COMMA_AT;
+            case Unquote() -> quote(COMMA); // ,a -> (, a)
+            case UnquoteSplicing() -> quote(COMMA_AT); // ,@a -> (,@ a)
             case Dot() -> ELispContext.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
             case ParenOpen() -> {
                 if (peek().data() instanceof ParenClose) {

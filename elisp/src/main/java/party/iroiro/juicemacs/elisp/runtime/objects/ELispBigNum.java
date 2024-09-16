@@ -218,4 +218,12 @@ public final class ELispBigNum implements TruffleObject, Comparable<ELispBigNum>
         return (other instanceof Long l && value.equals(BigInteger.valueOf(l)))
                 || ((other instanceof ELispBigNum n) && value.equals(n.value));
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        // TODO: Document incompatibilities
+        // In Emacs, two bignums of identical values are not necessarily equal (by #'eq).
+        // We choose to differ from Emacs here.
+        return obj instanceof ELispBigNum n && value.equals(n.value);
+    }
 }
