@@ -44,9 +44,4 @@ public @interface ELispBuiltIn {
      */
     boolean rawArg() default false;
 
-    /**
-     * @return documentation
-     */
-    String doc() default "";
-
 }
