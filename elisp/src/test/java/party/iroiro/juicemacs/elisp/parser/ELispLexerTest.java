@@ -3,10 +3,12 @@ package party.iroiro.juicemacs.elisp.parser;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.jupiter.api.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -184,15 +186,22 @@ public class ELispLexerTest {
             "?\\^i", 9,
             "?\\C-J", 10,
             "?\\C-j", 10,
-            "?\\C", (int) 'C',
             "?\\^@", 0,
             "?\\^1", 67108913,
             "?\\^?", 127,
             "?\\C-?", 127,
+            "?\\C-a", 1,
+            "?\\C-\\C-a", 0x4000001,
             "?\\M-\\C-b", 134217730,
             "?\\M-\\002", 134217730,
             "?\\S-\\002", 33554434,
             "?\\H-\\M-\\A-x", 155189368,
+            "?\\A-\\0", 4194304,
+            "?\\C-\\0", 67108864,
+            "?\\H-\\0", 16777216,
+            "?\\M-\\0", 134217728,
+            "?\\s-\\0", 8388608,
+            "?\\S-\\0", 33554432,
     };
 
     @Test
@@ -202,8 +211,14 @@ public class ELispLexerTest {
             int c = (int) CHAR_TESTS[i + 1];
             ELispLexer lexer = lexer(s);
             Char actual = (Char) lexer.next().data();
+            assertEquals(s.length(), lexer.getCodepointOffset(), s);
             assertEquals(c, actual.value(), s);
         }
+        "\n \"';()[]#?`,.".chars().forEach((c) -> assertDoesNotThrow(() -> {
+            ELispLexer lexer = lexer("?a" + Character.toString(c));
+            Char actual = (Char) lexer.next().data();
+            assertEquals('a', actual.value());
+        }));
     }
 
     @Test
@@ -418,6 +433,10 @@ public class ELispLexerTest {
                 new Str(ELispString.from("8@8[8`8{")),
                 new EOF()
         ), lex("\"\\70@\\70[\\70`\\70{\""));
+        assertEquals(Arrays.asList(
+                new Str(ELispString.from("\u001b")),
+                new EOF()
+        ), lex("\"\\C-[\""));
     }
 
     private static final String[] SYMBOL_TESTS = new String[]{
@@ -457,6 +476,21 @@ public class ELispLexerTest {
         ), lex("?🀄"));
     }
 
+    @Test
+    public void testByteReader() throws IOException {
+        ELispLexer lexer = new ELispLexer(
+                Source.newBuilder(
+                        "elisp",
+                        ByteSequence.create(
+                                "#@9🀄🀄\03742".getBytes(StandardCharsets.UTF_8)
+                        ),
+                        "<input>"
+                ).build()
+        );
+        Num data = (Num) lexer.next().data();
+        assertEquals(42L, ((NumberVariant.FixNum) data.value()).value());
+    }
+
     private void assertError(String input, String expected) {
         Throwable err = assertThrows(IOException.class, () -> lex(input), input);
         assertEquals(expected, err.getMessage());
@@ -484,6 +518,17 @@ public class ELispLexerTest {
         assertError("'?\\u00z", "Expecting fixed number of digits");
         assertError("?\\U0FFFFFFF", "Not a valid Unicode code point");
         assertError("?\\U-0FFFFFFF", "Not a valid Unicode code point");
+        assertError("?\\C", "Invalid modifier");
+        assertError("?\\H", "Invalid modifier");
+        assertError("?\\M", "Invalid modifier");
+        assertError("?\\S", "Invalid modifier");
+        assertError("?\\\n", "Unexpected newline");
+        assertError("?aa", "Invalid char");
+        assertError("?\\H-aa", "Invalid char");
+        assertError("?\\M-aa", "Invalid char");
+        assertError("?\\C-aa", "Invalid char");
+        assertError("?\\^aa", "Invalid char");
+        assertError("?\\nn", "Invalid char");
 
         assertError("#xfrf", "Invalid base");
         assertError("#40rz", "Invalid base");

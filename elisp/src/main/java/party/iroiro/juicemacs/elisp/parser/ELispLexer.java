@@ -3,6 +3,9 @@ package party.iroiro.juicemacs.elisp.parser;
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigInteger;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -267,11 +270,14 @@ class ELispLexer {
         }
     }
 
+    record SourceLocation(@Nullable URI uri, int line, int startChar, int endChar) {
+    }
+
     /**
      * @param data   the actual token data
      * @param source the source section of the token
      */
-    record Token(TokenData data, SourceSection source) {
+    record Token(TokenData data, SourceLocation source) {
     }
 
     private static final TokenData.EOF EOF = new TokenData.EOF();
@@ -301,11 +307,21 @@ class ELispLexer {
     private static final Pattern INTEGER_PATTERN = Pattern.compile("^([+-]?[0-9]+)\\.?$");
     private static final Pattern FLOAT_PATTERN = Pattern.compile("^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?$");
 
-    private final Reader reader;
+    @Nullable
+    private final ByteSequenceReader byteReader;
+    @Nullable
+    private final Reader charReader;
     private final Source source;
 
     public ELispLexer(Source source) {
-        this.reader = source.getReader();
+        if (source.hasBytes()) {
+            // TODO: Support other encodings
+            this.byteReader = new ByteSequenceReader(source.getBytes(), StandardCharsets.UTF_8);
+            this.charReader = null;
+        } else {
+            this.byteReader = null;
+            this.charReader = source.getReader();
+        }
         this.source = source;
     }
 
@@ -321,6 +337,7 @@ class ELispLexer {
      * Maintained by {@link #readCodepoint()}. See also {@link Token}.
      */
     private int offset = 0;
+    private int codepointOffset = 0;
     /**
      * Maintained by {@link #readCodepoint()}.
      */
@@ -351,18 +368,24 @@ class ELispLexer {
             line++;
         }
         offset += Character.charCount(c);
+        codepointOffset++;
         return c;
     }
 
-    private static int readCodepointFromReader(Reader reader) throws IOException {
-        int c1 = reader.read();
+    public int getCodepointOffset() {
+        return codepointOffset;
+    }
+
+    private int readCodepointFromCharReader() throws IOException {
+        assert charReader != null;
+        int c1 = charReader.read();
         if (c1 == -1) {
             return -1;
         }
         if (!Character.isHighSurrogate((char) c1)) {
             return c1;
         }
-        int c2 = noEOF(reader.read());
+        int c2 = noEOF(charReader.read());
         if (!Character.isLowSurrogate((char) c2)) {
             throw new IOException("Invalid Unicode surrogate pair");
         }
@@ -374,7 +397,7 @@ class ELispLexer {
             return peekedCodepoint;
         }
 
-        peekedCodepoint = readCodepointFromReader(reader);
+        peekedCodepoint = byteReader == null ? readCodepointFromCharReader() : byteReader.read();
         return peekedCodepoint;
     }
 
@@ -411,17 +434,25 @@ class ELispLexer {
         };
     }
 
+    private final static int CHAR_ALT = 0x0400000;
+    private final static int CHAR_SUPER = 0x0800000;
+    private final static int CHAR_HYPER = 0x1000000;
+    private final static int CHAR_SHIFT = 0x2000000;
+    private final static int CHAR_CTL = 0x4000000;
+    private final static int CHAR_META = 0x8000000;
+    private final static int MODIFIER_MASK = CHAR_ALT | CHAR_SUPER | CHAR_HYPER | CHAR_SHIFT | CHAR_CTL | CHAR_META;
+
     /**
      * @see <a href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Other-Char-Bits.html">
      * elisp/Other Char Bits</a>
      */
-    private static int mapMetaBits(int c, boolean inString) {
+    private static int mapMetaMask(int c, boolean inString) {
         return switch (c) {
-            case 'A' -> 22;
-            case 's' -> 23;
-            case 'H' -> 24;
-            case 'S' -> 25;
-            case 'M' -> inString ? 7 : 27;
+            case 'A' -> CHAR_ALT;
+            case 's' -> CHAR_SUPER;
+            case 'H' -> CHAR_HYPER;
+            case 'S' -> CHAR_SHIFT;
+            case 'M' -> inString ? 0x80 : CHAR_META;
             default -> -1;
         };
     }
@@ -472,24 +503,32 @@ class ELispLexer {
         return value.intValue();
     }
 
-    private int readControlChar() throws IOException {
-        int c = readCodepoint();
-        if (c == -1) {
-            // I would like to yield an error here, but Emacs does seem to return -1...?
+    private int readControlChar(boolean inString) throws IOException {
+        if (peekCodepoint() == -1) {
             return -1;
         }
-        if (c < 256) {
-            if (c == '?') {
-                return 127;
-            }
-            if (c == '@') {
-                return 0;
-            }
-            if (Character.isAlphabetic(c)) {
-                return Character.toUpperCase(c) - '@';
-            }
+        int c = readChar(inString);
+        int modifier = c & MODIFIER_MASK;
+        c = c & ~MODIFIER_MASK;
+        if (('@' <= c && c <= '_') || ('a' <= c && c <= 'z')) {
+            c &= 0x1F;
+        } else if (c == '?') {
+            c = 127;
+        } else {
+            modifier |= CHAR_CTL;
         }
-        return c | (0x1 << 26);
+        return c | modifier;
+    }
+
+    private void assertNoSymbolBehindChar() throws IOException {
+        int nch = peekCodepoint();
+        if (nch <= 32
+                || nch == '"' || nch == '\'' || nch == ';' || nch == '('
+                || nch == ')' || nch == '['  || nch == ']' || nch == '#'
+                || nch == '?' || nch == '`'  || nch == ',' || nch == '.') {
+            return;
+        }
+        throw new IOException("Invalid char");
     }
 
     /**
@@ -512,30 +551,38 @@ class ELispLexer {
             if (escaped == ' ' || escaped == '\n') {
                 return -1;
             }
+        } else {
+            if (escaped == '\n') {
+                throw new IOException("Unexpected newline");
+            }
         }
         // Meta-prefix: ?\s-a => Bit annotated character
-        int meta = mapMetaBits(escaped, inString);
-        if (inString && meta > 8) {
+        int meta = mapMetaMask(escaped, inString);
+        if (inString && meta > 0x80) {
             throw new IOException("Invalid modifier in string");
         }
-        if (meta != -1 && peekCodepoint() == '-') {
-            readCodepoint();
-            return (0x1 << meta) | readChar(inString);
+        if (meta != -1) {
+            if (peekCodepoint() == '-') {
+                readCodepoint();
+                return meta | readChar(inString);
+            } else if (escaped != 's') {
+                throw new IOException("Invalid modifier");
+            }
         }
         // Escape: ?\n => '\n'
         int escapeCode = mapBasicEscapeCode(escaped);
         if (escapeCode != -1) {
             return escapeCode;
         }
-        // Control characters: ?\^I or ?\C-I
         return switch (escaped) {
-            case '^' -> readControlChar();
+            // Control characters: ?\^I or ?\C-I
+            case '^' -> readControlChar(inString);
             case 'C' -> {
                 if (peekCodepoint() == '-') {
                     readCodepoint();
-                    yield readControlChar();
+                    yield readControlChar(inString);
                 } else {
-                    yield escaped;
+                    throw new IOException("Invalid modifier");
                 }
             }
             case 'x' -> readEscapedCodepoint(16, -1, true);
@@ -780,16 +827,24 @@ class ELispLexer {
                     case 'o', 'O' -> readHashNumToken(8);
                     case 'b', 'B' -> readHashNumToken(2);
                     case '@' -> {
-                        long start = offset;
-                        long skip = readInteger(10, -1, true).longValueExact();
-                        if (skip == 0 && offset - start == 2) {
-                            // #@00 skips to the end of the file
-                            eof = true;
-                            yield SKIP_TO_END;
+                        if (peekCodepoint() == '0') {
+                            readCodepoint();
+                            if (readCodepoint() == '0') {
+                                // #@00 skips to the end of the file
+                                readCodepoint();
+                                eof = true;
+                                yield SKIP_TO_END;
+                            }
                         }
-                        //noinspection StatementWithEmptyBody
-                        while (readCodepoint() != '\037') {
-                            // Yes, it is how Emacs does it...
+                        long skip = readInteger(10, -1, true).longValueExact();
+                        if (byteReader != null) {
+                            byteReader.skipBytes((int) skip, peekedCodepoint != -1);
+                            peekedCodepoint = -1;
+                        } else {
+                            //noinspection StatementWithEmptyBody
+                            while (readCodepoint() != '\037') {
+                                // Yes, it is how Emacs does it...
+                            }
                         }
                         yield null;
                     }
@@ -804,7 +859,11 @@ class ELispLexer {
                     default -> throw new IOException("Expected a number base indicator");
                 };
             }
-            case '?' -> new TokenData.Char(readChar(false));
+            case '?' -> {
+                int value = readChar(false);
+                assertNoSymbolBehindChar();
+                yield new TokenData.Char(value);
+            }
             case '"' -> new TokenData.Str(readStr());
             case '\'' -> QUOTE;
             case '`' -> BACK_QUOTE;
@@ -843,11 +902,12 @@ class ELispLexer {
                 }
                 readCodepoint();
             }
-            int startOffset = this.offset;
+            int line = this.line;
+            int startOffset = offset;
             TokenData data = lexNext();
             if (data != null) {
-                int endOffset = this.offset;
-                return new Token(data, source.createSection(startOffset, endOffset - startOffset));
+                SourceLocation location = new SourceLocation(source.getURI(), line, startOffset, offset);
+                return new Token(data, location);
             }
         }
     }
