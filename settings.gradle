@@ -15,4 +15,8 @@ plugins {
 }
 
 rootProject.name = 'Juicemacs'
-include('app', 'elisp')
+include(
+        'app',
+        'elisp',
+        'commons:piece-tree',
+)

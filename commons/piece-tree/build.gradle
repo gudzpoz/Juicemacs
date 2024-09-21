@@ -1,0 +1,11 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+dependencies {
+    implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
+}
