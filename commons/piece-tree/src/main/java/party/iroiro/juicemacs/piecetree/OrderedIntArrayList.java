@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.piecetree;
 
 import org.eclipse.jdt.annotation.Nullable;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 public sealed interface OrderedIntArrayList {
@@ -23,12 +24,10 @@ public sealed interface OrderedIntArrayList {
 
     static OrderedIntArrayList ofConstant(LazyArrayList list) {
         if (list.lazyBuffer == null) {
-            int[] buffer = new int[list.size];
-            System.arraycopy(list.buffer, 0, buffer, 0, list.size);
+            int[] buffer = Arrays.copyOf(list.buffer, list.size);
             return new OfIntConstant(buffer);
         } else {
-            short[] buffer = new short[list.size];
-            System.arraycopy(list.lazyBuffer, 0, buffer, 0, list.size);
+            short[] buffer = Arrays.copyOf(list.lazyBuffer, list.size);
             return new OfShortConstant(buffer);
         }
     }
@@ -176,18 +175,13 @@ public sealed interface OrderedIntArrayList {
 
         private void checkExpandShort(int index) {
             if (index >= Objects.requireNonNull(lazyBuffer).length) {
-                short[] newBuffer = new short[getNewSize(index)];
-                //noinspection DataFlowIssue
-                System.arraycopy(lazyBuffer, 0, newBuffer, 0, lazyBuffer.length);
-                lazyBuffer = newBuffer;
+                lazyBuffer = Arrays.copyOf(lazyBuffer, getNewSize(index));
             }
         }
 
         private void checkExpandInt(int index) {
             if (index >= buffer.length) {
-                int[] newBuffer = new int[getNewSize(index)];
-                System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
-                buffer = newBuffer;
+                buffer = Arrays.copyOf(buffer, getNewSize(index));
             }
         }
     }

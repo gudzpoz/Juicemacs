@@ -27,11 +27,11 @@ package party.iroiro.juicemacs.piecetree;
 
 import org.eclipse.jdt.annotation.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PrimitiveIterator;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 import static party.iroiro.juicemacs.piecetree.TreeNode.*;
 
@@ -40,7 +40,7 @@ import static party.iroiro.juicemacs.piecetree.TreeNode.*;
  * pieceTreeBase.ts @ vscode</a>
  */
 @SuppressWarnings({"UnnecessaryLocalVariable", "ExtractMethodRecommender"})
-public final class PieceTreeBase {
+public final class PieceTreeBase implements CharSequence {
     public static final int AVERAGE_BUFFER_SIZE = 65535;
 
     /* Skipped: class LineStarts */
@@ -70,8 +70,8 @@ public final class PieceTreeBase {
     /* Skipped: createLineStarts */
 
     /**
-     * @param node Piece Index
-     * @param remainder remainder in current piece.
+     * @param node            Piece Index
+     * @param remainder       remainder in current piece.
      * @param nodeStartOffset node start offset in document.
      */
     public record NodePosition(
@@ -82,7 +82,7 @@ public final class PieceTreeBase {
     }
 
     /**
-     * @param line Line number in current buffer (0-based)
+     * @param line   Line number in current buffer (0-based)
      * @param column Column number in current buffer (0-based)
      */
     public record BufferCursor(int line, int column) {
@@ -98,7 +98,7 @@ public final class PieceTreeBase {
     }
 
     public static final class StringBuffer {
-        public String buffer;
+        public StringBuilder buffer;
         public OrderedIntArrayList lineStarts;
 
         public StringBuffer(String buffer, boolean readonly) {
@@ -106,7 +106,7 @@ public final class PieceTreeBase {
         }
 
         public StringBuffer(String buffer, OrderedIntArrayList lineStarts) {
-            this.buffer = buffer;
+            this.buffer = new StringBuilder(buffer);
             this.lineStarts = lineStarts;
         }
     }
@@ -174,7 +174,9 @@ public final class PieceTreeBase {
         StringBuilder tempChunk = new StringBuilder();
         List<StringBuffer> chunks = new ArrayList<>();
         iterate(root, (node) -> {
-            String str = getNodeContent(node);
+            StringBuilder sb = new StringBuilder();
+            getNodeContent(node, sb);
+            String str = sb.toString();
             int len = str.length();
             if (min < tempChunk.length() && max <= tempChunk.length() + len) {
                 // flush anyways
@@ -205,10 +207,12 @@ public final class PieceTreeBase {
         }
         create(chunks, eol, true);
     }
+
     //#region Buffer API
     public EndOfLine getEOL() {
         return EOL;
     }
+
     public void setEOL(EndOfLine EOL) {
         this.EOL = EOL;
         normalizeEOL(EOL);
@@ -270,6 +274,7 @@ public final class PieceTreeBase {
     }
 
     private final static Pattern EOL_PATTERN = Pattern.compile("\r\n|\r|\n");
+
     public String getValueInRange(Range range, @Nullable EndOfLine eol) {
         if (range.startLineNumber == range.endLineNumber && range.startColumn == range.endColumn) {
             return "";
@@ -288,12 +293,12 @@ public final class PieceTreeBase {
     public String getValueInRange2(NodePosition startPosition, NodePosition endPosition) {
         if (startPosition.node == endPosition.node) {
             TreeNode node = startPosition.node;
-            String buffer = buffers.get(node.piece.bufferIndex).buffer;
+            StringBuilder buffer = buffers.get(node.piece.bufferIndex).buffer;
             int startOffset = offsetInBuffer(node.piece.bufferIndex, node.piece.start);
             return buffer.substring(startOffset + startPosition.remainder, startOffset + endPosition.remainder);
         }
         TreeNode x = startPosition.node;
-        String buffer = buffers.get(x.piece.bufferIndex).buffer;
+        StringBuilder buffer = buffers.get(x.piece.bufferIndex).buffer;
         int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
         StringBuilder ret = new StringBuilder();
         ret.append(buffer, startOffset + startPosition.remainder, startOffset + x.piece.length());
@@ -336,7 +341,7 @@ public final class PieceTreeBase {
                 return true;
             }
 
-            final String buffer = buffers.get(piece.bufferIndex).buffer;
+            final StringBuilder buffer = buffers.get(piece.bufferIndex).buffer;
             final OrderedIntArrayList lineStarts = buffers.get(piece.bufferIndex).lineStarts;
             final int pieceStartLine = piece.start().line();
             final int pieceEndLine = piece.end().line();
@@ -587,6 +592,7 @@ public final class PieceTreeBase {
         // todo, this is too brutal. Total line feed count should be updated the same way as lf_left.
         computeBufferMetadata();
     }
+
     public void delete(int offset, int cnt) {
         lastVisitedLine = 0;
         lastVisitedLineValue = "";
@@ -648,6 +654,7 @@ public final class PieceTreeBase {
         validateCRLFWithNextNode(prev);
         computeBufferMetadata();
     }
+
     private void insertContentToNodeLeft(String value, TreeNode node) {
         // we are inserting content to the beginning of node
         List<TreeNode> nodesToDel = new ArrayList<>();
@@ -677,6 +684,7 @@ public final class PieceTreeBase {
         validateCRLFWithPrevNode(newNode);
         deleteNodes(nodesToDel);
     }
+
     private void insertContentToNodeRight(String value, TreeNode node) {
         // we are inserting to the right of this node.
         if (adjustCarriageReturnFromNext(value, node)) {
@@ -691,6 +699,7 @@ public final class PieceTreeBase {
         }
         validateCRLFWithPrevNode(newNode);
     }
+
     private BufferCursor positionInBuffer(TreeNode node, int remainder) {
         final Piece piece = node.piece;
         final int bufferIndex = node.piece.bufferIndex;
@@ -720,6 +729,7 @@ public final class PieceTreeBase {
         }
         return new BufferCursor(mid, offset - midStart);
     }
+
     private int getLineFeedCnt(int bufferIndex, BufferCursor start, BufferCursor end) {
         // we don't need to worry about start: abc\r|\n, or abc|\r, or abc|\n, or abc|\r\n doesn't change the fact that, there is one line break after start.
         // now let's take care of end: abc\r|\n, if end is in between \r and \n, we need to add line feed count by 1
@@ -739,22 +749,25 @@ public final class PieceTreeBase {
         // character at endOffset is \n, so we check the character before first
         // if character at endOffset is \r, end.column is 0 and we can't get here.
         int previousCharOffset = endOffset - 1; // end.column > 0 so it's okay.
-        String buffer = buffers.get(bufferIndex).buffer;
+        StringBuilder buffer = buffers.get(bufferIndex).buffer;
         if (buffer.charAt(previousCharOffset) == '\r') {
             return end.line - start.line + 1;
         } else {
             return end.line - start.line;
         }
     }
+
     private int offsetInBuffer(int bufferIndex, BufferCursor cursor) {
         OrderedIntArrayList lineStarts = buffers.get(bufferIndex).lineStarts;
         return lineStarts.get(cursor.line) + cursor.column;
     }
+
     private void deleteNodes(List<TreeNode> nodes) {
         for (TreeNode node : nodes) {
             rbDelete(this, node);
         }
     }
+
     private List<Piece> createNewPieces(String text) {
         if (text.length() > AVERAGE_BUFFER_SIZE) {
             // the content is large, operations like substring, charCode becomes slow
@@ -808,7 +821,7 @@ public final class PieceTreeBase {
                 lineStarts.set(i, lineStarts.get(i) + 1);
             }
             buffers.getFirst().lineStarts.addAll(lineStarts, 1);
-            buffers.getFirst().buffer += "_" + text;
+            buffers.getFirst().buffer.append('_').append(text);
             startOffset += 1;
         } else {
             if (startOffset != 0) {
@@ -817,7 +830,7 @@ public final class PieceTreeBase {
                 }
             }
             buffers.getFirst().lineStarts.addAll(lineStarts, 1);
-            buffers.getFirst().buffer += text;
+            buffers.getFirst().buffer.append(text);
         }
         int endOffset = buffers.getFirst().buffer.length();
         int endIndex = buffers.getFirst().lineStarts.size() - 1;
@@ -833,9 +846,11 @@ public final class PieceTreeBase {
         lastChangeBufferPos = endPos;
         return List.of(newPiece);
     }
+
     public String getLinesRawContent() {
         return getContentOfSubTree(root);
     }
+
     public String getLineRawContent(int lineNumber, int endOffset) {
         TreeNode x = root;
         StringBuilder ret = new StringBuilder();
@@ -843,7 +858,7 @@ public final class PieceTreeBase {
         if (cache != null) {
             x = cache.node();
             int prevAccumulatedValue = getAccumulatedValue(x, lineNumber - cache.nodeStartLineNumber() - 1);
-            String buffer = buffers.get(x.piece.bufferIndex).buffer;
+            StringBuilder buffer = buffers.get(x.piece.bufferIndex).buffer;
             int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
             if (cache.nodeStartLineNumber() + x.piece.lineFeedCnt == lineNumber) {
                 ret.setLength(0);
@@ -861,14 +876,14 @@ public final class PieceTreeBase {
                 } else if (x.lf_left + x.piece.lineFeedCnt > lineNumber - 1) {
                     int prevAccumulatedValue = getAccumulatedValue(x, lineNumber - x.lf_left - 2);
                     int accumulatedValue = getAccumulatedValue(x, lineNumber - x.lf_left - 1);
-                    String buffer = buffers.get(x.piece.bufferIndex).buffer;
+                    StringBuilder buffer = buffers.get(x.piece.bufferIndex).buffer;
                     int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
                     nodeStartOffset += x.size_left;
                     searchCache.add(new PieceTreeSearchCache.CacheEntry(x, nodeStartOffset, originalLineNumber - (lineNumber - 1 - x.lf_left)));
                     return buffer.substring(startOffset + prevAccumulatedValue, startOffset + accumulatedValue - endOffset);
                 } else if (x.lf_left + x.piece.lineFeedCnt == lineNumber - 1) {
                     int prevAccumulatedValue = getAccumulatedValue(x, lineNumber - x.lf_left - 2);
-                    String buffer = buffers.get(x.piece.bufferIndex).buffer;
+                    StringBuilder buffer = buffers.get(x.piece.bufferIndex).buffer;
                     int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
                     ret.setLength(0);
                     ret.append(buffer, startOffset + prevAccumulatedValue, startOffset + x.piece.length);
@@ -883,7 +898,7 @@ public final class PieceTreeBase {
         // search in order, to find the node contains end column
         x = x.next();
         while (x != SENTINEL) {
-            String buffer = buffers.get(x.piece.bufferIndex).buffer;
+            StringBuilder buffer = buffers.get(x.piece.bufferIndex).buffer;
             if (x.piece.lineFeedCnt > 0) {
                 int accumulatedValue = getAccumulatedValue(x, 0);
                 int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
@@ -897,6 +912,7 @@ public final class PieceTreeBase {
         }
         return ret.toString();
     }
+
     private void computeBufferMetadata() {
         TreeNode x = root;
         int lfCnt = 1;
@@ -926,6 +942,7 @@ public final class PieceTreeBase {
         }
         return new Index(lineCnt, pos.column);
     }
+
     private int getAccumulatedValue(TreeNode node, int index) {
         if (index < 0) {
             return 0;
@@ -941,6 +958,7 @@ public final class PieceTreeBase {
                     - lineStarts.get(piece.start().line()) - piece.start().column();
         }
     }
+
     private void deleteNodeTail(TreeNode node, BufferCursor pos) {
         Piece piece = node.piece;
         int originalLFCnt = piece.lineFeedCnt;
@@ -961,6 +979,7 @@ public final class PieceTreeBase {
         );
         updateTreeMetadata(this, node, size_delta, lf_delta);
     }
+
     private void deleteNodeHead(TreeNode node, BufferCursor pos) {
         Piece piece = node.piece;
         int originalLFCnt = piece.lineFeedCnt;
@@ -981,6 +1000,7 @@ public final class PieceTreeBase {
         );
         updateTreeMetadata(this, node, size_delta, lf_delta);
     }
+
     private void shrinkNode(TreeNode node, BufferCursor start, BufferCursor end) {
         Piece piece = node.piece;
         BufferCursor originalStartPos = piece.start;
@@ -1011,13 +1031,14 @@ public final class PieceTreeBase {
         TreeNode newNode = rbInsertRight(node, newPiece);
         validateCRLFWithPrevNode(newNode);
     }
+
     private void appendToNode(TreeNode node, String value) {
         if (adjustCarriageReturnFromNext(value, node)) {
             value += '\n';
         }
         boolean hitCRLF = shouldCheckCRLF() && startWithLF(value) && endWithCR(node);
         int startOffset = buffers.getFirst().buffer.length();
-        buffers.getFirst().buffer += value;
+        buffers.getFirst().buffer.append(value);
         OrderedIntArrayList lineStarts = createLineStartsFast(value, false);
         for (int i = 0; i < lineStarts.size(); i++) {
             lineStarts.set(i, lineStarts.get(i) + startOffset);
@@ -1047,6 +1068,7 @@ public final class PieceTreeBase {
         lastChangeBufferPos = newEnd;
         updateTreeMetadata(this, node, value.length(), lf_delta);
     }
+
     private NodePosition nodeAt(int offset) {
         TreeNode x = root;
         PieceTreeSearchCache.@Nullable CacheEntry cache = searchCache.get(offset);
@@ -1070,6 +1092,7 @@ public final class PieceTreeBase {
         }
         throw new IllegalArgumentException();
     }
+
     private NodePosition nodeAt2(int lineNumber, int column) {
         TreeNode x = root;
         int nodeStartOffset = 0;
@@ -1115,6 +1138,7 @@ public final class PieceTreeBase {
         }
         throw new IllegalArgumentException();
     }
+
     private int nodeCharCodeAt(TreeNode node, int offset) {
         if (node.piece.lineFeedCnt < 1) {
             return -1;
@@ -1123,6 +1147,7 @@ public final class PieceTreeBase {
         int newOffset = offsetInBuffer(node.piece.bufferIndex, node.piece.start) + offset;
         return buffer.buffer.charAt(newOffset);
     }
+
     private int offsetOfNode(TreeNode node) {
         int pos = node.size_left;
         while (node != root) {
@@ -1139,9 +1164,11 @@ public final class PieceTreeBase {
     private boolean shouldCheckCRLF() {
         return !(EOLNormalized && EOL == EndOfLine.LF);
     }
-    private boolean startWithLF(String val) {
+
+    private boolean startWithLF(CharSequence val) {
         return val.charAt(0) == '\n';
     }
+
     private boolean startWithLF(TreeNode val) {
         if (val == SENTINEL || val.piece.lineFeedCnt == 0) {
             return false;
@@ -1160,15 +1187,18 @@ public final class PieceTreeBase {
         }
         return buffers.get(piece.bufferIndex).buffer.charAt(startOffset) == '\n';
     }
-    private boolean endWithCR(String val) {
+
+    private boolean endWithCR(CharSequence val) {
         return val.charAt(val.length() - 1) == '\r';
     }
+
     private boolean endWithCR(TreeNode val) {
         if (val == SENTINEL || val.piece.lineFeedCnt == 0) {
             return false;
         }
         return nodeCharCodeAt(val, val.piece.length - 1) == '\r';
     }
+
     private void validateCRLFWithPrevNode(TreeNode nextNode) {
         if (shouldCheckCRLF() && startWithLF(nextNode)) {
             TreeNode node = nextNode.prev();
@@ -1177,6 +1207,7 @@ public final class PieceTreeBase {
             }
         }
     }
+
     private void validateCRLFWithNextNode(TreeNode node) {
         if (shouldCheckCRLF() && endWithCR(node)) {
             TreeNode nextNode = node.next();
@@ -1185,6 +1216,7 @@ public final class PieceTreeBase {
             }
         }
     }
+
     private void fixCRLF(TreeNode prev, TreeNode next) {
         List<TreeNode> nodesToDel = new ArrayList<>();
         // update node
@@ -1236,6 +1268,7 @@ public final class PieceTreeBase {
             rbDelete(this, node);
         }
     }
+
     private boolean adjustCarriageReturnFromNext(String value, TreeNode node) {
         if (shouldCheckCRLF() && endWithCR(value)) {
             TreeNode nextNode = node.next();
@@ -1276,17 +1309,18 @@ public final class PieceTreeBase {
         }
         return callback.test(node) && iterate(node.right, callback);
     }
-    private String getNodeContent(TreeNode node) {
+
+    private void getNodeContent(TreeNode node, StringBuilder output) {
         if (node == SENTINEL) {
-            return "";
+            return;
         }
         StringBuffer buffer = buffers.get(node.piece.bufferIndex());
         Piece piece = node.piece;
         int startOffset = offsetInBuffer(piece.bufferIndex(), piece.start);
         int endOffset = offsetInBuffer(piece.bufferIndex(), piece.end);
-        String currentContent = buffer.buffer.substring(startOffset, endOffset);
-        return currentContent;
+        output.append(buffer.buffer, startOffset, endOffset);
     }
+
     private String getPieceContent(Piece piece) {
         StringBuffer buffer = buffers.get(piece.bufferIndex());
         int startOffset = offsetInBuffer(piece.bufferIndex(), piece.start);
@@ -1294,6 +1328,7 @@ public final class PieceTreeBase {
         String currentContent = buffer.buffer.substring(startOffset, endOffset);
         return currentContent;
     }
+
     private TreeNode rbInsertRight(TreeNode node, Piece piece) {
         TreeNode z = new TreeNode(piece, TreeNode.RED);
         z.left = SENTINEL;
@@ -1318,6 +1353,7 @@ public final class PieceTreeBase {
         fixInsert(this, z);
         return z;
     }
+
     private TreeNode rbInsertLeft(@SuppressWarnings("NullableProblems") TreeNode node, Piece piece) {
         TreeNode z = new TreeNode(piece, TreeNode.RED);
         z.left = SENTINEL;
@@ -1341,10 +1377,11 @@ public final class PieceTreeBase {
         fixInsert(this, z);
         return z;
     }
+
     private String getContentOfSubTree(TreeNode subTree) {
         StringBuilder str = new StringBuilder();
         iterate(subTree, (node) -> {
-            str.append(getNodeContent(node));
+            getNodeContent(node, str);
             return true;
         });
         return str.toString();
@@ -1355,7 +1392,7 @@ public final class PieceTreeBase {
     }
 
     /**
-     * @param line 1-based
+     * @param line   1-based
      * @param column 1-based
      */
     public record Position(int line, int column) {
@@ -1386,5 +1423,111 @@ public final class PieceTreeBase {
     }
 
     private record Index(int index, int remainder) {
+    }
+
+    @Override
+    public int length() {
+        return getLength();
+    }
+
+    @Override
+    public char charAt(int index) {
+        return (char) getCharCode(index);
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+        NodePosition startNode = nodeAt(start);
+        NodePosition endNode = nodeAt(end);
+        return getValueInRange2(startNode, endNode);
+    }
+
+    @Override
+    public String toString() {
+        return getLinesRawContent();
+    }
+
+    private class CharIterator implements PrimitiveIterator.OfInt {
+        private TreeNode currentNode = root.leftest();
+        private int cachedStartOffset = -1;
+        private int current = 0;
+
+        @Override
+        public int nextInt() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            // currentNode must have extra chars after calling hasNext
+            Piece piece = currentNode.piece;
+            if (cachedStartOffset == -1) {
+                cachedStartOffset = offsetInBuffer(piece.bufferIndex, piece.start);
+            }
+            StringBuilder buffer = buffers.get(piece.bufferIndex).buffer;
+            return buffer.charAt(cachedStartOffset + current++);
+        }
+
+        @Override
+        public boolean hasNext() {
+            while (currentNode != SENTINEL) {
+                Piece piece = currentNode.piece;
+                if (current < piece.length()) {
+                    return true;
+                }
+                current = 0;
+                cachedStartOffset = -1;
+                currentNode = currentNode.next();
+            }
+            return false;
+        }
+    }
+
+    @Override
+    public IntStream chars() {
+        return StreamSupport.intStream(() ->
+                        Spliterators.spliterator(
+                                new CharIterator(),
+                                length(),
+                                Spliterator.ORDERED),
+                Spliterator.SUBSIZED | Spliterator.SIZED | Spliterator.ORDERED,
+                false);
+    }
+
+    @Override
+    public IntStream codePoints() {
+        class CodePointIterator implements PrimitiveIterator.OfInt {
+            private final CharIterator charIterator = new CharIterator();
+            private int peeked = -1;
+
+            @Override
+            public int nextInt() {
+                char c1;
+                if (peeked == -1) {
+                    c1 = (char) charIterator.nextInt();
+                } else {
+                    c1 = (char) peeked;
+                    peeked = -1;
+                }
+                if (Character.isHighSurrogate(c1) && charIterator.hasNext()) {
+                    char c2 = (char) charIterator.nextInt();
+                    if (Character.isLowSurrogate(c2)) {
+                        return Character.toCodePoint(c1, c2);
+                    } else {
+                        peeked = c2;
+                    }
+                }
+                return c1;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return peeked != -1 || charIterator.hasNext();
+            }
+        }
+        return StreamSupport.intStream(() ->
+                        Spliterators.spliteratorUnknownSize(
+                                new CodePointIterator(),
+                                Spliterator.ORDERED),
+                Spliterator.ORDERED,
+                false);
     }
 }

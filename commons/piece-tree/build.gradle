@@ -4,8 +4,19 @@
 
 plugins {
     id 'buildlogic.java-library-conventions'
+    id 'me.champeau.jmh' version '0.7.2'
+}
+
+repositories {
+    maven {
+        url = uri('https://jitpack.io')
+    }
 }
 
 dependencies {
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
+    testImplementation 'org.json:json:20240303'
+    testImplementation 'com.github.Techcable:ahmadsoft-ropes:1.2.7'
+    testImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    testImplementation 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }

@@ -4,6 +4,32 @@ Actually, this implementation is a direct transliteration of the TypeScript
 implementation from VS Code [[https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeBase.ts][pieceTreeBase.ts]]. For more information on piece
 trees, see [[https://code.visualstudio.com/blogs/2018/03/23/text-buffer-reimplementation][the blog post from a VS Code developer]].
 
+* Some (Probably Badly Desegned) Benchmarks
+
+#+begin_html
+<img src="./gap-buffer-rules.png" alt="Gap buffers are pretty good!" />
+#+end_html
+
+[[file:gap-buffer-rules.png][Gap buffers are pretty good!]]
+
+The figure above shows the results of my (badly designed) benchmarks comparing
+the performance of this implementation with a gap buffer implementation and a
+rope. Precautions though:
+
+1. The benchmarks are not performed without any warm-up, to hopefully capture
+   worst cases.
+2. Only our piece tree implementation keeps track of line counts, which might
+   add a bit of overhead. (And the benchmark does not test line-based
+   operations.)
+
+Basically, if string concatenation is the only operation you need, a gap buffer
+is probably the best choice (and the performance of plain string concatenation
+is not that bad). But if you want to care about line numbers, you will need
+something more complex, whether it is a [[https://github.com/CeleritasCelery/rune/blob/master/crates/text-buffer/src/metric.rs][metadata tree along a gap buffer]], or [[https://zed.dev/blog/zed-decoded-rope-sumtree][a
+rope-like sum tree]]. As for me, writing a tree implementation from scratch /and/
+making sure it works is simply too overwhelming, so I guess I will stick with
+this piece of transliteration anyway.
+
 * License
 
 Both the original TypeScript implementation and this implementation are licensed

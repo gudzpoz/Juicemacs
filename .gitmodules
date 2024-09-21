@@ -2,3 +2,6 @@
 	path = elisp/emacs
 	url = https://github.com/emacs-mirror/emacs.git
 	branch = emacs-30
+[submodule "commons/piece-tree/src/test/resources/editing-traces"]
+	path = commons/piece-tree/src/test/resources/editing-traces
+	url = https://github.com/josephg/editing-traces.git
