@@ -4,12 +4,12 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_TABLE_EXTRA_SLOTS;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 
 public class BuiltInCharTab extends ELispBuiltIns {
     @Override
@@ -39,7 +39,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
                 throw new IllegalArgumentException();
             }
             ELispCharTable table = new ELispCharTable(init, extraSlots);
-            table.setParent(NIL);
+            table.setParent(false);
             table.setPurpose(purpose);
             return table;
         }
@@ -151,8 +151,19 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetCharTableRange extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setCharTableRange(Object charTable, Object range, Object value) {
-            throw new UnsupportedOperationException();
+        public static Object setCharTableRange(ELispCharTable charTable, Object range, Object value) {
+            if (ELispSymbol.isT(range)) {
+                charTable.setAll(value);
+            } else if (ELispSymbol.isNil(range)) {
+                charTable.setDefault(value);
+            } else if (range instanceof Long l) {
+                charTable.setChar((int) (long) l, value);
+            } else if (range instanceof ELispCons cons) {
+                charTable.setRange((int) (long) cons.car(), (int) (long) cons.cdr(), value);
+            } else {
+                throw new IllegalArgumentException();
+            }
+            return value;
         }
     }
 

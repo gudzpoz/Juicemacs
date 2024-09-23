@@ -90,11 +90,13 @@ public class ELispCharTable extends AbstractELispVector {
             CHARTAB_SIZE_BITS_3,
             0,
     };
-    public final static int CHARTAB_STANDARD_SLOTS = 4 + (1 << CHARTAB_SIZE_BITS_0);
     public final static int DEFAULT_VALUT_SLOT = 0;
     public final static int PARENT_SLOT = 1;
     public final static int PURPOSE_SLOT = 2;
     public final static int ASCII_SLOT = 3;
+    public final static int CONTENT_BASE_SLOT = 4;
+    public final static int CHARTAB_STANDARD_SLOTS = CONTENT_BASE_SLOT + (1 << CHARTAB_SIZE_BITS_0);
+    public final static int SUB_CONTENT_BASE_SLOT = 2;
 
     private ELispCharTable(List<Object> inner) {
         super(inner);
@@ -112,20 +114,110 @@ public class ELispCharTable extends AbstractELispVector {
         return objects;
     }
 
-    public void setParent(Object parent) {
-        set(PARENT_SLOT, parent);
+    public void setDefault(Object value) {
+        set(DEFAULT_VALUT_SLOT, value);
     }
 
-    public void setPurpose(ELispSymbol purpose) {
-        set(PURPOSE_SLOT, purpose);
+    public Object getParent() {
+        return get(PARENT_SLOT);
+    }
+
+    public void setParent(Object parent) {
+        set(PARENT_SLOT, parent);
     }
 
     public ELispSymbol getPurpose() {
         return (ELispSymbol) get(PURPOSE_SLOT);
     }
 
-    public Object getParent() {
-        return get(PARENT_SLOT);
+    public void setPurpose(ELispSymbol purpose) {
+        set(PURPOSE_SLOT, purpose);
+    }
+
+    public Object getAsciiSlot() {
+        return get(ASCII_SLOT);
+    }
+
+    public void setAsciiSlot(Object ascii) {
+        set(ASCII_SLOT, ascii);
+    }
+
+    private Object getAsciiValue() {
+        Object content = get(CONTENT_BASE_SLOT);
+        if (!(content instanceof SubTable depth1)) {
+            return content;
+        }
+        content = depth1.get(SUB_CONTENT_BASE_SLOT);
+        if (!(content instanceof SubTable depth2)) {
+            return content;
+        }
+        return depth2.get(SUB_CONTENT_BASE_SLOT);
+    }
+
+    private Object getContentSlot(int tableIndex) {
+        return get(tableIndex + CONTENT_BASE_SLOT);
+    }
+
+    private void setContentSlot(int tableIndex, Object content) {
+        set(tableIndex + CONTENT_BASE_SLOT, content);
+    }
+
+    private SubTable getSubTable(int tableIndex) {
+        Object contentSlot = getContentSlot(tableIndex);
+        if (contentSlot instanceof SubTable table) {
+            return table;
+        }
+        SubTable table = new SubTable(1, tableIndex * (1 << CHARTAB_BITS[0]), contentSlot);
+        setContentSlot(tableIndex, table);
+        return table;
+    }
+
+    public Object getChar(int codepoint) {
+        // TODO: When does Emacs fetch from parent tables?
+        if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
+            return ascii.getChar(codepoint);
+        }
+        int i = charTableIndex(codepoint, 0, 0);
+        return getSubTable(i).getChar(codepoint);
+    }
+
+    public void setChar(int codepoint, Object value) {
+        if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
+            ascii.setChar(codepoint, value);
+            return;
+        }
+        int i = charTableIndex(codepoint, 0, 0);
+        getSubTable(i).setChar(codepoint, value);
+        if (codepoint < 128) {
+            setAsciiSlot(getAsciiValue());
+        }
+    }
+
+    public void setRange(int from, int to, Object value) {
+        if (from == to) {
+            setChar(from, value);
+            return;
+        }
+        int limit = charTableIndex(to, 0, 0);
+        int step = 1 << CHARTAB_BITS[0];
+        for (int i = charTableIndex(from, 0, 0), minChar = i * step;
+             i <= limit && minChar <= to; i++, minChar += step) {
+            if (from <= minChar && minChar + step - 1 <= to) {
+                setContentSlot(i, value);
+            } else {
+                getSubTable(i).setRange(from, to, value);
+            }
+        }
+        if (from < 128) {
+            setAsciiSlot(getAsciiValue());
+        }
+    }
+
+    public void setAll(Object value) {
+        setAsciiSlot(value);
+        for (int i = 0; i < (1 << CHARTAB_SIZE_BITS_0); i++) {
+            setContentSlot(i, value);
+        }
     }
 
     /**
@@ -147,6 +239,11 @@ public class ELispCharTable extends AbstractELispVector {
             throw new ArrayIndexOutOfBoundsException();
         }
         set(n + CHARTAB_STANDARD_SLOTS, value);
+    }
+
+    @Override
+    public String toString() {
+        return toStringHelper("#^[", "]");
     }
 
     public static ELispCharTable create(List<Object> objects) {
@@ -208,6 +305,72 @@ public class ELispCharTable extends AbstractELispVector {
 
         public int getMinChar() {
             return (int) (long) get(MIN_CHAR_SLOT);
+        }
+
+        public Object getChar(int codepoint) {
+            int depth = getDepth();
+            int i = charTableIndex(codepoint, depth, getMinChar());
+            if (depth == 3) {
+                return getContentSlot(i);
+            } else {
+                return getSubTable(i).getChar(codepoint);
+            }
+        }
+
+        public void setChar(int codepoint, Object value) {
+            int depth = getDepth();
+            int i = charTableIndex(codepoint, depth, getMinChar());
+            if (depth == 3) {
+                setContentSlot(i, value);
+            } else {
+                getSubTable(i).setChar(codepoint, value);
+            }
+        }
+
+        public Object getContentSlot(int tableIndex) {
+            return get(tableIndex + SUB_CONTENT_BASE_SLOT);
+        }
+
+        public void setContentSlot(int tableIndex, Object value) {
+            set(tableIndex + SUB_CONTENT_BASE_SLOT, value);
+        }
+
+        public SubTable getSubTable(int tableIndex) {
+            Object sub = getContentSlot(tableIndex);
+            if (sub instanceof SubTable table) {
+                return table;
+            }
+            int depth = getDepth();
+            SubTable table = new SubTable(
+                    depth + 1,
+                    getMinChar() + tableIndex * (1 << CHARTAB_BITS[depth]),
+                    sub
+            );
+            setContentSlot(tableIndex, table);
+            return table;
+        }
+
+        public void setRange(int from, int to, Object value) {
+            int minChar = getMinChar();
+            int depth = getDepth();
+            if (from < minChar) {
+                from = minChar;
+            }
+            int limit = getSlots(depth);
+            int step = 1 << CHARTAB_BITS[depth];
+            for (int i = charTableIndex(from, depth, minChar), min = minChar + i * step;
+                 i < limit && min <= to; i++, min += step) {
+                if (from <= min && min + step - 1 <= to) {
+                    setContentSlot(i, value);
+                } else {
+                    getSubTable(i).setRange(from, to, value);
+                }
+            }
+        }
+
+        @Override
+        public String toString() {
+            return toStringHelper("#^^[", "]");
         }
     }
 }
