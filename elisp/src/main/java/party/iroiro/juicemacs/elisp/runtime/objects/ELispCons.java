@@ -201,9 +201,9 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         BrentTortoiseHareIterator i = listIterator(1);
         while (i.hasNextCdr()) {
             if (i.hasNext()) {
-                sb.append(" ").append(i.next());
+                sb.append(" ").append(ELispValue.display(i.next()));
             } else {
-                sb.append(" . ").append(i.current());
+                sb.append(" . ").append(ELispValue.display(i.current()));
                 break;
             }
         }

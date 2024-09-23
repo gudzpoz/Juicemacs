@@ -13,13 +13,25 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 public final class ELispHashtable implements ELispValue {
 
     private final HashMap<ELispHashtable.ELispHashtableKey, Object> inner;
+    private final Object eqSymbol;
 
     public ELispHashtable() {
-        this(BuiltInData.FEq::eq);
+        this(EQ);
     }
 
-    public ELispHashtable(BiPredicate<Object, Object> eq) {
-        this.eq = eq;
+    public ELispHashtable(Object testSym) {
+        this.eqSymbol = testSym;
+        BiPredicate<Object, Object> test = null;
+        if (testSym == EQ) {
+            test = BuiltInData.FEq::eq;
+        } else if (testSym == EQL) {
+            test = BuiltInFns.FEql::eql;
+        } else if (testSym == EQUAL) {
+            test = BuiltInFns.FEqual::equal;
+        } else {
+            test = BuiltInData.FEq::eq;
+        }
+        this.eq = test;
         this.inner = new HashMap<>();
     }
 
@@ -80,15 +92,7 @@ public final class ELispHashtable implements ELispValue {
     public static ELispHashtable hashTableFromPlist(List<Object> list) {
         // #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data ())
         Object testSym = getFromPseudoPlist(list, TEST);
-        BiPredicate<Object, Object> test = null;
-        if (testSym == EQ) {
-            test = BuiltInData.FEq::eq;
-        } else if (testSym == EQL) {
-            test = BuiltInFns.FEql::eql;
-        } else if (testSym == EQUAL) {
-            test = BuiltInFns.FEqual::equal;
-        }
-        ELispHashtable table = test == null ? new ELispHashtable() : new ELispHashtable(test);
+        ELispHashtable table = new ELispHashtable(Objects.requireNonNullElse(testSym, false));
         Object data = getFromPseudoPlist(list, DATA);
         if (data != null && !ELispSymbol.isNil(data)) {
             ELispCons cons = (ELispCons) data;
@@ -113,5 +117,19 @@ public final class ELispHashtable implements ELispValue {
             }
         }
         return null;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder("#s(hash-table");
+        builder.append(" size ").append(size());
+        builder.append(" test ").append(eqSymbol);
+        builder.append(" data (");
+        forEach((k, v) -> builder.append(ELispValue.display(k)).append(' ').append(ELispValue.display(v)).append(' '));
+        if (size() != 0) {
+            builder.deleteCharAt(builder.length() - 1);
+        }
+        builder.append("))");
+        return builder.toString();
     }
 }

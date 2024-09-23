@@ -15,4 +15,9 @@ public final class ELispVector extends AbstractELispVector {
     public ELispVector reverse() {
         return new ELispVector(new ArrayList<>(inner.reversed()));
     }
+
+    @Override
+    public String toString() {
+        return toStringHelper("[", "]");
+    }
 }

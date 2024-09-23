@@ -121,6 +121,11 @@ public final class ELispString implements ELispValue {
         return value.toString();
     }
 
+    @Override
+    public String display() {
+        return "\"" + toString().replace("\"", "\\\"") + "\"";
+    }
+
     public boolean isMultibyte() {
         return true;
     }

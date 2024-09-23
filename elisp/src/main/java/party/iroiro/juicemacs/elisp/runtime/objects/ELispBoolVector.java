@@ -47,4 +47,15 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         }
         return new ELispBoolVector(bits, size);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("#&").append(size).append("\"");
+        for (byte b : bits.toByteArray()) {
+            builder.appendCodePoint(b);
+        }
+        builder.append("\"");
+        return builder.toString();
+    }
 }

@@ -12,4 +12,9 @@ public record ELispSubroutine(CallTarget body, boolean specialForm) implements E
     public boolean lispEquals(Object other) {
         return this.equals(other);
     }
+
+    @Override
+    public String toString() {
+        return "#<subr " + body +  ">";
+    }
 }

@@ -56,6 +56,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         return getFunction().callTarget();
     }
 
+    @Override
+    public String toString() {
+        return toStringHelper("(lambda ", ")");
+    }
+
     private class ELispClosureCallNode extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Children

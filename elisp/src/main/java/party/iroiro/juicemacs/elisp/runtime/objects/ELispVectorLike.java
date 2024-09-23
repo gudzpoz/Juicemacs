@@ -29,4 +29,15 @@ public abstract class ELispVectorLike<T> extends AbstractList<T> implements List
     public boolean equals(Object o) {
         return this == o;
     }
+
+    protected String toStringHelper(String prefix, String suffix) {
+        StringBuilder builder = new StringBuilder(prefix);
+        for (int i = 0; i < size(); i++) {
+            builder.append(ELispValue.display(get(i)));
+            if (i < size() - 1) {
+                builder.append(" ");
+            }
+        }
+        return builder.append(suffix).toString();
+    }
 }
