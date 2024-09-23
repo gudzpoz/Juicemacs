@@ -212,6 +212,10 @@ public class ELispParser {
         return vector;
     }
 
+    public int getCodepointOffset() {
+        return lexer.getCodepointOffset();
+    }
+
     public boolean hasNext() throws IOException {
         return !(peek().data() instanceof EOF);
     }
@@ -226,6 +230,10 @@ public class ELispParser {
         ELispParser parser = new ELispParser(source);
         // TODO: Handle multiple expressions
         return ELispContext.valueToExpression(parser.nextLisp(), parser.getLexicalBinding());
+    }
+
+    public static Object read(String s) throws IOException {
+        return read(Source.newBuilder("elisp", s, "").build());
     }
 
     public static Object read(Source source) throws IOException {

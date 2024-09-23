@@ -5,9 +5,12 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class BuiltInAlloc extends ELispBuiltIns {
@@ -158,8 +161,8 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeVector extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeVector(Object length, Object init) {
-            throw new UnsupportedOperationException();
+        public static ELispVector makeVector(long length, Object init) {
+            return new ELispVector(new ArrayList<>(Collections.nCopies((int) length, init)));
         }
     }
 
@@ -174,8 +177,8 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FVector extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void vector(Object[] objects) {
-            throw new UnsupportedOperationException();
+        public static ELispVector vector(Object[] objects) {
+            return new ELispVector(new ArrayList<>(Arrays.asList(objects)));
         }
     }
 
@@ -234,8 +237,8 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeSymbol extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeSymbol(Object name) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol makeSymbol(ELispString name) {
+            return new ELispSymbol(name.toString());
         }
     }
 

@@ -3,9 +3,11 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
 
@@ -363,7 +365,8 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FArrayp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean arrayp(Object object) {
-            return object instanceof ELispString || object instanceof ELispVector;
+            return object instanceof ELispString || object instanceof ELispVector
+                    || object instanceof ELispBoolVector || object instanceof ELispCharTable;
         }
     }
 
@@ -654,7 +657,7 @@ public class BuiltInData extends ELispBuiltIns {
             return switch (list) {
                 case ELispCons cons -> cons.car();
                 case Boolean b when !b -> false;
-                case ELispSymbol sym when sym == NIL -> NIL;
+                case ELispSymbol sym when sym == NIL -> false;
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -694,7 +697,7 @@ public class BuiltInData extends ELispBuiltIns {
             return switch (list) {
                 case ELispCons cons -> cons.cdr();
                 case Boolean b when !b -> false;
-                case ELispSymbol sym when sym == NIL -> NIL;
+                case ELispSymbol sym when sym == NIL -> false;
                 default -> throw new IllegalArgumentException();
             };
         }
@@ -816,7 +819,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FFmakunbound extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispSymbol fmakunbound(ELispSymbol symbol) {
-            symbol.setFunction(NIL);
+            symbol.setFunction(false);
             return symbol;
         }
     }
@@ -942,8 +945,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFset extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fset(Object symbol, Object definition) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol fset(ELispSymbol symbol, Object definition) {
+            symbol.setFunction(definition);
+            return symbol;
         }
     }
 
@@ -965,14 +969,10 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefalias extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol defalias(ELispSymbol symbol, ELispValue definition, Object docstring) {
+        public static ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
             // TODO: Handle defalias-fset-function
             System.out.println(symbol);
-            if (definition instanceof ELispSymbol target) {
-                symbol.aliasSymbol(target);
-            } else {
-                symbol.setFunction(definition);
-            }
+            FFset.fset(symbol, definition);
             return symbol;
         }
     }
@@ -1185,8 +1185,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void set(Object symbol, Object newval) {
-            throw new UnsupportedOperationException();
+        public static Object set(ELispSymbol symbol, Object newval) {
+            symbol.setValue(newval);
+            return newval;
         }
     }
 
@@ -1257,8 +1258,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultBoundp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defaultBoundp(Object symbol) {
-            throw new UnsupportedOperationException();
+        public static boolean defaultBoundp(ELispSymbol symbol) {
+            return symbol.isDefaultBound();
         }
     }
 
@@ -1274,8 +1275,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defaultValue(Object symbol) {
-            throw new UnsupportedOperationException();
+        public static Object defaultValue(ELispSymbol symbol) {
+            return symbol.getDefaultValue();
         }
     }
 
@@ -1290,8 +1291,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetDefault extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setDefault(Object symbol, Object value) {
-            throw new UnsupportedOperationException();
+        public static Object setDefault(ELispSymbol symbol, Object value) {
+            symbol.setDefaultValue(value);
+            return value;
         }
     }
 
@@ -1321,8 +1323,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeVariableBufferLocal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeVariableBufferLocal(Object variable) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol makeVariableBufferLocal(ELispSymbol variable) {
+            variable.setBufferLocal(true);
+            return variable;
         }
     }
 
@@ -1352,8 +1355,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeLocalVariable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeLocalVariable(Object variable) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol makeLocalVariable(ELispSymbol variable) {
+            variable.setBufferLocal(false);
+            return variable;
         }
     }
 
@@ -1384,8 +1388,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLocalVariableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void localVariableP(Object variable, Object buffer) {
-            throw new UnsupportedOperationException();
+        public static boolean localVariableP(ELispSymbol variable, Object buffer) {
+            return variable.isBufferLocal(buffer);
         }
     }
 
@@ -1403,8 +1407,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLocalVariableIfSetP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void localVariableIfSetP(Object variable, Object buffer) {
-            throw new UnsupportedOperationException();
+        public static boolean localVariableIfSetP(ELispSymbol variable, Object buffer) {
+            return variable.isBufferLocalIfSet(buffer);
         }
     }
 
@@ -1437,7 +1441,8 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static Object indirectFunction(Object object, Object noerror) {
             if (object instanceof ELispSymbol symbol) {
-                return symbol.getFunction();
+                // noerror is ignored by GNU Emacs?
+                return symbol.getIndirectFunction();
             }
             return object;
         }
@@ -1470,8 +1475,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAset extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void aset(Object array, Object idx, Object newelt) {
-            throw new UnsupportedOperationException();
+        public static Object aset(ELispVector array, long idx, Object newelt) {
+            array.set((int) idx, newelt);
+            return newelt;
         }
     }
 
@@ -1652,8 +1658,21 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringToNumber extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringToNumber(Object string, Object base) {
-            throw new UnsupportedOperationException();
+        public static Object stringToNumber(ELispString string, Object base) {
+            String s = string.toString();
+            long b = ELispSymbol.or(base, 10);
+            if (b != 10) {
+                s = s.trim();
+                s = "#" + b + "r" + s;
+            }
+            try {
+                Object read = ELispParser.read(s);
+                if (read instanceof Long || read instanceof Double || read instanceof ELispBigNum) {
+                    return read;
+                }
+            } catch (IOException ignored) {
+            }
+            return 0;
         }
     }
 

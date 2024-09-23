@@ -37,6 +37,9 @@ public class BuiltInEvalTest extends BaseFormTest {
             "(let ((sum 0) (n 100)) (while (> n 0) (setq sum (+ sum n) n (- n 1))) sum)", 5050L,
             "(eval '(+ 1 2 3))", 6L,
             "(apply '+ '(1 2 3))", 6L,
+            "(functionp '+)", true,
+            "(functionp 'quote)", false,
+            "(functionp (function (lambda (x) x)))", true,
             "(funcall '+ 1 2 3)", 6L,
     };
 

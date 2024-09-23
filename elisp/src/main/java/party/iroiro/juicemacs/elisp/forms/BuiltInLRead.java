@@ -4,6 +4,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
@@ -470,8 +471,18 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReadFromString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void readFromString(Object string, Object start, Object end) {
-            throw new UnsupportedOperationException();
+        public static Object readFromString(ELispString string, Object start, Object end) {
+            long from = ELispSymbol.or(start, 0L);
+            long to = ELispSymbol.or(end, string.codepointCount());
+            TruffleString sub = string.toTruffleString().substringUncached((int) from, (int) (to - from), ELispString.ENCODING, false);
+            try {
+                Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
+                ELispParser parser = new ELispParser(elisp);
+                Object o = parser.nextLisp();
+                return new ELispCons(o, from + parser.getCodepointOffset());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

@@ -21,6 +21,14 @@ public class BuiltInDataTest extends BaseFormTest {
             "(eq 'integer (type-of #xFFFFFFFFFFFFFFFFFFFF))", true,
             "(eq 'float (type-of 1.0))", true,
             "(eq 'subr (type-of (symbol-function 'eq)))", true,
+            "(equal \"t\" (symbol-name t))", true,
+            "(and (fset 'test-sym 1) (symbol-function 'test-sym))", 1L,
+            "(+ (set 'a 1) a)", 2L,
+            """
+            (let ((a 1))
+              (+ a
+               (progn (set 'a 10) a)
+               (progn (setq a 100) a)))""", 102L,
             "(eq 'string (type-of \"s\"))", true,
             "(eq 'vector (type-of [1 2 3]))", true,
             "(eq 'cons (type-of '(1)))", true,
@@ -59,6 +67,15 @@ public class BuiltInDataTest extends BaseFormTest {
             "(vector-or-char-table-p [])", true,
             "(bool-vector-p 1)", false,
             "(bool-vector-p #&1\"a\")", true,
+            "(arrayp 1)", false,
+            "(arrayp [])", true,
+            "(arrayp #&1\"a\")", true,
+            "(arrayp (make-char-table nil))", true,
+            "(arrayp \"string\")", true,
+            "(sequencep 1)", false,
+            "(sequencep \"\")", true,
+            "(sequencep [])", true,
+            "(sequencep '(a b c))", true,
             "(char-or-string-p nil)", false,
             "(char-or-string-p #xFFFFFFFFFFFFFFFFFFFFFFF)", false,
             "(char-or-string-p \"\")", true,
@@ -72,13 +89,58 @@ public class BuiltInDataTest extends BaseFormTest {
             "(numberp 1)", true,
             "(numberp 1.0)", true,
             "(car nil)", false,
+            "(car (intern \"nil\"))", false,
             "(car '(1 2 3))", 1L,
             "(car-safe 1)", false,
             "(car-safe '(1 2 3))", 1L,
             "(cdr nil)", false,
+            "(cdr (intern \"nil\"))", false,
             "(cdr '(1 . 2))", 2L,
             "(cdr-safe 1)", false,
             "(cdr-safe '(1 . 2))", 2L,
+            "(let ((a '(1 . 2))) (setcar a 3) (car a))", 3L,
+            "(let ((a '(1 . 2))) (setcdr a 3) (cdr a))", 3L,
+            "(let ((not-globally-bound 1)) (boundp 'not-globally-bound))", false,
+            """
+            (and (setq not-bound-yet 1) (boundp 'not-bound-yet)
+                 (makunbound 'not-bound-yet) (null (boundp 'not-bound-yet)))
+            """, true,
+            """
+            (and (null (fboundp 'unbound-yet-f)) (defalias 'unbound-yet-f 'identity)
+                 (fboundp 'unbound-yet-f)
+                 (fmakunbound 'unbound-yet-f) (null (fboundp 'unbound-yet-f)))
+            """, true,
+            "(progn (put 'a 'b 1) (get 'a 'b))", 1L,
+            "(progn (put 'aaaa 'b 1) (equal (symbol-plist 'aaaa) '(b 1)))", true,
+            "(progn (setq add 100) (defalias 'add '+) (+ (add 1 10) add))", 111L,
+            """
+            (progn (setq built-in-data-test-mvbl-in-let 1)
+              (let ((built-in-data-test-mvbl-in-let 1))
+               (make-variable-buffer-local 'built-in-data-test-mvbl-in-let)
+               (local-variable-p 'built-in-data-test-mvbl-in-let))
+            )
+            """, false,
+            """
+            (let ((built-in-data-test-mvbl-in-let-1 1))
+              (make-variable-buffer-local 'built-in-data-test-mvbl-in-let-1)
+              (local-variable-if-set-p 'built-in-data-test-mvbl-in-let-1))
+            """, true,
+            """
+            (progn (set-default 'built-in-data-test-default t)
+                   (and (null (local-variable-p 'built-in-data-test-default))
+                        (default-boundp 'built-in-data-test-default)
+                        built-in-data-test-default))""", true,
+            "(progn (setq built-in-data-test-default-1 1) (default-value 'built-in-data-test-default-1))", 1L,
+            """
+            (progn (make-variable-buffer-local 'built-in-data-test-boundp)
+                   (boundp 'built-in-data-test-boundp))""", true,
+            """
+            (progn (make-local-variable 'built-in-data-test-boundp-1)
+                   (boundp 'built-in-data-test-boundp-1))""", false,
+            // TODO: Add more buffer-local tests after we have multiple buffers.
+            "(progn (defalias 'funca 1) (defalias 'funcb 'funca) (indirect-function 'funcb))", 1L,
+            "(indirect-function 1)", 1L,
+            "(let ((vec [1 2 3])) (aset vec 0 4) (equal vec [4 2 3]))", true,
             "(= 1 1 1 1 1)", true,
             "(= 1 1 1 1 0)", false,
             "(= 1.0 1.0 1 1)", true,
@@ -96,6 +158,11 @@ public class BuiltInDataTest extends BaseFormTest {
             "(<= 2 1)", false,
             "(/= 1 2)", true,
             "(/= 1 1)", false,
+            "(string-to-number \"\")", 0L,
+            "(string-to-number \"1\")", 1L,
+            "(string-to-number \"qwerty\")", 0L,
+            "(string-to-number \"011..qwerty\" 8)", 9L,
+            "(string-to-number \"ff\" 16)", 255L,
             "(+ 1 1)", 2L,
             "(+ 1 1.0 2.5)", 4.5,
             "(+ " + Long.MAX_VALUE + " 1)", BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE),

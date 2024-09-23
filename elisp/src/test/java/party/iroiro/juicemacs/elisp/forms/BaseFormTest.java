@@ -4,6 +4,7 @@ import org.graalvm.polyglot.Context;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public abstract class BaseFormTest {
 
@@ -22,7 +23,11 @@ public abstract class BaseFormTest {
             for (int i = 0; i < entries.length; i += 2) {
                 String expr = (String) entries[i];
                 Object expected = entries[i + 1];
-                assertEquals(expected, context.eval("elisp", expr).as(expected.getClass()), expr);
+                try {
+                    assertEquals(expected, context.eval("elisp", expr).as(expected.getClass()), expr);
+                } catch (Exception e) {
+                    fail(expr, e);
+                }
             }
         }
     }

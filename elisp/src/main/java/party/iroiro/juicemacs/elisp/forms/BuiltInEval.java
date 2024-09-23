@@ -26,7 +26,10 @@ public class BuiltInEval extends ELispBuiltIns {
         return switch (form) {
             case ELispSymbol symbol when symbol == T -> true;
             case ELispSymbol symbol when symbol == NIL -> false;
-            case ELispSymbol symbol -> symbol.getValue();
+            case ELispSymbol symbol -> {
+                Object lexical = ELispBindingScope.getLexical(symbol);
+                yield lexical == null ? symbol.getValue() : lexical;
+            }
             case ELispCons cons -> evalCons(cons);
             default -> form;
         };
@@ -36,7 +39,7 @@ public class BuiltInEval extends ELispBuiltIns {
         Object function = cons.car();
         Object[] args = cons.cdr() instanceof ELispCons rest ? rest.toArray() : new Object[0];
         if (function instanceof ELispSymbol symbol) {
-            function = symbol.getFunction();
+            function = symbol.getIndirectFunction();
         } else {
             function = FFunction.function(function);
         }
@@ -60,7 +63,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 return evalSub(result);
             }
         }
-        throw new UnsupportedOperationException(function.toString());
+        throw new UnsupportedOperationException(cons.car().toString());
     }
 
     /**
@@ -233,7 +236,9 @@ public class BuiltInEval extends ELispBuiltIns {
             for (int i = 0; i < args.length; i += 2) {
                 ELispSymbol symbol = (ELispSymbol) args[i];
                 last = evalSub(args[i + 1]);
-                symbol.setValue(last);
+                if (!ELispBindingScope.setLexical(symbol, last)) {
+                    symbol.setValue(last);
+                }
             }
             return last;
         }
@@ -330,7 +335,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 return FMakeInterpretedClosure.makeInterpretedClosure(
                         args,
                         body,
-                        ELispSymbol.isNil(LEXICAL_BINDING.getValue()) ? false
+                        ELispSymbol.isNil(LEXICAL_BINDING.getValueOr(false)) ? false
                                 : Objects.requireNonNullElse(ELispBindingScope.getCurrentLexical(), true),
                         docString,
                         interactive
@@ -409,8 +414,9 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalDefineUninitializedVariable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalDefineUninitializedVariable(Object symbol, Object doc) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol internalDefineUninitializedVariable(ELispSymbol symbol, Object doc) {
+            // TODO: Chech Emacs implementation
+            return symbol;
         }
     }
 
@@ -729,8 +735,16 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnwindProtect extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void unwindProtect(Object bodyform, Object[] unwindforms) {
-            throw new UnsupportedOperationException();
+        public static Object unwindProtect(Object bodyform, Object[] unwindforms) {
+            // TODO: Add test once we have signal support
+            try {
+                return evalSub(bodyform);
+            } catch (Exception e) {
+                for (Object unwindform : unwindforms) {
+                    evalSub(unwindform);
+                }
+                throw e;
+            }
         }
     }
 
@@ -887,8 +901,19 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAutoload extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void autoload(Object function, Object file, Object docstring, Object interactive, Object type) {
-            throw new UnsupportedOperationException();
+        public static Object autoload(ELispSymbol function, ELispString file, Object docstring, Object interactive, Object type) {
+            // TODO: Add support in evalSub
+            if (!ELispSymbol.isNil(function.getFunction())) {
+                return false;
+            }
+            function.setFunction(new ELispCons.ListBuilder()
+                    .add(AUTOLOAD)
+                    .add(file)
+                    .add(docstring)
+                    .add(interactive)
+                    .add(type)
+                    .build());
+            return function;
         }
     }
 
@@ -980,8 +1005,18 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHooks extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void runHooks(Object[] hooks) {
-            throw new UnsupportedOperationException();
+        public static boolean runHooks(Object[] hooks) {
+            for (Object hook : hooks) {
+                Object value = ((ELispSymbol) hook).getValue();
+                if (FFunctionp.functionp(value)) {
+                    FFuncall.funcall(value, new Object[0]);
+                } else if (value instanceof ELispCons cons) {
+                    for (Object element : cons) {
+                        FFuncall.funcall(element, new Object[0]);
+                    }
+                }
+            }
+            return false;
         }
     }
 
@@ -1089,8 +1124,10 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFunctionp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void functionp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean functionp(Object object) {
+            return (object instanceof ELispSubroutine(_, boolean special) && !special)
+                    || object instanceof ELispInterpretedClosure
+                    || (object instanceof ELispSymbol symbol && functionp(symbol.getIndirectFunction()));
         }
     }
 
@@ -1108,7 +1145,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static Object funcall(Object function, Object[] arguments) {
             if (function instanceof ELispSymbol symbol) {
-                function = symbol.getFunction();
+                function = symbol.getIndirectFunction();
             }
             if (function instanceof ELispSubroutine subroutine) {
                 return subroutine.body().call(arguments);
