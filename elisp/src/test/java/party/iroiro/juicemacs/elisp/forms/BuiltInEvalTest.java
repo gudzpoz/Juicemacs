@@ -1,5 +1,8 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.LEXICAL_BINDING_TEST;
+import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.SPECIAL_IN_LEXICAL_BINDING_TEST;
+
 public class BuiltInEvalTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
             "((lambda () 42))", 42L,
@@ -35,6 +38,30 @@ public class BuiltInEvalTest extends BaseFormTest {
             "(let (a) a)", false,
             "(let () 1)", 1L,
             "(let ((sum 0) (n 100)) (while (> n 0) (setq sum (+ sum n) n (- n 1))) sum)", 5050L,
+            LEXICAL_BINDING_TEST, 1L,
+            SPECIAL_IN_LEXICAL_BINDING_TEST, 0L,
+            """
+            ;;; -*- lexical-binding: t -*-
+            (progn
+              (setq case-fold-search nil)
+              (defalias 'search #'(lambda () (string-match "A" "a")))
+              (let* ((case-fold-search t)
+                     (start (search)))
+                start))""", 0L,
+            """
+            ;;; -*- lexical-binding: t -*-
+            (+
+             (let ((_ 1))
+               (defvar y) ;; dynamic only in this let block
+               (defalias 'gety #'(lambda () y))
+               (setq y 1)
+               (let ((y 2))
+                 (gety)))
+             (let ((y 10))
+               (defalias 'gety #'(lambda () y))
+               (let ((y 20))
+                 (gety))))
+            """, 12L,
             "(eval '(+ 1 2 3))", 6L,
             "(apply '+ '(1 2 3))", 6L,
             "(functionp '+)", true,

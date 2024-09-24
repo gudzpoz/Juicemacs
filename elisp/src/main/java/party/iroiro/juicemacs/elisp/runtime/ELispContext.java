@@ -22,6 +22,7 @@ import java.util.HashMap;
  */
 public final class ELispContext {
     private final static ELispContext ELISP_CONTEXT_INSTANCE = new ELispContext();
+
     public static ELispContext getInstance() {
         return ELISP_CONTEXT_INSTANCE;
     }
@@ -30,9 +31,11 @@ public final class ELispContext {
 
     // TODO: Replace this with obarray
     private final static HashMap<String, ELispSymbol> internMap = new HashMap<>();
+
     public static ELispSymbol intern(String symbol) {
         return internMap.computeIfAbsent(symbol, ELispSymbol::new);
     }
+
     public static String applyShorthands(String symbol) {
         // TODO: Implementation
         return symbol;
@@ -66,9 +69,13 @@ public final class ELispContext {
         initSymbols(evalSymbols());
         initSymbols(fileioSymbols());
         initSymbols(fnsSymbols());
+        initSymbols(keymapSymbols());
         initSymbols(lreadSymbols());
+        initSymbols(printSymbols());
         initSymbols(processSymbols());
         initSymbols(searchSymbols());
+        initSymbols(timefnsSymbols());
+        initSymbols(xfacesSymbols());
 
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
@@ -81,9 +88,13 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInEval());
         initBuiltIns(language, new BuiltInFileIO());
         initBuiltIns(language, new BuiltInFns());
+        initBuiltIns(language, new BuiltInKeymap());
         initBuiltIns(language, new BuiltInLRead());
+        initBuiltIns(language, new BuiltInPrint());
         initBuiltIns(language, new BuiltInProcess());
         initBuiltIns(language, new BuiltInSearch());
+        initBuiltIns(language, new BuiltInTimeFns());
+        initBuiltIns(language, new BuiltInXFaces());
 
         ELispGlobals.initGlobalVariables();
     }
@@ -1583,4 +1594,314 @@ public final class ELispContext {
         };
     }
     /* @end region="buffer.c" */
+    /* @generated region="keymap.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol CADVERTISED_BINDING = new ELispSymbol(":advertised-binding");
+    public final static ELispSymbol DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES = new ELispSymbol("describe-bindings-check-shadowing-in-ranges");
+    public final static ELispSymbol EMULATION_MODE_MAP_ALISTS = new ELispSymbol("emulation-mode-map-alists");
+    public final static ELispSymbol FONT_LOCK_FACE = new ELispSymbol("font-lock-face");
+    public final static ELispSymbol HELP_KEY_BINDING = new ELispSymbol("help-key-binding");
+    public final static ELispSymbol HELP__DESCRIBE_MAP_TREE = new ELispSymbol("help--describe-map-tree");
+    public final static ELispSymbol IGNORE_SELF_INSERT = new ELispSymbol("ignore-self-insert");
+    public final static ELispSymbol KEYMAP = new ELispSymbol("keymap");
+    public final static ELispSymbol KEYMAPP = new ELispSymbol("keymapp");
+    public final static ELispSymbol KEYMAP_CANONICALIZE = new ELispSymbol("keymap-canonicalize");
+    public final static ELispSymbol KEY_PARSE = new ELispSymbol("key-parse");
+    public final static ELispSymbol KEY_VALID_P = new ELispSymbol("key-valid-p");
+    public final static ELispSymbol MAP_KEYMAP_SORTED = new ELispSymbol("map-keymap-sorted");
+    public final static ELispSymbol MENU_BAR = new ELispSymbol("menu-bar");
+    public final static ELispSymbol MENU_ITEM = new ELispSymbol("menu-item");
+    public final static ELispSymbol MINIBUFFER_LOCAL_MAP = new ELispSymbol("minibuffer-local-map");
+    public final static ELispSymbol MINOR_MODE_MAP_ALIST = new ELispSymbol("minor-mode-map-alist");
+    public final static ELispSymbol MINOR_MODE_OVERRIDING_MAP_ALIST = new ELispSymbol("minor-mode-overriding-map-alist");
+    public final static ELispSymbol MODE_LINE = new ELispSymbol("mode-line");
+    public final static ELispSymbol NON_ASCII = new ELispSymbol("non-ascii");
+    public final static ELispSymbol NON_KEY_EVENT = new ELispSymbol("non-key-event");
+    public final static ELispSymbol PRINC = new ELispSymbol("princ");
+    public final static ELispSymbol REMAP = new ELispSymbol("remap");
+    public final static ELispSymbol SELF_INSERT_COMMAND = new ELispSymbol("self-insert-command");
+    public final static ELispSymbol SUPPRESS_KEYMAP = new ELispSymbol("suppress-keymap");
+    public final static ELispSymbol WHERE_IS_PREFERRED_MODIFIER = new ELispSymbol("where-is-preferred-modifier");
+    private ELispSymbol[] keymapSymbols() {
+        return new ELispSymbol[]{
+                CADVERTISED_BINDING,
+                DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES,
+                EMULATION_MODE_MAP_ALISTS,
+                FONT_LOCK_FACE,
+                HELP_KEY_BINDING,
+                HELP__DESCRIBE_MAP_TREE,
+                IGNORE_SELF_INSERT,
+                KEYMAP,
+                KEYMAPP,
+                KEYMAP_CANONICALIZE,
+                KEY_PARSE,
+                KEY_VALID_P,
+                MAP_KEYMAP_SORTED,
+                MENU_BAR,
+                MENU_ITEM,
+                MINIBUFFER_LOCAL_MAP,
+                MINOR_MODE_MAP_ALIST,
+                MINOR_MODE_OVERRIDING_MAP_ALIST,
+                MODE_LINE,
+                NON_ASCII,
+                NON_KEY_EVENT,
+                PRINC,
+                REMAP,
+                SELF_INSERT_COMMAND,
+                SUPPRESS_KEYMAP,
+                WHERE_IS_PREFERRED_MODIFIER,
+        };
+    }
+    /* @end region="keymap.c" */
+    /* @generated region="print.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol EXTERNAL_DEBUGGING_OUTPUT = new ELispSymbol("external-debugging-output");
+    public final static ELispSymbol FLOAT_OUTPUT_FORMAT = new ELispSymbol("float-output-format");
+    public final static ELispSymbol PRINT_CHARSET_TEXT_PROPERTY = new ELispSymbol("print-charset-text-property");
+    public final static ELispSymbol PRINT_CIRCLE = new ELispSymbol("print-circle");
+    public final static ELispSymbol PRINT_CONTINUOUS_NUMBERING = new ELispSymbol("print-continuous-numbering");
+    public final static ELispSymbol PRINT_ESCAPE_CONTROL_CHARACTERS = new ELispSymbol("print-escape-control-characters");
+    public final static ELispSymbol PRINT_ESCAPE_MULTIBYTE = new ELispSymbol("print-escape-multibyte");
+    public final static ELispSymbol PRINT_ESCAPE_NEWLINES = new ELispSymbol("print-escape-newlines");
+    public final static ELispSymbol PRINT_ESCAPE_NONASCII = new ELispSymbol("print-escape-nonascii");
+    public final static ELispSymbol PRINT_GENSYM = new ELispSymbol("print-gensym");
+    public final static ELispSymbol PRINT_INTEGERS_AS_CHARACTERS = new ELispSymbol("print-integers-as-characters");
+    public final static ELispSymbol PRINT_LENGTH = new ELispSymbol("print-length");
+    public final static ELispSymbol PRINT_LEVEL = new ELispSymbol("print-level");
+    public final static ELispSymbol PRINT_NUMBER_TABLE = new ELispSymbol("print-number-table");
+    public final static ELispSymbol PRINT_QUOTED = new ELispSymbol("print-quoted");
+    public final static ELispSymbol PRINT_SYMBOLS_BARE = new ELispSymbol("print-symbols-bare");
+    public final static ELispSymbol PRINT_UNREADABLE_FUNCTION = new ELispSymbol("print-unreadable-function");
+    public final static ELispSymbol PRINT__UNREADABLE_CALLBACK_BUFFER = new ELispSymbol("print--unreadable-callback-buffer");
+    public final static ELispSymbol STANDARD_OUTPUT = new ELispSymbol("standard-output");
+    public final static ELispSymbol TEMP_BUFFER_SETUP_HOOK = new ELispSymbol("temp-buffer-setup-hook");
+    private ELispSymbol[] printSymbols() {
+        return new ELispSymbol[]{
+                EXTERNAL_DEBUGGING_OUTPUT,
+                FLOAT_OUTPUT_FORMAT,
+                PRINT_CHARSET_TEXT_PROPERTY,
+                PRINT_CIRCLE,
+                PRINT_CONTINUOUS_NUMBERING,
+                PRINT_ESCAPE_CONTROL_CHARACTERS,
+                PRINT_ESCAPE_MULTIBYTE,
+                PRINT_ESCAPE_NEWLINES,
+                PRINT_ESCAPE_NONASCII,
+                PRINT_GENSYM,
+                PRINT_INTEGERS_AS_CHARACTERS,
+                PRINT_LENGTH,
+                PRINT_LEVEL,
+                PRINT_NUMBER_TABLE,
+                PRINT_QUOTED,
+                PRINT_SYMBOLS_BARE,
+                PRINT_UNREADABLE_FUNCTION,
+                PRINT__UNREADABLE_CALLBACK_BUFFER,
+                STANDARD_OUTPUT,
+                TEMP_BUFFER_SETUP_HOOK,
+        };
+    }
+    /* @end region="print.c" */
+    /* @generated region="xfaces.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol BACKGROUND_COLOR = new ELispSymbol("background-color");
+    public final static ELispSymbol BITMAP_SPEC_P = new ELispSymbol("bitmap-spec-p");
+    public final static ELispSymbol BLACK = new ELispSymbol("black");
+    public final static ELispSymbol BOLD = new ELispSymbol("bold");
+    public final static ELispSymbol BOOK = new ELispSymbol("book");
+    public final static ELispSymbol BORDER = new ELispSymbol("border");
+    public final static ELispSymbol CBACKGROUND = new ELispSymbol(":background");
+    public final static ELispSymbol CBOLD = new ELispSymbol(":bold");
+    public final static ELispSymbol CBOX = new ELispSymbol(":box");
+    public final static ELispSymbol CCOLOR = new ELispSymbol(":color");
+    public final static ELispSymbol CDISTANT_FOREGROUND = new ELispSymbol(":distant-foreground");
+    public final static ELispSymbol CEXTEND = new ELispSymbol(":extend");
+    public final static ELispSymbol CFAMILY = new ELispSymbol(":family");
+    public final static ELispSymbol CFILTERED = new ELispSymbol(":filtered");
+    public final static ELispSymbol CFONT = new ELispSymbol(":font");
+    public final static ELispSymbol CFONTSET = new ELispSymbol(":fontset");
+    public final static ELispSymbol CFOREGROUND = new ELispSymbol(":foreground");
+    public final static ELispSymbol CHEIGHT = new ELispSymbol(":height");
+    public final static ELispSymbol CHILD_FRAME_BORDER = new ELispSymbol("child-frame-border");
+    public final static ELispSymbol CIGNORE_DEFFACE = new ELispSymbol(":ignore-defface");
+    public final static ELispSymbol CINHERIT = new ELispSymbol(":inherit");
+    public final static ELispSymbol CINVERSE_VIDEO = new ELispSymbol(":inverse-video");
+    public final static ELispSymbol CITALIC = new ELispSymbol(":italic");
+    public final static ELispSymbol CLINE_WIDTH = new ELispSymbol(":line-width");
+    public final static ELispSymbol COVERLINE = new ELispSymbol(":overline");
+    public final static ELispSymbol CPOSITION = new ELispSymbol(":position");
+    public final static ELispSymbol CREVERSE_VIDEO = new ELispSymbol(":reverse-video");
+    public final static ELispSymbol CSLANT = new ELispSymbol(":slant");
+    public final static ELispSymbol CSTIPPLE = new ELispSymbol(":stipple");
+    public final static ELispSymbol CSTRIKE_THROUGH = new ELispSymbol(":strike-through");
+    public final static ELispSymbol CSTYLE = new ELispSymbol(":style");
+    public final static ELispSymbol CUNDERLINE = new ELispSymbol(":underline");
+    public final static ELispSymbol CURSOR = new ELispSymbol("cursor");
+    public final static ELispSymbol CWEIGHT = new ELispSymbol(":weight");
+    public final static ELispSymbol CWIDTH = new ELispSymbol(":width");
+    public final static ELispSymbol CWINDOW = new ELispSymbol(":window");
+    public final static ELispSymbol DASHES = new ELispSymbol("dashes");
+    public final static ELispSymbol DEFAULT = new ELispSymbol("default");
+    public final static ELispSymbol DOTS = new ELispSymbol("dots");
+    public final static ELispSymbol DOUBLE_LINE = new ELispSymbol("double-line");
+    public final static ELispSymbol EXTRA_BOLD = new ELispSymbol("extra-bold");
+    public final static ELispSymbol EXTRA_LIGHT = new ELispSymbol("extra-light");
+    public final static ELispSymbol FACE = new ELispSymbol("face");
+    public final static ELispSymbol FACE_ALIAS = new ELispSymbol("face-alias");
+    public final static ELispSymbol FACE_DEFAULT_STIPPLE = new ELispSymbol("face-default-stipple");
+    public final static ELispSymbol FACE_FILTERS_ALWAYS_MATCH = new ELispSymbol("face-filters-always-match");
+    public final static ELispSymbol FACE_FONT_LAX_MATCHED_ATTRIBUTES = new ELispSymbol("face-font-lax-matched-attributes");
+    public final static ELispSymbol FACE_FONT_RESCALE_ALIST = new ELispSymbol("face-font-rescale-alist");
+    public final static ELispSymbol FACE_IGNORED_FONTS = new ELispSymbol("face-ignored-fonts");
+    public final static ELispSymbol FACE_NEAR_SAME_COLOR_THRESHOLD = new ELispSymbol("face-near-same-color-threshold");
+    public final static ELispSymbol FACE_NO_INHERIT = new ELispSymbol("face-no-inherit");
+    public final static ELispSymbol FACE_REMAPPING_ALIST = new ELispSymbol("face-remapping-alist");
+    public final static ELispSymbol FACE__NEW_FRAME_DEFAULTS = new ELispSymbol("face--new-frame-defaults");
+    public final static ELispSymbol FLAT_BUTTON = new ELispSymbol("flat-button");
+    public final static ELispSymbol FOREGROUND_COLOR = new ELispSymbol("foreground-color");
+    public final static ELispSymbol FRAME_SET_BACKGROUND_MODE = new ELispSymbol("frame-set-background-mode");
+    public final static ELispSymbol FRINGE = new ELispSymbol("fringe");
+    public final static ELispSymbol HEADER_LINE = new ELispSymbol("header-line");
+    public final static ELispSymbol HEAVY = new ELispSymbol("heavy");
+    public final static ELispSymbol INTERNAL_BORDER = new ELispSymbol("internal-border");
+    public final static ELispSymbol ITALIC = new ELispSymbol("italic");
+    public final static ELispSymbol LIGHT = new ELispSymbol("light");
+    public final static ELispSymbol LINE = new ELispSymbol("line");
+    public final static ELispSymbol MEDIUM = new ELispSymbol("medium");
+    public final static ELispSymbol MENU = new ELispSymbol("menu");
+    public final static ELispSymbol MODE_LINE_ACTIVE = new ELispSymbol("mode-line-active");
+    public final static ELispSymbol MODE_LINE_INACTIVE = new ELispSymbol("mode-line-inactive");
+    public final static ELispSymbol MOUSE = new ELispSymbol("mouse");
+    public final static ELispSymbol NORMAL = new ELispSymbol("normal");
+    public final static ELispSymbol OBLIQUE = new ELispSymbol("oblique");
+    public final static ELispSymbol PRESSED_BUTTON = new ELispSymbol("pressed-button");
+    public final static ELispSymbol RELEASED_BUTTON = new ELispSymbol("released-button");
+    public final static ELispSymbol RESET = new ELispSymbol("reset");
+    public final static ELispSymbol SCALABLE_FONTS_ALLOWED = new ELispSymbol("scalable-fonts-allowed");
+    public final static ELispSymbol SCROLL_BAR = new ELispSymbol("scroll-bar");
+    public final static ELispSymbol SEMI_BOLD = new ELispSymbol("semi-bold");
+    public final static ELispSymbol SEMI_LIGHT = new ELispSymbol("semi-light");
+    public final static ELispSymbol TAB_BAR = new ELispSymbol("tab-bar");
+    public final static ELispSymbol TAB_LINE = new ELispSymbol("tab-line");
+    public final static ELispSymbol THIN = new ELispSymbol("thin");
+    public final static ELispSymbol TOOL_BAR = new ELispSymbol("tool-bar");
+    public final static ELispSymbol TTY_COLOR_ALIST = new ELispSymbol("tty-color-alist");
+    public final static ELispSymbol TTY_COLOR_BY_INDEX = new ELispSymbol("tty-color-by-index");
+    public final static ELispSymbol TTY_COLOR_DESC = new ELispSymbol("tty-color-desc");
+    public final static ELispSymbol TTY_COLOR_STANDARD_VALUES = new ELispSymbol("tty-color-standard-values");
+    public final static ELispSymbol TTY_DEFINED_COLOR_ALIST = new ELispSymbol("tty-defined-color-alist");
+    public final static ELispSymbol ULTRA_BOLD = new ELispSymbol("ultra-bold");
+    public final static ELispSymbol ULTRA_HEAVY = new ELispSymbol("ultra-heavy");
+    public final static ELispSymbol ULTRA_LIGHT = new ELispSymbol("ultra-light");
+    public final static ELispSymbol UNSPECIFIED = new ELispSymbol("unspecified");
+    public final static ELispSymbol VERTICAL_BORDER = new ELispSymbol("vertical-border");
+    public final static ELispSymbol WAVE = new ELispSymbol("wave");
+    public final static ELispSymbol WINDOW_DIVIDER = new ELispSymbol("window-divider");
+    public final static ELispSymbol WINDOW_DIVIDER_FIRST_PIXEL = new ELispSymbol("window-divider-first-pixel");
+    public final static ELispSymbol WINDOW_DIVIDER_LAST_PIXEL = new ELispSymbol("window-divider-last-pixel");
+    private ELispSymbol[] xfacesSymbols() {
+        return new ELispSymbol[]{
+                BACKGROUND_COLOR,
+                BITMAP_SPEC_P,
+                BLACK,
+                BOLD,
+                BOOK,
+                BORDER,
+                CBACKGROUND,
+                CBOLD,
+                CBOX,
+                CCOLOR,
+                CDISTANT_FOREGROUND,
+                CEXTEND,
+                CFAMILY,
+                CFILTERED,
+                CFONT,
+                CFONTSET,
+                CFOREGROUND,
+                CHEIGHT,
+                CHILD_FRAME_BORDER,
+                CIGNORE_DEFFACE,
+                CINHERIT,
+                CINVERSE_VIDEO,
+                CITALIC,
+                CLINE_WIDTH,
+                COVERLINE,
+                CPOSITION,
+                CREVERSE_VIDEO,
+                CSLANT,
+                CSTIPPLE,
+                CSTRIKE_THROUGH,
+                CSTYLE,
+                CUNDERLINE,
+                CURSOR,
+                CWEIGHT,
+                CWIDTH,
+                CWINDOW,
+                DASHES,
+                DEFAULT,
+                DOTS,
+                DOUBLE_LINE,
+                EXTRA_BOLD,
+                EXTRA_LIGHT,
+                FACE,
+                FACE_ALIAS,
+                FACE_DEFAULT_STIPPLE,
+                FACE_FILTERS_ALWAYS_MATCH,
+                FACE_FONT_LAX_MATCHED_ATTRIBUTES,
+                FACE_FONT_RESCALE_ALIST,
+                FACE_IGNORED_FONTS,
+                FACE_NEAR_SAME_COLOR_THRESHOLD,
+                FACE_NO_INHERIT,
+                FACE_REMAPPING_ALIST,
+                FACE__NEW_FRAME_DEFAULTS,
+                FLAT_BUTTON,
+                FOREGROUND_COLOR,
+                FRAME_SET_BACKGROUND_MODE,
+                FRINGE,
+                HEADER_LINE,
+                HEAVY,
+                INTERNAL_BORDER,
+                ITALIC,
+                LIGHT,
+                LINE,
+                MEDIUM,
+                MENU,
+                MODE_LINE_ACTIVE,
+                MODE_LINE_INACTIVE,
+                MOUSE,
+                NORMAL,
+                OBLIQUE,
+                PRESSED_BUTTON,
+                RELEASED_BUTTON,
+                RESET,
+                SCALABLE_FONTS_ALLOWED,
+                SCROLL_BAR,
+                SEMI_BOLD,
+                SEMI_LIGHT,
+                TAB_BAR,
+                TAB_LINE,
+                THIN,
+                TOOL_BAR,
+                TTY_COLOR_ALIST,
+                TTY_COLOR_BY_INDEX,
+                TTY_COLOR_DESC,
+                TTY_COLOR_STANDARD_VALUES,
+                TTY_DEFINED_COLOR_ALIST,
+                ULTRA_BOLD,
+                ULTRA_HEAVY,
+                ULTRA_LIGHT,
+                UNSPECIFIED,
+                VERTICAL_BORDER,
+                WAVE,
+                WINDOW_DIVIDER,
+                WINDOW_DIVIDER_FIRST_PIXEL,
+                WINDOW_DIVIDER_LAST_PIXEL,
+        };
+    }
+    /* @end region="xfaces.c" */
+    /* @generated region="timefns.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol CURRENT_TIME_LIST = new ELispSymbol("current-time-list");
+    public final static ELispSymbol ENCODE_TIME = new ELispSymbol("encode-time");
+    private ELispSymbol[] timefnsSymbols() {
+        return new ELispSymbol[]{
+                CURRENT_TIME_LIST,
+                ENCODE_TIME,
+        };
+    }
+    /* @end region="timefns.c" */
 }

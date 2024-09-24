@@ -481,6 +481,7 @@ with open(args.filename, 'r') as f:
         'Vmodule_file_suffix',
         'Vdynamic_library_suffixes',
         'Vdynamic_library_alist',
+        'Vface_ignored_fonts',
     ]
 
     class LazyDict(dict):
@@ -516,6 +517,7 @@ with open(args.filename, 'r') as f:
         'pure_list': lambda *items: tuple(items),
         'MOST_POSITIVE_FIXNUM': {'raw': 'Long.MAX_VALUE'},
         'MOST_NEGATIVE_FIXNUM': {'raw': 'Long.MIN_VALUE'},
+        'CURRENT_TIME_LIST': True,
         'list1': lambda a: (a,),
         'decode_env_path': lambda *args: ('',),
         'PATH_DUMPLOADSEARCH': '',
@@ -538,7 +540,7 @@ with open(args.filename, 'r') as f:
     ), set(detected) - matched_names
     assert len(matched_names) == len(detected)
     init_section = contents[contents.find('\nsyms_of_') + 9:]
-    if Path(args.filename).stem != 'search':
+    if Path(args.filename).stem not in ['search', 'timefns']:
         assert '\nsyms_of_' not in init_section
     variables: list[Variable] = []
     for lisp_type, name, c_name in matches:
@@ -557,6 +559,8 @@ with open(args.filename, 'r') as f:
                 init_value = {'raw': 'new ELispString("")'}
             elif c_name == 'Vpath_separator':
                 init_value = '/'
+            elif c_name == 'Vface_new_frame_defaults':
+                init_value = {'raw': 'new ELispHashtable()'}
             elif len(init) > 0:
                 try:
                     init_value = eval(

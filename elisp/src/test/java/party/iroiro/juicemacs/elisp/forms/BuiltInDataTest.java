@@ -25,6 +25,7 @@ public class BuiltInDataTest extends BaseFormTest {
             "(and (fset 'test-sym 1) (symbol-function 'test-sym))", 1L,
             "(+ (set 'a 1) a)", 2L,
             """
+            ;;; -*- lexical-binding: t -*-
             (let ((a 1))
               (+ a
                (progn (set 'a 10) a)

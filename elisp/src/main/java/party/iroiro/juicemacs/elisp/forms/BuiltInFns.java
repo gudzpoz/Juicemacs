@@ -11,10 +11,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SUBFEATURES;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 /**
@@ -241,9 +241,10 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "string-equal", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FStringEqual extends ELispBuiltInBaseNode {
+        // TODO: Handle symbols
         @Specialization
-        public static Void stringEqual(Object s1, Object s2) {
-            throw new UnsupportedOperationException();
+        public static boolean stringEqual(ELispString s1, ELispString s2) {
+            return s1.lispEquals(s2);
         }
     }
 
@@ -687,8 +688,33 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSubstring extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void substring(Object string, Object from, Object to) {
+        public static Void substringVector(ELispVector string, Object from, Object to) {
             throw new UnsupportedOperationException();
+        }
+
+        @Specialization
+        public static ELispString substring(ELispString string, Object from, Object to) {
+            TruffleString s = string.toTruffleString();
+            int length = s.codePointLengthUncached(ELispString.ENCODING);
+            int start;
+            if (ELispSymbol.isNil(from)) {
+                start = 0;
+            } else {
+                start = (int) (long) from;
+                if (start < 0) {
+                    start = length + start;
+                }
+            }
+            int end;
+            if (ELispSymbol.isNil(to)) {
+                end = length;
+            } else {
+                end = (int) (long) to;
+                if (end < 0) {
+                    end = length + end;
+                }
+            }
+            return new ELispString(s.substringUncached(start, end - start, ELispString.ENCODING, false));
         }
     }
 
@@ -789,9 +815,29 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "elt", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FElt extends ELispBuiltInBaseNode {
+        // TODO: Support other sequences
         @Specialization
-        public static Void elt(Object sequence, Object n) {
-            throw new UnsupportedOperationException();
+        public static Object eltNil(ELispSymbol sequence, long n) {
+            if (ELispSymbol.isNil(sequence)) {
+                return false;
+            }
+            throw new IllegalArgumentException();
+        }
+        @Specialization
+        public static Object eltCharTable(ELispCharTable sequence, long n) {
+            return sequence.getChar((int) n);
+        }
+        @Specialization
+        public static Object eltVec(ELispVector sequence, long n) {
+            return sequence.get((int) n);
+        }
+        @Specialization
+        public static Object elt(ELispCons sequence, long n) {
+            try {
+                return sequence.get((int) n);
+            } catch (IndexOutOfBoundsException ignored) {
+                return false;
+            }
         }
     }
 
@@ -1519,7 +1565,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FFeaturep extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean featurep(ELispSymbol feature, Object subfeature) {
-            Object isMem = FMemq.memq(feature, ELispGlobals.features.getValue());
+            Object isMem = FMemq.memq(feature, ELispContext.FEATURES.getValue());
             if (ELispSymbol.isNil(isMem)) {
                 return !ELispSymbol.isNil(isMem);
             }
@@ -1543,9 +1589,10 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FProvide extends ELispBuiltInBaseNode {
         @Specialization
         public static Object provide(ELispSymbol feature, Object subfeatures) {
-            Object isMem = FMemq.memq(feature, ELispGlobals.features.getValue());
+            ELispSymbol features = ELispContext.FEATURES;
+            Object isMem = FMemq.memq(feature, features.getValue());
             if (ELispSymbol.isNil(isMem)) {
-                ELispGlobals.features.setValue(new ELispCons(feature, ELispGlobals.features.getValue()));
+                features.setValue(new ELispCons(feature, features.getValue()));
             }
             if (!ELispSymbol.isNil(subfeatures)) {
                 feature.putProperty(SUBFEATURES, subfeatures);
@@ -1582,8 +1629,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRequire extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void require(Object feature, Object filename, Object noerror) {
-            throw new UnsupportedOperationException();
+        public static boolean require(ELispSymbol feature, Object filename, Object noerror) {
+            if (FFeaturep.featurep(feature, false)) {
+                return true;
+            }
+            return BuiltInLRead.FLoad.load(filename, noerror, false, false, false);
         }
     }
 
@@ -2020,8 +2070,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableP(Object obj) {
-            throw new UnsupportedOperationException();
+        public static boolean hashTableP(Object obj) {
+            return obj instanceof ELispHashtable;
         }
     }
 

@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.io.FileReader;
@@ -279,7 +278,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FLoad extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
-            Object loadPath = ELispGlobals.loadPath.getValue();
+            Object loadPath = ELispContext.LOAD_PATH.getValue();
             if (ELispSymbol.isNil(loadPath)) {
                 return false;
             }

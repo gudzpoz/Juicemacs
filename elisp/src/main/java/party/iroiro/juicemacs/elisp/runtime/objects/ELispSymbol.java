@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
 import java.util.HashSet;
@@ -191,8 +192,10 @@ public final class ELispSymbol implements ELispValue {
 
     public void setDefaultValue(Object value) {
         if (trappedWrite == TrappedWrite.NO_WRITE) {
-            // TODO: "Allow setting keywords to their own value"
-            throw new UnsupportedOperationException();
+            if (!BuiltInData.FKeywordp.keywordp(this)) {
+                // "Allow setting keywords to their own value"?
+                throw new UnsupportedOperationException();
+            }
         }
         if (this.value instanceof Value.BufferLocal local) {
             // TODO: "If this variable is not always local in all buffers"...
@@ -289,6 +292,10 @@ public final class ELispSymbol implements ELispValue {
 
     public String name() {
         return name;
+    }
+
+    public boolean isSpecial() {
+        return special;
     }
 
     public void setSpecial(boolean b) {

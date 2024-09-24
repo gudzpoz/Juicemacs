@@ -460,12 +460,12 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FDefvar extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispSymbol defvar(ELispSymbol symbol, Object initvalue, Object docstring) {
-            symbol.setSpecial(true);
-            if (!ELispSymbol.isNil(initvalue)) {
-                symbol.setValue(evalSub(initvalue));
+            if (ELispSymbol.isNil(initvalue)) {
+                ELispBindingScope.markDynamic(symbol);
+            } else {
+                symbol.setSpecial(true);
+                symbol.setDefaultValue(evalSub(initvalue));
             }
-            // TODO: If SYMBOL is let-bound, then this form does not affect the local let\nbinding but the toplevel default binding instead
-            // TODO: If INITVALUE is missing, the form marks the\nvariable \\\"special\\\" locally (i.e., within the current\nlexical scope, or the current file, if the form is at top-level)
             return symbol;
         }
     }
@@ -583,35 +583,68 @@ public class BuiltInEval extends ELispBuiltIns {
             if (ELispSymbol.isNil(varlist)) {
                 return null;
             }
-            // TODO: What about dynamic binding?
+            boolean dynamicBinding = ELispSymbol.isNil(LEXICAL_BINDING.getValue());
             HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> lexicalBindings = new HashMap<>();
+            ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
+            ArrayList<Object> specialValues = new ArrayList<>();
             ELispBindingScope.ClosableScope handle = null;
             if (progressive) {
                 handle = ELispBindingScope.pushLexical(lexicalBindings);
             }
             try {
                 for (Object assignment : (ELispCons) varlist) {
-                    // TODO: Handle "special == true" symbols
-                    if (assignment instanceof ELispSymbol symbol) {
-                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(false));
+                    ELispSymbol symbol;
+                    Object value;
+                    if (assignment instanceof ELispSymbol sym) {
+                        symbol = sym;
+                        value = false;
                     } else {
                         ELispCons cons = (ELispCons) assignment;
-                        ELispSymbol symbol = (ELispSymbol) cons.car();
+                        symbol = (ELispSymbol) cons.car();
                         ELispCons cdr = (ELispCons) cons.cdr();
                         if (!ELispSymbol.isNil(cdr.cdr())) {
                             throw new IllegalArgumentException();
                         }
-                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(evalSub(cdr.car())));
+                        value = evalSub(cdr.car());
+                    }
+                    if (dynamicBinding || ELispBindingScope.isDynamic(symbol)) {
+                        specialBindings.add(symbol);
+                        specialValues.add(progressive ? symbol.swapThreadLocalValue(value) : value);
+                    } else {
+                        lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(value));
                     }
                 }
             } catch (Throwable e) {
                 if (progressive) {
                     handle.close();
+                    ELispBindingScope.pushDynamic(
+                            specialBindings.toArray(new ELispSymbol[0]),
+                            specialValues.toArray(new Object[0])
+                    ).close();
                 }
                 throw e;
             }
             if (!progressive) {
                 handle = ELispBindingScope.pushLexical(lexicalBindings);
+                if (!specialBindings.isEmpty()) {
+                    handle = ELispBindingScope.pushComposite(
+                            handle,
+                            ELispBindingScope.pushDynamic(
+                                    specialBindings.toArray(new ELispSymbol[0]),
+                                    specialValues.toArray(new Object[0])
+                            )
+                    );
+                }
+            } else {
+                if (!specialBindings.isEmpty()) {
+                    handle = ELispBindingScope.pushComposite(
+                            handle,
+                            new ELispBindingScope.ClosableScope.Dynamic(
+                                    specialBindings.toArray(new ELispSymbol[0]),
+                                    specialValues.toArray(new Object[0])
+                            )
+                    );
+                }
             }
             return handle;
         }

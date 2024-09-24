@@ -7,13 +7,12 @@ plugins {
 }
 
 ext {
-    truffleVersion = '24.0.2'
+    truffleVersion = '24.1.0'
 }
 
 dependencies {
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
     implementation 'com.lodborg:interval-tree:1.0.0'
-    implementation "org.graalvm.regex:regex:${truffleVersion}"
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
 }
@@ -31,9 +30,13 @@ var templateTasks = [
         ['Eval', 'eval.c'],
         ['FileIO', 'fileio.c'],
         ['Fns', 'fns.c'],
+        ['Keymap', 'keymap.c'],
         ['LRead', 'lread.c'],
+        ['Print', 'print.c'],
         ['Process', 'process.c'],
         ['Search', 'search.c'],
+        ['TimeFns', 'timefns.c'],
+        ['XFaces', 'xfaces.c'],
 ]
 // Force sequential evaluation
 templateTasks.each {

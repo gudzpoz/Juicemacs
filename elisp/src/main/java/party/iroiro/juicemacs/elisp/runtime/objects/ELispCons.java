@@ -87,6 +87,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return i.currentCons();
     }
 
+    public void insertAfter(Object object) {
+        setCdr(new ELispCons(object, cdr()));
+    }
+
     public final class BrentTortoiseHareIterator implements ListIterator<Object> {
         private Object tortoise = ELispCons.this;
         private Object tail = ELispCons.this;

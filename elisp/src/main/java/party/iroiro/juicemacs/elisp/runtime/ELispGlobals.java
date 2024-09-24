@@ -2,7 +2,9 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
+import party.iroiro.juicemacs.elisp.forms.BuiltInKeymap.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispHashtable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -22,9 +24,13 @@ public class ELispGlobals {
         evalVars();
         fileioVars();
         fnsVars();
+        keymapVars();
         lreadVars();
+        printVars();
         processVars();
         searchVars();
+        timefnsVars();
+        xfacesVars();
     }
 
     /* @generated region="alloc.c" by="extract-emacs-src.py" */
@@ -38,12 +44,12 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded stringCharsConsed = new ELispSymbol.Value.Forwarded((long) 0);
     public static ELispSymbol.Value.Forwarded intervalsConsed = new ELispSymbol.Value.Forwarded((long) 0);
     public static ELispSymbol.Value.Forwarded stringsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded purifyFlag = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded purifyFlag = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded garbageCollectionMessages = new ELispSymbol.Value.Forwarded((boolean) false);
     public static ELispSymbol.Value.Forwarded postGcHook = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded memorySignalData = new ELispSymbol.Value.Forwarded((Object) ELispCons.listOf(ERROR, new ELispString("Memory exhausted--use M-x save-some-buffers then exit and restart Emacs")));
     public static ELispSymbol.Value.Forwarded memoryFull = new ELispSymbol.Value.Forwarded((Object) NIL);
-    public static ELispSymbol.Value.Forwarded gcElapsed = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded gcElapsed = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded gcsDone = new ELispSymbol.Value.Forwarded((long) 0);
     public static ELispSymbol.Value.Forwarded integerWidth = new ELispSymbol.Value.Forwarded((long) 0);
 
@@ -78,13 +84,13 @@ public class ELispGlobals {
     /* @generated region="comp.c" by="extract-emacs-src.py" */
     public static ELispSymbol.Value.Forwarded nativeCompJitCompilation = new ELispSymbol.Value.Forwarded((boolean) true);
     public static ELispSymbol.Value.Forwarded compCtxt = new ELispSymbol.Value.Forwarded((Object) NIL);
-    public static ELispSymbol.Value.Forwarded compSubrList = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded compSubrList = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded compAbiHash = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded compNativeVersionDir = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded compDeferredPendingH = new ELispSymbol.Value.Forwarded((Object) FMakeHashTable.makeHashTable(new Object[]{CTEST, EQ}));
     public static ELispSymbol.Value.Forwarded compElnToElH = new ELispSymbol.Value.Forwarded((Object) FMakeHashTable.makeHashTable(new Object[]{CTEST, EQUAL}));
     public static ELispSymbol.Value.Forwarded nativeCompElnLoadPath = new ELispSymbol.Value.Forwarded((Object) FCons.cons(new ELispString("../native-lisp/"), NIL));
-    public static ELispSymbol.Value.Forwarded nativeCompEnableSubrTrampolines = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded nativeCompEnableSubrTrampolines = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded compInstalledTrampolinesH = new ELispSymbol.Value.Forwarded((Object) FMakeHashTable.makeHashTable(new Object[]{}));
     public static ELispSymbol.Value.Forwarded compNoNativeFileH = new ELispSymbol.Value.Forwarded((Object) FMakeHashTable.makeHashTable(new Object[]{CTEST, EQUAL}));
     public static ELispSymbol.Value.Forwarded compFilePreloadedP = new ELispSymbol.Value.Forwarded((boolean) false);
@@ -182,14 +188,14 @@ public class ELispGlobals {
     }
     /* @end region="fns.c" */
     /* @generated region="lread.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded obarray = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded values = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded obarray = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded values = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded standardInput = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded readCircle = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded loadPath = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded loadSuffixes = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded moduleFileSuffix = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded dynamicLibrarySuffixes = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded loadPath = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded loadSuffixes = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded moduleFileSuffix = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded dynamicLibrarySuffixes = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded loadFileRepSuffixes = new ELispSymbol.Value.Forwarded((Object) new ELispCons(new ELispString("")));
     public static ELispSymbol.Value.Forwarded loadInProgress = new ELispSymbol.Value.Forwarded((boolean) false);
     public static ELispSymbol.Value.Forwarded afterLoadAlist = new ELispSymbol.Value.Forwarded((Object) NIL);
@@ -330,10 +336,10 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded bufferAccessFontifyFunctions = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded bufferAccessFontifiedProperty = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded systemName = new ELispSymbol.Value.Forwarded((Object) NIL);
-    public static ELispSymbol.Value.Forwarded userFullName = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded userFullName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded userLoginName = new ELispSymbol.Value.Forwarded((Object) NIL);
-    public static ELispSymbol.Value.Forwarded userRealLoginName = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded operatingSystemRelease = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded userRealLoginName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded operatingSystemRelease = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded binaryAsUnsigned = new ELispSymbol.Value.Forwarded((boolean) false);
 
     private static void editfnsVars() {
@@ -349,7 +355,7 @@ public class ELispGlobals {
     }
     /* @end region="editfns.c" */
     /* @generated region="emacs.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded commandLineArgs = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded commandLineArgs = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded systemType = new ELispSymbol.Value.Forwarded((Object) new ELispString("jvm"));
     public static ELispSymbol.Value.Forwarded systemConfiguration = new ELispSymbol.Value.Forwarded((Object) new ELispString(""));
     public static ELispSymbol.Value.Forwarded systemConfigurationOptions = new ELispSymbol.Value.Forwarded((Object) new ELispString(""));
@@ -357,8 +363,8 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded noninteractive1 = new ELispSymbol.Value.Forwarded((boolean) false);
     public static ELispSymbol.Value.Forwarded killEmacsHook = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded pathSeparator = new ELispSymbol.Value.Forwarded((Object) new ELispString("/"));
-    public static ELispSymbol.Value.Forwarded invocationName = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded invocationDirectory = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded invocationName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded invocationDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded installationDirectory = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded systemMessagesLocale = new ELispSymbol.Value.Forwarded((Object) NIL);
     public static ELispSymbol.Value.Forwarded systemTimeLocale = new ELispSymbol.Value.Forwarded((Object) NIL);
@@ -368,8 +374,8 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded emacsCopyright = new ELispSymbol.Value.Forwarded((Object) new ELispString("TODO: Copy over GPL"));
     public static ELispSymbol.Value.Forwarded emacsVersion = new ELispSymbol.Value.Forwarded((Object) new ELispString("30.0"));
     public static ELispSymbol.Value.Forwarded reportEmacsBugAddress = new ELispSymbol.Value.Forwarded((Object) new ELispString(""));
-    public static ELispSymbol.Value.Forwarded dumpMode = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded dynamicLibraryAlist = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded dumpMode = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded dynamicLibraryAlist = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
 
     private static void emacsVars() {
         COMMAND_LINE_ARGS.forwardTo(commandLineArgs);
@@ -417,7 +423,7 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded deleteAutoSaveFiles = new ELispSymbol.Value.Forwarded((boolean) true);
     public static ELispSymbol.Value.Forwarded caseFoldSearch = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded cloneIndirectBufferHook = new ELispSymbol.Value.Forwarded((Object) NIL);
-    public static ELispSymbol.Value.Forwarded longLineThreshold = new ELispSymbol.Value.Forwarded((Object) NIL /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded longLineThreshold = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded longLineOptimizationsRegionSize = new ELispSymbol.Value.Forwarded((long) 500000);
     public static ELispSymbol.Value.Forwarded longLineOptimizationsBolSearchLimit = new ELispSymbol.Value.Forwarded((long) 128);
     public static ELispSymbol.Value.Forwarded largeHscrollThreshold = new ELispSymbol.Value.Forwarded((long) 10000);
@@ -441,4 +447,94 @@ public class ELispGlobals {
         LARGE_HSCROLL_THRESHOLD.forwardTo(largeHscrollThreshold);
     }
     /* @end region="buffer.c" */
+    /* @generated region="keymap.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded minibufferLocalMap = new ELispSymbol.Value.Forwarded((Object) FMakeSparseKeymap.makeSparseKeymap(NIL));
+    public static ELispSymbol.Value.Forwarded minorModeMapAlist = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded minorModeOverridingMapAlist = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded emulationModeMapAlists = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded whereIsPreferredModifier = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded describeBindingsCheckShadowingInRanges = new ELispSymbol.Value.Forwarded((Object) NIL);
+
+    private static void keymapVars() {
+        MINIBUFFER_LOCAL_MAP.forwardTo(minibufferLocalMap);
+        MINOR_MODE_MAP_ALIST.forwardTo(minorModeMapAlist);
+        MINOR_MODE_OVERRIDING_MAP_ALIST.forwardTo(minorModeOverridingMapAlist);
+        EMULATION_MODE_MAP_ALISTS.forwardTo(emulationModeMapAlists);
+        WHERE_IS_PREFERRED_MODIFIER.forwardTo(whereIsPreferredModifier);
+        DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES.forwardTo(describeBindingsCheckShadowingInRanges);
+    }
+    /* @end region="keymap.c" */
+    /* @generated region="print.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded standardOutput = new ELispSymbol.Value.Forwarded((Object) T);
+    public static ELispSymbol.Value.Forwarded floatOutputFormat = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printIntegersAsCharacters = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded printLength = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printLevel = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printEscapeNewlines = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded printEscapeControlCharacters = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded printEscapeNonascii = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded printEscapeMultibyte = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded printQuoted = new ELispSymbol.Value.Forwarded((boolean) true);
+    public static ELispSymbol.Value.Forwarded printGensym = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printCircle = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printContinuousNumbering = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printNumberTable = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printCharsetTextProperty = new ELispSymbol.Value.Forwarded((Object) DEFAULT);
+    public static ELispSymbol.Value.Forwarded printSymbolsBare = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded printUnreadableFunction = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded printUnreadableCallbackBuffer = new ELispSymbol.Value.Forwarded((Object) NIL);
+
+    private static void printVars() {
+        STANDARD_OUTPUT.forwardTo(standardOutput);
+        FLOAT_OUTPUT_FORMAT.forwardTo(floatOutputFormat);
+        PRINT_INTEGERS_AS_CHARACTERS.forwardTo(printIntegersAsCharacters);
+        PRINT_LENGTH.forwardTo(printLength);
+        PRINT_LEVEL.forwardTo(printLevel);
+        PRINT_ESCAPE_NEWLINES.forwardTo(printEscapeNewlines);
+        PRINT_ESCAPE_CONTROL_CHARACTERS.forwardTo(printEscapeControlCharacters);
+        PRINT_ESCAPE_NONASCII.forwardTo(printEscapeNonascii);
+        PRINT_ESCAPE_MULTIBYTE.forwardTo(printEscapeMultibyte);
+        PRINT_QUOTED.forwardTo(printQuoted);
+        PRINT_GENSYM.forwardTo(printGensym);
+        PRINT_CIRCLE.forwardTo(printCircle);
+        PRINT_CONTINUOUS_NUMBERING.forwardTo(printContinuousNumbering);
+        PRINT_NUMBER_TABLE.forwardTo(printNumberTable);
+        PRINT_CHARSET_TEXT_PROPERTY.forwardTo(printCharsetTextProperty);
+        PRINT_SYMBOLS_BARE.forwardTo(printSymbolsBare);
+        PRINT_UNREADABLE_FUNCTION.forwardTo(printUnreadableFunction);
+        PRINT__UNREADABLE_CALLBACK_BUFFER.forwardTo(printUnreadableCallbackBuffer);
+    }
+    /* @end region="print.c" */
+    /* @generated region="xfaces.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded faceFiltersAlwaysMatch = new ELispSymbol.Value.Forwarded((boolean) false);
+    public static ELispSymbol.Value.Forwarded faceNewFrameDefaults = new ELispSymbol.Value.Forwarded((Object) new ELispHashtable());
+    public static ELispSymbol.Value.Forwarded faceDefaultStipple = new ELispSymbol.Value.Forwarded((Object) new ELispString("gray3"));
+    public static ELispSymbol.Value.Forwarded ttyDefinedColorAlist = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded scalableFontsAllowed = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded faceIgnoredFonts = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded faceRemappingAlist = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded faceFontRescaleAlist = new ELispSymbol.Value.Forwarded((Object) NIL);
+    public static ELispSymbol.Value.Forwarded faceNearSameColorThreshold = new ELispSymbol.Value.Forwarded((long) 30000);
+    public static ELispSymbol.Value.Forwarded faceFontLaxMatchedAttributes = new ELispSymbol.Value.Forwarded((Object) T);
+
+    private static void xfacesVars() {
+        FACE_FILTERS_ALWAYS_MATCH.forwardTo(faceFiltersAlwaysMatch);
+        FACE__NEW_FRAME_DEFAULTS.forwardTo(faceNewFrameDefaults);
+        FACE_DEFAULT_STIPPLE.forwardTo(faceDefaultStipple);
+        TTY_DEFINED_COLOR_ALIST.forwardTo(ttyDefinedColorAlist);
+        SCALABLE_FONTS_ALLOWED.forwardTo(scalableFontsAllowed);
+        FACE_IGNORED_FONTS.forwardTo(faceIgnoredFonts);
+        FACE_REMAPPING_ALIST.forwardTo(faceRemappingAlist);
+        FACE_FONT_RESCALE_ALIST.forwardTo(faceFontRescaleAlist);
+        FACE_NEAR_SAME_COLOR_THRESHOLD.forwardTo(faceNearSameColorThreshold);
+        FACE_FONT_LAX_MATCHED_ATTRIBUTES.forwardTo(faceFontLaxMatchedAttributes);
+    }
+    /* @end region="xfaces.c" */
+    /* @generated region="timefns.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded currentTimeList = new ELispSymbol.Value.Forwarded((boolean) true);
+
+    private static void timefnsVars() {
+        CURRENT_TIME_LIST.forwardTo(currentTimeList);
+    }
+    /* @end region="timefns.c" */
 }

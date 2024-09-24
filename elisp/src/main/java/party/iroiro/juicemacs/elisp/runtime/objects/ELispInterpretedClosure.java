@@ -148,7 +148,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                 ELispBindingScope.ClosableScope outer = ELispBindingScope.switchLexical(lexical);
                 HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> map = new HashMap<>();
                 for (int i = 0; i < argSymbols.length; i++) {
-                    // TODO: Handle "special == true" symbols
+                    // Always lexically bound, even for "special == true" symbols
                     map.put(argSymbols[i], new ELispSymbol.Value.Forwarded(newValues[i]));
                 }
                 return ELispBindingScope.pushComposite(

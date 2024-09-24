@@ -9,6 +9,11 @@ public class BuiltInFnsTest extends BaseFormTest {
             "(length \"文\")", 1L,
             "(length [1 2 3])", 3L,
             "(length [])", 0L,
+            "(string-equal \"bcd\" (substring \"abcdef\" 1 4))", true,
+            "(string-equal \"二\" (substring \"一二\" 1 2))", true,
+            "(string-equal \"ab\" (substring \"abcde\" nil 2))", true,
+            "(string-equal \"cde\" (substring \"abcde\" 2))", true,
+            "(string-equal \"d\" (substring \"abcde\" -2 -1))", true,
             "(append)", false,
             "(equal (append '(1 2 3) '(4 5 6)) '(1 2 3 4 5 6))", true,
             "(equal (concat \"abc\" \"def\") \"abcdef\")", true,
@@ -23,6 +28,11 @@ public class BuiltInFnsTest extends BaseFormTest {
             "(nth 1 '(1 2 3))", 2L,
             "(nth 2 nil)", false,
             "(nth 3 '(1 2 3))", false,
+            "(elt '(1 2 3) 0)", 1L,
+            "(elt '(1 2 3) 3)", false,
+            "(elt nil 3)", false,
+            "(elt [1 2 3] 1)", 2,
+            "(elt (make-char-table nil 42) ?a)", 42L,
             "(null (member \"1\" '(\"1\" 2 3)))", false,
             "(member 4 '(1 2 3))", false,
             "(member 1 nil)", false,
@@ -73,7 +83,9 @@ public class BuiltInFnsTest extends BaseFormTest {
             "(featurep 'emacs)", true,
             "(featurep 'emacs 'aaaa)", false,
             "(progn (provide 'aaaaa '(1 2 3 4)) (featurep 'aaaaa 1))", true,
+            "(require 'emacs)", true,
             "(let ((ht (make-hash-table))) (puthash 1 2 ht) (gethash 1 ht))", 2L,
+            "(hash-table-p (make-hash-table))", true,
     };
 
     @Override

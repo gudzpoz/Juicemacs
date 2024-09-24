@@ -3,7 +3,11 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 
 public class BuiltInEditFns extends ELispBuiltIns {
@@ -841,8 +845,20 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSystemName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void systemName() {
-            throw new UnsupportedOperationException();
+        public static ELispString systemName() {
+            Object value = ELispGlobals.systemName.getValue();
+            if (value instanceof ELispString s) {
+                return s;
+            }
+            ELispString s;
+            try {
+                String hostName = InetAddress.getLocalHost().getHostName();
+                s = new ELispString(hostName);
+            } catch (UnknownHostException e) {
+                s = new ELispString("jvm-" + System.getProperty("java.vm.version", "unknown"));
+            }
+            ELispGlobals.systemName.setValue(s);
+            return s;
         }
     }
 

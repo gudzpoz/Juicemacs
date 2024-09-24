@@ -7,7 +7,31 @@ import java.util.Map;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LEXICAL_BINDING;
 
+/**
+ * Basically our implementation of GNU Emacs' {@code internal-interpreter-environment}
+ *
+ * <ul>
+ * <li>Dynamic bindings are simply utility functions that swap values in and out.</li>
+ * <li>Lexical bindings are more complex, whose implementation entails a few functions
+ * in {@link party.iroiro.juicemacs.elisp.forms.BuiltInEval} ({@code src/eval.c}).</li>
+ * </ul>
+ *
+ * <h2>Lexical Scoping</h2>
+ * <p>
+ * Whether a variable is lexical or dynamic is determined by several things in GNU Emacs:
+ * </p>
+ * <ul>
+ * <li>If the {@code special} field of a symbol is set, {@code let/let*} statements should
+ * always bind it dynamically.</li>
+ * <li>If a symbol is somehow marked "special" in {@code internal-interpreter-environment},
+ * then it should be bound dynamically by {@code let/let*}.</li>
+ * <li>If a symbol is found "normal" in {@code internal-interpreter-environment}, it is
+ * lexically bound and looked up in {@code internal-interpreter-environment}. Otherwise,
+ * it is still dynamically (i.e. globally) bound.</li>
+ * </ul>
+ */
 public final class ELispBindingScope {
+    private final static ELispSymbol.Value.Forwarded _DYNAMIC = new ELispSymbol.Value.Forwarded();
     public final static ClosableScope.Lexical EMPTY_LEXICAL = new ClosableScope.Lexical(Map.of(), null);
     private final static ThreadLocal<ClosableScope.@Nullable Lexical> currentScope = new ThreadLocal<>();
 
@@ -61,16 +85,27 @@ public final class ELispBindingScope {
         }
         return null;
     }
-    
+
+    public static void markDynamic(ELispSymbol symbol) {
+        ClosableScope.Lexical lexical = getCurrentLexical();
+        if (lexical != null) {
+            lexical.values.put(symbol, _DYNAMIC);
+        }
+    }
+
+    public static boolean isDynamic(ELispSymbol symbol) {
+        return symbol.isSpecial() || getForwardedLexical(symbol) == _DYNAMIC;
+    }
+
     @Nullable
     public static Object getLexical(ELispSymbol symbol) {
         ELispSymbol.Value.Forwarded forwarded = getForwardedLexical(symbol);
-        return forwarded != null ? forwarded.getValue() : null;
+        return (forwarded != null && forwarded != _DYNAMIC) ? forwarded.getValue() : null;
     }
     
     public static boolean setLexical(ELispSymbol symbol, Object value) {
         ELispSymbol.Value.Forwarded forwarded = getForwardedLexical(symbol);
-        if (forwarded != null) {
+        if (forwarded != null && forwarded != _DYNAMIC) {
             forwarded.setValue(value);
             return true;
         }
