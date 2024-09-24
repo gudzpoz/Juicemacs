@@ -3,14 +3,15 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
+import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.util.Iterator;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.isNil;
 
 public class BuiltInSearch extends ELispBuiltIns {
@@ -19,86 +20,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         return BuiltInSearchFactory.getFactories();
     }
 
-    public static Pattern compileEmacsRegExp(AbstractTruffleString eRegExp, boolean ignoreCase) {
-        TruffleStringIterator iterator = eRegExp.createCodePointIteratorUncached(ELispString.ENCODING);
-        StringBuilder builder = new StringBuilder();
-        while (iterator.hasNext()) {
-            int codepoint = iterator.nextUncached();
-            switch (codepoint) {
-                case '\\' -> {
-                    int next = iterator.nextUncached();
-                    switch (next) {
-                        case '(', ')', '|', '{', '}' -> builder.appendCodePoint(next);
-                        case 'w' -> builder.append("\\w");
-                        case 'W' -> builder.append("\\W");
-                        case 's', 'S', 'c', 'C' -> throw new UnsupportedOperationException();
-                        case '`' -> builder.append("\\A");
-                        case '\'' -> builder.append("\\z");
-                        case '=' -> builder.append("(?<point>)");
-                        case 'b' -> builder.append("\\b");
-                        case 'B' -> builder.append("\\B");
-                        case '<' -> builder.append("(?=\\w)");
-                        case '>' -> builder.append("(?<=\\w)");
-                        case '_' -> {
-                            switch (iterator.nextUncached()) {
-                                case '<' -> builder.append("(?=[^\\s\"';#()[\\]`,])");
-                                case '>' -> builder.append("(?<=[^\\s\"';#()[\\]`,])");
-                                default -> throw new IllegalArgumentException();
-                            }
-                        }
-                        default -> {
-                            if (Character.isDigit(next)) {
-                                builder.append('\\').appendCodePoint(next);
-                            } else {
-                                throw new IllegalArgumentException();
-                            }
-                        }
-                    }
-                }
-                case '(', ')', '|', '{', '}' -> builder.append('\\').appendCodePoint(codepoint);
-                case '[' -> {
-                    builder.append('[');
-                    int next = iterator.nextUncached();
-                    if (next != ':') {
-                        builder.appendCodePoint(next);
-                        continue;
-                    }
-                    StringBuilder clazz = new StringBuilder();
-                    int c;
-                    while ((c = iterator.nextUncached()) != ':') {
-                        clazz.appendCodePoint(c);
-                    }
-                    builder.append(switch (clazz.toString()) {
-                        // TODO: Use syntax-table & Unicode
-                        case "alnum" -> "\\p{Alnum}";
-                        case "alpha" -> "\\p{Alpha}";
-                        case "ascii" -> "\\p{ASCII}";
-                        case "blank" -> "\\p{Blank}";
-                        case "cntrl" -> "\\p{Cntrl}";
-                        case "digit" -> "\\p{Digit}";
-                        case "graph" -> "\\p{Graph}";
-                        case "lower" -> "\\p{Lower}";
-                        case "multibyte" -> "&&[^\\p{IsLatin}]";
-                        case "nonascii" -> "&&[^\\p{ASCII}]";
-                        case "print" -> "\\p{Print}";
-                        case "punct" -> "\\p{Punct}";
-                        case "space" -> "\\p{javaWhitespace}";
-                        case "unibyte" -> "\\p{IsLatin}";
-                        case "upper" -> "\\p{Upper}";
-                        case "word" -> "\\w";
-                        case "xdigit" -> "\\p{XDigit}";
-                        default -> throw new IllegalArgumentException();
-                    });
-                    if (iterator.nextUncached() != ']') {
-                        throw new IllegalArgumentException();
-                    }
-                }
-                default -> builder.appendCodePoint(codepoint);
-            }
-        }
-        return Pattern.compile(builder.toString(), ignoreCase ? Pattern.CASE_INSENSITIVE : 0);
-    }
-
+    private static final ELispSymbol.ThreadLocalValue matchData = new ELispSymbol.ThreadLocalValue();
 
     /**
      * <pre>
@@ -157,11 +79,23 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FStringMatch extends ELispBuiltInBaseNode {
         @Specialization
         public static Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
-            Pattern regex = compileEmacsRegExp(regexp.value(), false); // TODO: case-fold-search
-            Matcher matcher = regex.matcher(string.toString());
-            if (matcher.find(isNil(start) ? 0 : (int) (long) (Long) start)) {
-                // TODO: Update match data
-                return (long) matcher.start();
+            boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
+            ELispRegExp pattern = ELispRegExp.compile(regexp.toTruffleString(), !caseSensitive);
+            int from = isNil(start) ? 0 : (int) (long) (Long) start;
+            ELispRegExp.MatcherResult match = pattern.matcher(string.toString(), null);// TODO: syntax table
+            if (match.matcher().find(from)) {
+                if (!inhibitModify) {
+                    ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+                    for (int i = 0; i <= match.groupCount(); i++) {
+                        int group = match.normalizeGroup(i);
+                        long groupStart = match.matcher().start(group);
+                        builder.add(groupStart == -1 ? false : groupStart);
+                        builder.add(groupStart == -1 ? false : (long) match.matcher().end(group));
+                    }
+                    Object data = builder.build();
+                    matchData.setValue(data);
+                }
+                return (long) match.matcher().start();
             }
             return false;
         }
@@ -450,8 +384,9 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchBeginning extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void matchBeginning(Object subexp) {
-            throw new UnsupportedOperationException();
+        public static Object matchBeginning(long subexp) {
+            Object value = matchData.getValue();
+            return BuiltInFns.FNth.nth(2 * subexp, value);
         }
     }
 
@@ -472,8 +407,9 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchEnd extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void matchEnd(Object subexp) {
-            throw new UnsupportedOperationException();
+        public static Object matchEnd(long subexp) {
+            Object value = matchData.getValue();
+            return BuiltInFns.FNth.nth(2 * subexp + 1, value);
         }
     }
 
@@ -519,8 +455,15 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchData extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void matchData(Object integers, Object reuse, Object reseat) {
-            throw new UnsupportedOperationException();
+        public static Object matchData(boolean integers, Object reuse, Object reseat) {
+            if (!isNil(reuse)) {
+                throw new UnsupportedOperationException();
+            }
+            Object value = matchData.getValue();
+            if (value instanceof ELispCons cons) {
+                return cons;
+            }
+            return false;
         }
     }
 
@@ -536,8 +479,27 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetMatchData extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setMatchData(Object list, Object reseat) {
-            throw new UnsupportedOperationException();
+        public static boolean setMatchData(Object list, Object reseat) {
+            if (!BuiltInData.FListp.listp(list)) {
+                throw new UnsupportedOperationException();
+            }
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            Iterator<Object> iterator = ((ELispCons) list).iterator();
+            while (iterator.hasNext()) {
+                Object o = iterator.next();
+                if (iterator.hasNext()) {
+                    Object p = iterator.next();
+                    if (BuiltInData.FNatnump.natnump(o) && BuiltInData.FNatnump.natnump(p)) {
+                        builder.add(o).add(p);
+                    } else {
+                        throw new UnsupportedOperationException();
+                    }
+                } else {
+                    break;
+                }
+            }
+            matchData.setValue(builder.build());
+            return false;
         }
     }
 
