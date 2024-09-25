@@ -1,9 +1,9 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
@@ -41,15 +41,8 @@ public final class ELispContext {
         return symbol;
     }
 
-    public static ELispExpressionNode valueToExpression(Object value, boolean lexicalBinding) {
-        return new ELispExpressionNode() {
-            @Override
-            public Object executeGeneric(VirtualFrame frame) {
-                try (var _ = ELispBindingScope.withLexicalBinding(lexicalBinding)) {
-                    return BuiltInEval.evalSub(value);
-                }
-            }
-        };
+    public static ELispExpressionNode valueToExpression(Object[] expressions, boolean lexicalBinding) {
+        return ELispInterpretedNode.create(expressions, lexicalBinding);
     }
 
     public void registerFunction(String name, ELispValue function) {

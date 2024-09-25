@@ -21,7 +21,7 @@ public final class ELispHashtable implements ELispValue {
 
     public ELispHashtable(Object testSym) {
         this.eqSymbol = testSym;
-        BiPredicate<Object, Object> test = null;
+        BiPredicate<Object, Object> test;
         if (testSym == EQ) {
             test = BuiltInData.FEq::eq;
         } else if (testSym == EQL) {

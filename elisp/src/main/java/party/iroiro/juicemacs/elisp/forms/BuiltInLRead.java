@@ -7,8 +7,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
-import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -18,7 +18,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.evalSub;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.READ_CHAR;
 
@@ -292,17 +291,13 @@ public class BuiltInLRead extends ELispBuiltIns {
                 if (target.toFile().isFile()) {
                     try {
                         System.out.println("load: " + target);
-                        ELispParser parser = new ELispParser(Source.newBuilder(
+                        ELispExpressionNode expr = ELispParser.parse(Source.newBuilder(
                                 "elisp",
                                 new FileReader(target.toFile()),
                                 target.toFile().getName()
                         ).build());
-                        try (var _ = ELispBindingScope.withLexicalBinding(parser.getLexicalBinding())) {
-                            while (parser.hasNext()) {
-                                Object lisp = parser.nextLisp();
-                                evalSub(lisp);
-                            }
-                        }
+                        // TODO: Null as VirtualFrame?
+                        expr.executeGeneric(null);
                         return true;
                     } catch (IOException e) {
                         throw new RuntimeException(e);

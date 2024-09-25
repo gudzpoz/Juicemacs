@@ -6,8 +6,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
@@ -69,10 +69,23 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @CompilerDirectives.CompilationFinal(dimensions = 1)
         private ELispSymbol[] argSymbols;
 
+        @SuppressWarnings("FieldMayBeFinal")
+        @Children
+        private ELispInterpretedNode[] body;
+
         private final ELispBindingScope.ClosableScope.@Nullable Lexical lexical;
 
         public ELispClosureCallNode() {
             lexical = initializeLexical();
+
+            List<ELispInterpretedNode> bodyExpressions = new ArrayList<>();
+            Object body = getBody();
+            if (!ELispSymbol.isNil(body)) {
+                for (Object expr : ((ELispCons) body)) {
+                    bodyExpressions.add(ELispInterpretedNode.create(expr));
+                }
+            }
+            this.body = bodyExpressions.toArray(new ELispInterpretedNode[0]);
 
             if (ELispSymbol.isNil(getArgs())) {
                 this.args = new ReadFunctionArgNode[0];
@@ -111,7 +124,6 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             }
             this.args = argNodes.toArray(new ReadFunctionArgNode[0]);
             this.argSymbols = symbols.toArray(new ELispSymbol[0]);
-
         }
 
         private ELispBindingScope.ClosableScope.@Nullable Lexical initializeLexical() {
@@ -161,13 +173,10 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Override
         @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
-            Object body = getBody();
             Object result = false;
             try (ELispBindingScope.ClosableScope _ = pushScope(frame)) {
-                if (!ELispSymbol.isNil(body)) {
-                    for (Object form : ((ELispCons) body)) {
-                        result = BuiltInEval.evalSub(form);
-                    }
+                for (ELispInterpretedNode form : body) {
+                    result = form.executeGeneric(frame);
                 }
             }
             return result;

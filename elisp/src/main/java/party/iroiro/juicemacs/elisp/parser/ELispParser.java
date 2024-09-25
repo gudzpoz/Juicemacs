@@ -228,8 +228,11 @@ public class ELispParser {
 
     public static ELispExpressionNode parse(Source source) throws IOException {
         ELispParser parser = new ELispParser(source);
-        // TODO: Handle multiple expressions
-        return ELispContext.valueToExpression(parser.nextLisp(), parser.getLexicalBinding());
+        List<Object> expressions = new ArrayList<>();
+        while (parser.hasNext()) {
+            expressions.add(parser.nextLisp());
+        }
+        return ELispContext.valueToExpression(expressions.toArray(), parser.getLexicalBinding());
     }
 
     public static Object read(String s) throws IOException {

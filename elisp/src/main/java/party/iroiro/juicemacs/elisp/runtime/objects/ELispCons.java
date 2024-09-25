@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
@@ -20,13 +21,17 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     public ELispCons(Object car) {
         this.car = Objects.requireNonNull(car);
         this.cdr = NIL;
+        this.sourceSection = null;
     }
 
     public ELispCons(Object car, Object cdr) {
         this.car = Objects.requireNonNull(car);
         this.cdr = Objects.requireNonNull(cdr);
+        this.sourceSection = null;
     }
 
+    @Nullable
+    private final SourceSection sourceSection;
     private Object car;
     private Object cdr;
 
@@ -242,6 +247,14 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 this.tail.setCdr(tailCdr);
             }
             return build();
+        }
+    }
+
+    public static Iterable<?> iterate(Object list) {
+        if (ELispSymbol.isNil(list)) {
+            return Collections.emptyList();
+        } else {
+            return (ELispCons) list;
         }
     }
 }
