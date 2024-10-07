@@ -1,0 +1,256 @@
+#+title: TODO
+
+* TODO [#A] Signals
+
+A central mechanism to handle exceptions.
+
+I guess I should start implementing it before I litter
+=IllegalArgumentException= everywhere.
+
+- [ ] New exception types & utility methods
+
+- [ ] =signal/error/condition-case=
+
+  - [ ] Implementation
+
+  - [ ] Error groups
+
+  - [ ] Convert =ClassCastException= to errors
+
+- [ ] =catch/throw=
+
+- [-] Stack traces
+
+  - [X] Store debug info into cons nodes.
+
+  - [ ] So we want function names in stack traces, but all interpreted functions
+    are just lambdas in Emacs: =(defalias 'a-symbol #'(lambda () ...))=. Maybe
+    we can try to assign a lambda a name when it is first bound to a symbol? I
+    will need to check out how GraalJs handles lambdas.
+
+* TODO [#B] Understanding Non-Bare Symbols
+
+I hope we can make all symbols bare.
+
+* TODO [#B] =obarray=
+
+Oh no. It looks like a data structure with its internal structure /fully
+exposed/ as a vector. It probably means we will /have to/ exactly follow the GNU
+Emacs implementation.
+
+* TODO [#B] Autoload
+
+So basically one can have autoload functions as well as autoload strings
+(docstrings). What else?
+
+* TODO [#B] Threading preparations
+
+- Limit =jdk.virtualThreadScheduler.parallelism= to =1=.
+
+* TODO [#C] Keymaps
+
+I now know there are sparse maps and dense ones, and they nest. And keymaps are
+index by character codes most of the time. However, I have seen it indexed with
+=[t]=. No idea what it is all about.
+
+* TODO [#C] Code conventions
+
+- Maybe set =ELispContext.NIL= to =Boolean.FALSE= (and =T= to =Boolean.TRUE=).
+
+- [X] =elisp/scripts/extract-emacs-src.py=
+
+  - Auto-detect types
+  - Avoid java keywords
+  - Auto-update existing ones
+  - Set generated return types to =Void=
+
+- Analyze =null= values during initialization
+
+* TODO Debug info
+
+We can probably store the source code position in the cons nodes?
+
+* TODO Buffers
+
+It is still a long long way to go... But at least we have a piece table now. I
+might still need to look into CRDTs and the new Eg-walker if we want to merge
+buffers from different (virtual) threads.
+
+* TODO Syntax tables & case tables
+
+It seems basically a char table. However, in order to use it with RegExp, we will need to
+maintain a character set for each syntax class, which might take quite some memory if unoptimized.
+
+* PENDING Conforming RegExp
+
+It depends on:
+
+- Syntax tables
+- Case tables
+- Buffers (to match the pointer position)
+
+* Trackers
+
+** Language [3/6]
+
+- [X] Emacs Lisp reader (lexer & parser)
+
+- [X] Buffer-local variables & scoping
+
+  Basically, in addition to buffer-local variables, forwarded variables, etc.,
+  we want to add transparent "thread-local" variables, so that:
+
+  - Dynamically bound variables are thread-local, during the lifetime of which
+    other threads sees the original value.
+  - Some specific variables must be thread-local to make transparent
+    concurrentization work.
+  - Also, lexical scopes are always thread-local.
+
+  - [X] Handle default values
+
+- [ ] All special forms
+
+- [ ] Bootstrap =loadup.el=
+
+- [X] A fallback, feature-complete regex engine -> no
+
+- [ ] Emacs Lisp byte-code interpreter in Truffle
+
+
+** Types [5/6]
+
+Hopefully we don't need to take too much effort to implement these tons of
+types. We might need some boilerplate code for strings / integers for Truffle
+interop, but otherwise simply using some classes with public member should do.
+
+- [X] =Lisp_Symbol=
+
+  - Constant marker
+  - Intern state
+  - Special?
+
+  - Name
+
+  - Value (cache)
+
+    - Types:
+      - Plain var
+      - Varalias
+      - Localized var (buffer local variables)
+      - Forwarding variable
+
+  - Function value (cache)
+
+  - Property list
+
+- [X] =Lisp_Int*=
+
+- [X] =Lisp_String=
+
+- [-] =Lisp_Vectorlike= [10/36]
+
+  - [X] =PVEC_NORMAL_VECTOR=
+  - [ ] =PVEC_FREE=
+  - [X] =PVEC_BIGNUM=
+  - [ ] =PVEC_MARKER=
+  - [ ] =PVEC_OVERLAY=
+  - [ ] =PVEC_FINALIZER=
+  - [X] =PVEC_SYMBOL_WITH_POS= (maybe integrate into =ELispSymbol=)
+  - [ ] =PVEC_MISC_PTR=
+  - [ ] =PVEC_USER_PTR=
+  - [ ] =PVEC_PROCESS=
+  - [ ] =PVEC_FRAME=
+  - [ ] =PVEC_WINDOW=
+  - [X] =PVEC_BOOL_VECTOR=
+  - [ ] =PVEC_BUFFER=
+  - [X] =PVEC_HASH_TABLE=
+  - [ ] =PVEC_OBARRAY=
+  - [ ] =PVEC_TERMINAL=
+  - [ ] =PVEC_WINDOW_CONFIGURATION=
+  - [X] =PVEC_SUBR=
+  - [ ] =PVEC_XWIDGET=
+  - [ ] =PVEC_XWIDGET_VIEW=
+  - [ ] =PVEC_THREAD=
+  - [ ] =PVEC_MUTEX=
+  - [ ] =PVEC_CONDVAR=
+  - [ ] =PVEC_MODULE_FUNCTION=
+  - [ ] =PVEC_NATIVE_COMP_UNIT=
+  - [ ] =PVEC_TS_PARSER=
+  - [ ] =PVEC_TS_NODE=
+  - [ ] =PVEC_TS_COMPILED_QUERY=
+  - [ ] =PVEC_SQLITE=
+  - [X] =PVEC_CLOSURE=
+  - [X] =PVEC_CHAR_TABLE=
+  - [X] =PVEC_SUB_CHAR_TABLE=
+  - [X] =PVEC_RECORD=
+  - [ ] =PVEC_FONT=
+  - [ ] =PVEC_TAG_MAX=
+
+- [X] =Lisp_Cons=
+
+- [X] =Lisp_Float=
+
+
+* Considered Done (For Now)
+
+** DONE [#A] Undertanding =Lisp_Symbol= (Variables)
+
+I really doubt I get the implementation of =ELispSymbol= wrong (to some degree).
+Basicall, a =symbol= can:
+
+- Contain a lisp value (plain value symbol)
+- Point to a field in a global C struct (forward symbol)
+- Point to a field in a buffer struct (buffer-local symbol)
+- Contain a user-defined buffer-local symbol (buffer-local symbol)
+- Point to another symbol (aliased symbol)
+
+Also, similar to Java, lisp functions and values are in different "namespaces".
+So in the function namespace, a =symbol= can:
+
+- Point to a C function
+- Point to a lisp function
+- Point to another symbol (aliased function)
+- Other special values:
+  - Macros
+  - Autoload functions
+  - Wait, what? A keymap?
+- Other values set by =defalias=
+
+I have no idea how all these things interacts. (For example, what happens when
+you try to set the buffer-local default value for a plain value symbol? What if
+it is lexically bound? What behaviors may change if a symbol is lexically bound?)
+
+(Did I forget to mention that symbols like =:keyword= are automatically
+constant? Or are they? They also seems to evaluate to themselves.)
+
+*** Lexical Scoping
+
+#+begin_quote
+Note that unlike dynamic variables which are tied to the symbol object itself,
+the relationship between lexical variables and symbols is only present in the
+interpreter (or compiler). Therefore, functions which take a symbol argument
+(like ‘symbol-value’, ‘boundp’, and ‘set’) can only retrieve or modify a
+variable’s dynamic binding (i.e., the contents of its symbol’s value cell).
+
+=C-h i g= =(elisp) Lexical Binding=
+#+end_quote
+
+Oh. Great.
+
+*** DONE =defvar=
+
+#+begin_quote
+If INITVALUE is missing, the form marks the variable "special" locally (i.e.,
+within the current lexical scope, or the current file, if the form is at
+top-level).
+#+end_quote
+
+Mind-boggling. No idea. (And why? Is it just fun to change the whole semantics
+depending on a single missing parameter?)
+
+*** DONE =let= and =let*=
+
+Dynamic binding not handled yet. Also, still need to handle "special == true"
+symbols under lexical scoping.
+
+Wait. Does "special == true" also applies to function arguments?

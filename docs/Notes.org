@@ -1,0 +1,186 @@
+#+title: Notes To Myself
+
+Notes to myself while designing this project and scheduling TODO entries,
+i.e., How To Implement Your Own Shitty Emacs.
+
+* Notes
+
+** Emacs
+
+** Truffle Function Calls
+
+It is quite hard to gather all the details needed to build an efficient function
+call system in Truffle. Basically, we want:
+
+1. Built-in functions with less boilerplate code
+2. Support for user-defined functions
+3. Fixed args, optional args and varargs
+4. Efficiency
+
+And we need the following mechanism:
+
+1. Global/local variable dereferencing for named function calls
+2. Vararg parameter passing
+3. Fixed arg parameter passing optimization
+
+We will try to first follow a tutorial and then look into how some official
+implementations do this.
+
+*** Emacs Lisp Problems
+
+So special forms in Emacs Lisp is actually "special" ordinary functions,
+which means... one can overwrite them or assign them to other symbols.
+So this means you cannot convert a lisp cons =(my-func (func?))= to an AST
+until you evaluate it.
+
+- For a normal function, the above may expand to =FuncCallNode[my-func,
+  FuncCallNode[func?]]=.
+- For special forms..., like =(defalias 'my-func 'quote)=, it becomes
+  =FuncCallNode[my-func, LispObject[(func?)]]=.
+
+It makes it hard to cache the =CallTarget= used by Truffle. Also, since a
+function can be a macro that yields dynamic AST, I don't think it is actually
+possible to Truffle-JIT this thing efficiently... So bytecode it is.
+
+P.S. The current interpreted AST node =ELispInterpretedNode.java= somehow
+manages to produce a AST-ish thing for Truffle to JIT-compile. It is probably
+not that efficient thouth. Read the code and comments for more details.
+
+*** The Graal Truffle tutorial series by Adam Ruka
+
+#+begin_src js
+  var absFuncRootNode = new FunctionRootNode(
+    this,
+    AbsFunctionBodyExprNodeGen.create(new ReadFunctionArgExprNode(0)),
+  );
+  context.globalScopeObject.newConstant(
+    "Math.abs",
+    new FunctionObject(absFuncRootNode.getCallTarget()),
+  );
+#+end_src
+
+Basically:
+
+- =FunctionCallExprNode= evaluates all its children and dispatches the call with
+  =FunctionDispatchNode=, which uses a =DirectCallNode= to call a
+  =FunctionObject=.
+- =Math.abs= is a =FunctionObject= which is simply a wrapper for a =CallTarget=,
+- The =CallTarget= is obtained from a =RootNode= subclass (=FunctionRootNode=),
+  which is wrapped around a function body node (=AbsFunctionBodyExprNode=
+  extending =EasyScriptExprNode=).
+- =AbsFunctionBodyExprNode= uses =ReadFunctionArgExprNode= as a child node
+  to read parameters from the =VirtualFrame=.
+- =@GenerateNodeFactory= is used to ease writing more built-in functions.
+
+*** SimpleLanguage - Official Implementation #1
+
+Its approach is quite similar to the previous tutorial:
+
+- =SLInvokeNode= corresponds to function call AST node.
+  It uses =InteropLibrary= to dispatch calls though.
+- =SLFunctionRegistry=: Maps function names to =SLFunction= objects.
+- =SLFunction= wraps a =RootCallTarget=.
+- =SLPrintlnBuiltin= extends =SLBuiltinNode= (which has the
+  =@GenerateNodeFactory= annotation and extends =SLExpressionNode=).
+- Built-in functions are registered by =SLContext::installBuiltins=, which in
+  turn calls =SLLanguage::lookupBuiltin= to setup =SLReadArgumentNode= and
+  functions.
+- Notably, it seems to use a =CyclicAssumption= to detect call target changes.
+
+*** GraalJs
+
+- =JSFunctionCallNode= has a internal function object cache.
+- No =@GenerateNodeFactory= is used. Global functions are setup with
+  =JSRealm::setupGlobals= with hand-written function lists.
+- =JSFunction= wraps (deeply) a =CallTarget=.
+- Notably, =JSFunctionCallNode= implements a rather complex caching logic in its
+  =executeAndSpecialize= function.
+
+*** GraalPython
+
+- The built-in functions in GraalPython show-case an advanced (undocumented?)
+  usage of =@GenerateNodeFactory=:
+
+  It seems that, when annotating inner classes with =@GenerateNodeFactory=,
+  the DSL processor will also generate a factory for the outer class,
+  containing a =getFactories()= method returning all the inner factories.
+  This can be extremely convenient for writing and loading built-in
+  functions in batch.
+
+* Reading List
+
+** Emacs
+
+There are quite a lot Emacs forks or re-implementations out there, with helpful
+comments and discussions.
+
+- [[https://www.cliki.net/cl-emacs][CL-Emacs]]: “Various people have proposed an emacs-like editor written in Common
+  Lisp. This page collects together a few possibilities.”
+
+- [[https://jemacs.sourceforge.net/][JEmacs]]: The Java/Scheme-based Emacs Text Editor (source @ [[https://gitlab.com/kashell/Kawa/-/tree/master/gnu/jemacs?ref_type=heads][GNU Kawa]])
+
+- [[https://github.com/remacs/remacs][remacs]]: Emacs fork with some ELisp builtin functions rewritten in Rust
+
+- [[https://github.com/CeleritasCelery/rune][Rune]]: Emacs (mainly ELisp) reimplementation in Rust
+
+*** Emacs Lisp
+
+- [[https://www.emacswiki.org/emacs/HackerGuide][EmacsWiki: Hacker Guide]]
+
+- [[https://github.com/remacs/remacs/wiki/Emacs-Types][Emacs Types - remacs Wiki]]
+
+- [[https://blog.csdn.net/ftuc5dn/article/details/135421777][emacs 源码分析（二）]]: Contains a pretty diagram for some structs
+
+- [[https://github.com/remacs/remacs/issues/499][Emacs internal string encoding - remacs Issue #499]]
+
+- [[https://github.com/emacs-mirror/emacs/blob/46f3452b30f39a69f610faab58c1490b34dd367d/src/lread.c#L3936][read0 @ src/lread.c]]: The Emacs Lisp S-expr lexer & parser
+
+- [[https://chrismennie.ca/EMACS-Conceptual-Architecture.pdf][[PDF] Conceptual Views of EMACS's Architecture - chrismennie.ca!]]
+
+- [[https://github.com/CeleritasCelery/rune/blob/master/src/bytecode.rs][bytecode.rs @ rune]]
+
+- [[https://rocky.github.io/elisp-bytecode.pdf][[PDF] GNU Emacs Lisp Bytecode Reference Manual]] ([[https://github.com/rocky/elisp-bytecode][TeX source here]])
+
+*** GUI
+
+- [[https://github.com/CeleritasCelery/rune/issues/61][discussion about display engine and GUI model of emacs - rune Issue #61]]
+
+- [[http://www.finseth.com/craft/][The Craft of Text Editing --or-- Emacs for the Modern World]]
+
+** GraalVM / Truffle
+
+[[https://www.graalvm.org/][GraalVM]]: “An advanced JDK with ahead-of-time Native Image compilation”
+
+- [[https://github.com/oracle/graalpython][GraalPy, the GraalVM Implementation of Python]]
+
+  - What To Read: Excellent (as well as performance-centric) usage of [[https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/GenerateNodeFactory.html][=@GenerateNodeFactory=]].
+  - [[https://github.com/oracle/graalpython/blob/master/graalpython/com.oracle.graal.python/src/com/oracle/graal/python/nodes/function/builtins/BuiltinCallNode.java][BuiltinCallNode.java]]
+  - [[https://github.com/oracle/graalpython/blob/f753cf7d7a01a4594a72a53add6f3c4242babf48/graalpython/com.oracle.graal.python/src/com/oracle/graal/python/nodes/function/BuiltinFunctionRootNode.java][BuiltinFunctionRootNode.java]]
+
+- [[https://github.com/oracle/graal/tree/master/espresso][Espresso - Java On Truffle]]
+
+  - What To Read: How to write a byte-code interpreter efficiently with Truffle
+
+  - [[https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/OnStackReplacement/][On-Stack Replacement (OSR)]]
+
+- Mumble
+
+  - [[https://cesquivias.github.io/blog/2015/01/08/writing-a-language-in-truffle-part-3-making-my-language-much-faster/][Writing a Language in Truffle. Part 3: Making my Language (Much) Faster]]
+
+  - [[https://cesquivias.github.io/blog/2015/01/15/writing-a-language-in-truffle-part-4-adding-features-the-truffle-way/][Writing a Language in Truffle. Part 4: Adding Features the Truffle Way]] (tail-call optimization)
+
+- [[https://www.endoflineblog.com/graal-truffle-tutorial-part-0-what-is-truffle][Graal Truffle tutorial part 0 – what is Truffle?]]: A series of Truffle tutorial on a JS-like language
+
+- [[https://github.com/arvyy/islisp-truffle][Truffle ISLISP]]: A Lisp-variant language implemented with Truffle
+
+** Others
+
+- CRDT :: Conflict-free Replicated Data Type
+
+  - [[https://www.inkandswitch.com/peritext/][Peritext - A CRDT for Rich-Text Collaboration]]
+
+    - Thoughts: This might help if we are to enable transparent parallelization for Emacs Lisp.
+      For simple variables, we can do pretty well with a Copy-on-Write global environment.
+      However, we will need a concrete way to handle parallelized buffer edits.
+
+  - [[https://arxiv.org/abs/2409.14252][Collaborative Text Editing with Eg-walker: Better, Faster, Smaller]]

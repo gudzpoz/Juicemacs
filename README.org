@@ -1,0 +1,54 @@
+#+title: Juicemacs - An absolutely-not-solid Emacs implementation
+
+#+begin_html
+<a href="https://justforfunnoreally.dev">
+  <img src="https://img.shields.io/badge/justforfunnoreally-dev-9ff" alt="justforfunnoreally.dev badge" />
+</a>
+#+end_html
+
+Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
+that over-ambitiously aims to achieve the following:
+
+- Transparent(-ish) concurrentization of ELisp code
+- Polyglot programming with Python, JavaScript, etc.
+- GNU Emacs 30 compatibility
+
+To make all these possible, I have chosen to build Juicemacs on Java, which runs
+on JVM, which happens to be a nice platform with:
+
+- A decent GC: HotSpot has a number of state-of-the-art GCs.
+- Green threads & OS threads: One without the hassle of function coloring.
+- An incredible JIT framework: [[https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/][Truffle]] lets you build an interpreter and a JIT
+  compiler all at once.
+
+Of course using Java brings in its own problems, which I (and, probably, this
+project) will need to live with:
+
+- Sloooow startup (and with Truffle, it actually needs two warm-ups)
+- It bloats (and we can only hope Project Valhalla somehow tackles that)
+
+* Notes
+
+- [[file:docs/Notes.org]]
+- [[file:docs/TODO.org]]
+
+* Similar projects
+
+- https://github.com/remacs/remacs
+
+- https://github.com/CeleritasCelery/rune
+
+- https://github.com/federicotdn/pimacs
+
+- [[https://www.cliki.net/cl-emacs][CL-Emacs]]: “Various people have proposed an emacs-like editor written in Common
+  Lisp. This page collects together a few possibilities.”
+
+- Also the discontinued [[https://jemacs.sourceforge.net/][JEmacs - the Java/Scheme-based Emacs Text Editor]] (source
+  @ [[https://gitlab.com/kashell/Kawa/-/tree/master/gnu/jemacs?ref_type=heads][GNU Kawa]])
+
+* Disclaimers
+
+By calling this project Juicemacs, I do mean that:
+
+- It does not aim to become a solid implementation (yet).
+- It is not bug-free ([[https://www.fda.gov/food/current-good-manufacturing-practices-cgmps-food-and-dietary-supplements/food-defect-levels-handbook][~5 Drosophila eggs per 250 ml]]).
