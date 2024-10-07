@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+
+<ruleset name="ELisp Cautions"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Things to avoid in this subproject
+    </description>
+
+    <!-- This file causes NPE for PMD before https://github.com/pmd/pmd/issues/5261 is fixed. -->
+    <exclude-pattern>.*/party/iroiro/juicemacs/elisp/parser/ELispParser.java</exclude-pattern>
+
+    <rule
+            name="ELispAlwaysInterpretSpecialForms"
+            language="java"
+            message="Add CompilerDirectives.transferToInterpreterAndInvalidate() to special forms"
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            ELisp special forms return dynamically generated AST nodes and should always be interpreted.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //ClassDeclaration
+                [pmd-java:hasAnnotation("party.iroiro.juicemacs.elisp.forms.ELispBuiltIn")]
+                [ModifierList/Annotation[@SimpleName="ELispBuiltIn"]/AnnotationMemberList/MemberValuePair[@Image="rawArg"]]
+                /ClassBody/MethodDeclaration
+                [pmd-java:hasAnnotation("com.oracle.truffle.api.dsl.Specialization")]
+                [not(Block/ExpressionStatement/MethodCall[@MethodName="transferToInterpreterAndInvalidate"])]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Some code styles -->
+
+    <rule ref="category/java/codestyle.xml/AvoidDollarSigns" />
+    <rule ref="category/java/codestyle.xml/AvoidProtectedFieldInFinalClass" />
+    <rule ref="category/java/codestyle.xml/AvoidProtectedMethodInFinalClassNotExtending" />
+    <rule ref="category/java/codestyle.xml/AvoidUsingNativeCode" />
+    <rule ref="category/java/codestyle.xml/BooleanGetMethodName" />
+    <rule ref="category/java/codestyle.xml/CallSuperInConstructor" />
+    <rule ref="category/java/codestyle.xml/ConfusingTernary" />
+    <rule ref="category/java/codestyle.xml/ControlStatementBraces" />
+    <rule ref="category/java/codestyle.xml/FieldNamingConventions" />
+    <rule ref="category/java/codestyle.xml/IdenticalCatchBranches" />
+    <rule ref="category/java/codestyle.xml/LambdaCanBeMethodReference" />
+    <rule ref="category/java/codestyle.xml/PrematureDeclaration" />
+    <rule ref="category/java/codestyle.xml/ShortMethodName" />
+    <rule ref="category/java/codestyle.xml/UnnecessaryCast" />
+    <rule ref="category/java/codestyle.xml/UnnecessaryLocalBeforeReturn" />
+    <rule ref="category/java/codestyle.xml/UnnecessaryModifier" />
+    <rule ref="category/java/codestyle.xml/UnnecessaryReturn" />
+    <rule ref="category/java/codestyle.xml/UnnecessarySemicolon" />
+    <rule ref="category/java/codestyle.xml/UseDiamondOperator" />
+    <rule ref="category/java/codestyle.xml/UseExplicitTypes" />
+    <rule ref="category/java/codestyle.xml/UselessParentheses" />
+    <rule ref="category/java/codestyle.xml/UselessQualifiedThis" />
+    <rule ref="category/java/codestyle.xml/UseShortArrayInitializer" />
+    <rule ref="category/java/codestyle.xml/UseUnderscoresInNumericLiterals" />
+
+</ruleset>

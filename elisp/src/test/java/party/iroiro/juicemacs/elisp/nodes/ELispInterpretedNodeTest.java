@@ -8,6 +8,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ELispInterpretedNodeTest {
     @Test
+    public void testSimple() {
+        try (Context context = Context.create()) {
+            Value v = context.eval("elisp", """
+                    ((lambda (x) (* 10 x)) 1)
+                    """);
+            assertEquals(10, v.asInt());
+        }
+    }
+
+    @Test
     public void testFormChange() {
         try (Context context = Context.create()) {
             Value v = context.eval("elisp", """
@@ -29,7 +39,7 @@ public class ELispInterpretedNodeTest {
                      (setq result (+ result the-value)) ; 110 + 1 -> 111
 
                      ;; macro #1 (quoted with ')
-                     (defalias 'x (cons 'macro #'(lambda (v) (list 'cdr (list 'quote v)))))
+                     (defalias 'x (cons 'macro '(lambda (v) (list 'cdr (list 'quote v)))))
                      (setq the-cons (test-changing-func)) ; macro -> '(10 form-change-var)
                      (setq result (+ result (car the-cons))) ; 111 + 10 -> 121
 

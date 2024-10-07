@@ -16,6 +16,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 /**
  * Built-in functions from {@code src/data.c}
  */
+@SuppressWarnings("ForLoopReplaceableByForEach")
 public class BuiltInData extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -23,17 +24,22 @@ public class BuiltInData extends ELispBuiltIns {
     }
 
     public static int compareTo(Object a, Object b) {
-        if (!FNumberp.numberp(a)) {
+        if (!FNumberp.numberp(a) || !FNumberp.numberp(b)) {
             throw new IllegalArgumentException();
         }
-        return switch (a) {
-            case Double d -> d.compareTo(ELispTypeSystemGen.asImplicitDouble(b));
-            case ELispBigNum n when !(b instanceof Double) -> n.value.compareTo(
-                    ELispTypeSystemGen.asImplicitELispBigNum(b).value
-            );
-            case Long l when b instanceof Long lb -> l.compareTo(lb);
-            default -> -compareTo(b, a);
-        };
+        if (a instanceof Double d) {
+            return d.compareTo(ELispTypeSystemGen.asImplicitDouble(b));
+        }
+        if (b instanceof Double d) {
+            return -d.compareTo(ELispTypeSystemGen.asImplicitDouble(a));
+        }
+        if (a instanceof ELispBigNum n) {
+            return n.value.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(b).value);
+        }
+        if (b instanceof ELispBigNum n) {
+            return -n.value.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(a).value);
+        }
+        return ((Long) a).compareTo((Long) b);
     }
 
     /**

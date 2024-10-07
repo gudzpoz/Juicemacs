@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+
+<ruleset name="Truffle Practices"
+    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        PMD ruleset for avoiding common mistakes using Truffle
+    </description>
+
+    <!-- This file causes NPE for PMD before https://github.com/pmd/pmd/issues/5261 is fixed. -->
+    <exclude-pattern>.*/party/iroiro/juicemacs/elisp/parser/ELispParser.java</exclude-pattern>
+
+    <rule
+            name="TruffleNodeShouldAdoptChildren"
+            language="java"
+            message="Remember to call adoptChildren()."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Truffle AST nodes have a parent field, which is only filled in when
+            adoptChildren() is called.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //FieldDeclaration[
+                    pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Child")
+                    or pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Children")
+                ]/../..[count(.//MethodCall[@MethodName="adoptChildren"]) = 0]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
+            name="TruffleNoEnhancedForLoops"
+            language="java"
+            message="Use a normal for loop instead of a for-each loop."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Enhanced for loops (i.e., for-each) can lead Truffle compilations to bailout
+            when it tries to inline the loop body. (See also the @ExplodeLoop annotation in the Truffle DSL).
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //MethodDeclaration[pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.ExplodeLoop")]
+                //ForeachStatement
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
+            name="TruffleNoDirectRecursion"
+            language="java"
+            message="Either do not use direct recursion or annotated with Truffle's @TruffleBoundary."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Direct recursions can lead Truffle compilations to bailout when it tries to inline things.
+            Remove recursions or annotate the method with the @TruffleBoundary annotation.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //MethodDeclaration
+                [not(pmd-java:hasAnnotation("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary"))]
+                /(
+                let $def := .
+                return $def//MethodCall[@MethodName=$def/@Name][ThisExpression or count(*) = 1]
+                )
+            ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
+            name="TruffleBoundaryAtComplexTypes"
+            language="java"
+            message="Methods using HashMaps or other complex types should be annotated with @TruffleBoundary."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            The implementation of java.util.HashMap is highly recursive and can lead to bailing out.
+            Similarly, other complex types can cause the same problem.
+            Annotate the methods using them with @TruffleBoundary.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //FieldDeclaration
+                [
+                pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Child")
+                or pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Children")
+                ]
+                /../..
+                //MethodDeclaration
+                [not(pmd-java:hasAnnotation("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary"))]
+                [count(.//LocalVariableDeclaration/ClassType[@SimpleName="HashMap"]) > 0]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+</ruleset>

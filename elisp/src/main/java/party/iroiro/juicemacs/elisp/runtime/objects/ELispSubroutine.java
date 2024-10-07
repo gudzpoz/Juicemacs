@@ -1,13 +1,8 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CallTarget;
+import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 
-public record ELispSubroutine(CallTarget body, boolean specialForm) implements ELispValue {
-    @Override
-    public CallTarget getCallTarget() {
-        return body;
-    }
-
+public record ELispSubroutine(ELispFunctionObject body, boolean specialForm) implements ELispValue {
     @Override
     public boolean lispEquals(Object other) {
         return this.equals(other);

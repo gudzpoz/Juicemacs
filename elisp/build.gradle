@@ -15,6 +15,26 @@ dependencies {
     implementation 'com.lodborg:interval-tree:1.0.0'
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
+    runtimeOnly "org.graalvm.truffle:truffle-runtime:${truffleVersion}"
+    testRuntimeOnly "org.graalvm.tools:profiler-tool:${truffleVersion}"
+}
+
+pmd {
+    toolVersion = '7.6.0'
+    incrementalAnalysis = true
+    ruleSetFiles = files(
+            'scripts/pmd-truffle-practices.xml',
+            'scripts/pmd-elisp-cautions.xml',
+            'scripts/pmd-linguistics.xml',
+    )
+    ruleSets = []
+}
+
+test {
+    jvmArgs [
+            '-Dpolyglot.engine.TraceCompilation=true',
+            '-Dpolyglot.engine.CompilationFailureAction=Diagnose',
+    ]
 }
 
 // Template generation from Emacs sources

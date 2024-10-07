@@ -14,32 +14,32 @@ import org.junit.jupiter.api.Test;
 import com.oracle.truffle.api.source.Source;
 
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.BackQuote;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.BoolVec;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.ByteCodeOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Char;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.CharTableOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.CircularDef;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.CircularRef;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Dot;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.EOF;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Function;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Num;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.ParenClose;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.ParenOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Quote;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.RecordOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SetLexicalBindingMode;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SkipToEnd;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SquareClose;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SquareOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Str;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.StrWithPropsOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.SubCharTableOpen;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Symbol;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.Unquote;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.UnquoteSplicing;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.BackQuote;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.BoolVec;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ByteCodeOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Char;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CharTableOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CircularDef;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CircularRef;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Dot;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.EOF;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Function;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Num;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ParenClose;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ParenOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Quote;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.RecordOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.SetLexicalBindingMode;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.SkipToEnd;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.SquareClose;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.SquareOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Str;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.StrWithPropsOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.SubCharTableOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Symbol;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Unquote;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.UnquoteSplicing;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -50,11 +50,11 @@ public class ELispLexerTest {
         return new ELispLexer(Source.newBuilder("elisp", new StringReader(s), "test").build());
     }
 
-    private List<TokenData> lex(String s) throws IOException {
+    private List<Token> lex(String s) throws IOException {
         ELispLexer lexer = lexer(s);
-        List<TokenData> tokens = new ArrayList<>();
+        List<Token> tokens = new ArrayList<>();
         while (lexer.hasNext()) {
-            tokens.add(lexer.next().data());
+            tokens.add(lexer.next());
         }
         return tokens;
     }
@@ -94,11 +94,11 @@ public class ELispLexerTest {
                 }
                 assertEquals(
                         new Num(expectedNum),
-                        lexer.next().data()
+                        lexer.next()
                 );
                 assertTrue(lexer.hasNext());
                 if (suffix.isEmpty() || suffix.equals(" ")) {
-                    assertEquals(new EOF(), lexer.next().data());
+                    assertEquals(new EOF(), lexer.next());
                     assertFalse(lexer.hasNext());
                 }
             }
@@ -130,7 +130,7 @@ public class ELispLexerTest {
         for (int i = 0; i < FLOAT_TESTS.length; i += 2) {
             ELispLexer lexer = lexer((String) FLOAT_TESTS[i]);
             double expected = (Double) FLOAT_TESTS[i + 1];
-            Num actual = (Num) lexer.next().data();
+            Num actual = (Num) lexer.next();
             if (Double.isNaN(expected)) {
                 assertTrue(
                         Double.isNaN(((NumberVariant.Float) actual.value()).value()),
@@ -210,13 +210,13 @@ public class ELispLexerTest {
             String s = (String) CHAR_TESTS[i];
             int c = (int) CHAR_TESTS[i + 1];
             ELispLexer lexer = lexer(s);
-            Char actual = (Char) lexer.next().data();
+            Char actual = (Char) lexer.next();
             assertEquals(s.length(), lexer.getCodepointOffset(), s);
             assertEquals(c, actual.value(), s);
         }
         "\n \"';()[]#?`,.".chars().forEach((c) -> assertDoesNotThrow(() -> {
             ELispLexer lexer = lexer("?a" + Character.toString(c));
-            Char actual = (Char) lexer.next().data();
+            Char actual = (Char) lexer.next();
             assertEquals('a', actual.value());
         }));
     }
@@ -273,7 +273,7 @@ public class ELispLexerTest {
     public void testEOF() throws IOException {
         ELispLexer lexer = lexer("");
         assertTrue(lexer.hasNext());
-        assertEquals(new EOF(), lexer.next().data());
+        assertEquals(new EOF(), lexer.next());
         assertFalse(lexer.hasNext());
         assertThrows(IOException.class, lexer::next);
     }
@@ -487,7 +487,7 @@ public class ELispLexerTest {
                         "<input>"
                 ).build()
         );
-        Num data = (Num) lexer.next().data();
+        Num data = (Num) lexer.next();
         assertEquals(42L, ((NumberVariant.FixNum) data.value()).value());
     }
 

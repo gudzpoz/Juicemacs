@@ -14,6 +14,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SUBFEATURES;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -1306,10 +1307,9 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean equal(Object o1, Object o2) {
             return switch (o1) {
                 case Long l when o2 instanceof Long n -> l.equals(n);
-                case Long _ -> equal(o2, o1);
+                case Long l when o2 instanceof Double d -> d.equals((double) l);
                 case Double d when o2 instanceof Long n -> d.equals((double) n);
                 case Double d when o2 instanceof Double n -> d.equals(n);
-                case Double _ -> equal(o2, o1);
                 case ELispValue v -> v.lispEquals(o2);
                 default -> BuiltInData.FEq.eq(o1, o2);
             };
@@ -1629,11 +1629,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRequire extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean require(ELispSymbol feature, Object filename, Object noerror) {
+        public boolean require(ELispSymbol feature, Object filename, Object noerror) {
             if (FFeaturep.featurep(feature, false)) {
                 return true;
             }
-            return BuiltInLRead.FLoad.load(filename, noerror, false, false, false);
+            return BuiltInLRead.loadFile(ELispLanguage.get(this), filename);
         }
     }
 

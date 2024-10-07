@@ -81,7 +81,7 @@ public class ELispParserTest {
 
     @Test
     public void testCons() throws IOException {
-        assertSame(NIL, read("()"));
+        assertSame(false, read("()"));
         ELispCons cons = assertInstanceOf(ELispCons.class, read("(1024 . 4321)"));
         assertEquals(1024L, cons.car());
         assertEquals(4321L, cons.cdr());
@@ -102,7 +102,7 @@ public class ELispParserTest {
     @Test
     public void testByteCode() throws IOException {
         ELispByteCode bc = assertInstanceOf(ELispByteCode.class, read("#[() \"\" [] 0]"));
-        assertSame(NIL, bc.getFirst());
+        assertSame(false, bc.getFirst());
     }
 
     @Test

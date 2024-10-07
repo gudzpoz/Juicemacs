@@ -5,6 +5,7 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 
 import java.util.ArrayList;
@@ -30,10 +31,10 @@ public abstract class ELispBuiltIns {
                     args.add(new ReadFunctionArgNode.ReadFunctionRestArgsNode(builtIn.maxArgs()));
                 }
                 ELispBuiltInBaseNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));
-                FunctionRootNode rootNode = new FunctionRootNode(language, function);
+                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), function);
                 context.registerFunction(
                         builtIn.name(),
-                        new ELispSubroutine(rootNode.getCallTarget(), builtIn.rawArg())
+                        new ELispSubroutine(new ELispFunctionObject(rootNode.getCallTarget()), builtIn.rawArg())
                 );
             }
         }

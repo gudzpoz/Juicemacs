@@ -5,6 +5,7 @@
 plugins {
     id 'java'
     id 'jacoco'
+    id 'pmd'
     id 'org.javamodularity.moduleplugin'
 }
 

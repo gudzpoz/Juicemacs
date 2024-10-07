@@ -1,41 +1,41 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
-import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
-import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
+import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AND_OPTIONAL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AND_REST;
 
 public class ELispInterpretedClosure extends AbstractELispVector {
     @Nullable
-    private ELispFunctionObject function = null;
+    private final RootNode rootNode;
+    @Nullable
+    private volatile ELispFunctionObject function = null;
 
     public ELispInterpretedClosure(
-            Object args, ELispCons body, Object env, Object doc, Object iForm) {
+            Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
+    ) {
         super(List.of(args, body, env, doc, iForm));
+        this.rootNode = rootNode;
     }
 
     private Object getArgs() {
         return get(0);
     }
 
-    private Object getBody() {
-        return get(1);
+    private ELispCons getBody() {
+        return (ELispCons) get(1);
     }
 
     private Object getEnv() {
@@ -43,17 +43,16 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     }
 
     public ELispFunctionObject getFunction() {
-        if (function == null) {
+        ELispFunctionObject f = function;
+        if (f == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispClosureCallNode node = new ELispClosureCallNode();
-            FunctionRootNode root = new FunctionRootNode(ELispLanguage.get(node), node);
-            function = new ELispFunctionObject(root.getCallTarget());
+            // TODO: Get a real name for the function.
+            FunctionRootNode root = new FunctionRootNode(ELispLanguage.get(node), toString(), node);
+            f = new ELispFunctionObject(root.getCallTarget());
+            function = f;
         }
-        return function;
-    }
-
-    @Override
-    public CallTarget getCallTarget() {
-        return getFunction().callTarget();
+        return f;
     }
 
     @Override
@@ -70,22 +69,14 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         private ELispSymbol[] argSymbols;
 
         @SuppressWarnings("FieldMayBeFinal")
-        @Children
-        private ELispInterpretedNode[] body;
+        @Child
+        private ELispExpressionNode body;
 
         private final ELispBindingScope.ClosableScope.@Nullable Lexical lexical;
 
         public ELispClosureCallNode() {
             lexical = initializeLexical();
-
-            List<ELispInterpretedNode> bodyExpressions = new ArrayList<>();
-            Object body = getBody();
-            if (!ELispSymbol.isNil(body)) {
-                for (Object expr : ((ELispCons) body)) {
-                    bodyExpressions.add(ELispInterpretedNode.create(expr));
-                }
-            }
-            this.body = bodyExpressions.toArray(new ELispInterpretedNode[0]);
+            body = BuiltInEval.FProgn.progn(getBody().toArray());
 
             if (ELispSymbol.isNil(getArgs())) {
                 this.args = new ReadFunctionArgNode[0];
@@ -124,8 +115,10 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             }
             this.args = argNodes.toArray(new ReadFunctionArgNode[0]);
             this.argSymbols = symbols.toArray(new ELispSymbol[0]);
+            adoptChildren();
         }
 
+        @CompilerDirectives.TruffleBoundary
         private ELispBindingScope.ClosableScope.@Nullable Lexical initializeLexical() {
             Object env = getEnv();
             if (ELispSymbol.isNil(env)) {
@@ -147,13 +140,8 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             return new ELispBindingScope.ClosableScope.Lexical(map, null);
         }
 
-        @ExplodeLoop
-        public ELispBindingScope.ClosableScope pushScope(VirtualFrame frame) {
-            Object[] newValues;
-            newValues = new Object[argSymbols.length];
-            for (int i = 0; i < args.length; i++) {
-                newValues[i] = args[i].executeGeneric(frame);
-            }
+        @CompilerDirectives.TruffleBoundary
+        public ELispBindingScope.ClosableScope pushScope(Object[] newValues) {
             if (lexical == null) {
                 return ELispBindingScope.pushDynamic(argSymbols, newValues);
             } else {
@@ -161,6 +149,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                 HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> map = new HashMap<>();
                 for (int i = 0; i < argSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols
+                    // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
                     map.put(argSymbols[i], new ELispSymbol.Value.Forwarded(newValues[i]));
                 }
                 return ELispBindingScope.pushComposite(
@@ -173,13 +162,22 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Override
         @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
-            Object result = false;
-            try (ELispBindingScope.ClosableScope _ = pushScope(frame)) {
-                for (ELispInterpretedNode form : body) {
-                    result = form.executeGeneric(frame);
-                }
+            Object[] newValues;
+            newValues = new Object[argSymbols.length];
+            int length = args.length;
+            for (int i = 0; i < length; i++) {
+                newValues[i] = args[i].executeGeneric(frame);
             }
-            return result;
+            try (ELispBindingScope.ClosableScope _ = pushScope(newValues)) {
+                return body.executeGeneric(frame);
+            }
+        }
+
+        @Nullable
+        @Override
+        public SourceSection getSourceSection() {
+            RootNode root = rootNode;
+            return root == null ? null : getBody().getSourceSection(root.getSourceSection().getSource());
         }
     }
 }

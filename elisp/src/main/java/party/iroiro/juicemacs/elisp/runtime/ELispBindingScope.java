@@ -37,7 +37,7 @@ public final class ELispBindingScope {
 
     public sealed interface ClosableScope extends AutoCloseable {
         void close();
-        
+
         record Dynamic(ELispSymbol[] symbols, Object[] prevValues) implements ClosableScope {
             @Override
             public void close() {
@@ -56,7 +56,7 @@ public final class ELispBindingScope {
                 currentScope.set(parent);
             }
         }
-        
+
         record LexicalSwitch(@Nullable Lexical prev) implements ClosableScope {
             @Override
             public void close() {
@@ -102,7 +102,7 @@ public final class ELispBindingScope {
         ELispSymbol.Value.Forwarded forwarded = getForwardedLexical(symbol);
         return (forwarded != null && forwarded != _DYNAMIC) ? forwarded.getValue() : null;
     }
-    
+
     public static boolean setLexical(ELispSymbol symbol, Object value) {
         ELispSymbol.Value.Forwarded forwarded = getForwardedLexical(symbol);
         if (forwarded != null && forwarded != _DYNAMIC) {
@@ -125,7 +125,7 @@ public final class ELispBindingScope {
         currentScope.set(lexical);
         return new ClosableScope.LexicalSwitch(prev);
     }
-    
+
     public static ClosableScope pushLexical(Map<ELispSymbol, ELispSymbol.Value.Forwarded> values) {
         ClosableScope.Lexical lexical = new ClosableScope.Lexical(values, currentScope.get());
         currentScope.set(lexical);

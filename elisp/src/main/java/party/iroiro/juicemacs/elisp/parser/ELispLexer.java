@@ -3,14 +3,12 @@ package party.iroiro.juicemacs.elisp.parser;
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigInteger;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -111,18 +109,18 @@ class ELispLexer {
 
     }
 
-    sealed interface TokenData {
+    sealed interface Token {
 
         /**
          * End-of-file indicator
          */
-        record EOF() implements TokenData {
+        record EOF() implements Token {
         }
 
         /**
          * Somehow equivalent to {@link EOF}, but causes the parser to return nil
          */
-        record SkipToEnd() implements TokenData {
+        record SkipToEnd() implements Token {
         }
 
         /**
@@ -138,31 +136,31 @@ class ELispLexer {
          * So we follow that.
          * </p>
          */
-        record SetLexicalBindingMode(boolean value) implements TokenData {
+        record SetLexicalBindingMode(boolean value) implements Token {
         }
 
         /**
          * A dot as is in {@code (1.0 . 2.0)}
          */
-        record Dot() implements TokenData {
+        record Dot() implements Token {
         }
 
         /**
          * Opening parenthesis
          */
-        record ParenOpen() implements TokenData {
+        record ParenOpen() implements Token {
         }
 
         /**
          * Opening record as is in {@code #s(}
          */
-        record RecordOpen() implements TokenData {
+        record RecordOpen() implements Token {
         }
 
         /**
          * Opening string with properties as is in {@code #(}
          */
-        record StrWithPropsOpen() implements TokenData {
+        record StrWithPropsOpen() implements Token {
         }
 
         /**
@@ -172,31 +170,31 @@ class ELispLexer {
          * Please note that it also closes {@link RecordOpen}, etc.
          * </p>
          */
-        record ParenClose() implements TokenData {
+        record ParenClose() implements Token {
         }
 
         /**
          * Opening square bracket
          */
-        record SquareOpen() implements TokenData {
+        record SquareOpen() implements Token {
         }
 
         /**
          * Opening byte code as is in {@code #[}
          */
-        record ByteCodeOpen() implements TokenData {
+        record ByteCodeOpen() implements Token {
         }
 
         /**
          * Opening char table as is in {@code #^[}
          */
-        record CharTableOpen() implements TokenData {
+        record CharTableOpen() implements Token {
         }
 
         /**
          * Opening sub char table as is in {@code #^^[}
          */
-        record SubCharTableOpen() implements TokenData {
+        record SubCharTableOpen() implements Token {
         }
 
         /**
@@ -206,99 +204,89 @@ class ELispLexer {
          * Please note that it also closes {@link ByteCodeOpen}, etc.
          * </p>
          */
-        record SquareClose() implements TokenData {
+        record SquareClose() implements Token {
         }
 
         /**
          * Function quote as is in {@code #'func}
          */
-        record Function() implements TokenData {
+        record Function() implements Token {
         }
 
         /**
          * Symbol quote as is in {@code 'symbol}
          */
-        record Quote() implements TokenData {
+        record Quote() implements Token {
         }
 
         /**
          * Back quote as is in {@code `symbol}
          */
-        record BackQuote() implements TokenData {
+        record BackQuote() implements Token {
         }
 
         /**
          * Comma as is in {@code `(,var)}
          */
-        record Unquote() implements TokenData {
+        record Unquote() implements Token {
         }
 
         /**
          * Comma at back quote as is in {@code `(,@var)}
          */
-        record UnquoteSplicing() implements TokenData {
+        record UnquoteSplicing() implements Token {
         }
 
         /**
          * Circular reference as is in {@code #1#}
          */
-        record CircularRef(long id) implements TokenData {
+        record CircularRef(long id) implements Token {
         }
 
         /**
          * Circular definition as is in {@code #1=func}
          */
-        record CircularDef(long id) implements TokenData {
+        record CircularDef(long id) implements Token {
         }
 
-        record Char(int value) implements TokenData {
+        record Char(int value) implements Token {
         }
 
-        record Str(MutableTruffleString value) implements TokenData {
+        record Str(MutableTruffleString value) implements Token {
         }
 
-        record Num(NumberVariant value) implements TokenData {
+        record Num(NumberVariant value) implements Token {
         }
 
-        record Symbol(String value, boolean intern, boolean shorthand) implements TokenData {
+        record Symbol(String value, boolean intern, boolean shorthand) implements Token {
         }
 
         /**
          * Bool vector as is in {@code #&10"value"}
          */
-        record BoolVec(long length, MutableTruffleString value) implements TokenData {
+        record BoolVec(long length, MutableTruffleString value) implements Token {
         }
     }
 
-    record SourceLocation(@Nullable URI uri, int line, int startChar, int endChar) {
-    }
-
-    /**
-     * @param data   the actual token data
-     * @param source the source section of the token
-     */
-    record Token(TokenData data, SourceLocation source) {
-    }
-
-    private static final TokenData.EOF EOF = new TokenData.EOF();
-    private static final TokenData.SkipToEnd SKIP_TO_END = new TokenData.SkipToEnd();
-    private static final TokenData.Dot DOT = new TokenData.Dot();
-    private static final TokenData.ParenOpen PAREN_OPEN = new TokenData.ParenOpen();
-    private static final TokenData.RecordOpen RECORD_OPEN = new TokenData.RecordOpen();
-    private static final TokenData.StrWithPropsOpen STR_WITH_PROPS_OPEN = new TokenData.StrWithPropsOpen();
-    private static final TokenData.ParenClose PAREN_CLOSE = new TokenData.ParenClose();
-    private static final TokenData.SquareOpen SQUARE_OPEN = new TokenData.SquareOpen();
-    private static final TokenData.ByteCodeOpen BYTE_CODE_OPEN = new TokenData.ByteCodeOpen();
-    private static final TokenData.CharTableOpen CHAR_TABLE_OPEN = new TokenData.CharTableOpen();
-    private static final TokenData.SubCharTableOpen SUB_CHAR_TABLE_OPEN = new TokenData.SubCharTableOpen();
-    private static final TokenData.SquareClose SQUARE_CLOSE = new TokenData.SquareClose();
-    private static final TokenData.Function FUNCTION = new TokenData.Function();
-    private static final TokenData.Quote QUOTE = new TokenData.Quote();
-    private static final TokenData.BackQuote BACK_QUOTE = new TokenData.BackQuote();
-    private static final TokenData.Unquote UNQUOTE = new TokenData.Unquote();
-    private static final TokenData.UnquoteSplicing UNQUOTE_SPLICING = new TokenData.UnquoteSplicing();
-    static final TokenData.Symbol EMPTY_SYMBOL = new TokenData.Symbol("", true, true);
-    static final TokenData.Symbol NIL_SYMBOL = new TokenData.Symbol("nil", true, false);
+    private static final Token.EOF EOF = new Token.EOF();
+    private static final Token.SkipToEnd SKIP_TO_END = new Token.SkipToEnd();
+    private static final Token.Dot DOT = new Token.Dot();
+    private static final Token.ParenOpen PAREN_OPEN = new Token.ParenOpen();
+    private static final Token.RecordOpen RECORD_OPEN = new Token.RecordOpen();
+    private static final Token.StrWithPropsOpen STR_WITH_PROPS_OPEN = new Token.StrWithPropsOpen();
+    private static final Token.ParenClose PAREN_CLOSE = new Token.ParenClose();
+    private static final Token.SquareOpen SQUARE_OPEN = new Token.SquareOpen();
+    private static final Token.ByteCodeOpen BYTE_CODE_OPEN = new Token.ByteCodeOpen();
+    private static final Token.CharTableOpen CHAR_TABLE_OPEN = new Token.CharTableOpen();
+    private static final Token.SubCharTableOpen SUB_CHAR_TABLE_OPEN = new Token.SubCharTableOpen();
+    private static final Token.SquareClose SQUARE_CLOSE = new Token.SquareClose();
+    private static final Token.Function FUNCTION = new Token.Function();
+    private static final Token.Quote QUOTE = new Token.Quote();
+    private static final Token.BackQuote BACK_QUOTE = new Token.BackQuote();
+    private static final Token.Unquote UNQUOTE = new Token.Unquote();
+    private static final Token.UnquoteSplicing UNQUOTE_SPLICING = new Token.UnquoteSplicing();
+    static final Token.Symbol EMPTY_SYMBOL = new Token.Symbol("", true, true);
+    static final Token.Symbol NIL_SYMBOL = new Token.Symbol("nil", true, false);
 
     private static final int NO_BREAK_SPACE = 0x00A0;
     private static final Pattern LEXICAL_BINDING_PATTERN = Pattern.compile(
@@ -311,7 +299,6 @@ class ELispLexer {
     private final ByteSequenceReader byteReader;
     @Nullable
     private final Reader charReader;
-    private final Source source;
 
     public ELispLexer(Source source) {
         if (source.hasBytes()) {
@@ -322,7 +309,6 @@ class ELispLexer {
             this.byteReader = null;
             this.charReader = source.getReader();
         }
-        this.source = source;
     }
 
     boolean hasNext() {
@@ -336,7 +322,7 @@ class ELispLexer {
     /**
      * Maintained by {@link #readCodepoint()}. See also {@link Token}.
      */
-    private int offset = 0;
+    private int column = 0;
     private int codepointOffset = 0;
     /**
      * Maintained by {@link #readCodepoint()}.
@@ -352,7 +338,7 @@ class ELispLexer {
      * Reads a full Unicode codepoint from the reader.
      *
      * <p>
-     * The {@link #eof}, {@link #line} and {@link #offset} fields are
+     * The {@link #eof}, {@link #line} and {@link #column} fields are
      * maintained in this method only. One should take care to not modify
      * them elsewhere.
      * </p>
@@ -366,10 +352,25 @@ class ELispLexer {
         }
         if (c == '\n') {
             line++;
+            column = 0;
         }
-        offset += Character.charCount(c);
+        column++;
         codepointOffset++;
         return c;
+    }
+
+    /**
+     * @return 1-based line count
+     */
+    public int getLine() {
+        return line;
+    }
+
+    /**
+     * @return 1-based column count
+     */
+    public int getColumn() {
+        return column;
     }
 
     public int getCodepointOffset() {
@@ -534,6 +535,7 @@ class ELispLexer {
     /**
      * Read the remaining encoded ELisp character following the {@code ?} character.
      */
+    @CompilerDirectives.TruffleBoundary
     private int readChar(boolean inString) throws IOException {
         int c = noEOF(readCodepoint());
         // Normal characters: ?a => 'a'
@@ -641,18 +643,18 @@ class ELispLexer {
         return '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z';
     }
 
-    private TokenData readHashNumToken(int base) throws IOException {
+    private Token readHashNumToken(int base) throws IOException {
         BigInteger value = readInteger(base, -1, true);
         switch (peekCodepoint()) {
             // #1#
             case '#' -> {
                 readCodepoint();
-                return new TokenData.CircularRef(value.longValueExact());
+                return new Token.CircularRef(value.longValueExact());
             }
             // #1=
             case '=' -> {
                 readCodepoint();
-                return new TokenData.CircularDef(value.longValueExact());
+                return new Token.CircularDef(value.longValueExact());
             }
             // #24r1k => base-24 integer
             case 'r' -> {
@@ -668,13 +670,13 @@ class ELispLexer {
                 if (isAlphaNumeric(peekCodepoint())) {
                     throw new IOException("Invalid character");
                 }
-                return new TokenData.Num(NumberVariant.from(number));
+                return new Token.Num(NumberVariant.from(number));
             }
             default -> {
                 if (isAlphaNumeric(peekCodepoint())) {
                     throw new IOException("Invalid character");
                 }
-                return new TokenData.Num(NumberVariant.from(value));
+                return new Token.Num(NumberVariant.from(value));
             }
         }
     }
@@ -690,7 +692,7 @@ class ELispLexer {
         ));
     }
 
-    private TokenData readSymbolOrNumber(int alreadyRead, boolean uninterned, boolean noShorthand)
+    private Token readSymbolOrNumber(int alreadyRead, boolean uninterned, boolean noShorthand)
             throws IOException {
         boolean symbolOnly = uninterned || noShorthand;
         StringBuilder sb = new StringBuilder();
@@ -715,13 +717,13 @@ class ELispLexer {
             Matcher integer = INTEGER_PATTERN.matcher(symbol);
             if (integer.matches()) {
                 NumberVariant inner = NumberVariant.from(new BigInteger(integer.group(1)));
-                return new TokenData.Num(inner);
+                return new Token.Num(inner);
             }
             if (FLOAT_PATTERN.matcher(symbol).matches()) {
-                return new TokenData.Num(new NumberVariant.Float(parseFloat(symbol)));
+                return new Token.Num(new NumberVariant.Float(parseFloat(symbol)));
             }
         }
-        return new TokenData.Symbol(symbol, !uninterned, !noShorthand);
+        return new Token.Symbol(symbol, !uninterned, !noShorthand);
     }
 
     private static double parseFloat(String symbol) {
@@ -760,14 +762,14 @@ class ELispLexer {
      * <p>
      * It is loosely based on the Emacs implementation in {@code read0 @ src/lread.c}.
      * You should definitely read that if you are trying to understand what this code does
-     * as well as what semantically each {@link TokenData} means.
+     * as well as what semantically each {@link Token} means.
      * A summary is given at the Javadoc of this class ({@link ELispLexer}).
      * </p>
      *
      * @return {@code null} if there is a comment, or the next token otherwise.
      */
     @Nullable
-    private TokenData lexNext() throws IOException {
+    private Token lexNext() throws IOException {
         int c = readCodepoint();
         if (c == -1) {
             return EOF;
@@ -814,7 +816,7 @@ class ELispLexer {
                         if (readCodepoint() != '\"') {
                             throw new IOException("Expected '\"'");
                         }
-                        yield new TokenData.BoolVec(l, readStr());
+                        yield new Token.BoolVec(l, readStr());
                     }
                     case '!' -> {
                         readLine();
@@ -852,7 +854,7 @@ class ELispLexer {
                     case '$' -> NIL_SYMBOL;
                     case ':' -> potentialUnescapedSymbolChar(peekCodepoint())
                             ? readSymbolOrNumber(readCodepoint(), true, false)
-                            : new TokenData.Symbol("", false, true);
+                            : new Token.Symbol("", false, true);
                     case '_' -> potentialUnescapedSymbolChar(peekCodepoint())
                             ? readSymbolOrNumber(readCodepoint(), false, true)
                             : EMPTY_SYMBOL;
@@ -862,9 +864,9 @@ class ELispLexer {
             case '?' -> {
                 int value = readChar(false);
                 assertNoSymbolBehindChar();
-                yield new TokenData.Char(value);
+                yield new Token.Char(value);
             }
-            case '"' -> new TokenData.Str(readStr());
+            case '"' -> new Token.Str(readStr());
             case '\'' -> QUOTE;
             case '`' -> BACK_QUOTE;
             case ',' -> {
@@ -879,7 +881,7 @@ class ELispLexer {
                 if (line == 1 || (shebang && line == 2)) {
                     Matcher matcher = LEXICAL_BINDING_PATTERN.matcher(comment);
                     if (matcher.find()) {
-                        yield new TokenData.SetLexicalBindingMode(
+                        yield new Token.SetLexicalBindingMode(
                                 !matcher.group(1).equals("nil")
                         );
                     }
@@ -890,6 +892,7 @@ class ELispLexer {
         };
     }
 
+    @CompilerDirectives.TruffleBoundary
     Token next() throws IOException {
         if (eof) {
             throw new IOException("Unexpected EOF");
@@ -902,12 +905,9 @@ class ELispLexer {
                 }
                 readCodepoint();
             }
-            int line = this.line;
-            int startOffset = offset;
-            TokenData data = lexNext();
+            Token data = lexNext();
             if (data != null) {
-                SourceLocation location = new SourceLocation(source.getURI(), line, startOffset, offset);
-                return new Token(data, location);
+                return data;
             }
         }
     }

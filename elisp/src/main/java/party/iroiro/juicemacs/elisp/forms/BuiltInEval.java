@@ -1,25 +1,41 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AUTOLOAD;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CDOCUMENTATION;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.INTERACTIVE;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LAMBDA;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LEXICAL_BINDING;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.*;
-
-import java.util.*;
-
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 /**
  * Built-in functions from {@code src/eval.c}
  */
-@SuppressWarnings("DefaultAnnotationParam")
+@SuppressWarnings({"DefaultAnnotationParam", "ForLoopReplaceableByForEach"})
 public class BuiltInEval extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -46,11 +62,16 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Children
                 private ELispExpressionNode[] nodes = expressions;
 
+                {
+                    adoptChildren();
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    for (ELispExpressionNode node : nodes) {
-                        Object result = node.executeGeneric(frame);
+                    int length = nodes.length;
+                    for (int i = 0; i < length; i++) {
+                        Object result = nodes[i].executeGeneric(frame);
                         if (!ELispSymbol.isNil(result)) {
                             return result;
                         }
@@ -80,11 +101,17 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Children
                 private ELispExpressionNode[] nodes = ELispInterpretedNode.create(conditions);
 
+                {
+                    adoptChildren();
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     Object lastResult = true;
-                    for (ELispExpressionNode node : nodes) {
+                    int length = nodes.length;
+                    for (int i = 0; i < length; i++) {
+                        ELispExpressionNode node = nodes[i];
                         lastResult = node.executeGeneric(frame);
                         if (ELispSymbol.isNil(lastResult)) {
                             return false;
@@ -110,6 +137,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FIf extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode if_(Object cond, Object then, Object[] else_) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
@@ -120,6 +148,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode elseBranch = FProgn.progn(else_);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -150,6 +182,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FCond extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode cond(Object[] clauses) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             List<ELispExpressionNode> conditionNodes = new ArrayList<>();
             List<ELispExpressionNode> cases = new ArrayList<>();
             for (Object clause : clauses) {
@@ -170,10 +203,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Children
                 ELispExpressionNode[] thenCases = cases.toArray(new ELispExpressionNode[0]);
 
+                {
+                    adoptChildren();
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    for (int i = 0; i < conditions.length; i++) {
+                    int length = conditions.length;
+                    for (int i = 0; i < length; i++) {
                         if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
                             return thenCases[i].executeGeneric(frame);
                         }
@@ -195,16 +233,22 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FProgn extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode progn(Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Children
                 ELispInterpretedNode[] nodes = ELispInterpretedNode.create(body);
 
+                {
+                    adoptChildren();
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     Object lastResult = false;
-                    for (ELispInterpretedNode arg : nodes) {
+                    for (int i = 0, length = nodes.length; i < length; i++) {
+                        ELispInterpretedNode arg = nodes[i];
                         lastResult = arg.executeGeneric(frame);
                     }
                     return lastResult;
@@ -226,6 +270,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FProg1 extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode prog1(Object first, Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
@@ -233,6 +278,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode others = FProgn.progn(body);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -261,6 +310,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FSetq extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode setq(Object[] args) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (args.length % 2 != 0) {
                 return new ELispExpressionNode() {
                     @Override
@@ -281,11 +331,16 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Children
                 ELispInterpretedNode[] nodes = ELispInterpretedNode.create(values);
 
+                {
+                    adoptChildren();
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     Object last = false;
-                    for (int i = 0; i < nodes.length; i++) {
+                    int length = nodes.length;
+                    for (int i = 0; i < length; i++) {
                         ELispSymbol symbol = (ELispSymbol) symbols[i];
                         last = nodes[i].executeGeneric(frame);
                         if (!ELispBindingScope.setLexical(symbol, last)) {
@@ -317,6 +372,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FQuote extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode quote(Object arg) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -339,13 +395,14 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeInterpretedClosure extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispInterpretedClosure makeInterpretedClosure(Object args, ELispCons body, Object env, Object docstring, Object iform) {
+        public ELispInterpretedClosure makeInterpretedClosure(Object args, ELispCons body, Object env, Object docstring, Object iform) {
             return new ELispInterpretedClosure(
                     args,
                     body,
                     env,
                     docstring,
-                    iform
+                    iform,
+                    getRootNode()
             );
         }
     }
@@ -366,6 +423,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FFunction extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode function(Object arg) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (arg instanceof ELispCons def && def.car() == LAMBDA) {
                 ELispCons.BrentTortoiseHareIterator iterator = def.listIterator(1);
                 Object args = iterator.next();
@@ -398,15 +456,20 @@ public class BuiltInEval extends ELispBuiltIns {
                     @Child
                     ELispExpressionNode doc = finalDocString;
 
+                    {
+                        adoptChildren();
+                    }
+
                     @Override
                     public Object executeGeneric(VirtualFrame frame) {
-                        return FMakeInterpretedClosure.makeInterpretedClosure(
+                        return new ELispInterpretedClosure(
                                 args,
                                 body,
                                 ELispSymbol.isNil(LEXICAL_BINDING.getValueOr(false)) ? false
                                         : Objects.requireNonNullElse(ELispBindingScope.getCurrentLexical(), true),
                                 doc.executeGeneric(frame),
-                                finalInteractive
+                                finalInteractive,
+                                getRootNode()
                         );
                     }
                 };
@@ -530,11 +593,16 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FDefvar extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode defvar(Object symbol, Object initvalue, Object docstring) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             // TODO: Distinguish between (defvar a) and (defvar a nil)?
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode init = ELispInterpretedNode.create(initvalue);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -590,10 +658,15 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FDefconst extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode defconst(Object symbol, Object initvalue, Object docstring) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode init = ELispInterpretedNode.create(initvalue);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -651,6 +724,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FLetx extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode letx(Object varlist, Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
@@ -658,6 +732,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode bodyNode = FProgn.progn(body);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -683,6 +761,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLet extends ELispBuiltInBaseNode {
         public static ELispExpressionNode makeScope(Object varlist, boolean progressive) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             List<ELispSymbol> symbolList = new ArrayList<>();
             List<ELispInterpretedNode> values = new ArrayList<>();
             for (Object assignment : ELispCons.iterate(varlist)) {
@@ -714,6 +793,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Children
                 ELispInterpretedNode[] valueNodes = values.toArray(ELispInterpretedNode[]::new);
 
+                {
+                    adoptChildren();
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -726,13 +809,15 @@ public class BuiltInEval extends ELispBuiltIns {
                         handle = ELispBindingScope.pushLexical(lexicalBindings);
                     }
                     try {
-                        for (int i = 0; i < symbols.length; i++) {
+                        int length = symbols.length;
+                        for (int i = 0; i < length; i++) {
                             ELispSymbol symbol = (ELispSymbol) symbols[i];
                             Object value = valueNodes[i].executeGeneric(frame);
                             if (dynamicBinding || ELispBindingScope.isDynamic(symbol)) {
                                 specialBindings.add(symbol);
                                 specialValues.add(progressive ? symbol.swapThreadLocalValue(value) : value);
                             } else {
+                                // TODO: Check if Truffle bail out on this.
                                 lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(value));
                             }
                         }
@@ -775,6 +860,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         @Specialization
         public static ELispExpressionNode let(Object varlist, Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
@@ -782,6 +868,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode bodyNode = FProgn.progn(body);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -809,6 +899,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FWhile extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode while_(Object test, Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
@@ -816,10 +907,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode bodyNode = FProgn.progn(body);
+
+                {
+                    adoptChildren();
+                }
+
                 @Override
 
                 public Object executeGeneric(VirtualFrame frame) {
-                    while(!ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                    while (!ELispSymbol.isNil(condition.executeGeneric(frame))) {
                         bodyNode.executeGeneric(frame);
                     }
                     return false;
@@ -884,6 +980,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FCatch extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode catch_(Object tag, Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }
@@ -917,6 +1014,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FUnwindProtect extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode unwindProtect(Object bodyform, Object[] unwindforms) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
@@ -924,6 +1022,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode unwind = FProgn.progn(unwindforms);
+
+                {
+                    adoptChildren();
+                }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -979,6 +1081,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FConditionCase extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode conditionCase(Object var, Object bodyform, Object[] handlers) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }
@@ -1317,9 +1420,11 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FFunctionp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean functionp(Object object) {
+            if (object instanceof ELispSymbol symbol) {
+                object = symbol.getIndirectFunction();
+            }
             return (object instanceof ELispSubroutine(_, boolean special) && !special)
-                    || object instanceof ELispInterpretedClosure
-                    || (object instanceof ELispSymbol symbol && functionp(symbol.getIndirectFunction()));
+                    || object instanceof ELispInterpretedClosure;
         }
     }
 
@@ -1340,10 +1445,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 function = symbol.getIndirectFunction();
             }
             if (function instanceof ELispSubroutine subroutine) {
-                return subroutine.body().call(arguments);
+                return subroutine.body().callTarget().call(arguments);
             }
             if (function instanceof ELispInterpretedClosure closure) {
-                return closure.getCallTarget().call(arguments);
+                return closure.getFunction().callTarget().call(arguments);
             }
             throw new UnsupportedOperationException();
         }

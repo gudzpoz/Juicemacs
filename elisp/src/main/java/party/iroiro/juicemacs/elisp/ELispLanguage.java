@@ -4,7 +4,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 
 import com.oracle.truffle.api.nodes.Node;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
@@ -30,8 +30,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        ELispExpressionNode node = ELispParser.parse(request.getSource());
-        ELispRootNode root = new ELispRootNode(this, node);
+        ELispRootNode root = ELispParser.parse(this, request.getSource());
         return root.getCallTarget();
     }
 

@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
@@ -21,17 +22,14 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     public ELispCons(Object car) {
         this.car = Objects.requireNonNull(car);
         this.cdr = NIL;
-        this.sourceSection = null;
     }
 
     public ELispCons(Object car, Object cdr) {
         this.car = Objects.requireNonNull(car);
         this.cdr = Objects.requireNonNull(cdr);
-        this.sourceSection = null;
     }
 
-    @Nullable
-    private final SourceSection sourceSection;
+    private int startLine, startColumn, endLine, endColumn;
     private Object car;
     private Object cdr;
 
@@ -49,6 +47,17 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     public void setCdr(Object cdr) {
         this.cdr = cdr;
+    }
+
+    public void setSourceLocation(int startLine, int startColumn, int endLine, int endColumn) {
+        this.startLine = startLine;
+        this.startColumn = startColumn;
+        this.endLine = endLine;
+        this.endColumn = endColumn;
+    }
+
+    public SourceSection getSourceSection(Source source) {
+        return startLine == 0 ? source.createUnavailableSection() : source.createSection(startLine, startColumn, endLine, endColumn);
     }
 
     @Override
@@ -198,12 +207,6 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
     }
 
-    public static ELispCons listOf(Object a, Object b) {
-        ELispCons cons = new ELispCons(a);
-        cons.setCdr(new ELispCons(b));
-        return cons;
-    }
-
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("(").append(car());
@@ -245,9 +248,17 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         public Object build(Object tailCdr) {
             if (tail != null) {
                 this.tail.setCdr(tailCdr);
+                //noinspection DataFlowIssue: tail != null => cons != null
+                return cons;
             }
-            return build();
+            return false;
         }
+    }
+
+    public static ELispCons listOf(Object a, Object b) {
+        ELispCons cons = new ELispCons(a);
+        cons.setCdr(new ELispCons(b));
+        return cons;
     }
 
     public static Iterable<?> iterate(Object list) {

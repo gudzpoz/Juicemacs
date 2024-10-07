@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -419,6 +420,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FSaveExcursion extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode saveExcursion(Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }
@@ -435,6 +437,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FSaveCurrentBuffer extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode saveCurrentBuffer(Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }
@@ -1358,6 +1361,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FSaveRestriction extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispExpressionNode saveRestriction(Object[] body) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }

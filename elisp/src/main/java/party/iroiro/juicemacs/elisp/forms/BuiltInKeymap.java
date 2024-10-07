@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -19,6 +20,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         return BuiltInKeymapFactory.getFactories();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static void keymapSet(ELispCons keymap, Iterator<?> iterator, Object value) {
         Object next = iterator.next();
         if (next instanceof ELispSymbol symbol) {

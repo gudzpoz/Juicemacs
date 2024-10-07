@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -7,7 +8,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -43,6 +44,39 @@ public class BuiltInLRead extends ELispBuiltIns {
         }
     }
 
+    public static boolean loadFile(ELispLanguage language, Object file) {
+        Object loadPath = ELispContext.LOAD_PATH.getValue();
+        if (ELispSymbol.isNil(loadPath)) {
+            return false;
+        }
+        String stem = file.toString();
+        for (Object path : ((ELispCons) loadPath)) {
+            Path directory = Path.of(((ELispString) path).toString());
+            Path target = directory.resolve(stem + ".elc");
+            if (!target.toFile().isFile()) {
+                target = directory.resolve(stem + ".el");
+            }
+            if (target.toFile().isFile()) {
+                try {
+                    System.out.println("load: " + target);
+                    ELispRootNode expr = ELispParser.parse(
+                            language,
+                            Source.newBuilder(
+                                    "elisp",
+                                    new FileReader(target.toFile()),
+                                    target.toFile().getName()
+                            ).build()
+                    );
+                    expr.getCallTarget().call();
+                    return true;
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * See {@code substitute_object_recurse} in {@code src/lread.c}
      */
@@ -52,6 +86,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             @Nullable ELispHashtable recursive,
             @Nullable HashSet<Object> seen
     ) {
+        @CompilerDirectives.TruffleBoundary
         public Object substitute(Object tree) {
             if (tree == placeholder) {
                 return object;
@@ -276,35 +311,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLoad extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
-            Object loadPath = ELispContext.LOAD_PATH.getValue();
-            if (ELispSymbol.isNil(loadPath)) {
-                return false;
-            }
-            String stem = file.toString();
-            for (Object path : ((ELispCons) loadPath)) {
-                Path directory = Path.of(((ELispString) path).toString());
-                Path target = directory.resolve(stem + ".elc");
-                if (!target.toFile().isFile()) {
-                    target = directory.resolve(stem + ".el");
-                }
-                if (target.toFile().isFile()) {
-                    try {
-                        System.out.println("load: " + target);
-                        ELispExpressionNode expr = ELispParser.parse(Source.newBuilder(
-                                "elisp",
-                                new FileReader(target.toFile()),
-                                target.toFile().getName()
-                        ).build());
-                        // TODO: Null as VirtualFrame?
-                        expr.executeGeneric(null);
-                        return true;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-            return false;
+        public boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
+            return loadFile(ELispLanguage.get(this), file);
         }
     }
 

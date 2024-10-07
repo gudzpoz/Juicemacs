@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -287,6 +288,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FPurecopy extends ELispBuiltInBaseNode {
         @Specialization
         public static Object purecopy(Object obj) {
+            return pureCopyDeep(obj);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static Object pureCopyDeep(Object obj) {
             // bool-vec, hash-table, etc. are not copied
             return switch (obj) {
                 case ELispString s -> new ELispString(s.toString());

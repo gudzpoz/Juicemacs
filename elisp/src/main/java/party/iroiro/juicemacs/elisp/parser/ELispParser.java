@@ -1,15 +1,18 @@
 package party.iroiro.juicemacs.elisp.parser;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.TokenData.*;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
@@ -36,7 +39,7 @@ public class ELispParser {
     public ELispParser(Source source) {
         this.lexer = new ELispLexer(source);
         try {
-            if (peek().data() instanceof SetLexicalBindingMode(boolean value)) {
+            if (peek() instanceof SetLexicalBindingMode(boolean value)) {
                 lexicalBinding = value;
                 read();
             } else {
@@ -70,9 +73,10 @@ public class ELispParser {
     private final HashMap<Long, Object> cyclicReferences = new HashMap<>();
     private final HashSet<Object> readObjectsCompleted = new HashSet<>();
 
+    @CompilerDirectives.TruffleBoundary
     private Object nextObject() throws IOException {
         Token token = read();
-        return switch (token.data()) {
+        return switch (token) {
             case EOF() -> throw new IOException("Unexpected EOF");
             case SkipToEnd() -> NIL; // TODO: Skip to EOF
             case SetLexicalBindingMode _ -> throw new IOException("Unexpected lexical binding mode");
@@ -117,27 +121,31 @@ public class ELispParser {
             case UnquoteSplicing() -> quote(COMMA_AT); // ,@a -> (,@ a)
             case Dot() -> ELispContext.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
             case ParenOpen() -> {
-                if (peek().data() instanceof ParenClose) {
+                int line = lexer.getLine();
+                int column = Math.max(lexer.getColumn() - 1, 1); // get to the position before the '('
+                if (peek() instanceof ParenClose) {
                     read();
-                    yield NIL;
+                    yield false;
                 }
                 ELispCons object = new ELispCons(nextObject());
                 ELispCons tail = object;
-                while (!(peek().data() instanceof ParenClose)) {
-                    if (peek().data() instanceof Dot) {
+                while (!(peek() instanceof ParenClose)) {
+                    if (peek() instanceof Dot) {
                         // (a b . c)
                         read();
                         object.setCdr(nextObject());
-                        if (!(read().data() instanceof ParenClose)) {
+                        if (!(read() instanceof ParenClose)) {
                             throw new IOException("Expected ')'");
                         }
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
+                        object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
                         yield object;
                     }
                     tail.setCdr(new ELispCons(nextObject()));
                     tail = (ELispCons) tail.cdr();
                 }
                 read();
+                object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
                 yield object;
             }
             case RecordOpen() -> {
@@ -196,7 +204,7 @@ public class ELispParser {
 
     private List<Object> readVector() throws IOException {
         List<Object> vector = new ArrayList<>();
-        while (!(peek().data() instanceof SquareClose)) {
+        while (!(peek() instanceof SquareClose)) {
             vector.add(nextObject());
         }
         read();
@@ -205,7 +213,7 @@ public class ELispParser {
 
     private List<Object> readList() throws IOException {
         List<Object> vector = new ArrayList<>();
-        while (!(peek().data() instanceof ParenClose)) {
+        while (!(peek() instanceof ParenClose)) {
             vector.add(nextObject());
         }
         read();
@@ -217,7 +225,7 @@ public class ELispParser {
     }
 
     public boolean hasNext() throws IOException {
-        return !(peek().data() instanceof EOF);
+        return !(peek() instanceof EOF);
     }
 
     public Object nextLisp() throws IOException {
@@ -226,13 +234,21 @@ public class ELispParser {
         return nextObject();
     }
 
-    public static ELispExpressionNode parse(Source source) throws IOException {
+    public static ELispRootNode parse(ELispLanguage language, Source source) throws IOException {
         ELispParser parser = new ELispParser(source);
         List<Object> expressions = new ArrayList<>();
         while (parser.hasNext()) {
             expressions.add(parser.nextLisp());
         }
-        return ELispContext.valueToExpression(expressions.toArray(), parser.getLexicalBinding());
+        // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
+        ELispExpressionNode expr = valueToExpression(expressions.toArray(), parser.getLexicalBinding());
+        source = Source.newBuilder(source)
+                .content(Source.CONTENT_NONE)
+                .build();
+        return new ELispRootNode(language, expr, source.createSection(
+                1, 1,
+                parser.lexer.getLine(), parser.lexer.getColumn()
+        ));
     }
 
     public static Object read(String s) throws IOException {
