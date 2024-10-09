@@ -10,6 +10,6 @@ public record ELispSubroutine(ELispFunctionObject body, boolean specialForm) imp
 
     @Override
     public String toString() {
-        return "#<subr " + body +  ">";
+        return "#<subr " + body.callTarget().toString() +  ">";
     }
 }

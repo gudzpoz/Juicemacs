@@ -9,14 +9,13 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 
 public final class FunctionRootNode extends RootNode {
 
-    @Nullable
-    private final String name;
+    private String name;
     @SuppressWarnings("FieldMayBeFinal")
     @Child
     private ELispExpressionNode functionBody;
 
     public FunctionRootNode(ELispLanguage language,
-                            @Nullable String name,
+                            String name,
                             ELispExpressionNode functionBody,
                             @Nullable FrameDescriptor descriptor) {
         super(language, descriptor);
@@ -40,8 +39,17 @@ public final class FunctionRootNode extends RootNode {
         return name == null ? functionBody.getClass().getSimpleName() : name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     @Override
     public SourceSection getSourceSection() {
         return functionBody.getSourceSection();
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

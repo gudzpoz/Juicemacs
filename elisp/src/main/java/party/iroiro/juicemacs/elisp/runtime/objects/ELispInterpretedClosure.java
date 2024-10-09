@@ -16,14 +16,17 @@ import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AND_OPTIONAL;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AND_REST;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class ELispInterpretedClosure extends AbstractELispVector {
     @Nullable
     private final RootNode rootNode;
     @Nullable
+    private volatile FunctionRootNode functionRootNode = null;
+    @Nullable
     private volatile ELispFunctionObject function = null;
+    @Nullable
+    private String name = null;
 
     public ELispInterpretedClosure(
             Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
@@ -49,16 +52,26 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         if (f == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispClosureCallNode node = new ELispClosureCallNode();
-            // TODO: Get a real name for the function.
-            String name = "lambda@" + Integer.toHexString(System.identityHashCode(this));
+            String name = this.name == null
+                    ? "lambda@" + Integer.toHexString(System.identityHashCode(this))
+                    : this.name;
             FunctionRootNode root = new FunctionRootNode(
                     ELispLanguage.get(node), name, node,
                     ELispLexical.frameDescriptor()
             );
             f = new ELispFunctionObject(root.getCallTarget());
+            functionRootNode = root;
             function = f;
         }
         return f;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+        FunctionRootNode f = functionRootNode;
+        if (f != null) {
+            f.setName(name);
+        }
     }
 
     @Override
@@ -167,7 +180,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         ELispLexical.frameDescriptor()
                 );
                 ELispLexical lexical =
-                        new ELispLexical(frame, null, List.of());
+                        new ELispLexical(frame, null, null, List.of());
                 ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
                 while (i.hasNext()) {
                     ELispSymbol symbol = (ELispSymbol) i.next();
@@ -194,7 +207,6 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                 }
                 return null;
             } else {
-                new ELispLexical(frame, null, List.of(requiredArgSymbols));
                 return ELispLexical.pushDynamic(optionalArgSymbols, newValues);
             }
         }

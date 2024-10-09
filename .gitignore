@@ -6,3 +6,6 @@ build
 
 # Ignore IDEA config files
 .idea
+
+# Python scripts
+__pycache__/

@@ -313,7 +313,7 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
             for (int i = 0; i < symbols.length; i++) {
                 ELispSymbol symbol = (ELispSymbol) symbols[i];
-                ELispLexical.@Nullable LexicalReference lexical = lexicalFrame.getLexicalReference(frame, symbol);
+                ELispLexical.@Nullable LexicalReference lexical = lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, symbol);
                 lexicalBindings[i] = lexical == null ? ELispLexical.DYNAMIC : lexical;
             }
             return lexicalBindings;
@@ -487,14 +487,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                     @Override
                     public Object executeGeneric(VirtualFrame frame) {
+                        @Nullable ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                         return new ELispInterpretedClosure(
                                 args,
                                 body,
-                                ELispSymbol.isNil(LEXICAL_BINDING.getValueOr(false)) ? false :
-                                        new ELispInterpretedClosure.LexicalEnvironment(
-                                                frame.materialize(),
-                                                ELispLexical.getLexicalFrame(frame)
-                                        ),
+                                lexicalFrame == null ? false : lexicalFrame.getEnv(frame),
                                 doc.executeGeneric(frame),
                                 finalInteractive,
                                 getRootNode()
@@ -771,7 +768,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     try (ELispLexical.Dynamic _ = (ELispLexical.Dynamic) scopeNode.executeGeneric(frame)) {
                         return bodyNode.executeGeneric(frame);
                     } finally {
-                        lexicalFrame.restore(frame);
+                        if (lexicalFrame != null) {
+                            lexicalFrame.restore(frame);
+                        }
                     }
                 }
             };
@@ -832,11 +831,11 @@ public class BuiltInEval extends ELispBuiltIns {
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    boolean dynamicBinding = ELispSymbol.isNil(LEXICAL_BINDING.getValue());
                     ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
                     ArrayList<Object> specialValues = new ArrayList<>();
 
                     ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    boolean dynamicBinding = lexicalFrame == null;
                     Object[] lexicalValues = (dynamicBinding && !progressive) ? new Object[0] : new Object[symbols.length];
                     int length = symbols.length;
                     try {
@@ -918,7 +917,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     try (ELispLexical.Dynamic _ = (ELispLexical.Dynamic) scopeNode.executeGeneric(frame)) {
                         return bodyNode.executeGeneric(frame);
                     } finally {
-                        lexicalFrame.restore(frame);
+                        if (lexicalFrame != null) {
+                            lexicalFrame.restore(frame);
+                        }
                     }
                 }
             };

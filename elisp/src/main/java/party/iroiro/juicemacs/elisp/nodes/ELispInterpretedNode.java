@@ -55,7 +55,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     public static ELispInterpretedNode create(Object[] expressions, boolean lexical) {
-        return new ELispInterpretedExpressions(expressions, lexical);
+        return new ELispRootExpressions(expressions, lexical);
     }
 
     private static Object getIndirectFunction(Object function) {
@@ -67,7 +67,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return function;
     }
 
-    private final static class ELispInterpretedExpressions extends ELispInterpretedNode {
+    private final static class ELispRootExpressions extends ELispInterpretedNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Child
         private ELispExpressionNode node;
@@ -76,7 +76,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @CompilerDirectives.CompilationFinal
         private boolean lexical;
 
-        public ELispInterpretedExpressions(Object[] expressions, boolean lexical) {
+        public ELispRootExpressions(Object[] expressions, boolean lexical) {
             this.node = BuiltInEval.FProgn.progn(expressions);
             this.lexical = lexical;
             adoptChildren();
@@ -84,6 +84,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
+            if (lexical) {
+                new ELispLexical(frame, null, null, List.of());
+            }
             try (var _ = ELispLexical.withLexicalBinding(lexical)) {
                 return node.executeGeneric(frame);
             }
@@ -130,7 +133,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             if (index == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                ELispLexical.LexicalReference lexical = ELispLexical.getLexicalFrame(frame).getLexicalReference(frame, symbol);
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                ELispLexical.LexicalReference lexical = lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, symbol);
                 if (lexical == null) {
                     index = DYNAMIC;
                 } else {

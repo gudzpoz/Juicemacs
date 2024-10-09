@@ -7,8 +7,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 
-import java.util.List;
-
 public class ELispRootNode extends RootNode {
     @SuppressWarnings("FieldMayBeFinal")
     @Child
@@ -27,7 +25,6 @@ public class ELispRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        new ELispLexical(frame, null, null, List.of());
         return this.expression.executeGeneric(frame);
     }
 

@@ -43,7 +43,7 @@ function can be a macro that yields dynamic AST, I don't think it is actually
 possible to Truffle-JIT this thing efficiently... So bytecode it is.
 
 P.S. The current interpreted AST node =ELispInterpretedNode.java= somehow
-manages to produce a AST-ish thing for Truffle to JIT-compile. It is probably
+manages to produce an AST-ish thing for Truffle to JIT-compile. It is probably
 not that efficient though. Read the code and comments for more details.
 
 **** Efficient local variable lookup
@@ -74,7 +74,7 @@ However, as always, Emacs Lisp brings some problems:
         let d = 1;  // slot#3
         b += d + a;
       }
-      let e = c + b;  // slot#4 (note that we cannot reuse slots)
+      let e = c + b;  // slot#4 or slot#3 if reusing slots
       return e;
     }
   #+end_src
@@ -105,6 +105,9 @@ Solutions?
     - Keeping track of occupied frame slots, symbol-to-slot-number mappings
       - Slot numbers: positive: local variable; zero or negative: argument
     - Parent frame reference
+    - Whether the current frame is materialized: We can (only) reuse slots when
+      the frame is not yet materialized (most helpful with =let= blocks in
+      loops).
   - Slot #1: Frame spill =ArrayList= slot
   - Other slots: ordinary value slots
 

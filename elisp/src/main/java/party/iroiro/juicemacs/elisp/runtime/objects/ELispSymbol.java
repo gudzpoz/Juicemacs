@@ -295,6 +295,9 @@ public final class ELispSymbol implements ELispValue {
             throw new UnsupportedOperationException();
         }
         this.function = Objects.requireNonNull(function);
+        if (function instanceof ELispInterpretedClosure closure) {
+            closure.setName(name);
+        }
     }
 
     public String name() {

@@ -66,10 +66,6 @@ index by character codes most of the time. However, I have seen it indexed with
 
 - Analyze =null= values during initialization
 
-* TODO Debug info
-
-We can probably store the source code position in the cons nodes?
-
 * TODO Buffers
 
 It is still a long long way to go... But at least we have a piece table now. I
@@ -196,11 +192,26 @@ interop, but otherwise simply using some classes with public member should do.
 ** DONE [#B] Replace lexical scope maps with Truffle frames
 
 - Threefold speed-up: =(fib 35)= went from ~5s to 1.7s. At least we are not
-  slower than interpreted GNU Emacs now.
+  slower than interpreted GNU Emacs now (~3s).
   - Any other languages I tested takes less than an instant.
   - Python 3.12 takes ~0.6s. So it is quite embarrassing that a JIT
     implementation cannot beat an interpreted language.
+    - JMH results: =~0.4 s/op=, probably jacoco is interfering with previous
+      results.
+    - But... =(mandelbrot 750)= takes around 5.5s while Python uses only a
+      second. So there is definitely space for improvement. (Emacs: ~30s.)
 - [[http://cesquivias.github.io/blog/2015/01/08/writing-a-language-in-truffle-part-3-making-my-language-much-faster/#direct-lookup-to-lexical-scope][Writing a Language in Truffle. Part 3: Making my Language (Much) Faster]]
+
+*** Reusing frame slots
+
+#+begin_src java
+  /**
+   ,* If materialized, some other functions might be referencing slots in this frame,
+   ,* and we must not reuse frame slots. Otherwise, we can reuse frame slots to avoid
+   ,* excessive memory usage in cases like {@code let} in loops.
+   ,*/
+  private boolean materialized;
+#+end_src
 
 ** DONE [#A] Undertanding =Lisp_Symbol= (Variables)
 

@@ -4,6 +4,7 @@
 
 plugins {
     id 'buildlogic.java-library-conventions'
+    id 'me.champeau.jmh' version '0.7.2'
 }
 
 ext {
@@ -16,6 +17,9 @@ dependencies {
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
     runtimeOnly "org.graalvm.truffle:truffle-runtime:${truffleVersion}"
+
+    testImplementation 'org.openjdk.jmh:jmh-core:1.37'
+    testImplementation 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
     testRuntimeOnly "org.graalvm.tools:profiler-tool:${truffleVersion}"
 }
 
@@ -32,6 +36,7 @@ pmd {
 
 test {
     jvmArgs [
+            '-Djdk.graal.Dump=:0',
             '-Dpolyglot.engine.TraceCompilation=true',
             '-Dpolyglot.engine.CompilationFailureAction=Diagnose',
     ]
