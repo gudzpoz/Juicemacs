@@ -119,6 +119,11 @@ SPECIAL_FORM_VARARGS = {
 USAGE_NAMES = {
     'handler-bind-1': 'handler-bind',
 }
+WANTS_NODE_ACCESS = [
+    'load',
+    'makeInterpretedClosure',
+    'require',
+]
 
 
 @dataclasses.dataclass
@@ -247,7 +252,10 @@ class LispSubroutine:
         assert len(impls) >= 1, body
         for impl in impls:
             impl = impl['line'].strip()
-            assert impl.startswith('public static'), impl
+            assert (
+                impl.startswith('public static')
+                or any(f in impl for f in WANTS_NODE_ACCESS)
+            ), impl
             p = params.search_string(impl)
             assert len(p) == 1, (impl, p)
             if 'args' not in p[0]:
@@ -381,14 +389,19 @@ class Variable:
         t, default_v = self.jtype()
         v = self.value(self.init_value)
         v = default_v if v is None else v
+        if t == 'long':
+            v = f'{int(v):_}'
         if t == 'boolean':
             if v == '1':
                 v = 'true'
             elif v == '0':
                 v = 'false'
+            value = v
+        else:
+            value = f'({t}) {v}'
         return (
             f'ELispSymbol.Value.Forwarded {self.jname()} = '
-            f'new ELispSymbol.Value.Forwarded(({t}) {v})'
+            f'new ELispSymbol.Value.Forwarded({value})'
         )
 
     def init(self):

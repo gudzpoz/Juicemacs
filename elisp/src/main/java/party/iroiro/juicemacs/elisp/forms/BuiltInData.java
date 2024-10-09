@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -16,7 +17,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 /**
  * Built-in functions from {@code src/data.c}
  */
-@SuppressWarnings("ForLoopReplaceableByForEach")
 public class BuiltInData extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -1666,7 +1666,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static Object stringToNumber(ELispString string, Object base) {
             String s = string.toString();
-            long b = ELispSymbol.or(base, 10);
+            long b = ELispSymbol.notNilOr(base, 10);
             if (b != 10) {
                 s = s.trim();
                 s = "#" + b + "r" + s;
@@ -1728,6 +1728,7 @@ public class BuiltInData extends ELispBuiltIns {
             return sum;
         }
 
+        @CompilerDirectives.TruffleBoundary
         private static Object tryAddBigNum(long prev, int i, Object[] args) {
             BigInteger sum = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
@@ -1822,6 +1823,7 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
+        @CompilerDirectives.TruffleBoundary
         private static Object tryMinusBigNum(BigInteger result, int i, Object[] args) {
             for (; i < args.length; i++) {
                 switch (args[i]) {
@@ -1891,6 +1893,7 @@ public class BuiltInData extends ELispBuiltIns {
             return product;
         }
 
+        @CompilerDirectives.TruffleBoundary
         private static Object tryTimesBigNum(long prev, int i, Object[] args) {
             BigInteger product = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
@@ -1971,6 +1974,7 @@ public class BuiltInData extends ELispBuiltIns {
             return quo;
         }
 
+        @CompilerDirectives.TruffleBoundary
         private static Object tryQuoBigNum(BigInteger prev, int i, Object[] args) {
             BigInteger quo = prev;
             for (; i < args.length; i++) {

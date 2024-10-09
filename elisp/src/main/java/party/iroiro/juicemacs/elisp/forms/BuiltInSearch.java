@@ -20,7 +20,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         return BuiltInSearchFactory.getFactories();
     }
 
-    private static final ELispSymbol.ThreadLocalValue matchData = new ELispSymbol.ThreadLocalValue();
+    private static final ELispSymbol.ThreadLocalValue MATCH_DATA = new ELispSymbol.ThreadLocalValue();
 
     /**
      * <pre>
@@ -93,7 +93,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                         builder.add(groupStart == -1 ? false : (long) match.matcher().end(group));
                     }
                     Object data = builder.build();
-                    matchData.setValue(data);
+                    MATCH_DATA.setValue(data);
                 }
                 return (long) match.matcher().start();
             }
@@ -385,7 +385,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FMatchBeginning extends ELispBuiltInBaseNode {
         @Specialization
         public static Object matchBeginning(long subexp) {
-            Object value = matchData.getValue();
+            Object value = MATCH_DATA.getValue();
             return BuiltInFns.FNth.nth(2 * subexp, value);
         }
     }
@@ -408,7 +408,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FMatchEnd extends ELispBuiltInBaseNode {
         @Specialization
         public static Object matchEnd(long subexp) {
-            Object value = matchData.getValue();
+            Object value = MATCH_DATA.getValue();
             return BuiltInFns.FNth.nth(2 * subexp + 1, value);
         }
     }
@@ -459,7 +459,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             if (!isNil(reuse)) {
                 throw new UnsupportedOperationException();
             }
-            Object value = matchData.getValue();
+            Object value = MATCH_DATA.getValue();
             if (value instanceof ELispCons cons) {
                 return cons;
             }
@@ -498,7 +498,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                     break;
                 }
             }
-            matchData.setValue(builder.build());
+            MATCH_DATA.setValue(builder.build());
             return false;
         }
     }

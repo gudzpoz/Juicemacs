@@ -81,7 +81,7 @@ public abstract class ELispTypeSystem {
 
     @ImplicitCast
     public static double castLongToDouble(long value) {
-        return (double) value;
+        return value;
     }
 
     @ImplicitCast

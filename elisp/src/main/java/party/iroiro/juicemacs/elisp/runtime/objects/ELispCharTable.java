@@ -84,7 +84,7 @@ public class ELispCharTable extends AbstractELispVector {
     public final static int CHARTAB_SIZE_BITS_1 = 4;
     public final static int CHARTAB_SIZE_BITS_2 = 5;
     public final static int CHARTAB_SIZE_BITS_3 = 7;
-    private final static int[] CHARTAB_BITS = new int[] {
+    private final static int[] CHARTAB_BITS = {
             CHARTAB_SIZE_BITS_3 + CHARTAB_SIZE_BITS_2 + CHARTAB_SIZE_BITS_1,
             CHARTAB_SIZE_BITS_3 + CHARTAB_SIZE_BITS_2,
             CHARTAB_SIZE_BITS_3,
@@ -290,8 +290,8 @@ public class ELispCharTable extends AbstractELispVector {
             int depth = (int) (long) objects.get(DEPTH_SLOT);
             int minChar = (int) (long) objects.get(MIN_CHAR_SLOT);
             if (
-                    (minChar < 0 || Character.MAX_CODE_POINT < minChar)
-                    || (depth <= 0 || 3 < depth)
+                    minChar < 0 || Character.MAX_CODE_POINT < minChar
+                    || depth <= 0 || 3 < depth
                     || (objects.size() < 2 + getSlots(depth))
             ) {
                 throw new IllegalArgumentException();

@@ -87,7 +87,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (lexical) {
                 new ELispLexical(frame, null, null, List.of());
             }
-            try (var _ = ELispLexical.withLexicalBinding(lexical)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical)) {
                 return node.executeGeneric(frame);
             }
         }

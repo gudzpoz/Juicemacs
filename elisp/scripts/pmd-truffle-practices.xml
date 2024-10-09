@@ -81,26 +81,30 @@
     <rule
             name="TruffleBoundaryAtComplexTypes"
             language="java"
-            message="Methods using HashMaps or other complex types should be annotated with @TruffleBoundary."
+            message="Methods using HashMaps, BigIntegers or other complex types should be annotated with @TruffleBoundary."
             class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <description>
-            The implementation of java.util.HashMap is highly recursive and can lead to bailing out.
+            The implementation of java.util.HashMap, java.math.BigInteger, etc.
+            is highly recursive and can lead to the compiler bailing out.
             Similarly, other complex types can cause the same problem.
             Annotate the methods using them with @TruffleBoundary.
         </description>
-        <priority>3</priority>
+        <priority>2</priority>
         <properties>
             <property name="xpath">
                 <value><![CDATA[
-                //FieldDeclaration
+                //(FieldDeclaration
                 [
-                pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Child")
-                or pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Children")
-                ]
+                    pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Child")
+                    or pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Children")
+                ]|MethodDeclaration[pmd-java:hasAnnotation("com.oracle.truffle.api.dsl.Specialization")])
                 /../..
                 //MethodDeclaration
                 [not(pmd-java:hasAnnotation("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary"))]
-                [count(.//LocalVariableDeclaration/ClassType[@SimpleName="HashMap"]) > 0]
+                [
+                    count(.//LocalVariableDeclaration/ClassType[@SimpleName="HashMap"]) > 0
+                    or count(.//LocalVariableDeclaration/ClassType[@SimpleName="BigInteger"]) > 0
+                ]
                 ]]></value>
             </property>
         </properties>

@@ -17,8 +17,8 @@ public abstract class ELispBuiltIns {
 
     public void initialize(ELispLanguage language, ELispContext context) {
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
-        for (var factory : factories) {
-            for (var builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
+        for (NodeFactory<? extends ELispBuiltInBaseNode> factory : factories) {
+            for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
                 boolean varArgs = builtIn.varArgs();
                 List<ReadFunctionArgNode> args = new ArrayList<>(builtIn.maxArgs() + (varArgs ? 1 : 0));
                 for (int i = 0; i < builtIn.minArgs(); i++) {

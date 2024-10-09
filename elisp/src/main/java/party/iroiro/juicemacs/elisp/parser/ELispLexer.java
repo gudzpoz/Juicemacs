@@ -597,12 +597,14 @@ class ELispLexer {
                     boolean whitespace = false;
                     int u;
                     while ((u = readCodepoint()) != '}') {
-                        if (!Character.isWhitespace(u)) {
+                        if (Character.isWhitespace(u)) {
+                            if (!whitespace) {
+                                whitespace = true;
+                                unicodeName.append(' ');
+                            }
+                        } else {
                             whitespace = false;
                             unicodeName.appendCodePoint(u);
-                        } else if (!whitespace) {
-                            whitespace = true;
-                            unicodeName.append(' ');
                         }
                     }
                     yield Character.codePointOf(unicodeName.toString());

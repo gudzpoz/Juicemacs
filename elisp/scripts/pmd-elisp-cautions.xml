@@ -42,14 +42,12 @@
     <rule ref="category/java/codestyle.xml/AvoidProtectedMethodInFinalClassNotExtending" />
     <rule ref="category/java/codestyle.xml/AvoidUsingNativeCode" />
     <rule ref="category/java/codestyle.xml/BooleanGetMethodName" />
-    <rule ref="category/java/codestyle.xml/CallSuperInConstructor" />
     <rule ref="category/java/codestyle.xml/ConfusingTernary" />
     <rule ref="category/java/codestyle.xml/ControlStatementBraces" />
     <rule ref="category/java/codestyle.xml/FieldNamingConventions" />
     <rule ref="category/java/codestyle.xml/IdenticalCatchBranches" />
     <rule ref="category/java/codestyle.xml/LambdaCanBeMethodReference" />
     <rule ref="category/java/codestyle.xml/PrematureDeclaration" />
-    <rule ref="category/java/codestyle.xml/ShortMethodName" />
     <rule ref="category/java/codestyle.xml/UnnecessaryCast" />
     <rule ref="category/java/codestyle.xml/UnnecessaryLocalBeforeReturn" />
     <rule ref="category/java/codestyle.xml/UnnecessaryModifier" />

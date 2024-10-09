@@ -67,7 +67,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     @Override
     public BrentTortoiseHareIterator listIterator(int i) {
-        var iterator = new BrentTortoiseHareIterator();
+        BrentTortoiseHareIterator iterator = new BrentTortoiseHareIterator();
         for (int j = 0; j < i; j++) {
             if (!iterator.hasNext()) {
                 throw new IndexOutOfBoundsException();

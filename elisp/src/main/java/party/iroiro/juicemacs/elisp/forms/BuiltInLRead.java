@@ -50,7 +50,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             return false;
         }
         String stem = file.toString();
-        for (Object path : ((ELispCons) loadPath)) {
+        for (Object path : (ELispCons) loadPath) {
             Path directory = Path.of(((ELispString) path).toString());
             Path target = directory.resolve(stem + ".elc");
             if (!target.toFile().isFile()) {
@@ -474,8 +474,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FReadFromString extends ELispBuiltInBaseNode {
         @Specialization
         public static Object readFromString(ELispString string, Object start, Object end) {
-            long from = ELispSymbol.or(start, 0L);
-            long to = ELispSymbol.or(end, string.codepointCount());
+            long from = ELispSymbol.notNilOr(start, 0L);
+            long to = ELispSymbol.notNilOr(end, string.codepointCount());
             TruffleString sub = string.toTruffleString().substringUncached((int) from, (int) (to - from), ELispString.ENCODING, false);
             try {
                 Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();

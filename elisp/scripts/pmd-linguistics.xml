@@ -16,5 +16,6 @@
 
     <!-- Some code styles -->
     <rule ref="category/java/codestyle.xml/LinguisticNaming" />
+    <rule ref="category/java/codestyle.xml/ShortMethodName" />
 
 </ruleset>

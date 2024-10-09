@@ -1076,6 +1076,9 @@ public class BuiltInProcess extends ELispBuiltIns {
     /**
      * <pre>
      * Look up Internet Protocol (IP) address info of NAME.
+     * NAME must be an ASCII-only string.  For looking up internationalized
+     * hostnames, use `puny-encode-domain' on the string first.
+     *
      * Optional argument FAMILY controls whether to look up IPv4 or IPv6
      * addresses.  The default of nil means both, symbol `ipv4' means IPv4
      * only, symbol `ipv6' means IPv6 only.

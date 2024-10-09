@@ -27,13 +27,13 @@ public final class ELispContext {
         return ELISP_CONTEXT_INSTANCE;
     }
 
-    public static ELispBuffer CURRENT_BUFFER = new ELispBuffer();
+    public final static ELispSymbol CURRENT_BUFFER = new ELispSymbol("current-buffer");
 
     // TODO: Replace this with obarray
-    private final static HashMap<String, ELispSymbol> internMap = new HashMap<>();
+    private final static HashMap<String, ELispSymbol> INTERN_MAP = new HashMap<>();
 
     public static ELispSymbol intern(String symbol) {
-        return internMap.computeIfAbsent(symbol, ELispSymbol::new);
+        return INTERN_MAP.computeIfAbsent(symbol, ELispSymbol::new);
     }
 
     public static String applyShorthands(String symbol) {
@@ -51,6 +51,8 @@ public final class ELispContext {
     }
 
     public void initGlobal(ELispLanguage language) {
+        CURRENT_BUFFER.setDefaultValue(new ELispBuffer());
+
         initSymbols(allocSymbols());
         initSymbols(bufferSymbols());
         initSymbols(charsetSymbols());
@@ -98,7 +100,7 @@ public final class ELispContext {
 
     private void initSymbols(ELispSymbol[] symbols) {
         for (ELispSymbol symbol : symbols) {
-            internMap.put(symbol.name(), symbol);
+            INTERN_MAP.put(symbol.name(), symbol);
             symbol.setInterned(ELispSymbol.Interned.INTERNED_IN_INITIAL_OBARRAY);
         }
     }
@@ -1718,7 +1720,6 @@ public final class ELispContext {
     public final static ELispSymbol CLINE_WIDTH = new ELispSymbol(":line-width");
     public final static ELispSymbol COVERLINE = new ELispSymbol(":overline");
     public final static ELispSymbol CPOSITION = new ELispSymbol(":position");
-    public final static ELispSymbol CREVERSE_VIDEO = new ELispSymbol(":reverse-video");
     public final static ELispSymbol CSLANT = new ELispSymbol(":slant");
     public final static ELispSymbol CSTIPPLE = new ELispSymbol(":stipple");
     public final static ELispSymbol CSTRIKE_THROUGH = new ELispSymbol(":strike-through");
@@ -1815,7 +1816,6 @@ public final class ELispContext {
                 CLINE_WIDTH,
                 COVERLINE,
                 CPOSITION,
-                CREVERSE_VIDEO,
                 CSLANT,
                 CSTIPPLE,
                 CSTRIKE_THROUGH,

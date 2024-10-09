@@ -577,7 +577,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @Specialization
         public static ELispBuffer setBuffer(Object bufferOrName) {
             // TODO: Real buffers
-            return CURRENT_BUFFER;
+            return (ELispBuffer) CURRENT_BUFFER.getValue();
         }
     }
 

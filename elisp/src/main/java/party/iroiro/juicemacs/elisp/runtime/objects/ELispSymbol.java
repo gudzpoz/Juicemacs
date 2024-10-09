@@ -52,7 +52,7 @@ public final class ELispSymbol implements ELispValue {
      * The unbound symbol, used as the value of void variables and not exposed to any caller.
      */
     // TODO: I guess we can simply use a java.lang.Object for this though.
-    private final static ELispSymbol _UNBOUND = new ELispSymbol("unbound");
+    private final static ELispSymbol UNBOUND_ = new ELispSymbol("unbound");
 
     /**
      * Indicates where the value can be found.
@@ -94,7 +94,7 @@ public final class ELispSymbol implements ELispValue {
     ELispSymbol next = null;
 
     public ELispSymbol(String name) {
-        this.value = new Value.PlainValue(_UNBOUND);
+        this.value = new Value.PlainValue(UNBOUND_);
         this.threadLocalValue = null;
         this.trappedWrite = TrappedWrite.NORMAL_WRITE;
         this.interned = Interned.UNINTERNED;
@@ -120,12 +120,12 @@ public final class ELispSymbol implements ELispValue {
     }
 
     /**
-     * @return the value of the symbol, or {@link #_UNBOUND}
+     * @return the value of the symbol, or {@link #UNBOUND_}
      */
     private Object getAnyValue() {
         if (threadLocalValue != null) {
             Object local = threadLocalValue.getValue();
-            if (local != _UNBOUND) {
+            if (local != UNBOUND_) {
                 return local;
             }
         }
@@ -134,7 +134,7 @@ public final class ELispSymbol implements ELispValue {
 
     public Object getValueOr(Object defaultValue) {
         Object anyValue = getAnyValue();
-        return anyValue == _UNBOUND ? defaultValue : anyValue;
+        return anyValue == UNBOUND_ ? defaultValue : anyValue;
     }
 
     public Object getValue() {
@@ -166,23 +166,23 @@ public final class ELispSymbol implements ELispValue {
         if (trappedWrite == TrappedWrite.NO_WRITE) {
             throw new UnsupportedOperationException();
         }
-        if (threadLocalValue != null && threadLocalValue.setIfBound(value)) {
+        if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(value)) {
             return;
         }
         this.value.setValue(value);
     }
 
     public boolean isBound() {
-        return this.value.getValue() != _UNBOUND;
+        return this.value.getValue() != UNBOUND_;
     }
 
     public void makeUnbound() {
-        setValue(_UNBOUND);
+        setValue(UNBOUND_);
     }
 
     public boolean isDefaultBound() {
         if (value instanceof Value.BufferLocal local) {
-            return local.defaultValue != _UNBOUND;
+            return local.defaultValue != UNBOUND_;
         }
         return isBound();
     }
@@ -230,7 +230,7 @@ public final class ELispSymbol implements ELispValue {
         local.localIfSet = localIfSet;
         if (localIfSet) {
             // make-variable-buffer-local
-            local.defaultValue = prevValue == _UNBOUND ? function : prevValue;
+            local.defaultValue = prevValue == UNBOUND_ ? function : prevValue;
         } else {
             // make-local-variable
             local.defaultValue = prevValue;
@@ -239,13 +239,13 @@ public final class ELispSymbol implements ELispValue {
     }
 
     public boolean isBufferLocal(Object buffer) {
-        return value instanceof Value.BufferLocal local && local.getBufferLocalValue() != _UNBOUND;
+        return value instanceof Value.BufferLocal local && local.getBufferLocalValue() != UNBOUND_;
     }
 
     public boolean isBufferLocalIfSet(Object buffer) {
         // TODO: How does buffer-local work?
         return value instanceof Value.BufferLocal local &&
-                (local.getBufferLocalValue() != _UNBOUND || local.localIfSet);
+                (local.getBufferLocalValue() != UNBOUND_ || local.localIfSet);
     }
 
     public void forwardTo(Value.Forwarded forwarded) {
@@ -348,24 +348,15 @@ public final class ELispSymbol implements ELispValue {
         return nil == ELispContext.T || nil == Boolean.TRUE;
     }
 
-    public static long or(Object maybeNil, long defaultValue) {
+    public static long notNilOr(Object maybeNil, long defaultValue) {
         if (isNil(maybeNil)) {
             return defaultValue;
         }
         return (long) maybeNil;
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T extends ELispValue> T or(Object maybeNil, T defaultValue) {
-        if (isNil(maybeNil)) {
-            return defaultValue;
-        }
-        Class<T> target = (Class<T>) defaultValue.getClass();
-        return target.cast(maybeNil);
-    }
-
     private static Object checkUnbound(Object value) {
-        if (value == _UNBOUND) {
+        if (value == UNBOUND_) {
             throw new IllegalArgumentException();
         }
         return value;
@@ -440,7 +431,7 @@ public final class ELispSymbol implements ELispValue {
             @Nullable
             private Forwarded value = null;
             private boolean localIfSet = false;
-            private Object defaultValue = _UNBOUND;
+            private Object defaultValue = UNBOUND_;
             private final ELispSymbol symbol;
 
             public BufferLocal(ELispSymbol symbol) {
@@ -448,14 +439,15 @@ public final class ELispSymbol implements ELispValue {
             }
 
             private void updateCache() {
-                if (cachedBuffer != ELispContext.CURRENT_BUFFER) {
-                    cachedBuffer = ELispContext.CURRENT_BUFFER;
+                ELispBuffer buffer = (ELispBuffer) ELispContext.CURRENT_BUFFER.getValue();
+                if (cachedBuffer != buffer) {
+                    cachedBuffer = buffer;
                     value = cachedBuffer.getLocal(symbol);
                 }
             }
 
             public Object getBufferLocalValue() {
-                return value == null ? _UNBOUND : value.getValue();
+                return value == null ? UNBOUND_ : value.getValue();
             }
 
             public void setBufferLocalValue(Object value) {
@@ -516,10 +508,10 @@ public final class ELispSymbol implements ELispValue {
         public Object getValue() {
             @Nullable Value forwarded = threadLocal.get();
             //noinspection ConstantValue
-            return forwarded == null ? _UNBOUND : forwarded.getValue();
+            return forwarded == null ? UNBOUND_ : forwarded.getValue();
         }
 
-        public boolean setIfBound(Object value) {
+        public boolean isBoundAndSetValue(Object value) {
             @Nullable Value forwarded = threadLocal.get();
             //noinspection ConstantValue
             if (forwarded != null) {
@@ -531,7 +523,7 @@ public final class ELispSymbol implements ELispValue {
 
         @Override
         public void setValue(Object value) {
-            if (value == _UNBOUND) {
+            if (value == UNBOUND_) {
                 threadLocal.remove();
             } else {
                 Value.@Nullable Forwarded forwarded = threadLocal.get();
