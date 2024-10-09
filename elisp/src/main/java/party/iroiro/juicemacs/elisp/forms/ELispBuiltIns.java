@@ -31,7 +31,7 @@ public abstract class ELispBuiltIns {
                     args.add(new ReadFunctionArgNode.ReadFunctionRestArgsNode(builtIn.maxArgs()));
                 }
                 ELispBuiltInBaseNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));
-                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), function);
+                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), function, null);
                 context.registerFunction(
                         builtIn.name(),
                         new ELispSubroutine(new ELispFunctionObject(rootNode.getCallTarget()), builtIn.rawArg())

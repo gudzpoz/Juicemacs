@@ -2,9 +2,7 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTrace;
@@ -14,9 +12,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AUTOLOAD;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CDOCUMENTATION;
@@ -25,6 +23,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LAMBDA;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LEXICAL_BINDING;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
@@ -308,6 +307,18 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "setq", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FSetq extends ELispBuiltInBaseNode {
+        public static ELispLexical.LexicalReference[] getLexicalReferences(VirtualFrame frame, Object[] symbols) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ELispLexical.LexicalReference[] lexicalBindings = new ELispLexical.LexicalReference[symbols.length];
+            ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+            for (int i = 0; i < symbols.length; i++) {
+                ELispSymbol symbol = (ELispSymbol) symbols[i];
+                ELispLexical.@Nullable LexicalReference lexical = lexicalFrame.getLexicalReference(frame, symbol);
+                lexicalBindings[i] = lexical == null ? ELispLexical.DYNAMIC : lexical;
+            }
+            return lexicalBindings;
+        }
+
         @Specialization
         public static ELispExpressionNode setq(Object[] args) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -331,6 +342,9 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Children
                 ELispInterpretedNode[] nodes = ELispInterpretedNode.create(values);
 
+                @CompilerDirectives.CompilationFinal(dimensions = 1)
+                ELispLexical.LexicalReference @Nullable[] lexicalBindings = null;
+
                 {
                     adoptChildren();
                 }
@@ -340,11 +354,22 @@ public class BuiltInEval extends ELispBuiltIns {
                 public Object executeGeneric(VirtualFrame frame) {
                     Object last = false;
                     int length = nodes.length;
+                    if (length > 0 && lexicalBindings == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        lexicalBindings = getLexicalReferences(frame, symbols);
+                    }
                     for (int i = 0; i < length; i++) {
-                        ELispSymbol symbol = (ELispSymbol) symbols[i];
+                        ELispLexical.LexicalReference lexical = lexicalBindings[i];
                         last = nodes[i].executeGeneric(frame);
-                        if (!ELispBindingScope.setLexical(symbol, last)) {
+                        if (lexical == ELispLexical.DYNAMIC) {
+                            ELispSymbol symbol = (ELispSymbol) symbols[i];
                             symbol.setValue(last);
+                        } else {
+                            ELispLexical.setVariable(
+                                    lexical.frame() == null ? frame : lexical.frame(),
+                                    lexical.index(),
+                                    last
+                            );
                         }
                     }
                     return last;
@@ -465,8 +490,11 @@ public class BuiltInEval extends ELispBuiltIns {
                         return new ELispInterpretedClosure(
                                 args,
                                 body,
-                                ELispSymbol.isNil(LEXICAL_BINDING.getValueOr(false)) ? false
-                                        : Objects.requireNonNullElse(ELispBindingScope.getCurrentLexical(), true),
+                                ELispSymbol.isNil(LEXICAL_BINDING.getValueOr(false)) ? false :
+                                        new ELispInterpretedClosure.LexicalEnvironment(
+                                                frame.materialize(),
+                                                ELispLexical.getLexicalFrame(frame)
+                                        ),
                                 doc.executeGeneric(frame),
                                 finalInteractive,
                                 getRootNode()
@@ -608,7 +636,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 public Object executeGeneric(VirtualFrame frame) {
                     ELispSymbol sym = (ELispSymbol) symbol;
                     if (ELispSymbol.isNil(initvalue)) {
-                        ELispBindingScope.markDynamic(sym);
+                        ELispLexical.markDynamic(frame, sym);
                     } else {
                         sym.setSpecial(true);
                         sym.setDefaultValue(init.executeGeneric(frame));
@@ -739,8 +767,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    try (var _ = (ELispBindingScope.ClosableScope) scopeNode.executeGeneric(frame)) {
+                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    try (ELispLexical.Dynamic _ = (ELispLexical.Dynamic) scopeNode.executeGeneric(frame)) {
                         return bodyNode.executeGeneric(frame);
+                    } finally {
+                        lexicalFrame.restore(frame);
                     }
                 }
             };
@@ -762,7 +793,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FLet extends ELispBuiltInBaseNode {
         public static ELispExpressionNode makeScope(Object varlist, boolean progressive) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<ELispSymbol> symbolList = new ArrayList<>();
+            List<Object> symbolList = new ArrayList<>();
             List<ELispInterpretedNode> values = new ArrayList<>();
             for (Object assignment : ELispCons.iterate(varlist)) {
                 ELispSymbol symbol;
@@ -797,60 +828,68 @@ public class BuiltInEval extends ELispBuiltIns {
                     adoptChildren();
                 }
 
+                @Nullable
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     boolean dynamicBinding = ELispSymbol.isNil(LEXICAL_BINDING.getValue());
-                    HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> lexicalBindings = new HashMap<>();
                     ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
                     ArrayList<Object> specialValues = new ArrayList<>();
-                    ELispBindingScope.ClosableScope handle = null;
-                    if (progressive) {
-                        handle = ELispBindingScope.pushLexical(lexicalBindings);
-                    }
+
+                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    Object[] lexicalValues = (dynamicBinding && !progressive) ? new Object[0] : new Object[symbols.length];
+                    int length = symbols.length;
                     try {
-                        int length = symbols.length;
                         for (int i = 0; i < length; i++) {
                             ELispSymbol symbol = (ELispSymbol) symbols[i];
                             Object value = valueNodes[i].executeGeneric(frame);
-                            if (dynamicBinding || ELispBindingScope.isDynamic(symbol)) {
+                            if (dynamicBinding || ELispLexical.isDynamic(frame, symbol)) {
                                 specialBindings.add(symbol);
                                 specialValues.add(progressive ? symbol.swapThreadLocalValue(value) : value);
                             } else {
                                 // TODO: Check if Truffle bail out on this.
-                                lexicalBindings.put(symbol, new ELispSymbol.Value.Forwarded(value));
+                                if (progressive) {
+                                    lexicalFrame = lexicalFrame.fork(frame);
+                                    int index = lexicalFrame.addVariable(frame, symbol);
+                                    ELispLexical.setVariable(frame, index, value);
+                                } else {
+                                    lexicalValues[i] = value;
+                                }
                             }
                         }
                     } catch (Throwable e) {
                         if (progressive) {
-                            handle.close();
-                            ELispBindingScope.pushDynamic(
+                            // Restore dynamic scopes.
+                            ELispLexical.pushDynamic(
                                     specialBindings.toArray(new ELispSymbol[0]),
                                     specialValues.toArray(new Object[0])
                             ).close();
+                            // The caller is responsible for restoring lexical scopes.
                         }
                         throw e;
                     }
+                    ELispLexical.Dynamic handle = null;
+                    if (!specialBindings.isEmpty()) {
+                        ELispSymbol[] specialSymbols = specialBindings.toArray(new ELispSymbol[0]);
+                        Object[] values = specialValues.toArray(new Object[0]);
+                        handle = progressive ? new ELispLexical.Dynamic(
+                                specialSymbols,
+                                values
+                        ) : ELispLexical.pushDynamic(
+                                specialSymbols,
+                                values
+                        );
+                    }
                     if (!progressive) {
-                        handle = ELispBindingScope.pushLexical(lexicalBindings);
-                        if (!specialBindings.isEmpty()) {
-                            handle = ELispBindingScope.pushComposite(
-                                    handle,
-                                    ELispBindingScope.pushDynamic(
-                                            specialBindings.toArray(new ELispSymbol[0]),
-                                            specialValues.toArray(new Object[0])
-                                    )
-                            );
-                        }
-                    } else {
-                        if (!specialBindings.isEmpty()) {
-                            handle = ELispBindingScope.pushComposite(
-                                    handle,
-                                    new ELispBindingScope.ClosableScope.Dynamic(
-                                            specialBindings.toArray(new ELispSymbol[0]),
-                                            specialValues.toArray(new Object[0])
-                                    )
-                            );
+                        if (!dynamicBinding) {
+                            lexicalFrame = lexicalFrame.fork(frame);
+                            for (int i = 0; i < length; i++) {
+                                Object value = lexicalValues[i];
+                                if (value != null) {
+                                    int index = lexicalFrame.addVariable(frame, (ELispSymbol) symbols[i]);
+                                    ELispLexical.setVariable(frame, index, value);
+                                }
+                            }
                         }
                     }
                     return handle;
@@ -875,8 +914,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    try (var _ = (ELispBindingScope.ClosableScope) scopeNode.executeGeneric(frame)) {
+                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    try (ELispLexical.Dynamic _ = (ELispLexical.Dynamic) scopeNode.executeGeneric(frame)) {
                         return bodyNode.executeGeneric(frame);
+                    } finally {
+                        lexicalFrame.restore(frame);
                     }
                 }
             };
@@ -1247,7 +1289,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static Object eval(Object form, boolean lexical) {
             ELispExpressionNode node = ELispInterpretedNode.create(form);
-            try (var _ = ELispBindingScope.withLexicalBinding(lexical)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical)) {
                 return node.executeGeneric(null);
             }
         }

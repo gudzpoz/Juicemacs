@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -16,8 +17,9 @@ public final class FunctionRootNode extends RootNode {
 
     public FunctionRootNode(ELispLanguage language,
                             @Nullable String name,
-                            ELispExpressionNode functionBody) {
-        super(language);
+                            ELispExpressionNode functionBody,
+                            @Nullable FrameDescriptor descriptor) {
+        super(language, descriptor);
         this.name = name;
         this.functionBody = functionBody;
         adoptChildren();

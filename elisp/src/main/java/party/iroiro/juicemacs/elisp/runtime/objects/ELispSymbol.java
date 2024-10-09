@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -261,9 +262,15 @@ public final class ELispSymbol implements ELispValue {
 
     public Object getIndirectFunction() {
         Object o = getFunction();
-        if (!(o instanceof ELispSymbol symbol)) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, !(o instanceof ELispSymbol))) {
             return o;
         }
+        return slowPathGetIndirectFunction((ELispSymbol) o);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static Object slowPathGetIndirectFunction(ELispSymbol symbol) {
+        Object o;
         HashSet<ELispSymbol> visited = new HashSet<>();
         visited.add(symbol);
         while (true) {

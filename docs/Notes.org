@@ -44,7 +44,76 @@ possible to Truffle-JIT this thing efficiently... So bytecode it is.
 
 P.S. The current interpreted AST node =ELispInterpretedNode.java= somehow
 manages to produce a AST-ish thing for Truffle to JIT-compile. It is probably
-not that efficient thouth. Read the code and comments for more details.
+not that efficient though. Read the code and comments for more details.
+
+**** Efficient local variable lookup
+
+Most Truffle languages store local variables on frames (=VirtualFrame=). There
+are some optimizations with this approach:
+
+- Truffle can optimize many things for you by inlining and placing things on a
+  real stack after JIT-compilation.
+- Nodes for reading and setting variables can cache the location of a specific
+  variable, yielding better performance.
+- Lexical scopes are now materialized frames, which Truffle is aware and can
+  potentially optimize/inline away the cost.
+
+However, as always, Emacs Lisp brings some problems:
+
+- Most languages use static analysis to map variable names to their slot number.
+  Static analysis ensures the slot numbers do not change between calls and is
+  safe to cache.
+
+  #+begin_src js
+    function f(
+      a,  // slot#0
+      b,  // slot#1
+    ) {
+      const c = 0;  // slot#2
+      if (a) {
+        let d = 1;  // slot#3
+        b += d + a;
+      }
+      let e = c + b;  // slot#4 (note that we cannot reuse slots)
+      return e;
+    }
+  #+end_src
+
+- As for ELisp, well, you cannot do /static/ analysis with a /dynamic/ AST.
+
+  #+begin_src elisp
+    (defun f (a  ;; slot#0
+              b  ;; slot#1
+              )
+      (some-macro
+       ;; the slot of `c' depends on the expansion result of `some-macro'
+       (let ((c 1)))))
+  #+end_src
+
+  Alternatively, similar to how we handle things in =ELispInterpretedNode.java=,
+  we may dynamically assign slot numbers and cache at runtime instead. However,
+  Truffle =FrameDescriptor= requires a constant slot count at declaration time,
+  which poses yet another challenge.
+
+Solutions?
+
+- Use a constant slot count (=~32=) for frame descriptors. And spill to a
+  separate =ArrayList= if there are too many variables.
+
+- Keep static analysis stats on the stack frame:
+  - Slot #0: =LexicalFrame=
+    - Keeping track of occupied frame slots, symbol-to-slot-number mappings
+      - Slot numbers: positive: local variable; zero or negative: argument
+    - Parent frame reference
+  - Slot #1: Frame spill =ArrayList= slot
+  - Other slots: ordinary value slots
+
+- Future enhancements (or are they?):
+  - Track required slot counts for each function and try to pre-allocate (or
+    shrink stack size) for the following calls.
+    - Using =8= instead of =32= as the slot count does seem to affect throughput
+      though.
+  - Benchmark to find more hotspots (possibly in assembly).
 
 *** The Graal Truffle tutorial series by Adam Ruka
 

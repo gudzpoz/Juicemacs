@@ -193,6 +193,15 @@ interop, but otherwise simply using some classes with public member should do.
 
 * Considered Done (For Now)
 
+** DONE [#B] Replace lexical scope maps with Truffle frames
+
+- Threefold speed-up: =(fib 35)= went from ~5s to 1.7s. At least we are not
+  slower than interpreted GNU Emacs now.
+  - Any other languages I tested takes less than an instant.
+  - Python 3.12 takes ~0.6s. So it is quite embarrassing that a JIT
+    implementation cannot beat an interpreted language.
+- [[http://cesquivias.github.io/blog/2015/01/08/writing-a-language-in-truffle-part-3-making-my-language-much-faster/#direct-lookup-to-lexical-scope][Writing a Language in Truffle. Part 3: Making my Language (Much) Faster]]
+
 ** DONE [#A] Undertanding =Lisp_Symbol= (Variables)
 
 I really doubt I get the implementation of =ELispSymbol= wrong (to some degree).

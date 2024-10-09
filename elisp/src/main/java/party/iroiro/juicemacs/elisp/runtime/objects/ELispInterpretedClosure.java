@@ -1,6 +1,8 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -9,8 +11,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.*;
-import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 
 import java.util.*;
 
@@ -48,7 +50,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispClosureCallNode node = new ELispClosureCallNode();
             // TODO: Get a real name for the function.
-            FunctionRootNode root = new FunctionRootNode(ELispLanguage.get(node), toString(), node);
+            String name = "lambda@" + Integer.toHexString(System.identityHashCode(this));
+            FunctionRootNode root = new FunctionRootNode(
+                    ELispLanguage.get(node), name, node,
+                    ELispLexical.frameDescriptor()
+            );
             f = new ELispFunctionObject(root.getCallTarget());
             function = f;
         }
@@ -60,27 +66,40 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         return toStringHelper("(lambda ", ")");
     }
 
+    public record LexicalEnvironment(MaterializedFrame frame, ELispLexical lexicalFrame) {
+    }
+
     private class ELispClosureCallNode extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Children
-        private ReadFunctionArgNode[] args;
+        private ReadFunctionArgNode[] optionalRestArgs;
+
         @SuppressWarnings("FieldMayBeFinal")
         @CompilerDirectives.CompilationFinal(dimensions = 1)
-        private ELispSymbol[] argSymbols;
+        private ELispSymbol[] requiredArgSymbols;
+        @SuppressWarnings("FieldMayBeFinal")
+        @CompilerDirectives.CompilationFinal(dimensions = 1)
+        private ELispSymbol[] optionalArgSymbols;
+
+        private final boolean isLexical;
 
         @SuppressWarnings("FieldMayBeFinal")
         @Child
         private ELispExpressionNode body;
 
-        private final ELispBindingScope.ClosableScope.@Nullable Lexical lexical;
+        @Nullable
+        private final LexicalEnvironment lexical;
 
         public ELispClosureCallNode() {
-            lexical = initializeLexical();
+            Object env = getEnv();
+            isLexical = !ELispSymbol.isNil(env);
+            lexical = isLexical ? initializeLexical(env) : null;
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
+            this.requiredArgSymbols = new ELispSymbol[0];
             if (ELispSymbol.isNil(getArgs())) {
-                this.args = new ReadFunctionArgNode[0];
-                this.argSymbols = new ELispSymbol[0];
+                this.optionalRestArgs = new ReadFunctionArgNode[0];
+                this.optionalArgSymbols = new ELispSymbol[0];
                 return;
             }
             List<ReadFunctionArgNode> argNodes = new ArrayList<>();
@@ -94,6 +113,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                     if (state >= 2) {
                         throw new IllegalArgumentException();
                     }
+                    if (isLexical) {
+                        this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
+                        symbols.clear();
+                    } else {
+                        this.requiredArgSymbols = new ELispSymbol[0];
+                    }
                     state = 1;
                 } else if (symbol == AND_REST) {
                     if (state >= 2) {
@@ -106,56 +131,71 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         argNodes.add(new ReadFunctionArgNode.ReadFunctionRestArgsAsConsNode(argI));
                         state = 3;
                     } else if (state <= 1) {
-                        argNodes.add(new ReadFunctionArgNode(argI, state == 0, !iterator.hasNext()));
+                        if (state == 1 || !isLexical) {
+                            argNodes.add(new ReadFunctionArgNode(argI, state == 0, !iterator.hasNext()));
+                        }
                     } else {
                         throw new IllegalArgumentException();
                     }
                     argI++;
                 }
             }
-            this.args = argNodes.toArray(new ReadFunctionArgNode[0]);
-            this.argSymbols = symbols.toArray(new ELispSymbol[0]);
+            if (state == 0) {
+                if (isLexical) {
+                    this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
+                    this.optionalArgSymbols = new ELispSymbol[0];
+                    this.optionalRestArgs = new ReadFunctionArgNode[0];
+                    adoptChildren();
+                    return;
+                }
+            }
+            this.optionalArgSymbols = symbols.toArray(new ELispSymbol[0]);
+            this.optionalRestArgs = argNodes.toArray(new ReadFunctionArgNode[0]);
             adoptChildren();
         }
 
+        @Nullable
         @CompilerDirectives.TruffleBoundary
-        private ELispBindingScope.ClosableScope.@Nullable Lexical initializeLexical() {
-            Object env = getEnv();
-            if (ELispSymbol.isNil(env)) {
-                return null;
-            }
-            if (env instanceof ELispBindingScope.ClosableScope.Lexical l) {
+        private static LexicalEnvironment initializeLexical(Object env) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (env instanceof LexicalEnvironment l) {
                 return l;
             }
-            if (ELispSymbol.isT(env)) {
-                return ELispBindingScope.EMPTY_LEXICAL;
+            if (env instanceof ELispCons cons) {
+                MaterializedFrame frame = Truffle.getRuntime().createMaterializedFrame(
+                        new Object[0],
+                        ELispLexical.frameDescriptor()
+                );
+                ELispLexical lexical =
+                        new ELispLexical(frame, null, List.of());
+                ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
+                while (i.hasNext()) {
+                    ELispSymbol symbol = (ELispSymbol) i.next();
+                    int index = lexical.addVariable(frame, symbol);
+                    frame.setObject(index, i.next());
+                }
+                return new LexicalEnvironment(frame, lexical);
             }
-            ELispCons cons = (ELispCons) env;
-            HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> map = new HashMap<>();
-            ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
-            while (i.hasNext()) {
-                ELispSymbol symbol = (ELispSymbol) i.next();
-                map.put(symbol, new ELispSymbol.Value.Forwarded(i.next()));
-            }
-            return new ELispBindingScope.ClosableScope.Lexical(map, null);
+            return null;
         }
 
-        @CompilerDirectives.TruffleBoundary
-        public ELispBindingScope.ClosableScope pushScope(Object[] newValues) {
-            if (lexical == null) {
-                return ELispBindingScope.pushDynamic(argSymbols, newValues);
-            } else {
-                ELispBindingScope.ClosableScope outer = ELispBindingScope.switchLexical(lexical);
-                HashMap<ELispSymbol, ELispSymbol.Value.Forwarded> map = new HashMap<>();
-                for (int i = 0; i < argSymbols.length; i++) {
+        public ELispLexical.@Nullable Dynamic pushScope(VirtualFrame frame, Object[] newValues) {
+            if (isLexical && lexical != null) {
+                ELispLexical lexicalFrame =
+                        new ELispLexical(frame, lexical.frame, lexical.lexicalFrame, List.of(requiredArgSymbols));
+                if (frame.getArguments().length < this.requiredArgSymbols.length) {
+                    throw new IllegalArgumentException();
+                }
+                for (int i = 0; i < optionalArgSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols
                     // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
-                    map.put(argSymbols[i], new ELispSymbol.Value.Forwarded(newValues[i]));
+                    int index = lexicalFrame.addVariable(frame, optionalArgSymbols[i]);
+                    frame.setObject(index, newValues[i]);
                 }
-                return ELispBindingScope.pushComposite(
-                        ELispBindingScope.pushLexical(map),
-                        outer
-                );
+                return null;
+            } else {
+                new ELispLexical(frame, null, List.of(requiredArgSymbols));
+                return ELispLexical.pushDynamic(optionalArgSymbols, newValues);
             }
         }
 
@@ -163,12 +203,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @ExplodeLoop
         public Object executeGeneric(VirtualFrame frame) {
             Object[] newValues;
-            newValues = new Object[argSymbols.length];
-            int length = args.length;
+            int length = optionalArgSymbols.length;
+            newValues = new Object[length];
             for (int i = 0; i < length; i++) {
-                newValues[i] = args[i].executeGeneric(frame);
+                newValues[i] = optionalRestArgs[i].executeGeneric(frame);
             }
-            try (ELispBindingScope.ClosableScope _ = pushScope(newValues)) {
+            try (ELispLexical.Dynamic _ = pushScope(frame, newValues)) {
                 return body.executeGeneric(frame);
             }
         }

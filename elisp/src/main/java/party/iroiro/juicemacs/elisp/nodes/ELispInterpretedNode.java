@@ -10,8 +10,8 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
-import party.iroiro.juicemacs.elisp.runtime.ELispBindingScope;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
@@ -58,7 +58,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return new ELispInterpretedExpressions(expressions, lexical);
     }
 
-    @CompilerDirectives.TruffleBoundary
     private static Object getIndirectFunction(Object function) {
         if (function instanceof ELispSymbol symbol) {
             function = symbol.getIndirectFunction();
@@ -85,8 +84,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            try (var _ = ELispBindingScope.withLexicalBinding(lexical)) {
-                return node.executeGeneric(null);
+            try (var _ = ELispLexical.withLexicalBinding(lexical)) {
+                return node.executeGeneric(frame);
             }
         }
     }
@@ -107,9 +106,15 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private final static class ELispSymbolDereferenceNode extends ELispInterpretedNode {
+        public static final int DYNAMIC = 1;
         @SuppressWarnings("FieldMayBeFinal")
         @CompilerDirectives.CompilationFinal
         private ELispSymbol symbol;
+
+        @CompilerDirectives.CompilationFinal
+        private VirtualFrame frame = null;
+        @CompilerDirectives.CompilationFinal
+        private int index = 0;
 
         public ELispSymbolDereferenceNode(ELispSymbol symbol) {
             this.symbol = symbol;
@@ -123,8 +128,23 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (symbol == T) {
                 return true;
             }
-            Object lexical = ELispBindingScope.getLexical(symbol);
-            return lexical == null ? symbol.getValue() : lexical;
+            if (index == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ELispLexical.LexicalReference lexical = ELispLexical.getLexicalFrame(frame).getLexicalReference(frame, symbol);
+                if (lexical == null) {
+                    index = DYNAMIC;
+                } else {
+                    index = lexical.index();
+                    this.frame = lexical.frame();
+                }
+            }
+            if (index == DYNAMIC) {
+                return symbol.getValue();
+            }
+            return ELispLexical.getVariable(
+                    this.frame == null ? frame : this.frame,
+                    index
+            );
         }
     }
 
@@ -243,7 +263,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Specialization
         public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
-            try (var _ = ELispBindingScope.withLexicalBinding(true)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(true)) {
                 Object function = this.function;
                 if (inlineLambdaNode != null) {
                     function = inlineLambdaNode.executeGeneric(frame);

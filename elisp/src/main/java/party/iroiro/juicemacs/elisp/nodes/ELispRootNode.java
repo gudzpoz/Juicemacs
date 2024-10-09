@@ -5,6 +5,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+
+import java.util.List;
 
 public class ELispRootNode extends RootNode {
     @SuppressWarnings("FieldMayBeFinal")
@@ -14,7 +17,7 @@ public class ELispRootNode extends RootNode {
     private final SourceSection sourceSection;
 
     public ELispRootNode(ELispLanguage language, ELispExpressionNode expression, SourceSection sourceSection) {
-        super(language);
+        super(language, ELispLexical.frameDescriptor());
 
         this.expression = expression;
         this.sourceSection = sourceSection;
@@ -24,6 +27,7 @@ public class ELispRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        new ELispLexical(frame, null, null, List.of());
         return this.expression.executeGeneric(frame);
     }
 

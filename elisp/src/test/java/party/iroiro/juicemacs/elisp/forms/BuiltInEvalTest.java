@@ -62,6 +62,13 @@ public class BuiltInEvalTest extends BaseFormTest {
                (let ((y 20))
                  (gety))))
             """, 12L,
+            """
+            ;;; -*- lexical-binding: t -*-
+            (let ((y 1))
+              (let* ((x #'(lambda () y))
+                     (y 2))
+                (funcall x)))
+            """, 1L,
             "(eval '(+ 1 2 3))", 6L,
             "(apply '+ '(1 2 3))", 6L,
             "(functionp '+)", true,
