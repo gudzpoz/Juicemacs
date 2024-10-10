@@ -228,12 +228,14 @@ public class ELispParser {
         return !(peek() instanceof EOF);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object nextLisp() throws IOException {
         cyclicReferences.clear();
         readObjectsCompleted.clear();
         return nextObject();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, Source source) throws IOException {
         ELispParser parser = new ELispParser(source);
         List<Object> expressions = new ArrayList<>();
@@ -251,6 +253,7 @@ public class ELispParser {
         ));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static Object read(String s) throws IOException {
         return read(Source.newBuilder("elisp", s, "").build());
     }

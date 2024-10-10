@@ -5,13 +5,14 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -38,6 +39,14 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
  */
 @SuppressWarnings({"DefaultAnnotationParam", "ForLoopReplaceableByForEach"})
 public class BuiltInEval extends ELispBuiltIns {
+
+    public static final ELispExpressionNode THROW_ERROR_ON_EVAL = new ELispExpressionNode() {
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            throw new IllegalArgumentException();
+        }
+    };
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEvalFactory.getFactories();
@@ -979,7 +988,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 @Override
-
                 public Object executeGeneric(VirtualFrame frame) {
                     while (!ELispSymbol.isNil(condition.executeGeneric(frame))) {
                         bodyNode.executeGeneric(frame);
@@ -1047,7 +1055,31 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode catch_(Object tag, Object[] body) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnsupportedOperationException();
+            return new ELispExpressionNode() {
+                @SuppressWarnings("FieldMayBeFinal")
+                @Child
+                ELispExpressionNode tagNode = ELispInterpretedNode.create(tag);
+                @SuppressWarnings("FieldMayBeFinal")
+                @Child
+                ELispExpressionNode bodyNodes = FProgn.progn(body);
+
+                {
+                    adoptChildren();
+                }
+
+                @Override
+                public Object executeGeneric(VirtualFrame frame) {
+                    Object tag = tagNode.executeGeneric(frame);
+                    try {
+                        return bodyNodes.executeGeneric(frame);
+                    } catch (ELispSignals.ELispCatchException e) {
+                        if (!ELispSymbol.isNil(tag) && e.getTag() == tag) {
+                            return e.getData();
+                        }
+                        throw e;
+                    }
+                }
+            };
         }
     }
 
@@ -1061,7 +1093,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FThrow extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void throw_(ELispSymbol tag, Object value) {
+        public static Void throw_(Object tag, Object value) {
             throw new ELispSignals.ELispCatchException(tag, value);
         }
     }
@@ -1148,7 +1180,100 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode conditionCase(Object var, Object bodyform, Object[] handlers) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new UnsupportedOperationException();
+            int length = handlers.length;
+            int successIndex = -1;
+            Object[] conditionNames = new Object[length];
+            @Nullable Object[] bodies = new Object[length];
+            for (int i = 0; i < length; i++) {
+                Object handler = handlers[i];
+                if (handler instanceof ELispCons cons) {
+                    Object conditionName = cons.car();
+                    conditionNames[i] = conditionName;
+                    if (conditionName == ELispContext.CSUCCESS) {
+                        successIndex = i;
+                    }
+                    Object body = cons.cdr();
+                    if (body instanceof ELispCons bodyCons) {
+                        bodies[i] = bodyCons;
+                    } else if (ELispSymbol.isNil(body)) {
+                        bodies[i] = null;
+                    } else {
+                        return THROW_ERROR_ON_EVAL;
+                    }
+                } else {
+                    return THROW_ERROR_ON_EVAL;
+                }
+            }
+            int finalSuccessIndex = successIndex;
+            return new ELispExpressionNode() {
+                @SuppressWarnings("FieldMayBeFinal")
+                @Child
+                ELispExpressionNode body = ELispInterpretedNode.create(bodyform);
+
+                {
+                    adoptChildren();
+                }
+
+                private static boolean matches(ELispSymbol conditionName, Object tag) {
+                    Object property = ((ELispSymbol) tag).getProperty(ELispContext.ERROR_CONDITIONS);
+                    if (property instanceof ELispCons list) {
+                        return list.contains(conditionName);
+                    }
+                    return false;
+                }
+
+                @Override
+                public Object executeGeneric(VirtualFrame frame) {
+                    try {
+                        Object o = body.executeGeneric(frame);
+                        if (finalSuccessIndex != -1) {
+                            Object handler = bodies[finalSuccessIndex];
+                            if (handler != null) {
+                                return handle(frame, o, handler);
+                            }
+                        }
+                        return o;
+                    } catch (ELispSignals.ELispSignalException e) {
+                        int i;
+                        for (i = 0; i < length; i++) {
+                            Object conditionName = conditionNames[i];
+                            boolean shouldHandle = false;
+                            if (ELispSymbol.isT(conditionName)) {
+                                shouldHandle = true;
+                            } else if (conditionName instanceof ELispCons list) {
+                                for (Object sym : list) {
+                                    if (sym instanceof ELispSymbol symbol) {
+                                        if (matches(symbol, e.getTag())) {
+                                            shouldHandle = true;
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (matches((ELispSymbol) conditionName, e.getTag())) {
+                                    shouldHandle = true;
+                                }
+                            }
+                            if (shouldHandle) {
+                                Object handler = bodies[i];
+                                if (handler == null) {
+                                    return false;
+                                }
+                                ELispCons error = new ELispCons(e.getTag(), e.getData());
+                                return handle(frame, error, handler);
+                            }
+                        }
+                        throw e;
+                    }
+                }
+
+                private Object handle(VirtualFrame frame, Object data, Object handler) {
+                    CompilerDirectives.transferToInterpreter();
+                    return FLet.let(
+                            new ELispCons(ELispCons.listOf(var, ELispCons.listOf(ELispContext.QUOTE, data))),
+                            ((ELispCons) handler).toArray()
+                    ).executeGeneric(frame);
+                }
+            };
         }
     }
 
@@ -1202,8 +1327,8 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSignal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void signal(Object errorSymbol, Object data) {
-            throw new UnsupportedOperationException();
+        public static Void signal(ELispSymbol errorSymbol, Object data) {
+            throw new ELispSignals.ELispSignalException(errorSymbol, data);
         }
     }
 

@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -307,6 +309,7 @@ public class ELispCharTable extends AbstractELispVector {
             return (int) (long) get(MIN_CHAR_SLOT);
         }
 
+        @CompilerDirectives.TruffleBoundary
         public Object getChar(int codepoint) {
             int depth = getDepth();
             int i = charTableIndex(codepoint, depth, getMinChar());
@@ -317,6 +320,7 @@ public class ELispCharTable extends AbstractELispVector {
             }
         }
 
+        @CompilerDirectives.TruffleBoundary
         public void setChar(int codepoint, Object value) {
             int depth = getDepth();
             int i = charTableIndex(codepoint, depth, getMinChar());
@@ -350,6 +354,7 @@ public class ELispCharTable extends AbstractELispVector {
             return table;
         }
 
+        @CompilerDirectives.TruffleBoundary
         public void setRange(int from, int to, Object value) {
             int minChar = getMinChar();
             int depth = getDepth();

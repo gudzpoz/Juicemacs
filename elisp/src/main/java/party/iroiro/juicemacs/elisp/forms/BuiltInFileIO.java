@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -249,6 +250,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "expand-file-name", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FExpandFileName extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispString expandFileName(ELispString name, Object defaultDirectory) {
             String path = name.toString();
@@ -594,6 +596,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "file-directory-p", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FFileDirectoryP extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static boolean fileDirectoryP(ELispString filename) {
             String path = filename.toString();

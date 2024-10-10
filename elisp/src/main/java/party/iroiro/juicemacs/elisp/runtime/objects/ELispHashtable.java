@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
@@ -35,23 +36,28 @@ public final class ELispHashtable implements ELispValue {
         this.inner = new HashMap<>();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void put(Object key, Object value) {
         inner.put(new ELispHashtableKey(key), value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public boolean containsKey(Object key) {
         return inner.containsKey(new ELispHashtableKey(key));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object get(Object key) {
         Object o = inner.get(new ELispHashtableKey(key));
         return o == null ? false : o;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object get(Object k, Object defaultValue) {
         return inner.getOrDefault(new ELispHashtableKey(k), defaultValue);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void remove(Object key) {
         inner.remove(new ELispHashtableKey(key));
     }
@@ -60,10 +66,12 @@ public final class ELispHashtable implements ELispValue {
         return inner.size();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void forEach(BiConsumer<Object, Object> action) {
         inner.forEach((k, v) -> action.accept(k.key, v));
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Override
     public boolean lispEquals(Object other) {
         return other instanceof ELispHashtable t && eq == t.eq && inner.equals(t.inner);
@@ -89,6 +97,7 @@ public final class ELispHashtable implements ELispValue {
 
     public final BiPredicate<Object, Object> eq;
 
+    @CompilerDirectives.TruffleBoundary
     public static ELispHashtable hashTableFromPlist(List<Object> list) {
         // #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data ())
         Object testSym = getFromPseudoPlist(list, TEST);

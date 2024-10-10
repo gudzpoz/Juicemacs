@@ -32,7 +32,7 @@ public class BuiltInEvalTest extends BaseFormTest {
             "(eq 'aaa #'aaa)", true,
             "(progn (setq aaa 42) (defvaralias 'aaaa 'aaa) aaaa)", 42L,
             "(progn (defvar aaa (1+ 11)) aaa)", 12L,
-            "(progn (defconst aaaconst (1+ 11)) aaaconst)", 12L,
+            "(progn (defconst aaaconst (1+ 11)) aaaconst) ;; no-warm-up-test", 12L,
             "(let ((a 1)) (let* ((a 2) (b (+ a 1))) b))", 3L,
             "(let ((a 1)) (let  ((a 2) (b (+ a 1))) b))", 2L,
             "(let (a) a)", false,
@@ -75,6 +75,20 @@ public class BuiltInEvalTest extends BaseFormTest {
             "(functionp 'quote)", false,
             "(functionp (function (lambda (x) x)))", true,
             "(funcall '+ 1 2 3)", 6L,
+
+            "(catch 1 (throw 1 2))", 2L,
+            """
+            (catch 'a
+              (+ 100 (catch 'b
+                       (+ 1000 (catch 'c
+                                 (throw 'b 10))))))
+            """, 110L,
+            """
+            (progn
+              (put 'e 'error-conditions '(a b c))
+              (condition-case s (signal 'e 1)
+                (a (= (cdr s) 1))))
+            """, true,
     };
 
     @Override

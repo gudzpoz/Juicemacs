@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -32,6 +33,7 @@ public final class ELispContext {
     // TODO: Replace this with obarray
     private final static HashMap<String, ELispSymbol> INTERN_MAP = new HashMap<>();
 
+    @CompilerDirectives.TruffleBoundary
     public static ELispSymbol intern(String symbol) {
         return INTERN_MAP.computeIfAbsent(symbol, ELispSymbol::new);
     }

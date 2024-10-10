@@ -176,8 +176,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLengthEqual extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void lengthEqual(Object sequence, Object length) {
-            throw new UnsupportedOperationException();
+        public static boolean lengthEqual(ELispCons sequence, long length) {
+            return sequence.size() == length;
         }
     }
 

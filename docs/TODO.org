@@ -9,24 +9,26 @@ I guess I should start implementing it before I litter
 
 - [ ] New exception types & utility methods
 
-- [ ] =signal/error/condition-case=
+- [-] =signal/error/condition-case=
 
-  - [ ] Implementation
+  - [X] Implementation
 
   - [ ] Error groups
 
   - [ ] Convert =ClassCastException= to errors
 
-- [ ] =catch/throw=
+- [X] =catch/throw=
 
-- [-] Stack traces
+- [X] Stack traces
 
   - [X] Store debug info into cons nodes.
 
-  - [ ] So we want function names in stack traces, but all interpreted functions
+  - [X] So we want function names in stack traces, but all interpreted functions
     are just lambdas in Emacs: =(defalias 'a-symbol #'(lambda () ...))=. Maybe
-    we can try to assign a lambda a name when it is first bound to a symbol? I
-    will need to check out how GraalJs handles lambdas.
+    we can try to assign a lambda a name when it is first bound to a symbol? (<-
+    chose this approach)
+
+    +I will need to check out how GraalJs handles lambdas.+ Too lazy to do that.
 
 * TODO [#B] Understanding Non-Bare Symbols
 
@@ -204,14 +206,17 @@ interop, but otherwise simply using some classes with public member should do.
 
 *** Reusing frame slots
 
-#+begin_src java
-  /**
-   ,* If materialized, some other functions might be referencing slots in this frame,
-   ,* and we must not reuse frame slots. Otherwise, we can reuse frame slots to avoid
-   ,* excessive memory usage in cases like {@code let} in loops.
-   ,*/
-  private boolean materialized;
-#+end_src
+Basically, each Truffle function automatically gets its own =VirtualFrame=, and
+for each lexical scope (either in a function or a =let/let*= scope), we manually
+assign a =ELispLexical= scope.
+
+Lexical scopes are append-only and keeps track of mappings between variables in
+the current scope and their frame slots. When the current lexical scope is
+materialized (when a lambda function is created inside it, for example), it
+marks the corresponding frame materialized. However, instead of treating all
+frame slots as not reusable slots, it makes use of a =materializedTop= slot to
+track what slots that lambda function might have access to, allowing slots
+beyond those slots to be reused.
 
 ** DONE [#A] Undertanding =Lisp_Symbol= (Variables)
 

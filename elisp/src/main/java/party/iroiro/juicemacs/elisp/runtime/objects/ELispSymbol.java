@@ -191,6 +191,7 @@ public final class ELispSymbol implements ELispValue {
         return checkUnbound(value instanceof Value.BufferLocal local ? local.defaultValue : value.getValue());
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setDefaultValue(Object value) {
         if (trappedWrite == TrappedWrite.NO_WRITE) {
             if (!BuiltInData.FKeywordp.keywordp(this)) {
@@ -203,12 +204,14 @@ public final class ELispSymbol implements ELispValue {
             // What is a not-always-local buffer-local variable?
             local.defaultValue = value;
         } else if (this.value instanceof Value.VarAlias alias) {
+            // Recursive call: Truffle bails out
             alias.target.setDefaultValue(value);
         } else {
             this.value.setValue(value);
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setBufferLocal(boolean localIfSet) {
         if (this.value instanceof Value.VarAlias alias) {
             alias.target.setBufferLocal(localIfSet);

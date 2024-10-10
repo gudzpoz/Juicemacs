@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -77,6 +78,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     @ELispBuiltIn(name = "string-match", minArgs = 2, maxArgs = 4)
     @GenerateNodeFactory
     public abstract static class FStringMatch extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());

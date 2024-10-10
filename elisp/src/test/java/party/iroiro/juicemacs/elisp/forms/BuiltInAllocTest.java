@@ -18,7 +18,7 @@ public class BuiltInAllocTest extends BaseFormTest {
             "(let* ((a \"str\") (b (purecopy a))) (and (equal a b) (null (eq a b))))", true,
             "(let* ((a [1 2 3]) (b (purecopy a))) (and (equal a b) (null (eq a b))))", true,
             "(let* ((a '(12 3)) (b (purecopy a))) (and (equal a b) (null (eq a b))))", true,
-            "(null (garbage-collect))", false, // TODO: implement
+            "(null (garbage-collect)) ;; no-warm-up-test", false, // TODO: implement
     };
 
     @Override

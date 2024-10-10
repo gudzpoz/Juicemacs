@@ -120,6 +120,7 @@ USAGE_NAMES = {
     'handler-bind-1': 'handler-bind',
 }
 WANTS_NODE_ACCESS = [
+    'eval',
     'load',
     'makeInterpretedClosure',
     'require',
@@ -256,6 +257,8 @@ class LispSubroutine:
                 impl.startswith('public static')
                 or any(f in impl for f in WANTS_NODE_ACCESS)
             ), impl
+            if 'VirtualFrame frame' in impl:
+                args.insert(0, 'frame')
             p = params.search_string(impl)
             assert len(p) == 1, (impl, p)
             if 'args' not in p[0]:
@@ -399,6 +402,8 @@ class Variable:
             value = v
         else:
             value = f'({t}) {v}'
+        if value == '(Object) NIL':
+            value = 'false'
         return (
             f'ELispSymbol.Value.Forwarded {self.jname()} = '
             f'new ELispSymbol.Value.Forwarded({value})'

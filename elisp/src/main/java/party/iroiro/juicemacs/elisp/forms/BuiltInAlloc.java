@@ -338,6 +338,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @ELispBuiltIn(name = "garbage-collect", minArgs = 0, maxArgs = 0)
     @GenerateNodeFactory
     public abstract static class FGarbageCollect extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispCons garbageCollect() {
             Runtime.getRuntime().gc();

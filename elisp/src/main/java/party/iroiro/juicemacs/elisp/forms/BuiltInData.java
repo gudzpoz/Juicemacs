@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -977,7 +978,6 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
             // TODO: Handle defalias-fset-function
-            System.out.println(symbol);
             FFset.fset(symbol, definition);
             return symbol;
         }
@@ -1540,7 +1540,29 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "<", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLss extends ELispBuiltInBaseNode {
-        @Specialization
+        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && numbersOrMarkers[0] instanceof Long
+                    && number instanceof Long;
+        }
+
+        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
+                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
+        }
+
+        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
+        public static boolean lssSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return (Long) numberOrMarker < (Long) numbersOrMarkers[0];
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
+        public static boolean lssSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return ((Number) numberOrMarker).doubleValue() < ((Number) numbersOrMarkers[0]).doubleValue();
+        }
+
+        @Specialization(replaces = {"lssSimpleLong", "lssSimpleDouble"})
         public static boolean lss(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
@@ -1562,7 +1584,29 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = ">", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FGtr extends ELispBuiltInBaseNode {
-        @Specialization
+        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && numbersOrMarkers[0] instanceof Long
+                    && number instanceof Long;
+        }
+
+        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
+                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
+        }
+
+        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
+        public static boolean gtrSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return (Long) numberOrMarker > (Long) numbersOrMarkers[0];
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
+        public static boolean gtrSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return ((Number) numberOrMarker).doubleValue() > ((Number) numbersOrMarkers[0]).doubleValue();
+        }
+
+        @Specialization(replaces = {"gtrSimpleLong", "gtrSimpleDouble"})
         public static boolean gtr(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
@@ -1691,16 +1735,29 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "+", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FPlus extends ELispBuiltInBaseNode {
-        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
-        public static long plusLong(Object[] numbersOrMarkers) {
-            long sum = 0;
-            for (Object arg : numbersOrMarkers) {
-                sum = Math.addExact(sum, (Long) arg);
-            }
-            return sum;
+        public static boolean isSimpleLongAdd(Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 2
+                    && numbersOrMarkers[0] instanceof Long
+                    && numbersOrMarkers[1] instanceof Long;
         }
 
-        @Specialization(replaces = "plusLong")
+        public static boolean isSimpleDoubleAdd(Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 2
+                    && numbersOrMarkers[0] instanceof Number && numbersOrMarkers[1] instanceof Number
+                    && (numbersOrMarkers[0] instanceof Double || numbersOrMarkers[1] instanceof Double);
+        }
+
+        @Specialization(guards = {"isSimpleLongAdd(numbersOrMarkers)"}, rewriteOn = {ArithmeticException.class})
+        public static long plusSimpleLong(Object[] numbersOrMarkers) {
+            return Math.addExact((Long) numbersOrMarkers[0], (Long) numbersOrMarkers[1]);
+        }
+
+        @Specialization(guards = {"isSimpleDoubleAdd(numbersOrMarkers)"})
+        public static double plusSimpleDouble(Object[] numbersOrMarkers) {
+            return ((Number) numbersOrMarkers[0]).doubleValue() + ((Number) numbersOrMarkers[1]).doubleValue();
+        }
+
+        @Specialization(replaces = {"plusSimpleLong", "plusSimpleDouble"})
         public static Object plusAny(Object[] numbersOrMarkers) {
             return tryAddLong(numbersOrMarkers);
         }
@@ -1764,22 +1821,29 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "-", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FMinus extends ELispBuiltInBaseNode {
-        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
-        public static long minusLong(Object[] args) {
-            if (args.length == 0) {
-                return 0;
-            }
-            long result = (Long) args[0];
-            if (args.length == 1) {
-                return Math.negateExact(result);
-            }
-            for (int i = 1; i < args.length; i++) {
-                result = Math.subtractExact(result, (Long) args[i]);
-            }
-            return result;
+        public static boolean isSimpleLongs(Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 2
+                    && numbersOrMarkers[0] instanceof Long
+                    && numbersOrMarkers[1] instanceof Long;
         }
 
-        @Specialization(replaces = "minusLong")
+        public static boolean isSimpleDoubles(Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 2
+                    && numbersOrMarkers[0] instanceof Number && numbersOrMarkers[1] instanceof Number
+                    && (numbersOrMarkers[0] instanceof Double || numbersOrMarkers[1] instanceof Double);
+        }
+
+        @Specialization(guards = {"isSimpleLongs(args)"}, rewriteOn = {ArithmeticException.class})
+        public static long minusSimpleLong(Object[] args) {
+            return Math.subtractExact((Long) args[0], (Long) args[1]);
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(args)"})
+        public static double minusSimpleDouble(Object[] args) {
+            return ((Number) args[0]).doubleValue() - ((Number) args[1]).doubleValue();
+        }
+
+        @Specialization(replaces = {"minusSimpleLong", "minusSimpleDouble"})
         public static Object minusAny(Object[] args) {
             if (args.length == 0) {
                 return 0L;
@@ -1856,16 +1920,29 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "*", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FTimes extends ELispBuiltInBaseNode {
-        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
-        public static long timesLong(Object[] numbersOrMarkers) {
-            long result = 1;
-            for (Object arg : numbersOrMarkers) {
-                result = Math.multiplyExact(result, (Long) arg);
-            }
-            return result;
+        public static boolean isSimpleLongs(Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 2
+                    && numbersOrMarkers[0] instanceof Long
+                    && numbersOrMarkers[1] instanceof Long;
         }
 
-        @Specialization(replaces = "timesLong")
+        public static boolean isSimpleDoubles(Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 2
+                    && numbersOrMarkers[0] instanceof Number && numbersOrMarkers[1] instanceof Number
+                    && (numbersOrMarkers[0] instanceof Double || numbersOrMarkers[1] instanceof Double);
+        }
+
+        @Specialization(guards = {"isSimpleLongs(numbersOrMarkers)"}, rewriteOn = {ArithmeticException.class})
+        public static long timesSimpleLong(Object[] numbersOrMarkers) {
+            return Math.multiplyExact((Long) numbersOrMarkers[0], (Long) numbersOrMarkers[1]);
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(numbersOrMarkers)"})
+        public static double timesSimpleDouble(Object[] numbersOrMarkers) {
+            return ((Number) numbersOrMarkers[0]).doubleValue() * ((Number) numbersOrMarkers[1]).doubleValue();
+        }
+
+        @Specialization(replaces = {"timesSimpleLong", "timesSimpleDouble"})
         public static Object timesAny(Object[] numbersOrMarkers) {
             return tryTimesLong(numbersOrMarkers);
         }
@@ -1930,16 +2007,29 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "/", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FQuo extends ELispBuiltInBaseNode {
-        @Specialization(rewriteOn = {ArithmeticException.class, ClassCastException.class})
-        public static long quoLong(long number, Object[] divisors) {
-            long result = number;
-            for (Object arg : divisors) {
-                result /= (Long) arg;
-            }
-            return result;
+        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && numbersOrMarkers[0] instanceof Long
+                    && number instanceof Long;
         }
 
-        @Specialization(replaces = "quoLong")
+        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
+                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
+        }
+
+        @Specialization(guards = {"isSimpleLongs(number, divisors)"}, rewriteOn = {ArithmeticException.class})
+        public static long quoSimpleLong(Object number, Object[] divisors) {
+            return Math.divideExact((Long) number, (Long) divisors[0]);
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(number, divisors)"})
+        public static double quoSimpleDouble(Object number, Object[] divisors) {
+            return ((Number) number).doubleValue() / ((Number) divisors[0]).doubleValue();
+        }
+
+        @Specialization(replaces = {"quoSimpleLong", "quoSimpleDouble"})
         public static Object quoAny(Object number, Object[] divisors) {
             for (Object arg : divisors) {
                 if (arg instanceof Double) {
@@ -2010,6 +2100,7 @@ public class BuiltInData extends ELispBuiltIns {
             return x % y;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object rem(ELispBigNum x, ELispBigNum y) {
             return ELispBigNum.wrap(x.value.remainder(y.value));
@@ -2031,6 +2122,7 @@ public class BuiltInData extends ELispBuiltIns {
             return Long.remainderUnsigned(x, y);
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object mod(ELispBigNum x, ELispBigNum y) {
             return ELispBigNum.wrap(x.value.mod(y.value));
@@ -2219,6 +2311,21 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "ash", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FAsh extends ELispBuiltInBaseNode {
+        public static boolean isSafeAsh(long value, long count) {
+            return 0 <= value && value <= Integer.MAX_VALUE && Math.abs(count) <= 31;
+        }
+
+        @Specialization(guards = {"isSafeAsh(value, count)"})
+        public static long ashInt(long value, long count) {
+            if (count == 0) {
+                return value;
+            }
+            if (count < 0) {
+                return value >> -count;
+            }
+            return value << count;
+        }
+
         @Specialization
         public static Object ashLong(long value, long count) {
             if (count == 0) {
@@ -2230,6 +2337,12 @@ public class BuiltInData extends ELispBuiltIns {
                     return value < 0 ? -1L : 0L;
                 }
                 return value >> shift;
+            }
+            if (CompilerDirectives.injectBranchProbability(
+                    CompilerDirectives.FASTPATH_PROBABILITY,
+                    0 <= value && value <= Integer.MAX_VALUE && count <= 31
+            )) {
+                return value << count;
             }
             BigInteger v = BigInteger.valueOf(value);
             return ELispBigNum.wrap(v.shiftLeft((int) count));
@@ -2250,7 +2363,16 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "1+", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FAdd1 extends ELispBuiltInBaseNode {
-        @Specialization
+        public static boolean isSafeLong(long number) {
+            return number < Long.MAX_VALUE;
+        }
+
+        @Specialization(guards = {"isSafeLong(number)"})
+        public static long add1Long(long number) {
+            return number + 1;
+        }
+
+        @Fallback
         public static Object add1(Object number) {
             return switch (number) {
                 case Long l when l < Long.MAX_VALUE -> l + 1;
@@ -2271,7 +2393,16 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "1-", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FSub1 extends ELispBuiltInBaseNode {
-        @Specialization
+        public static boolean isSafeLong(long number) {
+            return number > Long.MIN_VALUE;
+        }
+
+        @Specialization(guards = {"isSafeLong(number)"})
+        public static long sub1Long(long number) {
+            return number - 1;
+        }
+
+        @Fallback
         public static Object sub1(Object number) {
             return switch (number) {
                 case Long l when l > Long.MIN_VALUE -> l - 1;
