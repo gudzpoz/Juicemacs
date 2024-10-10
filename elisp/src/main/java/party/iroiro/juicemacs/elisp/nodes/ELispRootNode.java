@@ -15,7 +15,7 @@ public class ELispRootNode extends RootNode {
     private final SourceSection sourceSection;
 
     public ELispRootNode(ELispLanguage language, ELispExpressionNode expression, SourceSection sourceSection) {
-        super(language, ELispLexical.frameDescriptor());
+        super(language, ELispLexical.frameDescriptor(true));
 
         this.expression = expression;
         this.sourceSection = sourceSection;

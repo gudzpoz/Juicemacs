@@ -109,7 +109,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private final static class ELispSymbolDereferenceNode extends ELispInterpretedNode {
-        public static final int DYNAMIC = 1;
+        public static final int INVALID = ELispLexical.NON_VAR_SLOT0;
+        public static final int DYNAMIC = ELispLexical.NON_VAR_SLOT1;
         @SuppressWarnings("FieldMayBeFinal")
         @CompilerDirectives.CompilationFinal
         private ELispSymbol symbol;
@@ -117,7 +118,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @CompilerDirectives.CompilationFinal
         private VirtualFrame frame = null;
         @CompilerDirectives.CompilationFinal
-        private int index = 0;
+        private int index = INVALID;
+        @CompilerDirectives.CompilationFinal
+        private int top = INVALID;
 
         public ELispSymbolDereferenceNode(ELispSymbol symbol) {
             this.symbol = symbol;
@@ -131,7 +134,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (symbol == T) {
                 return true;
             }
-            if (index == 0) {
+            VirtualFrame currentFrame = this.frame == null ? frame : this.frame;
+            if (index == INVALID || ELispLexical.getMaterializedTop(frame) != top) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                 ELispLexical.LexicalReference lexical = lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, symbol);
@@ -139,16 +143,17 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     index = DYNAMIC;
                 } else {
                     index = lexical.index();
+                    top = ELispLexical.getMaterializedTop(frame);
                     this.frame = lexical.frame();
+                    if (lexical.frame() != null) {
+                        currentFrame = lexical.frame();
+                    }
                 }
             }
             if (index == DYNAMIC) {
                 return symbol.getValue();
             }
-            return ELispLexical.getVariable(
-                    this.frame == null ? frame : this.frame,
-                    index
-            );
+            return ELispLexical.getVariable(currentFrame, index);
         }
     }
 

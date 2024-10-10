@@ -35,7 +35,7 @@ public class ELispParserTest {
             "#xFFFFFFFFFFFFFFFFFFFF", ELispBigNum.wrap(BigInteger.ONE.shiftLeft(80).subtract(BigInteger.ONE)),
             "t", T,
             "nil", NIL,
-            "#@00", NIL,
+            "#@00", false,
             "?a", (long) 'a',
     };
 

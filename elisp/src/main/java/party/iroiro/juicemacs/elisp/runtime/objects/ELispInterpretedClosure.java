@@ -57,7 +57,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                     : this.name;
             FunctionRootNode root = new FunctionRootNode(
                     ELispLanguage.get(node), name, node,
-                    ELispLexical.frameDescriptor()
+                    ELispLexical.frameDescriptor(!ELispSymbol.isNil(getEnv()))
             );
             f = new ELispFunctionObject(root.getCallTarget());
             functionRootNode = root;
@@ -137,6 +137,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                     if (state >= 2) {
                         throw new IllegalArgumentException();
                     }
+                    if (isLexical) {
+                        this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
+                        symbols.clear();
+                    } else {
+                        this.requiredArgSymbols = new ELispSymbol[0];
+                    }
                     state = 2;
                 } else {
                     symbols.add(symbol);
@@ -177,15 +183,14 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             if (env instanceof ELispCons cons) {
                 MaterializedFrame frame = Truffle.getRuntime().createMaterializedFrame(
                         new Object[0],
-                        ELispLexical.frameDescriptor()
+                        ELispLexical.frameDescriptor(true)
                 );
                 ELispLexical lexical =
                         new ELispLexical(frame, null, null, List.of());
                 ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
                 while (i.hasNext()) {
                     ELispSymbol symbol = (ELispSymbol) i.next();
-                    int index = lexical.addVariable(frame, symbol);
-                    frame.setObject(index, i.next());
+                    lexical.addVariable(frame, symbol, i.next());
                 }
                 return new LexicalEnvironment(frame, lexical);
             }
@@ -202,8 +207,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                 for (int i = 0; i < optionalArgSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols
                     // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
-                    int index = lexicalFrame.addVariable(frame, optionalArgSymbols[i]);
-                    frame.setObject(index, newValues[i]);
+                    lexicalFrame.addVariable(frame, optionalArgSymbols[i], newValues[i]);
                 }
                 return null;
             } else {

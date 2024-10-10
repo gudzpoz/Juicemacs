@@ -298,6 +298,10 @@ public final class ELispSymbol implements ELispValue {
         if (function instanceof ELispInterpretedClosure closure) {
             closure.setName(name);
         }
+        if (function instanceof ELispCons cons && cons.car() == ELispContext.MACRO
+                && cons.cdr() instanceof ELispInterpretedClosure closure) {
+            closure.setName(name);
+        }
     }
 
     public String name() {

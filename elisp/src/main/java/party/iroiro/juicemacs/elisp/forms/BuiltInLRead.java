@@ -429,7 +429,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (stream == READ_CHAR) {
                 throw new UnsupportedOperationException();
             }
-            return readInternalStart(stream, NIL, NIL, false);
+            return readInternalStart(stream, false, false, false);
         }
     }
 

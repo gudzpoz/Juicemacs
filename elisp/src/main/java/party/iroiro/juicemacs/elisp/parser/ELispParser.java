@@ -78,7 +78,7 @@ public class ELispParser {
         Token token = read();
         return switch (token) {
             case EOF() -> throw new IOException("Unexpected EOF");
-            case SkipToEnd() -> NIL; // TODO: Skip to EOF
+            case SkipToEnd() -> false; // TODO: Skip to EOF
             case SetLexicalBindingMode _ -> throw new IOException("Unexpected lexical binding mode");
             case Num(NumberVariant.FixNum(long value)) -> value;
             case Num(NumberVariant.BigNum(BigInteger value)) -> ELispBigNum.wrap(value);
