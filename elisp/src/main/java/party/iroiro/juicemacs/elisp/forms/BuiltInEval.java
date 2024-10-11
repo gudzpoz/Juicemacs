@@ -1125,7 +1125,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     // TODO: Add test once we have signal support
                     try {
                         return body.executeGeneric(frame);
-                    } catch (Exception e) {
+                    } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
                         unwind.executeGeneric(frame);
                         throw e;
                     }

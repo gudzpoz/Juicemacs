@@ -105,7 +105,15 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             try {
                 return super.executeGeneric(frame);
-            } catch (ClassCastException e) {
+            } catch (RuntimeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw remapException(e);
+            }
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private RuntimeException remapException(RuntimeException e) {
+            if (e instanceof ClassCastException) {
                 Matcher matcher = CLASS_CAST_GUESS.matcher(e.getMessage());
                 if (matcher.find()) {
                     String actual = matcher.group(1);
@@ -116,10 +124,12 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
                     }
                     throw ELispSignals.wrongTypeArgument(predicate, actual);
                 }
-                throw ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
-            } catch (UnsupportedSpecializationException e) {
-                throw ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
+                return ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
             }
+            if (e instanceof UnsupportedSpecializationException) {
+                return ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
+            }
+            return e;
         }
     }
 
