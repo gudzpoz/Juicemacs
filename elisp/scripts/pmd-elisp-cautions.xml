@@ -35,6 +35,51 @@
         </properties>
     </rule>
 
+    <rule
+            name="ELispUseSignalForErrors"
+            language="java"
+            message="Use Emacs Lisp signal instead of throwing classic Java exceptions."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Emacs Lisp signal is more appropriate for presenting errors.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //ThrowStatement
+                [./ConstructorCall/ClassType[
+                @SimpleName="IllegalArgumentException"
+                or @SimpleName="IOException"
+                or @SimpleName="RuntimeException"
+                ]]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="ELispReduceCastExpressions"
+          language="java"
+          message="Instead of casting, check the type of the object and throw a meaningful error."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Emacs Lisp throws meaningful errors like "(wrong-type-argument expected-type actual-value)"
+            instead of yielding a non-determinant error message in ClassCastException.
+            Use utility functions to check and "cast" values instead of directly cast them.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //ClassDeclaration
+                [./ExtendsList/ClassType[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltIns")]]
+                //CastExpression
+                [not (./PrimitiveType[@Kind="int" or @Kind="long"])]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <!-- Some code styles -->
 
     <rule ref="category/java/codestyle.xml/AvoidDollarSigns" />

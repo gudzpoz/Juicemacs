@@ -82,8 +82,8 @@ public final class ELispLexical {
     public ELispLexical(VirtualFrame frame,
                         @Nullable VirtualFrame parentFrame,
                         @Nullable ELispLexical parent,
-                        List<ELispSymbol> args) {
-        this.args = args;
+                        List<ELispSymbol> requiredArgs) {
+        this.args = requiredArgs;
         this.variables = new ArrayList<>();
         this.variableIndices = new ArrayList<>();
         this.parent = parent;

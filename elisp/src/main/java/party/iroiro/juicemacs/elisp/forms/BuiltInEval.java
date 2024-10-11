@@ -18,12 +18,6 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.AUTOLOAD;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CDOCUMENTATION;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.INTERACTIVE;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LAMBDA;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
-
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
@@ -34,18 +28,13 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+
 /**
  * Built-in functions from {@code src/eval.c}
  */
 @SuppressWarnings({"DefaultAnnotationParam", "ForLoopReplaceableByForEach"})
 public class BuiltInEval extends ELispBuiltIns {
-
-    public static final ELispExpressionNode THROW_ERROR_ON_EVAL = new ELispExpressionNode() {
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            throw new IllegalArgumentException();
-        }
-    };
 
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -196,7 +185,7 @@ public class BuiltInEval extends ELispBuiltIns {
             List<ELispExpressionNode> conditionNodes = new ArrayList<>();
             List<ELispExpressionNode> cases = new ArrayList<>();
             for (Object clause : clauses) {
-                ELispCons cons = (ELispCons) clause;
+                ELispCons cons = asCons(clause);
                 conditionNodes.add(ELispInterpretedNode.create(cons.car()));
                 List<Object> body = new ArrayList<>();
                 ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(1);
@@ -347,7 +336,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 if (index == INVALID || ELispLexical.getMaterializedTop(frame) != top) {
                     ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                     ELispLexical.@Nullable LexicalReference lexical =
-                            lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, (ELispSymbol) symbol);
+                            lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, asSym(symbol));
                     int newIndex;
                     if (lexical == null) {
                         newIndex = DYNAMIC;
@@ -367,7 +356,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
                 }
                 if (index == DYNAMIC) {
-                    ((ELispSymbol) symbol).setValue(o);
+                    asSym(symbol).setValue(o);
                 } else {
                     ELispLexical.setVariable(currentFrame, index, o);
                 }
@@ -379,7 +368,12 @@ public class BuiltInEval extends ELispBuiltIns {
         public static ELispExpressionNode setq(Object[] args) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (args.length % 2 != 0) {
-                return THROW_ERROR_ON_EVAL;
+                return new ELispExpressionNode() {
+                    @Override
+                    public Object executeGeneric(VirtualFrame frame) {
+                        throw ELispSignals.wrongNumberOfArguments(SETQ, args.length);
+                    }
+                };
             }
             int half = args.length / 2;
             ELispExpressionNode[] assignments = new ELispExpressionNode[half];
@@ -557,7 +551,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static ELispSymbol defvaralias(ELispSymbol newAlias, ELispSymbol baseVariable, Object docstring) {
             if (newAlias.isConstant()) {
-                throw new IllegalArgumentException();
+                throw ELispSignals.error("Cannot make a constant an alias");
             }
             newAlias.aliasSymbol(baseVariable);
             return baseVariable;
@@ -665,7 +659,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    ELispSymbol sym = (ELispSymbol) symbol;
+                    ELispSymbol sym = asSym(symbol);
                     if (initValueMissing) {
                         ELispLexical.markDynamic(frame, sym);
                     } else {
@@ -729,10 +723,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    ELispSymbol sym = (ELispSymbol) symbol;
+                    ELispSymbol sym = asSym(symbol);
                     sym.setValue(init.executeGeneric(frame));
                     sym.setSpecial(true);
-                    sym.setConstant(true);
+                    // Emacs actually allows modifying defconst constants...
+                    // So we are not calling sym.setConstant(true) here.
                     return symbol;
                 }
             };
@@ -787,7 +782,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
-                ELispExpressionNode scopeNode = FLet.makeScope(varlist, true);
+                FLet.MakeScopeNode scopeNode = FLet.makeScope(varlist, true);
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode bodyNode = FProgn.progn(body);
@@ -799,7 +794,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    try (ELispLexical.Dynamic _ = (ELispLexical.Dynamic) scopeNode.executeGeneric(frame)) {
+                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
                         return bodyNode.executeGeneric(frame);
                     } finally {
                         if (lexicalFrame != null) {
@@ -824,27 +819,100 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "let", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FLet extends ELispBuiltInBaseNode {
-        public static ELispExpressionNode makeScope(Object varlist, boolean progressive) {
+        static class MakeScopeNode extends ELispExpressionNode {
+            private final boolean progressive;
+            private final Object[] symbols;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Children
+            ELispInterpretedNode[] valueNodes;
+
+            public MakeScopeNode(List<ELispInterpretedNode> values, boolean progressive, Object[] symbols) {
+                this.progressive = progressive;
+                this.symbols = symbols;
+                valueNodes = values.toArray(ELispInterpretedNode[]::new);
+                adoptChildren();
+            }
+
+            @ExplodeLoop
+            @Override
+            public ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame) {
+                ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
+                ArrayList<Object> specialValues = new ArrayList<>();
+
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                boolean dynamicBinding = lexicalFrame == null;
+                Object[] lexicalValues = (dynamicBinding && !progressive) ? new Object[0] : new Object[symbols.length];
+                int length = symbols.length;
+                try {
+                    for (int i = 0; i < length; i++) {
+                        ELispSymbol symbol = asSym(symbols[i]);
+                        Object value = valueNodes[i].executeGeneric(frame);
+                        if (dynamicBinding || ELispLexical.isDynamic(frame, symbol)) {
+                            specialBindings.add(symbol);
+                            specialValues.add(progressive ? symbol.swapThreadLocalValue(value) : value);
+                        } else {
+                            // TODO: Check if Truffle bail out on this.
+                            if (progressive) {
+                                lexicalFrame = lexicalFrame.fork(frame);
+                                lexicalFrame.addVariable(frame, symbol, value);
+                            } else {
+                                lexicalValues[i] = value;
+                            }
+                        }
+                    }
+                } catch (Throwable e) {
+                    if (progressive) {
+                        // Restore dynamic scopes.
+                        ELispLexical.pushDynamic(
+                                specialBindings.toArray(new ELispSymbol[0]),
+                                specialValues.toArray(new Object[0])
+                        ).close();
+                        // The caller is responsible for restoring lexical scopes.
+                    }
+                    throw e;
+                }
+                ELispLexical.Dynamic handle = null;
+                if (!specialBindings.isEmpty()) {
+                    ELispSymbol[] specialSymbols = specialBindings.toArray(new ELispSymbol[0]);
+                    Object[] values = specialValues.toArray(new Object[0]);
+                    handle = progressive ? new ELispLexical.Dynamic(
+                            specialSymbols,
+                            values
+                    ) : ELispLexical.pushDynamic(
+                            specialSymbols,
+                            values
+                    );
+                }
+                if (!progressive) {
+                    if (!dynamicBinding) {
+                        lexicalFrame = lexicalFrame.fork(frame);
+                        for (int i = 0; i < length; i++) {
+                            Object value = lexicalValues[i];
+                            if (value != null) {
+                                lexicalFrame.addVariable(frame, asSym(symbols[i]), value);
+                            }
+                        }
+                    }
+                }
+                return handle;
+            }
+        }
+        static MakeScopeNode makeScope(Object varlist, boolean progressive) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             List<Object> symbolList = new ArrayList<>();
             List<ELispInterpretedNode> values = new ArrayList<>();
             for (Object assignment : ELispCons.iterate(varlist)) {
-                ELispSymbol symbol;
+                Object symbol;
                 Object value;
                 if (assignment instanceof ELispSymbol sym) {
                     symbol = sym;
                     value = false;
                 } else {
-                    ELispCons cons = (ELispCons) assignment;
-                    symbol = (ELispSymbol) cons.car();
-                    ELispCons cdr = (ELispCons) cons.cdr();
+                    ELispCons cons = asCons(assignment);
+                    symbol = cons.car();
+                    ELispCons cdr = asCons(cons.cdr());
                     if (!ELispSymbol.isNil(cdr.cdr())) {
-                        return new ELispExpressionNode() {
-                            @Override
-                            public Object executeGeneric(VirtualFrame frame) {
-                                throw new IllegalArgumentException();
-                            }
-                        };
+                        throw ELispSignals.error("`let' bindings can have only one value-form");
                     }
                     value = cdr.car();
                 }
@@ -852,80 +920,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 values.add(ELispInterpretedNode.create(value));
             }
             Object[] symbols = symbolList.toArray();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                ELispInterpretedNode[] valueNodes = values.toArray(ELispInterpretedNode[]::new);
-
-                {
-                    adoptChildren();
-                }
-
-                @Nullable
-                @ExplodeLoop
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
-                    ArrayList<Object> specialValues = new ArrayList<>();
-
-                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    boolean dynamicBinding = lexicalFrame == null;
-                    Object[] lexicalValues = (dynamicBinding && !progressive) ? new Object[0] : new Object[symbols.length];
-                    int length = symbols.length;
-                    try {
-                        for (int i = 0; i < length; i++) {
-                            ELispSymbol symbol = (ELispSymbol) symbols[i];
-                            Object value = valueNodes[i].executeGeneric(frame);
-                            if (dynamicBinding || ELispLexical.isDynamic(frame, symbol)) {
-                                specialBindings.add(symbol);
-                                specialValues.add(progressive ? symbol.swapThreadLocalValue(value) : value);
-                            } else {
-                                // TODO: Check if Truffle bail out on this.
-                                if (progressive) {
-                                    lexicalFrame = lexicalFrame.fork(frame);
-                                    lexicalFrame.addVariable(frame, symbol, value);
-                                } else {
-                                    lexicalValues[i] = value;
-                                }
-                            }
-                        }
-                    } catch (Throwable e) {
-                        if (progressive) {
-                            // Restore dynamic scopes.
-                            ELispLexical.pushDynamic(
-                                    specialBindings.toArray(new ELispSymbol[0]),
-                                    specialValues.toArray(new Object[0])
-                            ).close();
-                            // The caller is responsible for restoring lexical scopes.
-                        }
-                        throw e;
-                    }
-                    ELispLexical.Dynamic handle = null;
-                    if (!specialBindings.isEmpty()) {
-                        ELispSymbol[] specialSymbols = specialBindings.toArray(new ELispSymbol[0]);
-                        Object[] values = specialValues.toArray(new Object[0]);
-                        handle = progressive ? new ELispLexical.Dynamic(
-                                specialSymbols,
-                                values
-                        ) : ELispLexical.pushDynamic(
-                                specialSymbols,
-                                values
-                        );
-                    }
-                    if (!progressive) {
-                        if (!dynamicBinding) {
-                            lexicalFrame = lexicalFrame.fork(frame);
-                            for (int i = 0; i < length; i++) {
-                                Object value = lexicalValues[i];
-                                if (value != null) {
-                                    lexicalFrame.addVariable(frame, (ELispSymbol) symbols[i], value);
-                                }
-                            }
-                        }
-                    }
-                    return handle;
-                }
-            };
+            return new MakeScopeNode(values, progressive, symbols);
         }
 
         @Specialization
@@ -934,7 +929,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
-                ELispExpressionNode scopeNode = FLet.makeScope(varlist, false);
+                MakeScopeNode scopeNode = FLet.makeScope(varlist, false);
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode bodyNode = FProgn.progn(body);
@@ -946,7 +941,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    try (ELispLexical.Dynamic _ = (ELispLexical.Dynamic) scopeNode.executeGeneric(frame)) {
+                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
                         return bodyNode.executeGeneric(frame);
                     } finally {
                         if (lexicalFrame != null) {
@@ -1195,13 +1190,11 @@ public class BuiltInEval extends ELispBuiltIns {
                     Object body = cons.cdr();
                     if (body instanceof ELispCons bodyCons) {
                         bodies[i] = bodyCons;
-                    } else if (ELispSymbol.isNil(body)) {
-                        bodies[i] = null;
                     } else {
-                        return THROW_ERROR_ON_EVAL;
+                        bodies[i] = null;
                     }
                 } else {
-                    return THROW_ERROR_ON_EVAL;
+                    throw ELispSignals.error("Invalid condition handler: " + handler);
                 }
             }
             int finalSuccessIndex = successIndex;
@@ -1215,7 +1208,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 private static boolean matches(ELispSymbol conditionName, Object tag) {
-                    Object property = ((ELispSymbol) tag).getProperty(ELispContext.ERROR_CONDITIONS);
+                    Object property = asSym(tag).getProperty(ELispContext.ERROR_CONDITIONS);
                     if (property instanceof ELispCons list) {
                         return list.contains(conditionName);
                     }
@@ -1249,7 +1242,7 @@ public class BuiltInEval extends ELispBuiltIns {
                                     }
                                 }
                             } else {
-                                if (matches((ELispSymbol) conditionName, e.getTag())) {
+                                if (matches(asSym(conditionName), e.getTag())) {
                                     shouldHandle = true;
                                 }
                             }
@@ -1270,7 +1263,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     CompilerDirectives.transferToInterpreter();
                     return FLet.let(
                             new ELispCons(ELispCons.listOf(var, ELispCons.listOf(ELispContext.QUOTE, data))),
-                            ((ELispCons) handler).toArray()
+                            asCons(handler).toArray()
                     ).executeGeneric(frame);
                 }
             };
@@ -1465,7 +1458,7 @@ public class BuiltInEval extends ELispBuiltIns {
             List<Object> objects = new ArrayList<>(Arrays.asList(arguments).subList(0, arguments.length - 1));
             Object last = arguments[arguments.length - 1];
             if (!ELispSymbol.isNil(last)) {
-                objects.addAll((ELispCons) last);
+                objects.addAll(asCons(last));
             }
             arguments = objects.toArray();
             return FFuncall.funcall(function, arguments);
@@ -1496,7 +1489,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static boolean runHooks(Object[] hooks) {
             for (Object hook : hooks) {
-                Object value = ((ELispSymbol) hook).getValue();
+                Object value = asSym(hook).getValue();
                 if (FFunctionp.functionp(value)) {
                     FFuncall.funcall(value, new Object[0]);
                 } else if (value instanceof ELispCons cons) {

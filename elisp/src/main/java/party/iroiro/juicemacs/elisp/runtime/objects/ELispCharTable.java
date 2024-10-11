@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -250,7 +251,7 @@ public class ELispCharTable extends AbstractELispVector {
 
     public static ELispCharTable create(List<Object> objects) {
         if (objects.size() < CHARTAB_STANDARD_SLOTS) {
-            throw new IllegalArgumentException();
+            throw ELispSignals.invalidReadSyntax("Invalid size char-table");
         }
         return new ELispCharTable(objects);
     }
@@ -283,7 +284,7 @@ public class ELispCharTable extends AbstractELispVector {
                 case 1 -> CHARTAB_SIZE_BITS_1;
                 case 2 -> CHARTAB_SIZE_BITS_2;
                 case 3 -> CHARTAB_SIZE_BITS_3;
-                default -> throw new IllegalArgumentException();
+                default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
 
@@ -296,7 +297,7 @@ public class ELispCharTable extends AbstractELispVector {
                     || depth <= 0 || 3 < depth
                     || (objects.size() < 2 + getSlots(depth))
             ) {
-                throw new IllegalArgumentException();
+                throw ELispSignals.invalidReadSyntax("Invalid size sub-char-table");
             }
             return new SubTable(objects);
         }

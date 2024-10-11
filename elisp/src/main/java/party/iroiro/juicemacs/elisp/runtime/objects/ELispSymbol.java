@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -106,8 +107,8 @@ public final class ELispSymbol implements ELispValue {
         this.special = false;
         if (keyword) {
             this.special = true;
-            // TODO: Figure out proper keyword logic
             this.value.setValue(this);
+            setConstant(true);
         }
     }
 
@@ -132,11 +133,6 @@ public final class ELispSymbol implements ELispValue {
         return value.getValue();
     }
 
-    public Object getValueOr(Object defaultValue) {
-        Object anyValue = getAnyValue();
-        return anyValue == UNBOUND_ ? defaultValue : anyValue;
-    }
-
     public Object getValue() {
         return checkUnbound(getAnyValue());
     }
@@ -151,8 +147,8 @@ public final class ELispSymbol implements ELispValue {
      * @return the previous thread-local value, which should be treated as non-transparent
      */
     public Object swapThreadLocalValue(Object value) {
-        if (trappedWrite == TrappedWrite.NO_WRITE) {
-            throw new UnsupportedOperationException();
+        if (isConstant()) {
+            throw ELispSignals.settingConstant(this);
         }
         if (threadLocalValue == null) {
             threadLocalValue = new ThreadLocalValue();
@@ -163,8 +159,8 @@ public final class ELispSymbol implements ELispValue {
     }
 
     public void setValue(Object value) {
-        if (trappedWrite == TrappedWrite.NO_WRITE) {
-            throw new UnsupportedOperationException();
+        if (isConstant()) {
+            throw ELispSignals.settingConstant(this);
         }
         if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(value)) {
             return;
@@ -193,10 +189,10 @@ public final class ELispSymbol implements ELispValue {
 
     @CompilerDirectives.TruffleBoundary
     public void setDefaultValue(Object value) {
-        if (trappedWrite == TrappedWrite.NO_WRITE) {
-            if (!BuiltInData.FKeywordp.keywordp(this)) {
+        if (isConstant()) {
+            if (!BuiltInData.FKeywordp.keywordp(this) || value != this) {
                 // "Allow setting keywords to their own value"?
-                throw new UnsupportedOperationException();
+                throw ELispSignals.settingConstant(this);
             }
         }
         if (this.value instanceof Value.BufferLocal local) {
@@ -257,9 +253,12 @@ public final class ELispSymbol implements ELispValue {
     }
 
     public void aliasSymbol(ELispSymbol symbol) {
+        if (isConstant()) {
+            throw ELispSignals.error("Cannot make a constant an alias: " + this);
+        }
         switch (this.value) {
             case Value.PlainValue _, Value.VarAlias _ -> this.value = new Value.VarAlias(symbol);
-            default -> throw new UnsupportedOperationException();
+            default -> throw ELispSignals.error("Don’t know how to make a buffer-local variable an alias: " + this);
         }
     }
 
@@ -282,7 +281,7 @@ public final class ELispSymbol implements ELispValue {
                 return o;
             }
             if (visited.contains(nextSymbol)) {
-                throw new IllegalArgumentException();
+                throw ELispSignals.cyclicVariableIndirection(symbol);
             }
             visited.add(nextSymbol);
             symbol = nextSymbol;
@@ -294,16 +293,16 @@ public final class ELispSymbol implements ELispValue {
     }
 
     public void setFunction(Object function) {
-        if (trappedWrite == TrappedWrite.NO_WRITE) {
-            throw new UnsupportedOperationException();
+        if (isConstant()) {
+            throw ELispSignals.settingConstant(this);
         }
         this.function = Objects.requireNonNull(function);
         if (function instanceof ELispInterpretedClosure closure) {
-            closure.setName(name);
+            closure.setName(this);
         }
         if (function instanceof ELispCons cons && cons.car() == ELispContext.MACRO
                 && cons.cdr() instanceof ELispInterpretedClosure closure) {
-            closure.setName(name);
+            closure.setName(this);
         }
     }
 
@@ -362,9 +361,9 @@ public final class ELispSymbol implements ELispValue {
         return (long) maybeNil;
     }
 
-    private static Object checkUnbound(Object value) {
+    private Object checkUnbound(Object value) {
         if (value == UNBOUND_) {
-            throw new IllegalArgumentException();
+            throw ELispSignals.voidVariable(this);
         }
         return value;
     }

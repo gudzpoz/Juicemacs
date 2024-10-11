@@ -11,15 +11,19 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.io.EOFException;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asCons;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asStr;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.READ_CHAR;
 
 /**
@@ -35,12 +39,12 @@ public class BuiltInLRead extends ELispBuiltIns {
             Object stream, Object start, Object end, boolean locateSymbols
     ) {
         // TODO: Handle stream instanceof ELispBuffer, ELispCons
-        ELispString s = (ELispString) stream;
+        ELispString s = asStr(stream);
         Source source = Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
         try {
             return ELispParser.read(source);
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw ELispSignals.error(e.getMessage());
         }
     }
 
@@ -50,8 +54,8 @@ public class BuiltInLRead extends ELispBuiltIns {
             return false;
         }
         String stem = file.toString();
-        for (Object path : (ELispCons) loadPath) {
-            Path directory = Path.of(((ELispString) path).toString());
+        for (Object path : asCons(loadPath)) {
+            Path directory = Path.of(asStr(path).toString());
             Path target = directory.resolve(stem + ".elc");
             if (!target.toFile().isFile()) {
                 target = directory.resolve(stem + ".el");
@@ -69,8 +73,12 @@ public class BuiltInLRead extends ELispBuiltIns {
                     );
                     expr.getCallTarget().call();
                     return true;
+                } catch (FileNotFoundException e) {
+                    throw ELispSignals.fileMissing(e, target);
+                } catch (EOFException e) {
+                    throw ELispSignals.endOfFile(target);
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    throw ELispSignals.error(e.getMessage());
                 }
             }
         }
@@ -483,7 +491,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 Object o = parser.nextLisp();
                 return new ELispCons(o, from + parser.getCodepointOffset());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw ELispSignals.endOfFile();
             }
         }
     }

@@ -9,7 +9,7 @@ import org.openjdk.jmh.annotations.*;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -120,5 +120,26 @@ nil
         benchmark.setup();
         assertEquals(9227465, benchmark.fib());
         benchmark.tearDown();
+    }
+
+    @Test
+    public void testAstCache() {
+        try (Context c = Context.newBuilder("elisp").build()) {
+            String source = "(equal (nconc '(1 2 3) nil '(4 5 6)) '(1 2 3 4 5 6))";
+            assertTrue(c.eval("elisp", source).asBoolean());
+            // Ast caching can be disastrous...
+            assertFalse(c.eval("elisp", source).asBoolean());
+        }
+    }
+
+    @Test
+    public void testEmacsDiff() {
+        try (Context c = Context.newBuilder("elisp").build()) {
+            c.eval("elisp", "(setq ast '(equal (nconc '(1 2 3) nil '(4 5 6)) '(1 2 3 4 5 6)) _ 0)");
+            // Emacs: true
+            assertTrue(c.eval("elisp", "(eval ast)").asBoolean());
+            // FIXME: Emacs: should yield false on the second call
+            assertTrue(c.eval("elisp", "(eval ast)").asBoolean());
+        }
     }
 }

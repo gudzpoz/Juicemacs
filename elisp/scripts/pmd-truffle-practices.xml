@@ -110,4 +110,26 @@
         </properties>
     </rule>
 
+    <rule
+            name="TruffleAvoidNodeExecutionInFinallyClause"
+            language="java"
+            message="Avoid node execution in finally clause."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Java finally blocks that execute nodes are not allowed for
+            compilation as code in finally blocks is duplicated
+            by the Java bytecode compiler. This can lead to
+            exponential code growth in worst cases.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //FinallyClause
+                //MethodCall[starts-with(@MethodName, "execute")]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
 </ruleset>

@@ -13,6 +13,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 
@@ -26,7 +27,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     @Nullable
     private volatile ELispFunctionObject function = null;
     @Nullable
-    private String name = null;
+    private Object name = null;
 
     public ELispInterpretedClosure(
             Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
@@ -52,11 +53,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         if (f == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispClosureCallNode node = new ELispClosureCallNode();
-            String name = this.name == null
-                    ? "lambda@" + Integer.toHexString(System.identityHashCode(this))
-                    : this.name;
+            ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
+                    node, node.requiredArgs, node.maxArgs
+            );
+            String name = this.name == null ? this.toString() : this.name.toString();
             FunctionRootNode root = new FunctionRootNode(
-                    ELispLanguage.get(node), name, node,
+                    ELispLanguage.get(node), name, wrapper,
                     ELispLexical.frameDescriptor(!ELispSymbol.isNil(getEnv()))
             );
             f = new ELispFunctionObject(root.getCallTarget());
@@ -66,11 +68,15 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         return f;
     }
 
-    public void setName(String name) {
+    public Object getName() {
+        return name == null ? this : name;
+    }
+
+    public void setName(Object name) {
         this.name = name;
         FunctionRootNode f = functionRootNode;
         if (f != null) {
-            f.setName(name);
+            f.setName(name.toString());
         }
     }
 
@@ -82,7 +88,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public record LexicalEnvironment(MaterializedFrame frame, ELispLexical lexicalFrame) {
     }
 
-    private class ELispClosureCallNode extends ELispExpressionNode {
+    public final class ELispClosureCallNode extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Children
         private ReadFunctionArgNode[] optionalRestArgs;
@@ -90,6 +96,8 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @SuppressWarnings("FieldMayBeFinal")
         @CompilerDirectives.CompilationFinal(dimensions = 1)
         private ELispSymbol[] requiredArgSymbols;
+        private final int requiredArgs;
+        private final int maxArgs;
         @SuppressWarnings("FieldMayBeFinal")
         @CompilerDirectives.CompilationFinal(dimensions = 1)
         private ELispSymbol[] optionalArgSymbols;
@@ -111,6 +119,8 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
             this.requiredArgSymbols = new ELispSymbol[0];
             if (ELispSymbol.isNil(getArgs())) {
+                requiredArgs = 0;
+                maxArgs = 0;
                 this.optionalRestArgs = new ReadFunctionArgNode[0];
                 this.optionalArgSymbols = new ELispSymbol[0];
                 return;
@@ -119,46 +129,48 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             List<ELispSymbol> symbols = new ArrayList<>();
             int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
             int argI = 0;
-            for (Iterator<Object> iterator = ((ELispCons) getArgs()).iterator(); iterator.hasNext(); ) {
-                Object arg = iterator.next();
+            int required = 0;
+            for (Object arg : (ELispCons) getArgs()) {
                 ELispSymbol symbol = (ELispSymbol) arg;
                 if (symbol == AND_OPTIONAL) {
                     if (state >= 2) {
-                        throw new IllegalArgumentException();
+                        throw ELispSignals.error("&optional found after &rest in anonymous lambda");
                     }
                     if (isLexical) {
                         this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
                         symbols.clear();
-                    } else {
-                        this.requiredArgSymbols = new ELispSymbol[0];
                     }
                     state = 1;
                 } else if (symbol == AND_REST) {
                     if (state >= 2) {
-                        throw new IllegalArgumentException();
+                        throw ELispSignals.error("Nothing after &rest in anonymous lambda");
                     }
                     if (isLexical) {
                         this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
                         symbols.clear();
-                    } else {
-                        this.requiredArgSymbols = new ELispSymbol[0];
                     }
                     state = 2;
                 } else {
                     symbols.add(symbol);
                     if (state == 2) {
                         argNodes.add(new ReadFunctionArgNode.ReadFunctionRestArgsAsConsNode(argI));
+                        argI = Integer.MIN_VALUE;
                         state = 3;
-                    } else if (state <= 1) {
-                        if (state == 1 || !isLexical) {
-                            argNodes.add(new ReadFunctionArgNode(argI, state == 0, !iterator.hasNext()));
+                    } else if (state == 1) {
+                        argNodes.add(new ReadFunctionArgNode(argI));
+                    } else if (state == 0) {
+                        required++;
+                        if (!isLexical) {
+                            argNodes.add(new ReadFunctionArgNode(argI));
                         }
                     } else {
-                        throw new IllegalArgumentException();
+                        throw ELispSignals.error("Multiple vars after &rest in anonymous lambda");
                     }
                     argI++;
                 }
             }
+            requiredArgs = required;
+            maxArgs = argI;
             if (state == 0) {
                 if (isLexical) {
                     this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
@@ -201,9 +213,6 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             if (isLexical && lexical != null) {
                 ELispLexical lexicalFrame =
                         new ELispLexical(frame, lexical.frame, lexical.lexicalFrame, List.of(requiredArgSymbols));
-                if (frame.getArguments().length < this.requiredArgSymbols.length) {
-                    throw new IllegalArgumentException();
-                }
                 for (int i = 0; i < optionalArgSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols
                     // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
@@ -234,6 +243,10 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         public SourceSection getSourceSection() {
             RootNode root = rootNode;
             return root == null ? null : getBody().getSourceSection(root.getSourceSection().getSource());
+        }
+
+        public ELispInterpretedClosure getClosure() {
+            return ELispInterpretedClosure.this;
         }
     }
 }

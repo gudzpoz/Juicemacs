@@ -83,7 +83,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public static Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
             ELispRegExp pattern = ELispRegExp.compile(regexp.toTruffleString(), !caseSensitive);
-            int from = isNil(start) ? 0 : (int) (long) (Long) start;
+            int from = isNil(start) ? 0 : asInt(start);
             ELispRegExp.MatcherResult match = pattern.matcher(string.toString(), null);// TODO: syntax table
             if (match.matcher().find(from)) {
                 if (!inhibitModify) {
@@ -486,7 +486,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                 throw new UnsupportedOperationException();
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            Iterator<Object> iterator = ((ELispCons) list).iterator();
+            Iterator<Object> iterator = asCons(list).iterator();
             while (iterator.hasNext()) {
                 Object o = iterator.next();
                 if (iterator.hasNext()) {

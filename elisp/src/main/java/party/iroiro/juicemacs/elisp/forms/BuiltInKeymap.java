@@ -28,7 +28,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
             System.out.println(symbol);
             return;
         }
-        long c = ((Number) next).longValue();
+        long c = ELispBuiltInBaseNode.asLong(next);
         if (keymap.cdr() instanceof ELispCons cdr && cdr.car() instanceof ELispCharTable charTable) {
             if (iterator.hasNext()) {
                 Object nested = charTable.getChar((int) c);

@@ -21,17 +21,20 @@ public abstract class ELispBuiltIns {
             for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
                 boolean varArgs = builtIn.varArgs();
                 List<ReadFunctionArgNode> args = new ArrayList<>(builtIn.maxArgs() + (varArgs ? 1 : 0));
-                for (int i = 0; i < builtIn.minArgs(); i++) {
-                    args.add(new ReadFunctionArgNode(i, true, !varArgs && i == builtIn.maxArgs() - 1));
-                }
-                for (int i = builtIn.minArgs(); i < builtIn.maxArgs(); i++) {
-                    args.add(new ReadFunctionArgNode(i, false, !varArgs && i == builtIn.maxArgs() - 1));
+                for (int i = 0; i < builtIn.maxArgs(); i++) {
+                    args.add(new ReadFunctionArgNode(i));
                 }
                 if (varArgs) {
                     args.add(new ReadFunctionArgNode.ReadFunctionRestArgsNode(builtIn.maxArgs()));
                 }
                 ELispBuiltInBaseNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));
-                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), function, null);
+                function.adoptChildren();
+                ReadFunctionArgNode.DslExceptionRemapNode wrapper = new ReadFunctionArgNode.DslExceptionRemapNode(
+                        function,
+                        builtIn.minArgs(),
+                        varArgs ? -1 : builtIn.maxArgs()
+                );
+                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), wrapper, null);
                 context.registerFunction(
                         builtIn.name(),
                         new ELispSubroutine(new ELispFunctionObject(rootNode.getCallTarget()), builtIn.rawArg())

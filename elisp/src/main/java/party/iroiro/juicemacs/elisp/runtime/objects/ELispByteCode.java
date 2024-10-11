@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+
 import java.util.List;
 
 public final class ELispByteCode extends AbstractELispVector {
@@ -19,16 +21,16 @@ public final class ELispByteCode extends AbstractELispVector {
                         && (constants instanceof ELispVector)
                         && (stack instanceof Long)
         )) {
-            throw new IllegalArgumentException();
+            throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
         }
         if (inner.size() >= 5) {
             Object doc = inner.get(4);
             if (!(doc instanceof ELispString)) {
-                throw new IllegalArgumentException();
+                throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
             }
         }
         if (inner.size() >= 7) {
-            throw new IllegalArgumentException();
+            throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
         }
         return new ELispByteCode(inner);
     }

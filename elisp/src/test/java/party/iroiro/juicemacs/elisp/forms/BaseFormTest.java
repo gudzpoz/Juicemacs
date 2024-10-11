@@ -32,7 +32,7 @@ public abstract class BaseFormTest {
                     if (WARM_UP && !expr.contains(";; no-warm-up-test")) {
                         System.out.println(i + ": " + expr);
                         for (int j = 0; j < WARM_UP_COUNT; j++) {
-                            context.eval("elisp", expr);
+                            context.eval("elisp", expr + " ;; run#" + (j + 1));
                         }
                     }
                 } catch (Exception e) {

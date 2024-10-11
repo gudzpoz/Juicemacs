@@ -8,6 +8,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
@@ -42,8 +43,18 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return switch (expression) {
             case ELispSymbol symbol -> new ELispSymbolDereferenceNode(symbol);
             case ELispCons cons -> ELispInterpretedNodeFactory.ELispConsExpressionNodeGen.create(cons);
-            default -> new ELispLiteralExpressionNode(expression);
+            default -> literal(expression);
         };
+    }
+
+    private static ELispInterpretedNode literal(Object expression) {
+        if (expression instanceof Number) {
+            return new ELispFinalLiteralNode(expression);
+        }
+        if (expression instanceof ELispSymbol) {
+            return new ELispFinalLiteralNode(expression);
+        }
+        return new ELispMutableLiteralNode(expression);
     }
 
     public static ELispInterpretedNode[] create(Object[] expressions) {
@@ -93,18 +104,33 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
     }
 
-    private final static class ELispLiteralExpressionNode extends ELispInterpretedNode {
+    private final static class ELispFinalLiteralNode extends ELispInterpretedNode {
         @SuppressWarnings("FieldMayBeFinal")
         @CompilerDirectives.CompilationFinal
         private Object literal;
 
-        public ELispLiteralExpressionNode(Object literal) {
+        public ELispFinalLiteralNode(Object literal) {
             this.literal = literal;
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
             return literal;
+        }
+    }
+
+    private final static class ELispMutableLiteralNode extends ELispInterpretedNode {
+        @SuppressWarnings("FieldMayBeFinal")
+        @CompilerDirectives.CompilationFinal
+        private Object literal;
+
+        public ELispMutableLiteralNode(Object literal) {
+            this.literal = literal;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return BuiltInAlloc.FPurecopy.purecopy(literal);
         }
     }
 
@@ -184,7 +210,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             ELispCons.BrentTortoiseHareIterator argIterator = cons.listIterator(1);
             while (argIterator.hasNext()) {
                 if (special) {
-                    childrenList.add(new ELispLiteralExpressionNode(argIterator.next()));
+                    childrenList.add(literal(argIterator.next()));
                 } else {
                     childrenList.add(ELispInterpretedNode.create(argIterator.next()));
                 }

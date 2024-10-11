@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.parser;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigInteger;
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +42,8 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.SubCharTableOpen;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Symbol;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Unquote;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.UnquoteSplicing;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -491,9 +495,9 @@ public class ELispLexerTest {
         assertEquals(42L, ((NumberVariant.FixNum) data.value()).value());
     }
 
-    private void assertError(String input, String expected) {
-        Throwable err = assertThrows(IOException.class, () -> lex(input), input);
-        assertEquals(expected, err.getMessage());
+    private void assertError(String input, @Nullable String expected) {
+        ELispSignals.ELispSignalException err = assertThrows(ELispSignals.ELispSignalException.class, () -> lex(input), input);
+        assertEquals(expected, ((ELispCons) err.getData()).car().toString());
     }
 
     @Test
@@ -505,7 +509,8 @@ public class ELispLexerTest {
                 "?\\",
                 "#s",
         }) {
-            assertError(input, "Unexpected EOF");
+            Throwable err = assertThrows(IOException.class, () -> lex(input), input);
+            assertInstanceOf(EOFException.class, err);
         }
     }
 

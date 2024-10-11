@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -25,8 +26,11 @@ public class BuiltInData extends ELispBuiltIns {
     }
 
     public static int compareTo(Object a, Object b) {
-        if (!FNumberp.numberp(a) || !FNumberp.numberp(b)) {
-            throw new IllegalArgumentException();
+        if (!FNumberp.numberp(a)) {
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
+        }
+        if (!FNumberp.numberp(b)) {
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, b);
         }
         if (a instanceof Double d) {
             return d.compareTo(ELispTypeSystemGen.asImplicitDouble(b));
@@ -35,12 +39,12 @@ public class BuiltInData extends ELispBuiltIns {
             return -d.compareTo(ELispTypeSystemGen.asImplicitDouble(a));
         }
         if (a instanceof ELispBigNum n) {
-            return n.value.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(b).value);
+            return n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(b));
         }
         if (b instanceof ELispBigNum n) {
-            return -n.value.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(a).value);
+            return -n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(a));
         }
-        return ((Long) a).compareTo((Long) b);
+        return Long.compare(ELispTypeSystemGen.asLong(a), ELispTypeSystemGen.asLong(b));
     }
 
     /**
@@ -125,7 +129,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case Long _ -> FIXNUM;
                 case Double _ -> FLOAT;
                 case ELispBigNum _ -> BIGNUM;
-                case Boolean b when (boolean) b -> BOOLEAN;
+                case Boolean b when ELispTypeSystemGen.asBoolean(b) -> BOOLEAN;
                 case ELispSymbol sym when sym == T -> BOOLEAN;
                 case Boolean _ -> NULL;
                 case ELispSymbol sym when sym == NIL -> NULL;
@@ -136,7 +140,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispCharTable _ -> CHAR_TABLE;
                 // TODO: Handle other pseudo-vectors
                 case ELispCons _ -> CONS;
-                default -> throw new IllegalArgumentException();
+                default -> throw new UnsupportedOperationException();
             };
         }
     }
@@ -559,7 +563,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static boolean natnump(Object object) {
             return (object instanceof Long l && l >= 0)
-                    || (object instanceof ELispBigNum n && n.value.signum() >= 0);
+                    || (object instanceof ELispBigNum n && n.signum() >= 0);
         }
     }
 
@@ -665,7 +669,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispCons cons -> cons.car();
                 case Boolean b when !b -> false;
                 case ELispSymbol sym when sym == NIL -> false;
-                default -> throw new IllegalArgumentException();
+                default -> throw ELispSignals.wrongTypeArgument(LISTP, list);
             };
         }
     }
@@ -705,7 +709,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispCons cons -> cons.cdr();
                 case Boolean b when !b -> false;
                 case ELispSymbol sym when sym == NIL -> false;
-                default -> throw new IllegalArgumentException();
+                default -> throw ELispSignals.wrongTypeArgument(LISTP, list);
             };
         }
     }
@@ -1493,6 +1497,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (= NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FEqlsign extends ELispBuiltInBaseNode {
@@ -1537,6 +1542,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&lt; NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "<", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLss extends ELispBuiltInBaseNode {
@@ -1581,6 +1587,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&gt; NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = ">", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FGtr extends ELispBuiltInBaseNode {
@@ -1625,9 +1632,32 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&lt;= NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "<=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLeq extends ELispBuiltInBaseNode {
+        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && numbersOrMarkers[0] instanceof Long
+                    && number instanceof Long;
+        }
+
+        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
+                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
+        }
+
+        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
+        public static boolean leqSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return (Long) numberOrMarker <= (Long) numbersOrMarkers[0];
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
+        public static boolean leqSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return ((Number) numberOrMarker).doubleValue() <= ((Number) numbersOrMarkers[0]).doubleValue();
+        }
+
         @Specialization
         public static boolean leq(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
@@ -1647,9 +1677,32 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&gt;= NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = ">=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FGeq extends ELispBuiltInBaseNode {
+        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && numbersOrMarkers[0] instanceof Long
+                    && number instanceof Long;
+        }
+
+        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
+            return numbersOrMarkers.length == 1
+                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
+                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
+        }
+
+        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
+        public static boolean geqSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return (Long) numberOrMarker >= (Long) numbersOrMarkers[0];
+        }
+
+        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
+        public static boolean geqSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
+            return ((Number) numberOrMarker).doubleValue() >= ((Number) numbersOrMarkers[0]).doubleValue();
+        }
+
         @Specialization
         public static boolean geq(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
@@ -1732,6 +1785,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (+ &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "+", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FPlus extends ELispBuiltInBaseNode {
@@ -1779,7 +1833,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case ELispBigNum _ -> {
                         return tryAddBigNum(sum, i, args);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return sum;
@@ -1790,12 +1844,12 @@ public class BuiltInData extends ELispBuiltIns {
             BigInteger sum = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
                 switch (args[i]) {
-                    case ELispBigNum n -> sum = sum.add(n.value);
+                    case ELispBigNum n -> sum = sum.add(n.asBigInteger());
                     case Long l -> sum = sum.add(BigInteger.valueOf(l));
                     case Double _ -> {
                         return tryAddDouble(sum.doubleValue(), i, args);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(sum);
@@ -1818,6 +1872,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (- &amp;optional NUMBER-OR-MARKER &amp;rest MORE-NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "-", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FMinus extends ELispBuiltInBaseNode {
@@ -1848,20 +1903,21 @@ public class BuiltInData extends ELispBuiltIns {
             if (args.length == 0) {
                 return 0L;
             }
+            Object arg0 = args[0];
             if (args.length == 1) {
-                return switch (args[0]) {
+                return switch (arg0) {
                     case Long l when l > Long.MIN_VALUE -> Math.negateExact(l);
                     case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).negate());
                     case Double d -> -d;
-                    case ELispBigNum n -> ELispBigNum.wrap(n.value.negate());
-                    default -> throw new IllegalArgumentException();
+                    case ELispBigNum n -> n.negate();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
                 };
             }
-            return switch (args[0]) {
+            return switch (arg0) {
                 case Long l -> tryMinusLong(l, 1, args);
-                case ELispBigNum n -> tryMinusBigNum(n.value, 1, args);
+                case ELispBigNum n -> tryMinusBigNum(n.asBigInteger(), 1, args);
                 case Double d -> tryMinusDouble(d, 1, args);
-                default -> throw new IllegalArgumentException();
+                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
             };
         }
 
@@ -1881,7 +1937,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case ELispBigNum _ -> {
                         return tryMinusBigNum(BigInteger.valueOf(result), i, args);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return result;
@@ -1891,12 +1947,12 @@ public class BuiltInData extends ELispBuiltIns {
         private static Object tryMinusBigNum(BigInteger result, int i, Object[] args) {
             for (; i < args.length; i++) {
                 switch (args[i]) {
-                    case ELispBigNum n -> result = result.subtract(n.value);
+                    case ELispBigNum n -> result = result.subtract(n.asBigInteger());
                     case Long l -> result = result.subtract(BigInteger.valueOf(l));
                     case Double _ -> {
                         return tryMinusDouble(result.doubleValue(), i, args);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(result);
@@ -1917,6 +1973,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (* &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "*", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FTimes extends ELispBuiltInBaseNode {
@@ -1964,7 +2021,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case ELispBigNum _ -> {
                         return tryTimesBigNum(product, i, args);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return product;
@@ -1975,12 +2032,12 @@ public class BuiltInData extends ELispBuiltIns {
             BigInteger product = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
                 switch (args[i]) {
-                    case ELispBigNum n -> product = product.multiply(n.value);
+                    case ELispBigNum n -> product = product.multiply(n.asBigInteger());
                     case Long l -> product = product.multiply(BigInteger.valueOf(l));
                     case Double _ -> {
                         return tryTimesDouble(product.doubleValue(), i, args);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(product);
@@ -2004,6 +2061,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (/ NUMBER &amp;rest DIVISORS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "/", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FQuo extends ELispBuiltInBaseNode {
@@ -2038,27 +2096,27 @@ public class BuiltInData extends ELispBuiltIns {
             }
             return switch (number) {
                 case Long l -> tryQuoLong(l, divisors);
-                case ELispBigNum n -> tryQuoBigNum(n.value, 0, divisors);
+                case ELispBigNum n -> tryQuoBigNum(n.asBigInteger(), 0, divisors);
                 case Double d -> tryQuoDouble(d, divisors);
-                default -> throw new IllegalArgumentException();
+                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
         }
 
-        public static Object tryQuoLong(long a, Object[] args) {
-            long quo = a;
-            for (int i = 0; i < args.length; i++) {
-                switch (args[i]) {
+        public static Object tryQuoLong(long number, Object[] divisors) {
+            long quo = number;
+            for (int i = 0; i < divisors.length; i++) {
+                switch (divisors[i]) {
                     case Long l -> {
                         try {
                             quo = Math.divideExact(quo, l);
                         } catch (ArithmeticException e) {
-                            return tryQuoBigNum(BigInteger.valueOf(quo), i, args);
+                            return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors);
                         }
                     }
                     case ELispBigNum _ -> {
-                        return tryQuoBigNum(BigInteger.valueOf(quo), i, args);
+                        return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors);
                     }
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, divisors[i]);
                 }
             }
             return quo;
@@ -2069,9 +2127,9 @@ public class BuiltInData extends ELispBuiltIns {
             BigInteger quo = prev;
             for (; i < args.length; i++) {
                 switch (args[i]) {
-                    case ELispBigNum n -> quo = quo.divide(n.value);
+                    case ELispBigNum n -> quo = quo.divide(n.asBigInteger());
                     case Long l -> quo = quo.divide(BigInteger.valueOf(l));
-                    case null, default -> throw new IllegalArgumentException();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(quo);
@@ -2100,10 +2158,9 @@ public class BuiltInData extends ELispBuiltIns {
             return x % y;
         }
 
-        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object rem(ELispBigNum x, ELispBigNum y) {
-            return ELispBigNum.wrap(x.value.remainder(y.value));
+            return x.remainder(y);
         }
     }
 
@@ -2122,10 +2179,9 @@ public class BuiltInData extends ELispBuiltIns {
             return Long.remainderUnsigned(x, y);
         }
 
-        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object mod(ELispBigNum x, ELispBigNum y) {
-            return ELispBigNum.wrap(x.value.mod(y.value));
+            return x.mod(y);
         }
     }
 
@@ -2180,6 +2236,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (logand &amp;rest INTS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logand", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLogand extends ELispBuiltInBaseNode {
@@ -2192,14 +2249,15 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization(replaces = "logandLong")
         public static Object logand(Object[] intsOrMarkers) {
             BigInteger result = BigInteger.ONE.negate();
             for (Object arg : intsOrMarkers) {
                 result = result.and(switch (arg) {
                     case Long l -> BigInteger.valueOf(l);
-                    case ELispBigNum n -> n.value;
-                    default -> throw new IllegalArgumentException();
+                    case ELispBigNum n -> n.asBigInteger();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
                 });
             }
             return ELispBigNum.wrap(result);
@@ -2213,6 +2271,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (logior &amp;rest INTS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logior", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLogior extends ELispBuiltInBaseNode {
@@ -2225,14 +2284,15 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization(replaces = "logorLong")
         public static Object logior(Object[] intsOrMarkers) {
             BigInteger result = BigInteger.ZERO;
             for (Object arg : intsOrMarkers) {
                 result = result.or(switch (arg) {
                     case Long l -> BigInteger.valueOf(l);
-                    case ELispBigNum n -> n.value;
-                    default -> throw new IllegalArgumentException();
+                    case ELispBigNum n -> n.asBigInteger();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
                 });
             }
             return ELispBigNum.wrap(result);
@@ -2246,6 +2306,7 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (logxor &amp;rest INTS-OR-MARKERS)
      * </pre>
      */
+    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logxor", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLogxor extends ELispBuiltInBaseNode {
@@ -2258,14 +2319,15 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization(replaces = "logxorLong")
         public static Object logxor(Object[] intsOrMarkers) {
             BigInteger result = BigInteger.ZERO;
             for (Object arg : intsOrMarkers) {
                 result = result.xor(switch (arg) {
                     case Long l -> BigInteger.valueOf(l);
-                    case ELispBigNum n -> n.value;
-                    default -> throw new IllegalArgumentException();
+                    case ELispBigNum n -> n.asBigInteger();
+                    case null, default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
                 });
             }
             return ELispBigNum.wrap(result);
@@ -2290,7 +2352,7 @@ public class BuiltInData extends ELispBuiltIns {
 
         @Specialization
         public static long logcount(ELispBigNum value) {
-            return value.value.bitCount();
+            return value.bitCount();
         }
     }
 
@@ -2344,13 +2406,12 @@ public class BuiltInData extends ELispBuiltIns {
             )) {
                 return value << count;
             }
-            BigInteger v = BigInteger.valueOf(value);
-            return ELispBigNum.wrap(v.shiftLeft((int) count));
+            return ELispBigNum.wrap(BigInteger.valueOf(value).shiftLeft((int) count));
         }
 
         @Specialization
         public static Object ash(ELispBigNum value, long count) {
-            return ELispBigNum.wrap(value.value.shiftLeft((int) count));
+            return value.shiftLeft(count);
         }
     }
 
@@ -2378,8 +2439,8 @@ public class BuiltInData extends ELispBuiltIns {
                 case Long l when l < Long.MAX_VALUE -> l + 1;
                 case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).add(BigInteger.ONE));
                 case Double d -> d + 1;
-                case ELispBigNum n -> ELispBigNum.wrap(n.value.add(BigInteger.ONE));
-                default -> throw new IllegalArgumentException();
+                case ELispBigNum n -> n.add1();
+                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
         }
     }
@@ -2408,8 +2469,8 @@ public class BuiltInData extends ELispBuiltIns {
                 case Long l when l > Long.MIN_VALUE -> l - 1;
                 case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).subtract(BigInteger.ONE));
                 case Double d -> d - 1;
-                case ELispBigNum n -> ELispBigNum.wrap(n.value.subtract(BigInteger.ONE));
-                default -> throw new IllegalArgumentException();
+                case ELispBigNum n -> n.sub1();
+                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
         }
     }
@@ -2429,7 +2490,7 @@ public class BuiltInData extends ELispBuiltIns {
 
         @Specialization
         public static Object lognot(ELispBigNum number) {
-            return ELispBigNum.wrap(number.value.not());
+            return number.not();
         }
     }
 

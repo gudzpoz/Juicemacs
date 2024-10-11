@@ -13,9 +13,11 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
@@ -77,9 +79,9 @@ public class ELispParser {
     private Object nextObject() throws IOException {
         Token token = read();
         return switch (token) {
-            case EOF() -> throw new IOException("Unexpected EOF");
+            case EOF() -> throw new EOFException();
             case SkipToEnd() -> false; // TODO: Skip to EOF
-            case SetLexicalBindingMode _ -> throw new IOException("Unexpected lexical binding mode");
+            case SetLexicalBindingMode _ -> throw ELispSignals.invalidReadSyntax("Unexpected lexical binding mode");
             case Num(NumberVariant.FixNum(long value)) -> value;
             case Num(NumberVariant.BigNum(BigInteger value)) -> ELispBigNum.wrap(value);
             case Num(NumberVariant.Float(double value)) -> value;
@@ -101,16 +103,16 @@ public class ELispParser {
                         .execute(value, TruffleString.Encoding.UTF_16);
                 for (int i = 0; i < length; i += 8) {
                     if (!iterator.hasNext()) {
-                        throw new IOException("Unmatched bit vector length");
+                        throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
                     }
                     int codepoint = iterator.nextUncached();
                     if (codepoint > 0xFF) {
-                        throw new IOException("Expected raw byte string");
+                        throw ELispSignals.invalidReadSyntax("Expected raw byte string");
                     }
                     bytes[i / 8] = (byte) codepoint;
                 }
                 if (iterator.hasNext()) {
-                    throw new IOException("Unmatched bit vector length");
+                    throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
                 }
                 yield new ELispBoolVector(BitSet.valueOf(bytes), (int) length);
             }
@@ -135,7 +137,7 @@ public class ELispParser {
                         read();
                         object.setCdr(nextObject());
                         if (!(read() instanceof ParenClose)) {
-                            throw new IOException("Expected ')'");
+                            throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
                         object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
@@ -173,7 +175,7 @@ public class ELispParser {
                 Object def = nextObject();
                 if (def == placeholder) {
                     // Emacs: "Catch silly games like #1=#1#"
-                    throw new IOException("Unexpected self reference");
+                    throw ELispSignals.invalidReadSyntax("Unexpected self reference");
                 }
                 if (def instanceof ELispCons cons) {
                     readObjectsCompleted.add(placeholder);
@@ -191,7 +193,7 @@ public class ELispParser {
                     yield def;
                 }
             }
-            case ParenClose(), SquareClose() -> throw new IOException("Expected start of expression");
+            case ParenClose(), SquareClose() -> throw ELispSignals.invalidReadSyntax("Expected start of expression");
         };
     }
 

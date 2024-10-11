@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -109,7 +110,7 @@ public final class ELispHashtable implements ELispValue {
             while (iterator.hasNext()) {
                 Object key = iterator.next();
                 if (!iterator.hasNext()) {
-                    throw new IllegalArgumentException();
+                    throw ELispSignals.error("Hash table data is not a list of even length");
                 }
                 Object value = iterator.next();
                 table.put(key, value);

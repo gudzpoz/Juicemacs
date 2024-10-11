@@ -11,6 +11,12 @@ public interface ELispValue {
         if (o instanceof ELispValue value) {
             return value.display();
         }
+        if (o == Boolean.TRUE) {
+            return "t";
+        }
+        if (o == Boolean.FALSE) {
+            return "nil";
+        }
         return o.toString();
     }
 }

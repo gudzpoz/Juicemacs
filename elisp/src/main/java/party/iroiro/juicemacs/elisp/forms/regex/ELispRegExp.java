@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms.regex;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSyntaxTable;
 
@@ -77,7 +78,7 @@ public abstract class ELispRegExp {
     public static ELispRegExp compile(AbstractTruffleString exp, boolean ignoreCase) {
         try {
             return compileWithSyntax(exp, ignoreCase, null);
-        } catch (IllegalArgumentException e) {
+        } catch (UnsupportedOperationException e) {
             return new OnDemandRegExp(exp, ignoreCase);
         }
     }
@@ -118,7 +119,7 @@ public abstract class ELispRegExp {
                         case 'W' -> builder.append("\\W");
                         case 's', 'S', 'c', 'C' -> {
                             // TODO: syntax tables, category tables, etc.
-                            throw new IllegalArgumentException();
+                            throw new UnsupportedOperationException();
                         }
                         // matches the empty string, but only at the beginning of the buffer or string being matched against.
                         case '`' -> builder.append("\\A");
@@ -144,7 +145,7 @@ public abstract class ELispRegExp {
                                 case '<' -> builder.append("(?=[^\\s\"';#()\\[\\]`,])");
                                 // matches the empty string, but only at the end of a symbol.
                                 case '>' -> builder.append("(?<=[^\\s\"';#()\\[\\]`,])");
-                                default -> throw new IllegalArgumentException();
+                                default -> throw ELispSignals.invalidRegexp("Invalid regular expression");
                             }
                         }
                         default -> {
@@ -279,7 +280,7 @@ public abstract class ELispRegExp {
                             // Lisp: This matches the hexadecimal digits: ‘0’ through ‘9’, ‘a’ through ‘f’ and ‘A’ through ‘F’.
                             // Java: A hexadecimal digit: [\p{gc=Nd}\p{IsHex_Digit}]
                             case "xdigit" -> "\\p{XDigit}";
-                            default -> throw new IllegalArgumentException();
+                            default -> throw ELispSignals.invalidRegexp("Invalid character class name");
                         });
                     }
                 }

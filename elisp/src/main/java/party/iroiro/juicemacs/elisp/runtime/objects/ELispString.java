@@ -2,8 +2,10 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.lodborg.intervaltree.IntegerInterval;
 import com.lodborg.intervaltree.IntervalTree;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.Iterator;
 import java.util.List;
@@ -34,6 +36,7 @@ public final class ELispString implements ELispValue {
         return value;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public ELispString reverse() {
         TruffleStringIterator i = value.createBackwardCodePointIteratorUncached(ENCODING);
         Builder builder = new Builder();
@@ -145,7 +148,7 @@ public final class ELispString implements ELispValue {
 
     public void syncFromPlist(List<Object> list) {
         if ((list.size() - 1) % 3 != 0) {
-            throw new IllegalArgumentException();
+            throw ELispSignals.error("Odd length text property list");
         }
         for (int i = 1; i < list.size(); i += 3) {
             long start = (long) list.get(i);
@@ -154,7 +157,7 @@ public final class ELispString implements ELispValue {
             if (ELispSymbol.isNil(props) || (props instanceof ELispCons cons && cons.size() % 2 == 0)) {
                 intervals.add(new Properties((int) start, (int) end, props));
             } else {
-                throw new IllegalArgumentException();
+                throw ELispSignals.argsOutOfRange(start, end);
             }
         }
     }

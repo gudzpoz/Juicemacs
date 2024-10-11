@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -10,42 +9,79 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 
-/**
- * @see <a href="https://github.com/graalvm/simplelanguage/blob/master/language/src/main/java/com/oracle/truffle/sl/runtime/SLBigInteger.java">
- * SLBigInteger.java</a>
- */
+/// @see <a href="https://github.com/graalvm/simplelanguage/blob/master/language/src/main/java/com/oracle/truffle/sl/runtime/SLBigInteger.java">
+/// SLBigInteger.java</a>
 @ExportLibrary(InteropLibrary.class)
-public final class ELispBigNum implements TruffleObject, Comparable<ELispBigNum>, ELispValue {
-    public final BigInteger value;
+public final class ELispBigNum extends Number implements TruffleObject, Comparable<ELispBigNum>, ELispValue {
+    private final BigInteger value;
 
     private ELispBigNum(BigInteger value) {
         this.value = value;
     }
 
-    /**
-     * Wrap a BigInteger into an ELispBigNum or a long if it fits.
-     *
-     * @param value the BigInteger to wrap
-     * @return the wrapped BigInteger or a long if it fits
-     */
+    /// Wrap a BigInteger into an ELispBigNum or a long if it fits.
+    ///
+    /// @param value the BigInteger to wrap
+    /// @return the wrapped BigInteger or a long if it fits
     public static Object wrap(BigInteger value) {
         if (value.bitLength() < 64) {
-            return value.longValueExact();
+            return value.longValue();
         }
         return new ELispBigNum(value);
     }
 
-    /**
-     * Wrap a BigDecimal into an ELispBigNum (use {@link #wrap(BigInteger)} if possible)
-     *
-     * @param value the BigDecimal to wrap
-     * @return the wrapped BigDecimal
-     */
-    public static ELispBigNum forceWrap(BigInteger value) {
-        return new ELispBigNum(value);
+    /// Wrap a BigDecimal into an ELispBigNum (use [#wrap(BigInteger)] if possible)
+    ///
+    /// This is only intended to be used in [party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem].
+    ///
+    /// @param value the long value
+    /// @return the wrapped BigDecimal
+    public static ELispBigNum forceWrap(long value) {
+        return new ELispBigNum(BigInteger.valueOf(value));
+    }
+
+    //#region Lisp API
+    @TruffleBoundary
+    public Object add1() {
+        return wrap(value.add(BigInteger.ONE));
+    }
+    @TruffleBoundary
+    public Object sub1() {
+        return wrap(value.subtract(BigInteger.ONE));
+    }
+    //#endregion Lisp API
+
+    //#region BigInteger
+    public Object not() {
+        return wrap(value.not());
+    }
+
+    public Object negate() {
+        return wrap(value.negate());
+    }
+
+    @TruffleBoundary
+    public Object remainder(ELispBigNum other) {
+        return wrap(value.remainder(other.value));
+    }
+
+    @TruffleBoundary
+    public Object mod(ELispBigNum other) {
+        return wrap(value.mod(other.value));
+    }
+
+    public Object shiftLeft(long count) {
+        return wrap(value.shiftLeft((int) count));
+    }
+
+    public int bitCount() {
+        return value.bitCount();
+    }
+
+    public int signum() {
+        return value.signum();
     }
 
     @Override
@@ -59,68 +95,56 @@ public final class ELispBigNum implements TruffleObject, Comparable<ELispBigNum>
     public String toString() {
         return value.toString();
     }
+    //#endregion BigInteger
 
+    @Override
+    public boolean lispEquals(Object other) {
+        return (other instanceof Long l && value.equals(BigInteger.valueOf(l)))
+                || ((other instanceof ELispBigNum n) && value.equals(n.value));
+    }
+
+    @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+    @Override
+    public boolean equals(Object obj) {
+        // TODO: Document incompatibilities
+        // In Emacs, two bignums of identical values are not necessarily equal (by #'eq).
+        // We choose to differ from Emacs here.
+        return lispEquals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
+    }
+
+    //#region extends Number
+    @Override
+    public int intValue() {
+        return value.intValue();
+    }
+
+    @Override
+    public long longValue() {
+        return value.longValue();
+    }
+
+    @TruffleBoundary
+    @Override
+    public float floatValue() {
+        return value.floatValue();
+    }
+
+    @TruffleBoundary
+    @Override
+    public double doubleValue() {
+        return value.doubleValue();
+    }
+    //#endregion extends Number
+
+    //#region InteropLibrary exports
     @ExportMessage
     public boolean isNumber() {
         return true;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public boolean fitsInByte() {
-        return value.bitLength() < 8;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public boolean fitsInShort() {
-        return value.bitLength() < 16;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public boolean fitsInInt() {
-        return value.bitLength() < 32;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public boolean fitsInLong() {
-        return value.bitLength() < 64;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public boolean fitsInFloat() {
-        if (value.bitLength() <= 24) {
-            return true;
-        }
-        float floatValue = value.floatValue();
-        if (!Float.isFinite(floatValue)) {
-            return false;
-        }
-        try {
-            return new BigDecimal(floatValue).toBigIntegerExact().equals(value);
-        } catch (ArithmeticException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public boolean fitsInDouble() {
-        if (value.bitLength() <= 53) {
-            return true;
-        }
-        double doubleValue = value.doubleValue();
-        if (!Double.isFinite(doubleValue)) {
-            return false;
-        }
-        try {
-            return new BigDecimal(doubleValue).toBigIntegerExact().equals(value);
-        } catch (ArithmeticException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
     }
 
     @ExportMessage
@@ -134,60 +158,6 @@ public final class ELispBigNum implements TruffleObject, Comparable<ELispBigNum>
     }
 
     @ExportMessage
-    @TruffleBoundary
-    public double asDouble() throws UnsupportedMessageException {
-        if (fitsInDouble()) {
-            return value.doubleValue();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public float asFloat() throws UnsupportedMessageException {
-        if (fitsInFloat()) {
-            return value.floatValue();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public long asLong() throws UnsupportedMessageException {
-        if (fitsInLong()) {
-            return value.longValue();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public int asInt() throws UnsupportedMessageException {
-        if (fitsInInt()) {
-            return value.intValue();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public short asShort() throws UnsupportedMessageException {
-        if (fitsInShort()) {
-            return value.shortValue();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    public byte asByte() throws UnsupportedMessageException {
-        if (fitsInByte()) {
-            return value.byteValue();
-        }
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
     public boolean hasLanguage() {
         return true;
     }
@@ -198,32 +168,22 @@ public final class ELispBigNum implements TruffleObject, Comparable<ELispBigNum>
     }
 
     @ExportMessage
-    public boolean hasMetaObject() {
-        return false;
-    }
-
-    @ExportMessage
-    public Object getMetaObject() {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return value.toString();
+        return toString();
     }
 
-    @Override
-    public boolean lispEquals(Object other) {
-        return (other instanceof Long l && value.equals(BigInteger.valueOf(l)))
-                || ((other instanceof ELispBigNum n) && value.equals(n.value));
-    }
+    @ExportMessage boolean fitsInByte() { return false; }
+    @ExportMessage boolean fitsInShort() { return false; }
+    @ExportMessage boolean fitsInInt() { return false; }
+    @ExportMessage boolean fitsInLong() { return false; }
+    @ExportMessage boolean fitsInFloat() { return false; }
+    @ExportMessage boolean fitsInDouble() { return false; }
+    @ExportMessage byte asByte() throws UnsupportedMessageException { throw UnsupportedMessageException.create(); }
+    @ExportMessage short asShort() throws UnsupportedMessageException { throw UnsupportedMessageException.create(); }
+    @ExportMessage int asInt() throws UnsupportedMessageException { throw UnsupportedMessageException.create(); }
+    @ExportMessage long asLong() throws UnsupportedMessageException { throw UnsupportedMessageException.create(); }
+    @ExportMessage float asFloat() throws UnsupportedMessageException { throw UnsupportedMessageException.create(); }
+    @ExportMessage double asDouble() throws UnsupportedMessageException { throw UnsupportedMessageException.create(); }
+    //#endregion InteropLibrary exports
 
-    @Override
-    public boolean equals(Object obj) {
-        // TODO: Document incompatibilities
-        // In Emacs, two bignums of identical values are not necessarily equal (by #'eq).
-        // We choose to differ from Emacs here.
-        return obj instanceof ELispBigNum n && value.equals(n.value);
-    }
 }

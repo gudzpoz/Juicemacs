@@ -5,10 +5,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SEQUENCEP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SUBFEATURES;
 
 import com.oracle.truffle.api.strings.TruffleString;
@@ -16,6 +18,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 /**
@@ -36,7 +39,7 @@ public class BuiltInFns extends ELispBuiltIns {
             case ELispVector vector -> vector.iterator();
             case ELispString string -> string.iterator();
             case ELispBoolVector boolVector -> boolVector.iterator();
-            default -> throw new IllegalArgumentException();
+            default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         };
     }
 
@@ -97,7 +100,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(sequence)) {
                 return 0;
             }
-            throw new IllegalArgumentException();
+            throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         }
 
         @Specialization
@@ -460,7 +463,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 } else {
                     Iterator<?> i = iterateSequence(arg);
                     while (i.hasNext()) {
-                        builder.appendCodePointUncached((int) (long) i.next());
+                        builder.appendCodePointUncached(asInt(i.next()));
                     }
                 }
             }
@@ -503,7 +506,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(arg)) {
                 return false;
             }
-            throw new IllegalArgumentException();
+            throw ELispSignals.wrongTypeArgument(SEQUENCEP, arg);
         }
 
         @Specialization
@@ -706,7 +709,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(from)) {
                 start = 0;
             } else {
-                start = (int) (long) from;
+                start = asInt(from);
                 if (start < 0) {
                     start = length + start;
                 }
@@ -715,7 +718,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(to)) {
                 end = length;
             } else {
-                end = (int) (long) to;
+                end = asInt(to);
                 if (end < 0) {
                     end = length + end;
                 }
@@ -806,7 +809,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             try {
-                return ((ELispCons) list).get((int) n);
+                return asCons(list).get((int) n);
             } catch (IndexOutOfBoundsException ignored) {
                 return false;
             }
@@ -827,7 +830,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(sequence)) {
                 return false;
             }
-            throw new IllegalArgumentException();
+            throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         }
         @Specialization
         public static Object eltCharTable(ELispCharTable sequence, long n) {
@@ -861,7 +864,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(list)) {
                 return false;
             }
-            ELispCons.BrentTortoiseHareIterator iterator = ((ELispCons) list).listIterator(0);
+            ELispCons.BrentTortoiseHareIterator iterator = asCons(list).listIterator(0);
             while (iterator.hasNext()) {
                 if (FEqual.equal(iterator.currentCons().car(), elt)) {
                     return iterator.currentCons();
@@ -886,7 +889,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(list)) {
                 return false;
             }
-            ELispCons.BrentTortoiseHareIterator iterator = ((ELispCons) list).listIterator(0);
+            ELispCons.BrentTortoiseHareIterator iterator = asCons(list).listIterator(0);
             while (iterator.hasNext()) {
                 if (BuiltInData.FEq.eq(iterator.currentCons().car(), elt)) {
                     return iterator.currentCons();
@@ -927,7 +930,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(alist)) {
                 return false;
             }
-            for (Object e : (ELispCons) alist) {
+            for (Object e : asCons(alist)) {
                 if (e instanceof ELispCons cons && BuiltInData.FEq.eq(key, cons.car())) {
                     return cons;
                 }
@@ -1005,13 +1008,13 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(list)) {
                 return false;
             }
-            ELispCons cons = (ELispCons) list;
+            ELispCons cons = asCons(list);
             while (BuiltInData.FEq.eq(cons.car(), elt)) {
                 Object cdr = cons.cdr();
                 if (ELispSymbol.isNil(cdr)) {
                     return false;
                 }
-                cons = (ELispCons) cdr;
+                cons = asCons(cdr);
             }
             ELispCons.BrentTortoiseHareIterator i = cons.listIterator(1);
             ELispCons prev = cons;
@@ -1069,7 +1072,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(seq)) {
                 return false;
             }
-            throw new IllegalArgumentException();
+            throw ELispSignals.wrongTypeArgument(SEQUENCEP, seq);
         }
 
         @Specialization
@@ -1093,7 +1096,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(seq.cdr())) {
                 return head;
             }
-            for (Object e : (ELispCons) seq.cdr()) {
+            for (Object e : asCons(seq.cdr())) {
                 ELispCons cons = new ELispCons(e);
                 cons.setCdr(head);
                 head = cons;
@@ -1173,7 +1176,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FPlistGet extends ELispBuiltInBaseNode {
         @Specialization
         public static Object plistGet(ELispCons plist, Object prop, Object predicate) {
-            ELispSymbol eq = ELispSymbol.isNil(predicate) ? ELispContext.EQ : (ELispSymbol) predicate;
+            ELispSymbol eq = ELispSymbol.isNil(predicate) ? ELispContext.EQ : asSym(predicate);
             Iterator<Object> iterator = plist.iterator();
             try {
                 Object[] args = new Object[2];
@@ -1289,8 +1292,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return BuiltInData.FEq.eq(obj1, obj2)
                     || (obj1 instanceof Double da && obj2 instanceof Double db &&
                     Double.doubleToRawLongBits(da) == Double.doubleToRawLongBits(db))
-                    || (obj1 instanceof ELispBigNum ia && obj2 instanceof ELispBigNum ib &&
-                    ia.value.equals(ib.value));
+                    || (obj1 instanceof ELispBigNum ia && obj2 instanceof ELispBigNum ib && ia.lispEquals(ib));
         }
     }
 
@@ -1312,8 +1314,8 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean equal(Object o1, Object o2) {
             return switch (o1) {
                 case Long l when o2 instanceof Long n -> l.equals(n);
-                case Long l when o2 instanceof Double d -> d.equals((double) l);
-                case Double d when o2 instanceof Long n -> d.equals((double) n);
+                case Long l when o2 instanceof Double d -> d.equals(l.doubleValue());
+                case Double d when o2 instanceof Long n -> d.equals(n.doubleValue());
                 case Double d when o2 instanceof Double n -> d.equals(n);
                 case ELispValue v -> v.lispEquals(o2);
                 default -> BuiltInData.FEq.eq(o1, o2);
@@ -1409,7 +1411,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 if (prev == null) {
                     result = arg;
                 } else {
-                    ((ELispCons) prev).tail().setCdr(arg);
+                    asCons(prev).tail().setCdr(arg);
                 }
                 prev = arg;
             }
@@ -1577,7 +1579,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (ELispSymbol.isNil(subfeature)) {
                 return true;
             }
-            ELispSymbol feat = (ELispSymbol) BuiltInData.FCar.car(isMem);
+            ELispSymbol feat = asSym(BuiltInData.FCar.car(isMem));
             return !ELispSymbol.isNil(FMemq.memq(subfeature, feat.getProperty(SUBFEATURES)));
         }
     }

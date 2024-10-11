@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -34,9 +35,9 @@ public class BuiltInCharTab extends ELispBuiltIns {
         @Specialization
         public static ELispCharTable makeCharTable(ELispSymbol purpose, Object init) {
             Object slotProp = BuiltInFns.FGet.get(purpose, CHAR_TABLE_EXTRA_SLOTS);
-            int extraSlots = ELispSymbol.isNil(slotProp) ? 0 : (int) (long) slotProp;
+            int extraSlots = ELispSymbol.isNil(slotProp) ? 0 : asInt(slotProp);
             if (extraSlots < 0 || 10 < extraSlots) {
-                throw new IllegalArgumentException();
+                throw ELispSignals.argsOutOfRange(extraSlots);
             }
             ELispCharTable table = new ELispCharTable(init, extraSlots);
             table.setParent(false);
@@ -157,11 +158,11 @@ public class BuiltInCharTab extends ELispBuiltIns {
             } else if (ELispSymbol.isNil(range)) {
                 charTable.setDefault(value);
             } else if (range instanceof Long l) {
-                charTable.setChar((int) (long) l, value);
+                charTable.setChar(asInt(l), value);
             } else if (range instanceof ELispCons cons) {
-                charTable.setRange((int) (long) cons.car(), (int) (long) cons.cdr(), value);
+                charTable.setRange(asInt(cons.car()), asInt(cons.cdr()), value);
             } else {
-                throw new IllegalArgumentException();
+                throw ELispSignals.error("Invalid RANGE argument");
             }
             return value;
         }

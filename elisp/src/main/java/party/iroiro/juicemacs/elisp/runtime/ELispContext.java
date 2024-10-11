@@ -74,6 +74,9 @@ public final class ELispContext {
         initSymbols(timefnsSymbols());
         initSymbols(xfacesSymbols());
 
+        T.setConstant(true);
+        NIL.setConstant(true);
+
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
         initBuiltIns(language, new BuiltInCharSet());

@@ -331,7 +331,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentTime extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispCons currentTime() {
+        public static Object currentTime() {
             if (ELispSymbol.isNil(ELispContext.CURRENT_TIME_LIST.getValue())) {
                 return new ELispCons(System.currentTimeMillis(), 1000L);
             }
@@ -341,7 +341,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             builder.add(seconds >> 16).add(seconds & 0xffff);
             long nano = now.getNano();
             builder.add(nano / 1000).add(nano % 1000 * 1000);
-            return (ELispCons) builder.build();
+            return builder.build();
         }
     }
 

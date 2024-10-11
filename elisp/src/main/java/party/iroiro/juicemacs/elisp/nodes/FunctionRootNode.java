@@ -12,11 +12,11 @@ public final class FunctionRootNode extends RootNode {
     private String name;
     @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private ELispExpressionNode functionBody;
+    private ReadFunctionArgNode.ArgCountVerificationNode functionBody;
 
     public FunctionRootNode(ELispLanguage language,
                             String name,
-                            ELispExpressionNode functionBody,
+                            ReadFunctionArgNode.ArgCountVerificationNode functionBody,
                             @Nullable FrameDescriptor descriptor) {
         super(language, descriptor);
         this.name = name;

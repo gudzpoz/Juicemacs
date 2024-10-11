@@ -5,6 +5,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 @GenerateInline
 @GenerateCached(value = false)
@@ -31,7 +32,7 @@ public abstract class FunctionDispatchNode extends Node {
 
     @Fallback
     protected static Object targetIsNotAFunction(Object nonFunction, Object[] arguments) {
-        throw new IllegalArgumentException("Not a function");
+        throw ELispSignals.invalidFunction("Not a function");
     }
 
 }

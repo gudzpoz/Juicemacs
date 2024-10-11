@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.parser;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigInteger;
@@ -11,82 +12,85 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
-/**
- * A ELisp lexer
- *
- * <p>
- * This lexer is more or less based on the ELisp manual,
- * and borrows heavily from the following two implementation:
- * </p>
- * <ul>
- * <li><a href="https://git.savannah.gnu.org/cgit/guile.git/tree/module/language/elisp/lexer.scm">
- * The ELisp lexer in Guile</a></li>
- * <li><a href="https://github.com/talyz/fromElisp">talyz/fromElisp in Nix</a></li>
- * <li><a href="http://git.savannah.gnu.org/cgit/emacs.git/tree/src/lread.c">
- * The ELisp lexer & parser in Emacs</a></li>
- * </ul>
- *
- * <p>
- * This lexer tries to support all ELisp grammar as is listed below.
- * If you are to understand how many features are actually
- * supported by canonical ELisp (as is in Emacs), I would recommend reading the {@code read0}
- * function in the Emacs source code.
- * </p>
- *
- * <h2>Emacs ELisp Features</h2>
- *
- * <p>
- * The following lists the features supported by Emacs ELisp,
- * serving as my personal notes as well as a reference for future readers.
- * Because the Emacs implementation integrates lexer and parser into the same function,
- * the logic can be a bit convoluted.
- * </p>
- *
- * <ul>
- * <li>Unless otherwise noted, the "(" character marks {@code RE_list_start}.</li>
- * <li>The ")" character marks the end of a {@code RE_list} (or {@code RE_list_start}),
- * a {@code RE_record} or a {@code RE_string_props}.</li>
- * <li>The "[" character marks the start of a {@code RE_vector}.</li>
- * <li>The "]" character marks the end of a {@code RE_vector}, a {@code RE_byte_code},
- * a {@code RE_char_table} or a {@code RE_sub_char_table}.</li>
- * <li>The "#" character marks the start of many, many things.
- * <ul>
- * <li>{@code #'X}: Special syntax for function symbol reference.</li>
- * <li>{@code ##}: The empty symbol.</li>
- * <li>{@code #s(...)}: A record or hash-table.</li>
- * <li>{@code #^[...]}: A character table.</li>
- * <li>{@code #^^[...]}: A sub-char-table.</li>
- * <li>{@code #(...)}: String with properties.</li>
- * <li>{@code #[...]}: Byte code.</li>
- * <li>{@code #&N"..."}: A bool vector.</li>
- * <li>{@code #!}: The shebang.</li>
- * <li>{@code #xFFFF / #XFFFF}: A hex integer.</li>
- * <li>{@code #b1010 / #B1010}: A binary integer.</li>
- * <li>{@code #o7070 / #O7070}: An octal integer.</li>
- * <li>{@code #@NUMBER}: Used to skip {@code NUMBER} following bytes.</li>
- * <li>{@code #$}: Reference to lazy-loaded string.</li>
- * <li>{@code #:X}: Uninterned symbol.</li>
- * <li>{@code #_X}: Symbol without shorthand.</li>
- * <li>{@code #36rX}: A custom-radix integer.</li>
- * <li>{@code #1= / #1#}: A cyclic definition / reference.</li>
- * </ul>
- * </li>
- * <li>The "?" character marks the start of a character literal.</li>
- * <li>The {@code "} character marks the start of a string.</li>
- * <li>The "'" character marks a {@code RE_special(Qquote)}.</li>
- * <li>The "`" character marks a {@code RE_special(Qbackquote)}.</li>
- * <li>The ",@" string marks a {@code RE_special(Qcomma_at)}.</li>
- * <li>The "," character marks a {@code RE_special(Qcomma)}.</li>
- * <li>The ";" character marks a comment.</li>
- * <li>The "." character is used in a cons pair, only if it is followed by the following chars:
- * {@code [\0-\32]|NO_BREAK_SPACE|["';()\[#?`,]} ({@code )]} are not in the list).</li>
- * <li>Otherwise, the characters that follows will be first parsed as numbers.</li>
- * <li>If it turns out to be not a number, then it is a symbol, terminated by
- * an unescaped non-symbol characters: {@code [\0-\32]|NO_BREAK_SPACE|["';#()\[\]`,]}.</li>
- * </ul>
- */
+/// A ELisp lexer
+///
+/// This lexer is more or less based on the ELisp manual,
+/// and borrows heavily from the following two implementation:
+///
+///
+/// - <a href="https://git.savannah.gnu.org/cgit/guile.git/tree/module/language/elisp/lexer.scm">
+///   The ELisp lexer in Guile</a>
+/// - <a href="https://github.com/talyz/fromElisp">talyz/fromElisp in Nix</a>
+/// - <a href="http://git.savannah.gnu.org/cgit/emacs.git/tree/src/lread.c">
+///   The ELisp lexer & parser in Emacs</a>
+///
+///
+/// This lexer tries to support all ELisp grammar as is listed below.
+/// If you are to understand how many features are actually
+/// supported by canonical ELisp (as is in Emacs), I would recommend reading the `read0`
+/// function in the Emacs source code.
+///
+/// ## Emacs ELisp Features
+///
+/// The following lists the features supported by Emacs ELisp,
+/// serving as my personal notes as well as a reference for future readers.
+/// Because the Emacs implementation integrates lexer and parser into the same function,
+/// the logic can be a bit convoluted.
+///
+///
+/// - Unless otherwise noted, the "(" character marks `RE_list_start`.
+/// - The ")" character marks the end of a `RE_list` (or `RE_list_start`),
+///   a `RE_record` or a `RE_string_props`.
+/// - The "\[" character marks the start of a `RE_vector`.
+/// - The "]" character marks the end of a `RE_vector`, a `RE_byte_code`,
+///   a `RE_char_table` or a `RE_sub_char_table`.
+/// - The "#" character marks the start of many, many things.
+///
+///   - `#'X`: Special syntax for function symbol reference.
+///   - `##`: The empty symbol.
+///   - `#s(...)`: A record or hash-table.
+///   - `#^[...]`: A character table.
+///   - `#^^[...]`: A sub-char-table.
+///   - `#(...)`: String with properties.
+///   - `#[...]`: Byte code.
+///   - `#&N"..."`: A bool vector.
+///   - `#!`: The shebang.
+///   - `#xFFFF / #XFFFF`: A hex integer.
+///   - `#b1010 / #B1010`: A binary integer.
+///   - `#o7070 / #O7070`: An octal integer.
+///   - `#@NUMBER`: Used to skip `NUMBER` following bytes.
+///   - `#$`: Reference to lazy-loaded string.
+///   - `#:X`: Uninterned symbol.
+///   - `#_X`: Symbol without shorthand.
+///   - `#36rX`: A custom-radix integer.
+///   - `#1= / #1#`: A cyclic definition / reference.
+///
+/// - The "?" character marks the start of a character literal.
+/// - The `"` character marks the start of a string.
+/// - The "'" character marks a `RE_special(Qquote)` .
+/// - The {@code `} character marks a `RE_special(Qbackquote)` .
+/// - The ",@" string marks a `RE_special(Qcomma_at)` .
+/// - The "," character marks a `RE_special(Qcomma)` .
+/// - The ";" character marks a comment.
+/// - The "." character is used in a cons pair, only if it is followed by the following chars:
+///   {@code [\0-\32]|NO_BREAK_SPACE|["';()\[#?`,]} (`)]` are not in the list).
+/// - Otherwise, the characters that follows will be first parsed as numbers.
+/// - If it turns out to be not a number, then it is a symbol, terminated by
+///   an unescaped non-symbol characters: {@code [\0-\32]|NO_BREAK_SPACE|["';#()\[\]`,]}.
+///
+/// ## Error Handling
+///
+/// Emacs mainly throws `invalid-read-syntax` errors but sometimes throws plain `error`s.
+/// We tend to use `invalid-read-syntax` errors for all errors, but reserve `error`s for
+/// Unicode errors in the input. (`"?\UFFFFFFFF"` -> `invalid-read-syntax`,
+/// input file has invalid Unicode -> `error`).
+///
+/// One more thing to note is that Emacs seems to read input files with Unicode errors
+/// just fine. But we choose to throw an error in such cases (see [#readCodepointFromCharReader()].
+///
 class ELispLexer {
 
     sealed interface NumberVariant {
@@ -388,7 +392,9 @@ class ELispLexer {
         }
         int c2 = noEOF(charReader.read());
         if (!Character.isLowSurrogate((char) c2)) {
-            throw new IOException("Invalid Unicode surrogate pair");
+            // Emacs seems to read text on a best-effort basis...
+            // But we choose to differ here.
+            throw ELispSignals.error("Invalid Unicode surrogate pair");
         }
         return Character.toCodePoint((char) c1, (char) c2);
     }
@@ -488,7 +494,7 @@ class ELispLexer {
                 if (earlyReturn) {
                     return negative ? value.negate() : value;
                 }
-                throw new IOException("Expecting fixed number of digits");
+                throw ELispSignals.invalidReadSyntax("Expecting fixed number of digits");
             }
             readCodepoint();
             value = value.multiply(BigInteger.valueOf(base)).add(BigInteger.valueOf(digit));
@@ -499,7 +505,7 @@ class ELispLexer {
     private int readEscapedCodepoint(int base, int digits, boolean earlyReturn) throws IOException {
         BigInteger value = readInteger(base, digits, earlyReturn);
         if (value.signum() < 0 || value.compareTo(BigInteger.valueOf(Character.MAX_CODE_POINT)) > 0) {
-            throw new IOException("Not a valid Unicode code point");
+            throw ELispSignals.error("Not a valid Unicode code point");
         }
         return value.intValue();
     }
@@ -529,7 +535,7 @@ class ELispLexer {
                 || nch == '?' || nch == '`'  || nch == ',' || nch == '.') {
             return;
         }
-        throw new IOException("Invalid char");
+        throw ELispSignals.invalidReadSyntax("Invalid char");
     }
 
     /**
@@ -555,20 +561,20 @@ class ELispLexer {
             }
         } else {
             if (escaped == '\n') {
-                throw new IOException("Unexpected newline");
+                throw ELispSignals.invalidReadSyntax("Unexpected newline");
             }
         }
         // Meta-prefix: ?\s-a => Bit annotated character
         int meta = mapMetaMask(escaped, inString);
         if (inString && meta > 0x80) {
-            throw new IOException("Invalid modifier in string");
+            throw ELispSignals.invalidReadSyntax("Invalid modifier in string");
         }
         if (meta != -1) {
             if (peekCodepoint() == '-') {
                 readCodepoint();
                 return meta | readChar(inString);
             } else if (escaped != 's') {
-                throw new IOException("Invalid modifier");
+                throw ELispSignals.invalidReadSyntax("Invalid modifier");
             }
         }
         // Escape: ?\n => '\n'
@@ -584,7 +590,7 @@ class ELispLexer {
                     readCodepoint();
                     yield readControlChar(inString);
                 } else {
-                    throw new IOException("Invalid modifier");
+                    throw ELispSignals.invalidReadSyntax("Invalid modifier");
                 }
             }
             case 'x' -> readEscapedCodepoint(16, -1, true);
@@ -661,22 +667,22 @@ class ELispLexer {
             // #24r1k => base-24 integer
             case 'r' -> {
                 if (base != 10) {
-                    throw new IOException("Invalid base");
+                    throw ELispSignals.invalidReadSyntax("Invalid base");
                 }
                 readCodepoint();
                 int realBase = value.intValueExact();
                 if (realBase > 36) {
-                    throw new IOException("Invalid base");
+                    throw ELispSignals.invalidReadSyntax("Invalid base");
                 }
                 BigInteger number = readInteger(realBase, -1, true);
                 if (isAlphaNumeric(peekCodepoint())) {
-                    throw new IOException("Invalid character");
+                    throw ELispSignals.invalidReadSyntax("Invalid character");
                 }
                 return new Token.Num(NumberVariant.from(number));
             }
             default -> {
                 if (isAlphaNumeric(peekCodepoint())) {
-                    throw new IOException("Invalid character");
+                    throw ELispSignals.invalidReadSyntax("Invalid character");
                 }
                 return new Token.Num(NumberVariant.from(value));
             }
@@ -795,7 +801,7 @@ class ELispLexer {
                     case '#' -> EMPTY_SYMBOL;
                     case 's' -> {
                         if (noEOF(readCodepoint()) != '(') {
-                            throw new IOException("Expected '('");
+                            throw ELispSignals.invalidReadSyntax("Expected '('");
                         }
                         yield RECORD_OPEN;
                     }
@@ -808,7 +814,7 @@ class ELispLexer {
                         } else if (subChar == '[') {
                             yield CHAR_TABLE_OPEN;
                         }
-                        throw new IOException("Expected '^' or '['");
+                        throw ELispSignals.invalidReadSyntax("Expected '^' or '['");
                     }
                     case '(' -> STR_WITH_PROPS_OPEN;
                     case '[' -> BYTE_CODE_OPEN;
@@ -816,7 +822,7 @@ class ELispLexer {
                         BigInteger length = readInteger(10, -1, true);
                         long l = length.longValueExact();
                         if (readCodepoint() != '\"') {
-                            throw new IOException("Expected '\"'");
+                            throw ELispSignals.invalidReadSyntax("Expected '\"'");
                         }
                         yield new Token.BoolVec(l, readStr());
                     }
@@ -860,7 +866,7 @@ class ELispLexer {
                     case '_' -> potentialUnescapedSymbolChar(peekCodepoint())
                             ? readSymbolOrNumber(readCodepoint(), false, true)
                             : EMPTY_SYMBOL;
-                    default -> throw new IOException("Expected a number base indicator");
+                    default -> throw ELispSignals.invalidReadSyntax("Expected a number base indicator");
                 };
             }
             case '?' -> {
@@ -897,7 +903,7 @@ class ELispLexer {
     @CompilerDirectives.TruffleBoundary
     Token next() throws IOException {
         if (eof) {
-            throw new IOException("Unexpected EOF");
+            throw new EOFException();
         }
         while (true) {
             while (true) {
@@ -916,7 +922,7 @@ class ELispLexer {
 
     private static int noEOF(int c) throws IOException {
         if (c == -1) {
-            throw new IOException("Unexpected EOF");
+            throw new EOFException();
         }
         return c;
     }

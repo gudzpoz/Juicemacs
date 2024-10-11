@@ -1,5 +1,12 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.jupiter.api.Test;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.LEXICAL_BINDING_TEST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.SPECIAL_IN_LEXICAL_BINDING_TEST;
 
@@ -94,5 +101,30 @@ public class BuiltInEvalTest extends BaseFormTest {
     @Override
     protected Object[] entries() {
         return TESTS;
+    }
+
+    private void assertErrorMessage(Context context, String expr, String message) {
+        String actual = assertThrows(PolyglotException.class, () -> context.eval("elisp", expr)).getMessage();
+        assertEquals(message, actual);
+    }
+
+    private void assertErrorMessage(Context context, String expr, ELispSymbol type) {
+        String actual = assertThrows(PolyglotException.class, () -> context.eval("elisp", expr)).getMessage();
+        assertTrue(actual.startsWith("(" + type), "Expected: " + type + "; got: " + actual);
+    }
+
+    @Test
+    public void testSignals() {
+        try (Context context = Context.create("elisp")) {
+            assertErrorMessage(context, "((lambda ()) 1)",
+                    "(wrong-number-of-arguments (lambda nil (nil) nil nil nil) 1)");
+            assertErrorMessage(context, "((lambda (x)))",
+                    "(wrong-number-of-arguments (lambda (x) (nil) nil nil nil) 0)");
+            assertDoesNotThrow(() -> context.eval("elisp", "((lambda (&rest x)))"));
+            assertErrorMessage(context, "(1+ 1 1 1)", "(wrong-number-of-arguments 1+ 3)");
+            assertErrorMessage(context, "(1- 1 1 1)", "(wrong-number-of-arguments 1- 3)");
+            assertErrorMessage(context, "(garbage-collect 1)", "(wrong-number-of-arguments garbage-collect 1)");
+            assertErrorMessage(context, "(lognot nil)", ELispContext.WRONG_TYPE_ARGUMENT);
+        }
     }
 }

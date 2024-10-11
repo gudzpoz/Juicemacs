@@ -4,6 +4,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 
@@ -146,7 +148,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             } else if (ELispSymbol.isNil(tail)) {
                 throw new NoSuchElementException();
             } else {
-                throw new RuntimeException("Not a lisp list");
+                throw ELispSignals.wrongTypeArgument(ELispContext.LISTP, ELispCons.this);
             }
             // The following ensures the tortoise *occasionally* teleports.
             // Code modified from Emacs' src/lisp.h (FOR_EACH_TAIL_INTERNAL).
@@ -166,7 +168,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 n >>= 16; // USHRT_WIDTH;
                 tortoise = tail;
             } else if (tail == tortoise) {
-                throw new IllegalStateException("Cycle detected");
+                throw ELispSignals.circularList(ELispCons.this);
             }
             return next;
         }
@@ -209,7 +211,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("(").append(car());
+        StringBuilder sb = new StringBuilder("(").append(ELispValue.display(car()));
         BrentTortoiseHareIterator i = listIterator(1);
         while (i.hasNextCdr()) {
             if (i.hasNext()) {

@@ -4,8 +4,10 @@ import com.oracle.truffle.api.source.Source;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -147,13 +149,13 @@ public class ELispParserTest {
         assertEquals(3, table.size());
         assertEquals(
                 "v1",
-                assertInstanceOf(ELispSymbol.class, table.get(ELispContext.intern("k1"))).name()
+                assertInstanceOf(ELispSymbol.class, table.get(intern("k1"))).name()
         );
         assertEquals(
                 "v2",
-                assertInstanceOf(ELispSymbol.class, table.get(ELispContext.intern("k2"))).name()
+                assertInstanceOf(ELispSymbol.class, table.get(intern("k2"))).name()
         );
-        ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(ELispContext.intern("k3")));
+        ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(intern("k3")));
          assertSame(NIL, placeholder.car());
 
         ELispString str = assertInstanceOf(ELispString.class, read("#1=#(\"text here\" 0 1 (key #1#))"));
@@ -162,14 +164,14 @@ public class ELispParserTest {
         str.forRangeProperties(0, (props) -> {
             propCount.incrementAndGet();
             ELispCons properties = assertInstanceOf(ELispCons.class, props);
-            assertSame(ELispContext.KEY, properties.getFirst());
+            assertSame(KEY, properties.getFirst());
             assertSame(str, properties.get(1));
         });
         assertEquals(1, propCount.get());
 
         assertEquals(
-                "Unexpected self reference",
-                assertThrows(IOException.class, () -> read("#1=#1#")).getMessage()
+                "(invalid-read-syntax \"Unexpected self reference\")",
+                assertThrows(ELispSignals.ELispSignalException.class, () -> read("#1=#1#")).getMessage()
         );
     }
 
@@ -193,7 +195,7 @@ public class ELispParserTest {
 
     @Test
     public void testErrors() {
-        assertError("", "Unexpected EOF");
+        assertNull(assertThrows(EOFException.class, () -> read("")).getMessage());
         assertError("(a . a a)", "Expected ')'");
         assertError(")", "Expected start of expression");
         assertError("]", "Expected start of expression");
@@ -203,10 +205,8 @@ public class ELispParserTest {
     }
 
     private void assertError(String expr, String message) {
-        assertEquals(
-                message,
-                assertThrows(IOException.class, () -> read(expr)).getMessage()
-        );
+        ELispSignals.ELispSignalException err = assertThrows(ELispSignals.ELispSignalException.class, () -> read(expr));
+        assertEquals(message, ((ELispCons) err.getData()).car().toString());
     }
 
 }
