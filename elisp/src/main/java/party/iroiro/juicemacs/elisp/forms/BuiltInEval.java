@@ -5,11 +5,12 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.*;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -233,26 +234,39 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode progn(Object[] body) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                ELispInterpretedNode[] nodes = ELispInterpretedNode.create(body);
+            if (body.length == 0) {
+                return ELispInterpretedNode.literal(false);
+            }
+            return new PrognBlockNode(body);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class PrognBlockNode extends ELispExpressionNode
+                implements BlockNode.ElementExecutor<ELispInterpretedNode> {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            BlockNode<ELispInterpretedNode> block;
 
-                @ExplodeLoop
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    Object lastResult = false;
-                    for (int i = 0, length = nodes.length; i < length; i++) {
-                        ELispInterpretedNode arg = nodes[i];
-                        lastResult = arg.executeGeneric(frame);
-                    }
-                    return lastResult;
-                }
-            };
+            public PrognBlockNode(Object[] body) {
+                block = BlockNode.create(ELispInterpretedNode.create(body), this);
+                adoptChildren();
+                block.adoptChildren();
+            }
+
+            @ExplodeLoop
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                return block.executeGeneric(frame, BlockNode.NO_ARGUMENT);
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame, ELispInterpretedNode node, int index, int argument) {
+                node.executeVoid(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame, ELispInterpretedNode node, int index, int argument) {
+                return node.executeGeneric(frame);
+            }
         }
     }
 
@@ -973,23 +987,44 @@ public class BuiltInEval extends ELispBuiltIns {
             return new ELispExpressionNode() {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
-                ELispExpressionNode condition = ELispInterpretedNode.create(test);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode bodyNode = FProgn.progn(body);
+                LoopNode loopNode = Truffle.getRuntime().createLoopNode(new RepeatingBodyNode(test, body));
 
                 {
                     adoptChildren();
+                    loopNode.adoptChildren();
                 }
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
-                    while (!ELispSymbol.isNil(condition.executeGeneric(frame))) {
-                        bodyNode.executeGeneric(frame);
-                    }
+                    loopNode.execute(frame);
                     return false;
                 }
             };
+        }
+
+        private final static class RepeatingBodyNode extends Node implements RepeatingNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode condition;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode bodyNode;
+
+            public RepeatingBodyNode(Object test, Object[] body) {
+                condition = ELispInterpretedNode.create(test);
+                bodyNode = FProgn.progn(body);
+                adoptChildren();
+            }
+
+            @Override
+            public boolean executeRepeating(VirtualFrame frame) {
+                if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                    return false;
+                } else {
+                    bodyNode.executeGeneric(frame);
+                    return true;
+                }
+            }
         }
     }
 
