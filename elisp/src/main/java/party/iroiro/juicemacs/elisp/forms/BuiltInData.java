@@ -1,10 +1,10 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
@@ -13,6 +13,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
@@ -20,23 +21,291 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
  * Built-in functions from {@code src/data.c}
  */
 public class BuiltInData extends ELispBuiltIns {
+    public BuiltInData() {
+        super(true);
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInDataFactory.getFactories();
     }
 
+    private static class NumberAsIsUnary extends ELispExpressionNode {
+        @SuppressWarnings("FieldMayBeFinal")
+        @Child
+        ELispExpressionNode arg;
+
+        public NumberAsIsUnary(ELispExpressionNode arguments) {
+            arg = arguments;
+            adoptChildren();
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            Object o = arg.executeGeneric(frame);
+            if (FNumberp.numberp(o)) {
+                return o;
+            }
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, o);
+        }
+    }
+
+    @SuppressWarnings("PMD.TruffleNodeShouldAdoptChildren")
+    @NodeChild(value = "value", type = ELispExpressionNode.class)
+    public abstract static class FMinusUnary extends ELispExpressionNode {
+        @Specialization(rewriteOn = ArithmeticException.class)
+        public long negLong(long value) {
+            return Math.negateExact(value);
+        }
+        @Specialization
+        public double negDouble(double value) {
+            return -value;
+        }
+        @Fallback
+        public Object negObject(Object value) {
+            return switch (value) {
+                case Double d -> -d;
+                case Number n -> ELispTypeSystemGen.asImplicitELispBigNum(n).negate();
+                default -> throw ELispSignals.wrongTypeArgument(NUMBERP, value);
+            };
+        }
+    }
+
+    @SuppressWarnings("PMD.TruffleNodeShouldAdoptChildren")
+    @NodeChild(value = "value", type = ELispExpressionNode.class)
+    public abstract static class FQuoUnary extends ELispExpressionNode {
+        @Specialization
+        public long quoLong(long value) {
+            return 1 / value;
+        }
+        @Specialization
+        public double quoDouble(double value) {
+            return 1 / value;
+        }
+        @Fallback
+        public Object quoObject(Object value) {
+            return switch (value) {
+                case Double d -> 1 / d;
+                case Long l -> 1 / l;
+                case ELispBigNum bigNum -> bigNum.reciprocal();
+                default -> throw ELispSignals.wrongTypeArgument(NUMBERP, value);
+            };
+        }
+    }
+
+    public abstract static class BinaryArithmeticNode extends ELispExpressionNode {
+        @Child @Executed protected ELispExpressionNode left;
+        @Child @Executed protected ELispExpressionNode right;
+
+        protected BinaryArithmeticNode(ELispExpressionNode left, ELispExpressionNode right) {
+            this.left = left;
+            this.right = right;
+            adoptChildren();
+        }
+
+        public abstract long longs(long left, long right);
+        public abstract double longDouble(long left, double right);
+        public abstract double doubleLong(double left, long right);
+        public abstract double doubles(double left, double right);
+        public abstract Number generalCase(Number left, Number right);
+        public Number fallback(Object left, Object right) {
+            if (!(left instanceof Number nl)) {
+                throw ELispSignals.wrongTypeArgument(NUMBERP, left);
+            }
+            if (!(right instanceof Number nr)) {
+                throw ELispSignals.wrongTypeArgument(NUMBERP, right);
+            }
+            return generalCase(nl, nr);
+        }
+    }
+
+    public abstract static class FPlusBinary extends BinaryArithmeticNode {
+        protected FPlusBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization(rewriteOn = ArithmeticException.class)
+        public long longs(long left, long right) {
+            return Math.addExact(left, right);
+        }
+        @Override
+        @Specialization
+        public double longDouble(long left, double right) {
+            return left + right;
+        }
+        @Override
+        @Specialization
+        public double doubleLong(double left, long right) {
+            return left + right;
+        }
+        @Override
+        @Specialization
+        public double doubles(double left, double right) {
+            return left + right;
+        }
+        @Override
+        @Fallback
+        public Number fallback(Object left, Object right) {
+            return super.fallback(left, right);
+        }
+        @Override
+        public Number generalCase(Number left, Number right) {
+            if (left instanceof Double dl) {
+                return dl + right.doubleValue();
+            }
+            if (right instanceof Double dr) {
+                return left.doubleValue() + dr;
+            }
+            return ELispTypeSystemGen.asImplicitELispBigNum(left).add(ELispTypeSystemGen.asImplicitELispBigNum(right));
+        }
+    }
+
+    public abstract static class FMinusBinary extends BinaryArithmeticNode {
+        protected FMinusBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization(rewriteOn = ArithmeticException.class)
+        public long longs(long left, long right) {
+            return Math.subtractExact(left, right);
+        }
+        @Override
+        @Specialization
+        public double longDouble(long left, double right) {
+            return left - right;
+        }
+        @Override
+        @Specialization
+        public double doubleLong(double left, long right) {
+            return left - right;
+        }
+        @Override
+        @Specialization
+        public double doubles(double left, double right) {
+            return left - right;
+        }
+        @Override
+        @Fallback
+        public Number fallback(Object left, Object right) {
+            return super.fallback(left, right);
+        }
+        @Override
+        public Number generalCase(Number left, Number right) {
+            if (left instanceof Double dl) {
+                return dl - right.doubleValue();
+            }
+            if (right instanceof Double dr) {
+                return left.doubleValue() - dr;
+            }
+            return ELispTypeSystemGen.asImplicitELispBigNum(left).subtract(ELispTypeSystemGen.asImplicitELispBigNum(right));
+        }
+    }
+
+    public abstract static class FTimesBinary extends BinaryArithmeticNode {
+        protected FTimesBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization(rewriteOn = ArithmeticException.class)
+        public long longs(long left, long right) {
+            return Math.multiplyExact(left, right);
+        }
+        @Override
+        @Specialization
+        public double longDouble(long left, double right) {
+            return left * right;
+        }
+        @Override
+        @Specialization
+        public double doubleLong(double left, long right) {
+            return left * right;
+        }
+        @Override
+        @Specialization
+        public double doubles(double left, double right) {
+            return left * right;
+        }
+        @Override
+        @Fallback
+        public Number fallback(Object left, Object right) {
+            return super.fallback(left, right);
+        }
+        @Override
+        public Number generalCase(Number left, Number right) {
+            if (left instanceof Double dl) {
+                return dl * right.doubleValue();
+            }
+            if (right instanceof Double dr) {
+                return left.doubleValue() * dr;
+            }
+            return ELispTypeSystemGen.asImplicitELispBigNum(left).multiply(ELispTypeSystemGen.asImplicitELispBigNum(right));
+        }
+    }
+
+    public abstract static class FQuoBinary extends BinaryArithmeticNode {
+        protected FQuoBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization(rewriteOn = ArithmeticException.class)
+        public long longs(long left, long right) {
+            return Math.divideExact(left, right);
+        }
+        @Override
+        @Specialization
+        public double longDouble(long left, double right) {
+            return left / right;
+        }
+        @Override
+        @Specialization
+        public double doubleLong(double left, long right) {
+            return left / right;
+        }
+        @Override
+        @Specialization
+        public double doubles(double left, double right) {
+            return left / right;
+        }
+        @Override
+        @Fallback
+        public Number fallback(Object left, Object right) {
+            return super.fallback(left, right);
+        }
+        @Override
+        public Number generalCase(Number left, Number right) {
+            if (left instanceof Double dl) {
+                return dl / right.doubleValue();
+            }
+            if (right instanceof Double dr) {
+                return left.doubleValue() / dr;
+            }
+            return ELispTypeSystemGen.asImplicitELispBigNum(left).divide(ELispTypeSystemGen.asImplicitELispBigNum(right));
+        }
+    }
+
+    private static ELispExpressionNode varArgsToBinary(
+            ELispExpressionNode[] arguments,
+            BiFunction<ELispExpressionNode, ELispExpressionNode, ELispExpressionNode> factory
+    ) {
+        ELispExpressionNode node = arguments[0];
+        for (int i = 1; i < arguments.length; i++) {
+            node = factory.apply(node, arguments[i]);
+        }
+        return node;
+    }
+
     public static int compareTo(Object a, Object b) {
-        if (!FNumberp.numberp(a)) {
+        if (!(a instanceof Number na)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
         }
-        if (!FNumberp.numberp(b)) {
+        if (!(b instanceof Number nb)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, b);
         }
         if (a instanceof Double d) {
-            return d.compareTo(ELispTypeSystemGen.asImplicitDouble(b));
+            return d.compareTo(nb.doubleValue());
         }
         if (b instanceof Double d) {
-            return -d.compareTo(ELispTypeSystemGen.asImplicitDouble(a));
+            return -d.compareTo(na.doubleValue());
         }
         if (a instanceof ELispBigNum n) {
             return n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(b));
@@ -45,6 +314,201 @@ public class BuiltInData extends ELispBuiltIns {
             return -n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(a));
         }
         return Long.compare(ELispTypeSystemGen.asLong(a), ELispTypeSystemGen.asLong(b));
+    }
+
+    public abstract static class BinaryCompareNode extends ELispExpressionNode {
+        @Child @Executed protected ELispExpressionNode left;
+        @Child @Executed protected ELispExpressionNode right;
+
+        protected BinaryCompareNode(ELispExpressionNode left, ELispExpressionNode right) {
+            this.left = left;
+            this.right = right;
+            adoptChildren();
+        }
+
+        public abstract boolean longs(long left, long right);
+        public abstract boolean longDouble(long left, double right);
+        public abstract boolean doubleLong(double left, long right);
+        public abstract boolean doubles(double left, double right);
+        public abstract boolean fallback(Object left, Object right);
+    }
+
+    public abstract static class FEqlsignBinary extends BinaryCompareNode {
+        protected FEqlsignBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public boolean longs(long left, long right) {
+            return left == right;
+        }
+        @Override
+        @Specialization
+        public boolean longDouble(long left, double right) {
+            return left == right;
+        }
+        @Override
+        @Specialization
+        public boolean doubleLong(double left, long right) {
+            return left == right;
+        }
+        @Override
+        @Specialization
+        public boolean doubles(double left, double right) {
+            return left == right;
+        }
+        @Override
+        @Fallback
+        public boolean fallback(Object left, Object right) {
+            return compareTo(left, right) == 0;
+        }
+    }
+
+    public abstract static class FLssBinary extends BinaryCompareNode {
+        protected FLssBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public boolean longs(long left, long right) {
+            return left < right;
+        }
+        @Override
+        @Specialization
+        public boolean longDouble(long left, double right) {
+            return left < right;
+        }
+        @Override
+        @Specialization
+        public boolean doubleLong(double left, long right) {
+            return left < right;
+        }
+        @Override
+        @Specialization
+        public boolean doubles(double left, double right) {
+            return left < right;
+        }
+        @Override
+        @Fallback
+        public boolean fallback(Object left, Object right) {
+            return compareTo(left, right) < 0;
+        }
+    }
+
+    public abstract static class FLeqBinary extends BinaryCompareNode {
+        protected FLeqBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public boolean longs(long left, long right) {
+            return left <= right;
+        }
+        @Override
+        @Specialization
+        public boolean longDouble(long left, double right) {
+            return left <= right;
+        }
+        @Override
+        @Specialization
+        public boolean doubleLong(double left, long right) {
+            return left <= right;
+        }
+        @Override
+        @Specialization
+        public boolean doubles(double left, double right) {
+            return left <= right;
+        }
+        @Override
+        @Fallback
+        public boolean fallback(Object left, Object right) {
+            return compareTo(left, right) <= 0;
+        }
+    }
+
+    public abstract static class FGeqBinary extends BinaryCompareNode {
+        protected FGeqBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public boolean longs(long left, long right) {
+            return left >= right;
+        }
+        @Override
+        @Specialization
+        public boolean longDouble(long left, double right) {
+            return left >= right;
+        }
+        @Override
+        @Specialization
+        public boolean doubleLong(double left, long right) {
+            return left >= right;
+        }
+        @Override
+        @Specialization
+        public boolean doubles(double left, double right) {
+            return left >= right;
+        }
+        @Override
+        @Fallback
+        public boolean fallback(Object left, Object right) {
+            return compareTo(left, right) >= 0;
+        }
+    }
+
+    public abstract static class FGtrBinary extends BinaryCompareNode {
+        protected FGtrBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public boolean longs(long left, long right) {
+            return left > right;
+        }
+        @Override
+        @Specialization
+        public boolean longDouble(long left, double right) {
+            return left > right;
+        }
+        @Override
+        @Specialization
+        public boolean doubleLong(double left, long right) {
+            return left > right;
+        }
+        @Override
+        @Specialization
+        public boolean doubles(double left, double right) {
+            return left > right;
+        }
+        @Override
+        @Fallback
+        public boolean fallback(Object left, Object right) {
+            return compareTo(left, right) > 0;
+        }
+    }
+
+    @NodeChild(value = "left", type = ELispExpressionNode.class)
+    @NodeChild(value = "right", type = ELispExpressionNode.class)
+    public abstract static class HelperAndNode extends ELispExpressionNode {
+        @Specialization
+        public static boolean and(boolean left, boolean right) {
+            return left && right;
+        }
+    }
+
+    private static ELispExpressionNode varArgsComparisonToBinary(
+            ELispExpressionNode[] args,
+            BiFunction<ELispExpressionNode, ELispExpressionNode, ELispExpressionNode> factory
+    ) {
+        if (args.length == 1) {
+            return ELispInterpretedNode.literal(true);
+        }
+        ELispExpressionNode node = factory.apply(args[0], args[1]);
+        for (int i = 2; i < args.length; i++) {
+            node = BuiltInDataFactory.HelperAndNodeGen.create(node, factory.apply(args[i - 1], args[i]));
+        }
+        return node;
     }
 
     /**
@@ -1500,32 +1964,8 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FEqlsign extends ELispBuiltInBaseNode {
-        @Specialization(rewriteOn = ClassCastException.class)
-        public static boolean eqlsignLong(long numberOrMarker, Object[] numbersOrMarkers) {
-            for (Object arg : numbersOrMarkers) {
-                if (numberOrMarker != (Long) arg) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Specialization(rewriteOn = ClassCastException.class)
-        public static boolean eqlsignDouble(double numberOrMarker, Object[] numbersOrMarkers) {
-            for (Object arg : numbersOrMarkers) {
-                if (arg instanceof Long l) {
-                    if (numberOrMarker != l) {
-                        return false;
-                    }
-                } else if (numberOrMarker != (Double) arg) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Specialization(replaces = {"eqlsignLong", "eqlsignDouble"})
+    public abstract static class FEqlsign extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static boolean eqlsign(Object numberOrMarker, Object[] numbersOrMarkers) {
             for (Object arg : numbersOrMarkers) {
                 if (compareTo(numberOrMarker, arg) != 0) {
@@ -1533,6 +1973,11 @@ public class BuiltInData extends ELispBuiltIns {
                 }
             }
             return true;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return varArgsComparisonToBinary(arguments, BuiltInDataFactory.FEqlsignBinaryNodeGen::create);
         }
     }
 
@@ -1545,30 +1990,8 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "<", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FLss extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && numbersOrMarkers[0] instanceof Long
-                    && number instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
-                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
-        }
-
-        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
-        public static boolean lssSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return (Long) numberOrMarker < (Long) numbersOrMarkers[0];
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
-        public static boolean lssSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return ((Number) numberOrMarker).doubleValue() < ((Number) numbersOrMarkers[0]).doubleValue();
-        }
-
-        @Specialization(replaces = {"lssSimpleLong", "lssSimpleDouble"})
+    public abstract static class FLss extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static boolean lss(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
@@ -1578,6 +2001,11 @@ public class BuiltInData extends ELispBuiltIns {
                 prev = arg;
             }
             return true;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return varArgsComparisonToBinary(arguments, BuiltInDataFactory.FLssBinaryNodeGen::create);
         }
     }
 
@@ -1590,30 +2018,8 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = ">", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FGtr extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && numbersOrMarkers[0] instanceof Long
-                    && number instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
-                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
-        }
-
-        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
-        public static boolean gtrSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return (Long) numberOrMarker > (Long) numbersOrMarkers[0];
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
-        public static boolean gtrSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return ((Number) numberOrMarker).doubleValue() > ((Number) numbersOrMarkers[0]).doubleValue();
-        }
-
-        @Specialization(replaces = {"gtrSimpleLong", "gtrSimpleDouble"})
+    public abstract static class FGtr extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static boolean gtr(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
@@ -1623,6 +2029,11 @@ public class BuiltInData extends ELispBuiltIns {
                 prev = arg;
             }
             return true;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return varArgsComparisonToBinary(arguments, BuiltInDataFactory.FGtrBinaryNodeGen::create);
         }
     }
 
@@ -1635,29 +2046,7 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "<=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FLeq extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && numbersOrMarkers[0] instanceof Long
-                    && number instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
-                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
-        }
-
-        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
-        public static boolean leqSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return (Long) numberOrMarker <= (Long) numbersOrMarkers[0];
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
-        public static boolean leqSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return ((Number) numberOrMarker).doubleValue() <= ((Number) numbersOrMarkers[0]).doubleValue();
-        }
-
+    public abstract static class FLeq extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public static boolean leq(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
@@ -1668,6 +2057,11 @@ public class BuiltInData extends ELispBuiltIns {
                 prev = arg;
             }
             return true;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return varArgsComparisonToBinary(arguments, BuiltInDataFactory.FLeqBinaryNodeGen::create);
         }
     }
 
@@ -1680,29 +2074,7 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = ">=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FGeq extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && numbersOrMarkers[0] instanceof Long
-                    && number instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
-                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
-        }
-
-        @Specialization(guards = {"isSimpleLongs(numberOrMarker, numbersOrMarkers)"})
-        public static boolean geqSimpleLong(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return (Long) numberOrMarker >= (Long) numbersOrMarkers[0];
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(numberOrMarker, numbersOrMarkers)"})
-        public static boolean geqSimpleDouble(Object numberOrMarker, Object[] numbersOrMarkers) {
-            return ((Number) numberOrMarker).doubleValue() >= ((Number) numbersOrMarkers[0]).doubleValue();
-        }
-
+    public abstract static class FGeq extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public static boolean geq(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
@@ -1713,6 +2085,11 @@ public class BuiltInData extends ELispBuiltIns {
                 prev = arg;
             }
             return true;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return varArgsComparisonToBinary(arguments, BuiltInDataFactory.FGeqBinaryNodeGen::create);
         }
     }
 
@@ -1788,52 +2165,26 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "+", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FPlus extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongAdd(Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 2
-                    && numbersOrMarkers[0] instanceof Long
-                    && numbersOrMarkers[1] instanceof Long;
-        }
-
-        public static boolean isSimpleDoubleAdd(Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 2
-                    && numbersOrMarkers[0] instanceof Number && numbersOrMarkers[1] instanceof Number
-                    && (numbersOrMarkers[0] instanceof Double || numbersOrMarkers[1] instanceof Double);
-        }
-
-        @Specialization(guards = {"isSimpleLongAdd(numbersOrMarkers)"}, rewriteOn = {ArithmeticException.class})
-        public static long plusSimpleLong(Object[] numbersOrMarkers) {
-            return Math.addExact((Long) numbersOrMarkers[0], (Long) numbersOrMarkers[1]);
-        }
-
-        @Specialization(guards = {"isSimpleDoubleAdd(numbersOrMarkers)"})
-        public static double plusSimpleDouble(Object[] numbersOrMarkers) {
-            return ((Number) numbersOrMarkers[0]).doubleValue() + ((Number) numbersOrMarkers[1]).doubleValue();
-        }
-
-        @Specialization(replaces = {"plusSimpleLong", "plusSimpleDouble"})
+    public abstract static class FPlus extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static Object plusAny(Object[] numbersOrMarkers) {
-            return tryAddLong(numbersOrMarkers);
-        }
-
-        public static Object tryAddLong(Object[] args) {
             long sum = 0;
-            for (int i = 0; i < args.length; i++) {
-                switch (args[i]) {
+            for (int i = 0; i < numbersOrMarkers.length; i++) {
+                switch (numbersOrMarkers[i]) {
                     case Long l -> {
                         try {
                             sum = Math.addExact(sum, l);
                         } catch (ArithmeticException e) {
-                            return tryAddBigNum(sum, i, args);
+                            return tryAddBigNum(sum, i, numbersOrMarkers);
                         }
                     }
                     case Double _ -> {
-                        return tryAddDouble((double) sum, i, args);
+                        return tryAddDouble((double) sum, i, numbersOrMarkers);
                     }
                     case ELispBigNum _ -> {
-                        return tryAddBigNum(sum, i, args);
+                        return tryAddBigNum(sum, i, numbersOrMarkers);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, numbersOrMarkers[i]);
                 }
             }
             return sum;
@@ -1858,9 +2209,20 @@ public class BuiltInData extends ELispBuiltIns {
         private static double tryAddDouble(double prev, int i, Object[] args) {
             double sum = prev;
             for (; i < args.length; i++) {
-                sum += ELispTypeSystemGen.asImplicitDouble(args[i]);
+                sum += asNum(args[i]).doubleValue();
             }
             return sum;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 0) {
+                return ELispInterpretedNode.literal(0L);
+            }
+            if (arguments.length == 1) {
+                return new NumberAsIsUnary(arguments[0]);
+            }
+            return varArgsToBinary(arguments, BuiltInDataFactory.FPlusBinaryNodeGen::create);
         }
     }
 
@@ -1875,30 +2237,8 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "-", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FMinus extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 2
-                    && numbersOrMarkers[0] instanceof Long
-                    && numbersOrMarkers[1] instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 2
-                    && numbersOrMarkers[0] instanceof Number && numbersOrMarkers[1] instanceof Number
-                    && (numbersOrMarkers[0] instanceof Double || numbersOrMarkers[1] instanceof Double);
-        }
-
-        @Specialization(guards = {"isSimpleLongs(args)"}, rewriteOn = {ArithmeticException.class})
-        public static long minusSimpleLong(Object[] args) {
-            return Math.subtractExact((Long) args[0], (Long) args[1]);
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(args)"})
-        public static double minusSimpleDouble(Object[] args) {
-            return ((Number) args[0]).doubleValue() - ((Number) args[1]).doubleValue();
-        }
-
-        @Specialization(replaces = {"minusSimpleLong", "minusSimpleDouble"})
+    public abstract static class FMinus extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static Object minusAny(Object[] args) {
             if (args.length == 0) {
                 return 0L;
@@ -1961,9 +2301,22 @@ public class BuiltInData extends ELispBuiltIns {
         private static double tryMinusDouble(double prev, int i, Object[] args) {
             double result = prev;
             for (; i < args.length; i++) {
-                result -= ELispTypeSystemGen.asImplicitDouble(args[i]);
+                result -= asNum(args[i]).doubleValue();
             }
             return result;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 0) {
+                return ELispInterpretedNode.literal(0L);
+            }
+            if (arguments.length == 1) {
+                FMinusUnary fMinusUnary = BuiltInDataFactory.FMinusUnaryNodeGen.create(arguments[0]);
+                fMinusUnary.adoptChildren();
+                return fMinusUnary;
+            }
+            return varArgsToBinary(arguments, BuiltInDataFactory.FMinusBinaryNodeGen::create);
         }
     }
 
@@ -1976,30 +2329,8 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "*", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FTimes extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 2
-                    && numbersOrMarkers[0] instanceof Long
-                    && numbersOrMarkers[1] instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 2
-                    && numbersOrMarkers[0] instanceof Number && numbersOrMarkers[1] instanceof Number
-                    && (numbersOrMarkers[0] instanceof Double || numbersOrMarkers[1] instanceof Double);
-        }
-
-        @Specialization(guards = {"isSimpleLongs(numbersOrMarkers)"}, rewriteOn = {ArithmeticException.class})
-        public static long timesSimpleLong(Object[] numbersOrMarkers) {
-            return Math.multiplyExact((Long) numbersOrMarkers[0], (Long) numbersOrMarkers[1]);
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(numbersOrMarkers)"})
-        public static double timesSimpleDouble(Object[] numbersOrMarkers) {
-            return ((Number) numbersOrMarkers[0]).doubleValue() * ((Number) numbersOrMarkers[1]).doubleValue();
-        }
-
-        @Specialization(replaces = {"timesSimpleLong", "timesSimpleDouble"})
+    public abstract static class FTimes extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static Object timesAny(Object[] numbersOrMarkers) {
             return tryTimesLong(numbersOrMarkers);
         }
@@ -2046,9 +2377,20 @@ public class BuiltInData extends ELispBuiltIns {
         private static double tryTimesDouble(double prev, int i, Object[] args) {
             double product = prev;
             for (; i < args.length; i++) {
-                product *= ELispTypeSystemGen.asImplicitDouble(args[i]);
+                product *= asNum(args[i]).doubleValue();
             }
             return product;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 0) {
+                return ELispInterpretedNode.literal(1L);
+            }
+            if (arguments.length == 1) {
+                return new NumberAsIsUnary(arguments[0]);
+            }
+            return varArgsToBinary(arguments, BuiltInDataFactory.FTimesBinaryNodeGen::create);
         }
     }
 
@@ -2064,34 +2406,12 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "/", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FQuo extends ELispBuiltInBaseNode {
-        public static boolean isSimpleLongs(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && numbersOrMarkers[0] instanceof Long
-                    && number instanceof Long;
-        }
-
-        public static boolean isSimpleDoubles(Object number, Object[] numbersOrMarkers) {
-            return numbersOrMarkers.length == 1
-                    && (numbersOrMarkers[0] instanceof Double || number instanceof Double)
-                    && numbersOrMarkers[0] instanceof Number && number instanceof Number;
-        }
-
-        @Specialization(guards = {"isSimpleLongs(number, divisors)"}, rewriteOn = {ArithmeticException.class})
-        public static long quoSimpleLong(Object number, Object[] divisors) {
-            return Math.divideExact((Long) number, (Long) divisors[0]);
-        }
-
-        @Specialization(guards = {"isSimpleDoubles(number, divisors)"})
-        public static double quoSimpleDouble(Object number, Object[] divisors) {
-            return ((Number) number).doubleValue() / ((Number) divisors[0]).doubleValue();
-        }
-
-        @Specialization(replaces = {"quoSimpleLong", "quoSimpleDouble"})
+    public abstract static class FQuo extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @Specialization
         public static Object quoAny(Object number, Object[] divisors) {
             for (Object arg : divisors) {
                 if (arg instanceof Double) {
-                    return tryQuoDouble(ELispTypeSystemGen.asImplicitDouble(number), divisors);
+                    return tryQuoDouble(asNum(number).doubleValue(), divisors);
                 }
             }
             return switch (number) {
@@ -2138,9 +2458,19 @@ public class BuiltInData extends ELispBuiltIns {
         private static double tryQuoDouble(double prev, Object[] args) {
             double quo = prev;
             for (Object arg : args) {
-                quo /= ELispTypeSystemGen.asImplicitDouble(arg);
+                quo /= asNum(arg).doubleValue();
             }
             return quo;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 1) {
+                FQuoUnary fQuoUnary = BuiltInDataFactory.FQuoUnaryNodeGen.create(arguments[0]);
+                fQuoUnary.adoptChildren();
+                return fQuoUnary;
+            }
+            return varArgsToBinary(arguments, BuiltInDataFactory.FQuoBinaryNodeGen::create);
         }
     }
 

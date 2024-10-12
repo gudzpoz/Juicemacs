@@ -1610,7 +1610,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (object instanceof ELispSymbol symbol) {
                 object = symbol.getIndirectFunction();
             }
-            return (object instanceof ELispSubroutine(_, boolean special) && !special)
+            return (object instanceof ELispSubroutine(_, boolean special, _) && !special)
                     || object instanceof ELispInterpretedClosure;
         }
     }

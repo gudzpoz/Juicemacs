@@ -121,6 +121,7 @@ public class BuiltInEvalTest extends BaseFormTest {
             assertErrorMessage(context, "((lambda (x)))",
                     "(wrong-number-of-arguments (lambda (x) (nil) nil nil nil) 0)");
             assertDoesNotThrow(() -> context.eval("elisp", "((lambda (&rest x)))"));
+            assertErrorMessage(context, "(1+)", "(wrong-number-of-arguments 1+ 0)");
             assertErrorMessage(context, "(1+ 1 1 1)", "(wrong-number-of-arguments 1+ 3)");
             assertErrorMessage(context, "(1- 1 1 1)", "(wrong-number-of-arguments 1- 3)");
             assertErrorMessage(context, "(garbage-collect 1)", "(wrong-number-of-arguments garbage-collect 1)");

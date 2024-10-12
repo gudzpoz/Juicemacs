@@ -25,7 +25,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     ///
     /// @param value the BigInteger to wrap
     /// @return the wrapped BigInteger or a long if it fits
-    public static Object wrap(BigInteger value) {
+    public static Number wrap(BigInteger value) {
         if (value.bitLength() < 64) {
             return value.longValue();
         }
@@ -54,25 +54,49 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     //#endregion Lisp API
 
     //#region BigInteger
-    public Object not() {
+    @TruffleBoundary
+    public Number add(ELispBigNum implicitELispBigNum) {
+        return wrap(value.add(implicitELispBigNum.value));
+    }
+
+    @TruffleBoundary
+    public Number subtract(ELispBigNum implicitELispBigNum) {
+        return wrap(value.subtract(implicitELispBigNum.value));
+    }
+
+    @TruffleBoundary
+    public Number multiply(ELispBigNum implicitELispBigNum) {
+        return wrap(value.multiply(implicitELispBigNum.value));
+    }
+
+    @TruffleBoundary
+    public Number divide(ELispBigNum implicitELispBigNum) {
+        return wrap(value.divide(implicitELispBigNum.value));
+    }
+
+    public Number reciprocal() {
+        return BigInteger.ONE.divide(value);
+    }
+
+    public Number not() {
         return wrap(value.not());
     }
 
-    public Object negate() {
+    public Number negate() {
         return wrap(value.negate());
     }
 
     @TruffleBoundary
-    public Object remainder(ELispBigNum other) {
+    public Number remainder(ELispBigNum other) {
         return wrap(value.remainder(other.value));
     }
 
     @TruffleBoundary
-    public Object mod(ELispBigNum other) {
+    public Number mod(ELispBigNum other) {
         return wrap(value.mod(other.value));
     }
 
-    public Object shiftLeft(long count) {
+    public Number shiftLeft(long count) {
         return wrap(value.shiftLeft((int) count));
     }
 

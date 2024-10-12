@@ -79,14 +79,4 @@ public abstract class ELispTypeSystem {
         return ELispBigNum.forceWrap(value);
     }
 
-    @ImplicitCast
-    public static double castLongToDouble(long value) {
-        return value;
-    }
-
-    @ImplicitCast
-    public static double castBigNumToDouble(ELispBigNum value) {
-        return value.doubleValue();
-    }
-
 }

@@ -138,8 +138,8 @@ nil
             c.eval("elisp", "(setq ast '(equal (nconc '(1 2 3) nil '(4 5 6)) '(1 2 3 4 5 6)) _ 0)");
             // Emacs: true
             assertTrue(c.eval("elisp", "(eval ast)").asBoolean());
-            // FIXME: Emacs: should yield false on the second call
-            assertTrue(c.eval("elisp", "(eval ast)").asBoolean());
+            // Emacs: false
+            assertFalse(c.eval("elisp", "(eval ast)").asBoolean());
         }
     }
 }

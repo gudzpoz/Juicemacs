@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -25,6 +24,10 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
  * Built-in functions from {@code src/comp.c}
  */
 public class BuiltInFns extends ELispBuiltIns {
+    public BuiltInFns() {
+        super(true);
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInFnsFactory.getFactories();
