@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -559,6 +560,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @CompilerDirectives.CompilationFinal
         private volatile int type = -1;
 
+        private final Assumption stable;
+
         @Child
         @Nullable
         private volatile ConsCallNode callNode;
@@ -566,6 +569,18 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public ELispConsExpressionNode(ELispCons cons) {
             this.cons = cons;
             this.callNode = null;
+            this.stable = getAssumption(cons);
+        }
+
+        private static Assumption getAssumption(ELispCons cons) {
+            if (
+                    cons.car() instanceof ELispSymbol symbol
+                    && symbol.getFunction() instanceof ELispSubroutine(_, _, ELispSubroutine.InlineInfo inline)
+                    && inline != null
+            ) {
+                return inline.stable();
+            }
+            return Assumption.NEVER_VALID;
         }
 
         @Override
@@ -593,6 +608,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         private ConsCallNode updateInnerNode() {
+            ConsCallNode node = callNode;
+            if (stable.isValid() && node != null) {
+                return node;
+            }
             Object function = getIndirectFunction(cons.car());
             int newType = switch (function) {
                 case ELispSubroutine(_, boolean specialForm, _) when specialForm -> FORM_SPECIAL;
@@ -600,13 +619,12 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 case ELispCons c when c.car() == MACRO -> FORM_MACRO;
                 default -> FORM_FUNCTION;
             };
-            ConsCallNode node = callNode;
             if (node == null || type != newType || node.getFunction() != function) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = switch (newType) {
-                    case FORM_FUNCTION -> ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
-                    case FORM_INLINED -> new ConsInlinedAstNode(function, cons);
                     case FORM_SPECIAL -> new ConsSpecialCallNode(function, cons);
+                    case FORM_INLINED -> new ConsInlinedAstNode(function, cons);
+                    case FORM_FUNCTION -> ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
                     case FORM_MACRO -> ELispInterpretedNodeFactory.ConsMacroCallNodeGen.create(function, cons);
                     default -> throw CompilerDirectives.shouldNotReachHere();
                 };

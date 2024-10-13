@@ -263,7 +263,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return new PrognBlockNode(ELispInterpretedNode.create(body));
         }
 
-        public static class PrognBlockNode extends ELispExpressionNode
+        public static final class PrognBlockNode extends ELispExpressionNode
                 implements BlockNode.ElementExecutor<ELispExpressionNode> {
             @SuppressWarnings("FieldMayBeFinal")
             @Child

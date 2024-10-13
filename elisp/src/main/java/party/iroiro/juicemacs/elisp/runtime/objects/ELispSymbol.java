@@ -296,6 +296,10 @@ public final class ELispSymbol implements ELispValue {
         if (isConstant()) {
             throw ELispSignals.settingConstant(this);
         }
+        Object original = getFunction();
+        if (original instanceof ELispSubroutine(_, _, ELispSubroutine.InlineInfo inline) && inline != null) {
+            inline.stable().invalidate();
+        }
         this.function = Objects.requireNonNull(function);
         if (function instanceof ELispInterpretedClosure closure) {
             closure.setName(this);

@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -76,8 +77,11 @@ public abstract class ELispBuiltIns {
                             builtIn,
                             function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory
                                     ? inlineFactory
-                                    : factory
+                                    : factory,
+                            Truffle.getRuntime().createAssumption()
                     );
+                } else if (builtIn.rawArg()) {
+                    inlineInfo = new ELispSubroutine.InlineInfo(builtIn, null, Truffle.getRuntime().createAssumption());
                 } else {
                     inlineInfo = null;
                 }
