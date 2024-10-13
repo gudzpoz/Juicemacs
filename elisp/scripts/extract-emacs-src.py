@@ -271,7 +271,11 @@ class LispSubroutine:
         assert name == self.name
         assert fname == self.fname
         assert attrs == self.attrs(), (self.name, attrs, self.attrs())
-        assert extends == 'extends ELispBuiltInBaseNode '
+        assert (
+            extends == 'extends ELispBuiltInBaseNode '
+            or extends == 'extends ELispBuiltInBaseNode '
+            'implements ELispBuiltInBaseNode.InlineFactory '
+        )
         assert '@Specialization' in body
         self.check_existing_args(body)
         return f'''

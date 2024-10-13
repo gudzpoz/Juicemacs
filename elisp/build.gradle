@@ -42,8 +42,13 @@ test {
     ]
 }
 
-// Template generation from Emacs sources
-var templateTasks = [
+// The following list several tasks that are used to generate Java sources from Emacs sources.
+
+// A list, used later to enforce sequential evaluation
+var ArrayList<String> extractEmacsTasks = []
+
+// Built-in function template generation from Emacs sources
+var ArrayList<List<String>> templateTasks = [
         ['Alloc', 'alloc.c'],
         ['Buffer', 'buffer.c'],
         ['CharSet', 'charset.c'],
@@ -63,17 +68,17 @@ var templateTasks = [
         ['TimeFns', 'timefns.c'],
         ['XFaces', 'xfaces.c'],
 ]
-// Force sequential evaluation
+var base = "src/main/java/party/iroiro/juicemacs/elisp"
+var context = file("${base}/runtime/ELispContext.java")
 templateTasks.each {
     var templateScript = file("scripts/extract-emacs-src.py")
     var input = file("emacs/src/${it[1]}")
     var clazz = "BuiltIn${it[0]}"
-    var base = "src/main/java/party/iroiro/juicemacs/elisp"
     var target = file("${base}/forms/${clazz}.java")
-    var context = file("${base}/runtime/ELispContext.java")
     var buffer = file("${base}/runtime/ELispBuffer.java")
     var globals = file("${base}/runtime/ELispGlobals.java")
-    tasks.register("emacsGen${it[0]}") {
+    var templateTaskName = "emacsGen${it[0]}"
+    tasks.register(templateTaskName) {
         description = "${input}"
         inputs.files input, templateScript
         outputs.files target, context
@@ -84,13 +89,34 @@ templateTasks.each {
             }
         }
     }
+    extractEmacsTasks.add(templateTaskName)
 }
-(0..<templateTasks.size() - 1).each { i ->
-    tasks.named("emacsGen${templateTasks[i + 1][0]}") {
-        dependsOn tasks.named("emacsGen${templateTasks[i][0]}")
+
+// Error type extraction from Emacs sources
+tasks.register("emacsGenDataCErrorTypes") {
+    description = 'Extract error types from Emacs data.c'
+    inputs.files file("emacs/src/data.c"), file("scripts/extract-emacs-errors.py")
+    outputs.file context
+    doLast {
+        exec {
+            commandLine 'python', 'scripts/extract-emacs-errors.py',
+                    '-i', 'emacs/src/data.c', '-o', context
+        }
     }
 }
+extractEmacsTasks.add("emacsGenDataCErrorTypes")
+
+// Force sequential evaluation
+(0..<extractEmacsTasks.size() - 1).each { i ->
+    var firstTaskName = extractEmacsTasks[i]
+    var secondTaskName = extractEmacsTasks[i + 1]
+    tasks.named(secondTaskName) {
+        dependsOn tasks.named(firstTaskName)
+    }
+}
+
+// One huge task to generate all sources
 tasks.register("emacsGen") {
     description = 'Generate symbol/function definitions from Emacs source'
-    dependsOn templateTasks.collect { tasks.named("emacsGen${it[0]}") }
+    dependsOn extractEmacsTasks.collect { tasks.named(it) }
 }

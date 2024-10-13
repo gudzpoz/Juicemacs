@@ -5,9 +5,7 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.HashMap;
 
@@ -76,6 +74,7 @@ public final class ELispContext {
 
         T.setConstant(true);
         NIL.setConstant(true);
+        initErrorTypes();
 
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
@@ -108,6 +107,79 @@ public final class ELispContext {
             INTERN_MAP.put(symbol.name(), symbol);
             symbol.setInterned(ELispSymbol.Interned.INTERNED_IN_INITIAL_OBARRAY);
         }
+    }
+
+    private void initErrorTypes() {
+        /* @generated region="data.c:error_initialization" by="extract-emacs-errors.py" */
+        ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(ERROR, false));
+        ERROR.putProperty(ERROR_MESSAGE, new ELispString("error"));
+        QUIT.putProperty(ERROR_CONDITIONS, new ELispCons(QUIT, false));
+        QUIT.putProperty(ERROR_MESSAGE, new ELispString("Quit"));
+        MINIBUFFER_QUIT.putProperty(ERROR_CONDITIONS, new ELispCons(MINIBUFFER_QUIT, new ELispCons(QUIT, false)));
+        MINIBUFFER_QUIT.putProperty(ERROR_MESSAGE, new ELispString("Quit"));
+        USER_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(USER_ERROR, new ELispCons(ERROR, false)));
+        USER_ERROR.putProperty(ERROR_MESSAGE, new ELispString(""));
+        WRONG_LENGTH_ARGUMENT.putProperty(ERROR_CONDITIONS, new ELispCons(WRONG_LENGTH_ARGUMENT, new ELispCons(ERROR, false)));
+        WRONG_LENGTH_ARGUMENT.putProperty(ERROR_MESSAGE, new ELispString("Wrong length argument"));
+        WRONG_TYPE_ARGUMENT.putProperty(ERROR_CONDITIONS, new ELispCons(WRONG_TYPE_ARGUMENT, new ELispCons(ERROR, false)));
+        WRONG_TYPE_ARGUMENT.putProperty(ERROR_MESSAGE, new ELispString("Wrong type argument"));
+        TYPE_MISMATCH.putProperty(ERROR_CONDITIONS, new ELispCons(TYPE_MISMATCH, new ELispCons(ERROR, false)));
+        TYPE_MISMATCH.putProperty(ERROR_MESSAGE, new ELispString("Types do not match"));
+        ARGS_OUT_OF_RANGE.putProperty(ERROR_CONDITIONS, new ELispCons(ARGS_OUT_OF_RANGE, new ELispCons(ERROR, false)));
+        ARGS_OUT_OF_RANGE.putProperty(ERROR_MESSAGE, new ELispString("Args out of range"));
+        VOID_FUNCTION.putProperty(ERROR_CONDITIONS, new ELispCons(VOID_FUNCTION, new ELispCons(ERROR, false)));
+        VOID_FUNCTION.putProperty(ERROR_MESSAGE, new ELispString("Symbol's function definition is void"));
+        CYCLIC_FUNCTION_INDIRECTION.putProperty(ERROR_CONDITIONS, new ELispCons(CYCLIC_FUNCTION_INDIRECTION, new ELispCons(ERROR, false)));
+        CYCLIC_FUNCTION_INDIRECTION.putProperty(ERROR_MESSAGE, new ELispString("Symbol's chain of function indirections contains a loop"));
+        CYCLIC_VARIABLE_INDIRECTION.putProperty(ERROR_CONDITIONS, new ELispCons(CYCLIC_VARIABLE_INDIRECTION, new ELispCons(ERROR, false)));
+        CYCLIC_VARIABLE_INDIRECTION.putProperty(ERROR_MESSAGE, new ELispString("Symbol's chain of variable indirections contains a loop"));
+        CIRCULAR_LIST.putProperty(ERROR_CONDITIONS, new ELispCons(CIRCULAR_LIST, new ELispCons(ERROR, false)));
+        CIRCULAR_LIST.putProperty(ERROR_MESSAGE, new ELispString("List contains a loop"));
+        VOID_VARIABLE.putProperty(ERROR_CONDITIONS, new ELispCons(VOID_VARIABLE, new ELispCons(ERROR, false)));
+        VOID_VARIABLE.putProperty(ERROR_MESSAGE, new ELispString("Symbol's value as variable is void"));
+        SETTING_CONSTANT.putProperty(ERROR_CONDITIONS, new ELispCons(SETTING_CONSTANT, new ELispCons(ERROR, false)));
+        SETTING_CONSTANT.putProperty(ERROR_MESSAGE, new ELispString("Attempt to set a constant symbol"));
+        TRAPPING_CONSTANT.putProperty(ERROR_CONDITIONS, new ELispCons(TRAPPING_CONSTANT, new ELispCons(ERROR, false)));
+        TRAPPING_CONSTANT.putProperty(ERROR_MESSAGE, new ELispString("Attempt to trap writes to a constant symbol"));
+        INVALID_READ_SYNTAX.putProperty(ERROR_CONDITIONS, new ELispCons(INVALID_READ_SYNTAX, new ELispCons(ERROR, false)));
+        INVALID_READ_SYNTAX.putProperty(ERROR_MESSAGE, new ELispString("Invalid read syntax"));
+        INVALID_FUNCTION.putProperty(ERROR_CONDITIONS, new ELispCons(INVALID_FUNCTION, new ELispCons(ERROR, false)));
+        INVALID_FUNCTION.putProperty(ERROR_MESSAGE, new ELispString("Invalid function"));
+        WRONG_NUMBER_OF_ARGUMENTS.putProperty(ERROR_CONDITIONS, new ELispCons(WRONG_NUMBER_OF_ARGUMENTS, new ELispCons(ERROR, false)));
+        WRONG_NUMBER_OF_ARGUMENTS.putProperty(ERROR_MESSAGE, new ELispString("Wrong number of arguments"));
+        NO_CATCH.putProperty(ERROR_CONDITIONS, new ELispCons(NO_CATCH, new ELispCons(ERROR, false)));
+        NO_CATCH.putProperty(ERROR_MESSAGE, new ELispString("No catch for tag"));
+        END_OF_FILE.putProperty(ERROR_CONDITIONS, new ELispCons(END_OF_FILE, new ELispCons(ERROR, false)));
+        END_OF_FILE.putProperty(ERROR_MESSAGE, new ELispString("End of file during parsing"));
+        ARITH_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)));
+        ARITH_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic error"));
+        BEGINNING_OF_BUFFER.putProperty(ERROR_CONDITIONS, new ELispCons(BEGINNING_OF_BUFFER, new ELispCons(ERROR, false)));
+        BEGINNING_OF_BUFFER.putProperty(ERROR_MESSAGE, new ELispString("Beginning of buffer"));
+        END_OF_BUFFER.putProperty(ERROR_CONDITIONS, new ELispCons(END_OF_BUFFER, new ELispCons(ERROR, false)));
+        END_OF_BUFFER.putProperty(ERROR_MESSAGE, new ELispString("End of buffer"));
+        BUFFER_READ_ONLY.putProperty(ERROR_CONDITIONS, new ELispCons(BUFFER_READ_ONLY, new ELispCons(ERROR, false)));
+        BUFFER_READ_ONLY.putProperty(ERROR_MESSAGE, new ELispString("Buffer is read-only"));
+        TEXT_READ_ONLY.putProperty(ERROR_CONDITIONS, new ELispCons(TEXT_READ_ONLY, new ELispCons(BUFFER_READ_ONLY, new ELispCons(ERROR, false))));
+        TEXT_READ_ONLY.putProperty(ERROR_MESSAGE, new ELispString("Text is read-only"));
+        INHIBITED_INTERACTION.putProperty(ERROR_CONDITIONS, new ELispCons(INHIBITED_INTERACTION, new ELispCons(ERROR, false)));
+        INHIBITED_INTERACTION.putProperty(ERROR_MESSAGE, new ELispString("User interaction while inhibited"));
+        DOMAIN_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(DOMAIN_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false))));
+        DOMAIN_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic domain error"));
+        RANGE_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(RANGE_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false))));
+        RANGE_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic range error"));
+        SINGULARITY_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(SINGULARITY_ERROR, new ELispCons(DOMAIN_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)))));
+        SINGULARITY_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic singularity error"));
+        OVERFLOW_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(OVERFLOW_ERROR, new ELispCons(RANGE_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)))));
+        OVERFLOW_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic overflow error"));
+        UNDERFLOW_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(UNDERFLOW_ERROR, new ELispCons(RANGE_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)))));
+        UNDERFLOW_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic underflow error"));
+        RECURSION_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(RECURSION_ERROR, new ELispCons(ERROR, false)));
+        RECURSION_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Excessive recursive calling error"));
+        EXCESSIVE_LISP_NESTING.putProperty(ERROR_CONDITIONS, new ELispCons(EXCESSIVE_LISP_NESTING, new ELispCons(RECURSION_ERROR, new ELispCons(ERROR, false))));
+        EXCESSIVE_LISP_NESTING.putProperty(ERROR_MESSAGE, new ELispString("Lisp nesting exceeds `max-lisp-eval-depth'"));
+        EXCESSIVE_VARIABLE_BINDING.putProperty(ERROR_CONDITIONS, new ELispCons(EXCESSIVE_VARIABLE_BINDING, new ELispCons(RECURSION_ERROR, new ELispCons(ERROR, false))));
+        EXCESSIVE_VARIABLE_BINDING.putProperty(ERROR_MESSAGE, new ELispString("Variable binding depth exceeds max-specpdl-size"));
+        /* @end region="data.c:error_initialization" */
     }
 
     /* @generated region="data.c" by="extract-emacs-src.py" */
