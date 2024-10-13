@@ -30,6 +30,7 @@ public class BuiltInData extends ELispBuiltIns {
         return BuiltInDataFactory.getFactories();
     }
 
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     private static class NumberAsIsUnary extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Child
@@ -285,10 +286,11 @@ public class BuiltInData extends ELispBuiltIns {
 
     private static ELispExpressionNode varArgsToBinary(
             ELispExpressionNode[] arguments,
+            int startI,
             BiFunction<ELispExpressionNode, ELispExpressionNode, ELispExpressionNode> factory
     ) {
-        ELispExpressionNode node = arguments[0];
-        for (int i = 1; i < arguments.length; i++) {
+        ELispExpressionNode node = arguments[startI];
+        for (int i = startI + 1; i < arguments.length; i++) {
             node = factory.apply(node, arguments[i]);
         }
         return node;
@@ -2222,7 +2224,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (arguments.length == 1) {
                 return new NumberAsIsUnary(arguments[0]);
             }
-            return varArgsToBinary(arguments, BuiltInDataFactory.FPlusBinaryNodeGen::create);
+            return varArgsToBinary(arguments, 0, BuiltInDataFactory.FPlusBinaryNodeGen::create);
         }
     }
 
@@ -2316,7 +2318,7 @@ public class BuiltInData extends ELispBuiltIns {
                 fMinusUnary.adoptChildren();
                 return fMinusUnary;
             }
-            return varArgsToBinary(arguments, BuiltInDataFactory.FMinusBinaryNodeGen::create);
+            return varArgsToBinary(arguments, 0, BuiltInDataFactory.FMinusBinaryNodeGen::create);
         }
     }
 
@@ -2390,7 +2392,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (arguments.length == 1) {
                 return new NumberAsIsUnary(arguments[0]);
             }
-            return varArgsToBinary(arguments, BuiltInDataFactory.FTimesBinaryNodeGen::create);
+            return varArgsToBinary(arguments, 0, BuiltInDataFactory.FTimesBinaryNodeGen::create);
         }
     }
 
@@ -2470,7 +2472,13 @@ public class BuiltInData extends ELispBuiltIns {
                 fQuoUnary.adoptChildren();
                 return fQuoUnary;
             }
-            return varArgsToBinary(arguments, BuiltInDataFactory.FQuoBinaryNodeGen::create);
+            if (arguments.length == 2) {
+                return BuiltInDataFactory.FQuoBinaryNodeGen.create(arguments[0], arguments[1]);
+            }
+            return BuiltInDataFactory.FQuoBinaryNodeGen.create(
+                    arguments[0],
+                    varArgsToBinary(arguments, 1, BuiltInDataFactory.FTimesBinaryNodeGen::create)
+            );
         }
     }
 

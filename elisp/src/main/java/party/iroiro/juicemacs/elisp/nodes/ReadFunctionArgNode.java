@@ -19,6 +19,10 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
     }
 
     @Override
+    public void executeVoid(VirtualFrame frame) {
+    }
+
+    @Override
     public Object executeGeneric(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         return index < arguments.length ? arguments[this.index] : false;
@@ -53,6 +57,10 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         }
 
         @Override
+        public void executeVoid(VirtualFrame frame) {
+        }
+
+        @Override
         public Object executeGeneric(VirtualFrame frame) {
             int length = frame.getArguments().length;
             if (CompilerDirectives.injectBranchProbability(
@@ -70,6 +78,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         }
     }
 
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     public static final class DslExceptionRemapNode extends ArgCountVerificationNode {
         public DslExceptionRemapNode(ELispExpressionNode function, int minArgs, int maxArgs) {
             super(function, minArgs, maxArgs);
@@ -86,6 +95,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         }
     }
 
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     public static sealed class ReadFunctionRestArgsNode extends ReadFunctionArgNode {
         public ReadFunctionRestArgsNode(int index) {
             super(index);
@@ -103,6 +113,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         }
     }
 
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     public static final class ReadFunctionRestArgsAsConsNode extends ReadFunctionRestArgsNode {
         public ReadFunctionRestArgsAsConsNode(int index) {
             super(index);

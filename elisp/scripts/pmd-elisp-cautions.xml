@@ -80,6 +80,32 @@
         </properties>
     </rule>
 
+    <rule name="TruffleNodeMissingExecuteVoid"
+          language="java"
+          message="Please implement executeVoid()."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Please implement executeVoid() (and consider implementing
+            executeLong/executeDouble) in the node implementation.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //(
+                  ClassDeclaration[pmd-java:typeIs("party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode")]
+                    | ConstructorCall[pmd-java:typeIs("party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode")]
+                      /AnonymousClassDeclaration
+                )
+                [./ClassBody
+                  [./MethodDeclaration[@Name="executeGeneric"]]
+                  [not (./MethodDeclaration[@Name="executeVoid"])]
+                ]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <!-- Some code styles -->
 
     <rule ref="category/java/codestyle.xml/AvoidDollarSigns" />
