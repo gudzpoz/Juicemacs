@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -16,13 +17,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
+import party.iroiro.juicemacs.elisp.nodes.*;
 
-import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -50,6 +50,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (or CONDITIONS...)
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "or", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FOr extends ELispBuiltInBaseNode {
@@ -90,6 +91,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (and CONDITIONS...)
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "and", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FAnd extends ELispBuiltInBaseNode {
@@ -132,6 +134,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (if COND THEN ELSE...)
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "if", minArgs = 2, maxArgs = 2, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FIf extends ELispBuiltInBaseNode {
@@ -151,6 +154,15 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 {
                     adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                        elseBranch.executeVoid(frame);
+                        return;
+                    }
+                    thenBranch.executeVoid(frame);
                 }
 
                 @Override
@@ -207,6 +219,17 @@ public class BuiltInEval extends ELispBuiltIns {
                     adoptChildren();
                 }
 
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    int length = conditions.length;
+                    for (int i = 0; i < length; i++) {
+                        if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
+                            thenCases[i].executeVoid(frame);
+                            return;
+                        }
+                    }
+                }
+
                 @ExplodeLoop
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
@@ -252,7 +275,21 @@ public class BuiltInEval extends ELispBuiltIns {
                 block.adoptChildren();
             }
 
-            @ExplodeLoop
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                block.executeVoid(frame, BlockNode.NO_ARGUMENT);
+            }
+
+            @Override
+            public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+                return block.executeLong(frame, BlockNode.NO_ARGUMENT);
+            }
+
+            @Override
+            public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+                return block.executeDouble(frame, BlockNode.NO_ARGUMENT);
+            }
+
             @Override
             public Object executeGeneric(VirtualFrame frame) {
                 return block.executeGeneric(frame, BlockNode.NO_ARGUMENT);
@@ -297,9 +334,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 @Override
+                public void executeVoid(VirtualFrame frame) {
+                    firstNode.executeVoid(frame);
+                    others.executeVoid(frame);
+                }
+
+                @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     Object result = firstNode.executeGeneric(frame);
-                    others.executeGeneric(frame);
+                    others.executeVoid(frame);
                     return result;
                 }
             };
@@ -439,12 +482,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode quote(Object arg) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    return arg;
-                }
-            };
+            return ELispInterpretedNode.literal(arg);
         }
     }
 
@@ -654,6 +692,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (defvar SYMBOL &amp;optional INITVALUE DOCSTRING)
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "defvar", minArgs = 1, maxArgs = 3, varArgs = false, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FDefvar extends ELispBuiltInBaseNode {
@@ -720,6 +759,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (defconst SYMBOL INITVALUE [DOCSTRING])
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "defconst", minArgs = 2, maxArgs = 3, varArgs = false, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FDefconst extends ELispBuiltInBaseNode {
@@ -806,6 +846,18 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 @Override
+                public void executeVoid(VirtualFrame frame) {
+                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
+                        bodyNode.executeVoid(frame);
+                    } finally {
+                        if (lexicalFrame != null) {
+                            lexicalFrame.restore(frame);
+                        }
+                    }
+                }
+
+                @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                     try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
@@ -845,6 +897,11 @@ public class BuiltInEval extends ELispBuiltIns {
                 this.symbols = symbols;
                 valueNodes = values.toArray(ELispInterpretedNode[]::new);
                 adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                throw CompilerDirectives.shouldNotReachHere();
             }
 
             @ExplodeLoop
@@ -953,6 +1010,18 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 @Override
+                public void executeVoid(VirtualFrame frame) {
+                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
+                        bodyNode.executeVoid(frame);
+                    } finally {
+                        if (lexicalFrame != null) {
+                            lexicalFrame.restore(frame);
+                        }
+                    }
+                }
+
+                @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                     try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
@@ -978,6 +1047,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (while TEST BODY...)
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "while", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FWhile extends ELispBuiltInBaseNode {
@@ -1021,7 +1091,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
                     return false;
                 } else {
-                    bodyNode.executeGeneric(frame);
+                    bodyNode.executeVoid(frame);
                     return true;
                 }
             }
@@ -1079,6 +1149,7 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (catch TAG BODY...)
      * </pre>
      */
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "catch", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FCatch extends ELispBuiltInBaseNode {
@@ -1156,12 +1227,22 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 @Override
+                public void executeVoid(VirtualFrame frame) {
+                    try {
+                        body.executeVoid(frame);
+                    } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
+                        unwind.executeVoid(frame);
+                        throw e;
+                    }
+                }
+
+                @Override
                 public Object executeGeneric(VirtualFrame frame) {
                     // TODO: Add test once we have signal support
                     try {
                         return body.executeGeneric(frame);
                     } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
-                        unwind.executeGeneric(frame);
+                        unwind.executeVoid(frame);
                         throw e;
                     }
                 }
@@ -1248,6 +1329,12 @@ public class BuiltInEval extends ELispBuiltIns {
                         return list.contains(conditionName);
                     }
                     return false;
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    // TODO
+                    super.executeVoid(frame);
                 }
 
                 @Override

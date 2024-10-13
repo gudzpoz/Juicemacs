@@ -225,8 +225,17 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         }
 
         @Override
-        @ExplodeLoop
+        public void executeVoid(VirtualFrame frame) {
+            execute(frame, true);
+        }
+
+        @Override
         public Object executeGeneric(VirtualFrame frame) {
+            return execute(frame, false);
+        }
+
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame, boolean isVoid) {
             Object[] newValues;
             int length = optionalArgSymbols.length;
             newValues = new Object[length];
@@ -234,6 +243,10 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                 newValues[i] = optionalRestArgs[i].executeGeneric(frame);
             }
             try (ELispLexical.Dynamic _ = pushScope(frame, newValues)) {
+                if (isVoid) {
+                    body.executeVoid(frame);
+                    return false;
+                }
                 return body.executeGeneric(frame);
             }
         }
