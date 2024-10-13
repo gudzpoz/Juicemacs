@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
@@ -204,14 +205,43 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         private ELispSymbol symbol;
 
         @CompilerDirectives.CompilationFinal
-        private VirtualFrame frame = null;
-        @CompilerDirectives.CompilationFinal
-        private int index = INVALID;
-        @CompilerDirectives.CompilationFinal
         private int top = INVALID;
+
+        @Child
+        private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode;
 
         public ELispSymbolDereferenceNode(ELispSymbol symbol) {
             this.symbol = symbol;
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            if (symbol == NIL || symbol == T) {
+                throw new UnexpectedResultException(symbol);
+            }
+            ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
+            if (read == null) {
+                return ELispTypeSystemGen.expectLong(symbol.getValue());
+            } else {
+                return read.executeLong(frame);
+            }
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+            if (symbol == NIL || symbol == T) {
+                throw new UnexpectedResultException(symbol);
+            }
+            ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
+            if (read == null) {
+                return ELispTypeSystemGen.expectDouble(symbol.getValue());
+            } else {
+                return read.executeDouble(frame);
+            }
         }
 
         @Override
@@ -222,26 +252,40 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (symbol == T) {
                 return true;
             }
-            VirtualFrame currentFrame = this.frame == null ? frame : this.frame;
-            if (index == INVALID || ELispLexical.getMaterializedTop(frame) != top) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                ELispLexical.LexicalReference lexical = lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, symbol);
-                if (lexical == null) {
-                    index = DYNAMIC;
-                } else {
-                    index = lexical.index();
-                    top = ELispLexical.getMaterializedTop(frame);
-                    this.frame = lexical.frame();
-                    if (lexical.frame() != null) {
-                        currentFrame = lexical.frame();
-                    }
-                }
-            }
-            if (index == DYNAMIC) {
+            ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
+            if (read == null) {
                 return symbol.getValue();
+            } else {
+                return read.executeGeneric(frame);
             }
-            return ELispLexical.getVariable(currentFrame, index);
+        }
+
+        private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode updateSlotInfo(VirtualFrame currentFrame) {
+            if (top == DYNAMIC) {
+                return null;
+            }
+            if (CompilerDirectives.injectBranchProbability(
+                    CompilerDirectives.FASTPATH_PROBABILITY,
+                    readNode != null && readNode.isFrameTopValid(currentFrame, top)
+            )) {
+                return readNode;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(currentFrame);
+            ELispLexical.LexicalReference lexical = lexicalFrame == null
+                    ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
+            if (lexical == null) {
+                top = DYNAMIC;
+                return null;
+            } else {
+                ELispFrameSlotNode.ELispFrameSlotReadNode reader =
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
+                readNode = reader;
+                adoptChildren();
+                readNode.adoptChildren();
+                top = reader.getValidFrameTop(currentFrame);
+            }
+            return readNode;
         }
     }
 

@@ -260,17 +260,17 @@ public class BuiltInEval extends ELispBuiltIns {
             if (body.length == 0) {
                 return ELispInterpretedNode.literal(false);
             }
-            return new PrognBlockNode(body);
+            return new PrognBlockNode(ELispInterpretedNode.create(body));
         }
 
-        private static class PrognBlockNode extends ELispExpressionNode
-                implements BlockNode.ElementExecutor<ELispInterpretedNode> {
+        public static class PrognBlockNode extends ELispExpressionNode
+                implements BlockNode.ElementExecutor<ELispExpressionNode> {
             @SuppressWarnings("FieldMayBeFinal")
             @Child
-            BlockNode<ELispInterpretedNode> block;
+            BlockNode<ELispExpressionNode> block;
 
-            public PrognBlockNode(Object[] body) {
-                block = BlockNode.create(ELispInterpretedNode.create(body), this);
+            public PrognBlockNode(ELispExpressionNode[] body) {
+                block = BlockNode.create(body, this);
                 adoptChildren();
                 block.adoptChildren();
             }
@@ -296,12 +296,22 @@ public class BuiltInEval extends ELispBuiltIns {
             }
 
             @Override
-            public void executeVoid(VirtualFrame frame, ELispInterpretedNode node, int index, int argument) {
+            public void executeVoid(VirtualFrame frame, ELispExpressionNode node, int index, int argument) {
                 node.executeVoid(frame);
             }
 
             @Override
-            public Object executeGeneric(VirtualFrame frame, ELispInterpretedNode node, int index, int argument) {
+            public long executeLong(VirtualFrame frame, ELispExpressionNode node, int index, int argument) throws UnexpectedResultException {
+                return node.executeLong(frame);
+            }
+
+            @Override
+            public double executeDouble(VirtualFrame frame, ELispExpressionNode node, int index, int argument) throws UnexpectedResultException {
+                return node.executeDouble(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame, ELispExpressionNode node, int index, int argument) {
                 return node.executeGeneric(frame);
             }
         }
@@ -371,52 +381,103 @@ public class BuiltInEval extends ELispBuiltIns {
             final Object symbol;
 
             @CompilerDirectives.CompilationFinal
-            @Nullable VirtualFrame frame = null;
-            @CompilerDirectives.CompilationFinal
-            int index = 0;
-            @CompilerDirectives.CompilationFinal
-            int top = 0;
+            int top = INVALID;
 
             @Child
-            ELispExpressionNode valueNode;
+            ELispFrameSlotNode.@Nullable ELispFrameSlotWriteNode writeNode;
+
+            private final ELispExpressionNode inner;
 
             FSetqItem(Object symbol, Object value) {
                 this.symbol = symbol;
-                this.valueNode = ELispInterpretedNode.create(value);
-                adoptChildren();
+                this.inner = ELispInterpretedNode.create(value);
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                if (updateSlots(frame) != null) {
+                    return;
+                }
+                Objects.requireNonNull(writeNode).executeVoid(frame);
+            }
+
+            @Override
+            public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+                Object dyn = updateSlots(frame);
+                if (dyn != null) {
+                    return ELispTypeSystemGen.expectLong(dyn);
+                }
+                return Objects.requireNonNull(writeNode).executeLong(frame);
+            }
+
+            @Override
+            public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+                Object dyn = updateSlots(frame);
+                if (dyn != null) {
+                    return ELispTypeSystemGen.expectDouble(dyn);
+                }
+                return Objects.requireNonNull(writeNode).executeDouble(frame);
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                Object o = valueNode.executeGeneric(frame);
-                VirtualFrame currentFrame = this.frame == null ? frame : this.frame;
-                if (index == INVALID || ELispLexical.getMaterializedTop(frame) != top) {
-                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    ELispLexical.@Nullable LexicalReference lexical =
-                            lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, asSym(symbol));
-                    int newIndex;
-                    if (lexical == null) {
-                        newIndex = DYNAMIC;
-                    } else {
-                        newIndex = lexical.index();
-                    }
-                    if (index != newIndex) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        index = newIndex;
-                        if (lexical != null) {
-                            top = ELispLexical.getMaterializedTop(frame);
-                            this.frame = lexical.frame();
-                            if (lexical.frame() != null) {
-                                currentFrame = lexical.frame();
-                            }
-                        }
-                    }
+                Object dyn = updateSlots(frame);
+                if (dyn != null) {
+                    return dyn;
                 }
-                if (index == DYNAMIC) {
-                    asSym(symbol).setValue(o);
+                return Objects.requireNonNull(writeNode).executeGeneric(frame);
+            }
+
+            /// Returns the value assigned to a dynamic variable or `null` if lexical
+            private @Nullable Object updateSlots(VirtualFrame frame) {
+                if (top == DYNAMIC) {
+                    return setDynamic(frame);
+                }
+                ELispFrameSlotNode.ELispFrameSlotWriteNode write = writeNode;
+                if (CompilerDirectives.injectBranchProbability(
+                        CompilerDirectives.FASTPATH_PROBABILITY,
+                        write != null && write.isFrameTopValid(frame, top)
+                )) {
+                    return null;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                ELispLexical.@Nullable LexicalReference lexical =
+                        lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, asSym(symbol));
+                int newIndex;
+                if (lexical == null) {
+                    newIndex = ELispFrameSlotNode.BYPASS;
                 } else {
-                    ELispLexical.setVariable(currentFrame, index, o);
+                    newIndex = lexical.index();
                 }
+                if (write == null || write.getSlot() != newIndex) {
+                    if (lexical == null) {
+                        top = DYNAMIC;
+                        write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
+                                newIndex, null, inner
+                        );
+                        adoptChildren();
+                        write.adoptChildren();
+                        writeNode = write;
+                        return setDynamic(frame);
+                    } else {
+                        top = ELispLexical.getMaterializedTop(frame);
+                        write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
+                                newIndex, lexical.frame(), inner
+                        );
+                        adoptChildren();
+                        write.adoptChildren();
+                        writeNode = write;
+                    }
+                } else {
+                    top = ELispLexical.getMaterializedTop(frame);
+                }
+                return null;
+            }
+
+            private Object setDynamic(VirtualFrame frame) {
+                Object o = Objects.requireNonNull(writeNode).executeGeneric(frame);
+                asSym(symbol).setValue(o);
                 return o;
             }
         }
@@ -427,38 +488,25 @@ public class BuiltInEval extends ELispBuiltIns {
             if (args.length % 2 != 0) {
                 return new ELispExpressionNode() {
                     @Override
+                    public void executeVoid(VirtualFrame frame) {
+                        super.executeVoid(frame);
+                    }
+
+                    @Override
                     public Object executeGeneric(VirtualFrame frame) {
                         throw ELispSignals.wrongNumberOfArguments(SETQ, args.length);
                     }
                 };
+            }
+            if (args.length == 0) {
+                return ELispInterpretedNode.literal(false);
             }
             int half = args.length / 2;
             ELispExpressionNode[] assignments = new ELispExpressionNode[half];
             for (int i = 0; i < half; i++) {
                 assignments[i] = new FSetqItem(args[i * 2], args[i * 2 + 1]);
             }
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                ELispExpressionNode[] nodes = assignments;
-
-                {
-                    adoptChildren();
-                }
-
-                @ExplodeLoop
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    int length = nodes.length;
-                    if (length == 0) {
-                        return false;
-                    }
-                    for (int i = 0; i < length - 1; i++) {
-                        nodes[i].executeGeneric(frame);
-                    }
-                    return nodes[length - 1].executeGeneric(frame);
-                }
-            };
+            return new FProgn.PrognBlockNode(assignments);
         }
     }
 

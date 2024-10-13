@@ -25,6 +25,7 @@ public class ELispRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        ELispLexical.initFrame(frame);
         return this.expression.executeGeneric(frame);
     }
 

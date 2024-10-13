@@ -36,8 +36,8 @@ public class BuiltInData extends ELispBuiltIns {
         @Child
         ELispExpressionNode arg;
 
-        public NumberAsIsUnary(ELispExpressionNode arguments) {
-            arg = arguments;
+        public NumberAsIsUnary(ELispExpressionNode argument) {
+            arg = argument;
             adoptChildren();
         }
 
@@ -48,6 +48,27 @@ public class BuiltInData extends ELispBuiltIns {
                 return o;
             }
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, o);
+        }
+    }
+
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
+    private static class BitAsIsUnary extends ELispExpressionNode {
+        @SuppressWarnings("FieldMayBeFinal")
+        @Child
+        ELispExpressionNode arg;
+
+        public BitAsIsUnary(ELispExpressionNode argument) {
+            arg = argument;
+            adoptChildren();
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            Object o = arg.executeGeneric(frame);
+            if (FIntegerp.integerp(o)) {
+                return o;
+            }
+            throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, o);
         }
     }
 
@@ -281,6 +302,68 @@ public class BuiltInData extends ELispBuiltIns {
                 return left.doubleValue() / dr;
             }
             return ELispTypeSystemGen.asImplicitELispBigNum(left).divide(ELispTypeSystemGen.asImplicitELispBigNum(right));
+        }
+    }
+
+    public abstract static class BinaryBitwiseNode extends ELispExpressionNode {
+        @Child @Executed protected ELispExpressionNode left;
+        @Child @Executed protected ELispExpressionNode right;
+
+        protected BinaryBitwiseNode(ELispExpressionNode left, ELispExpressionNode right) {
+            this.left = left;
+            this.right = right;
+            adoptChildren();
+        }
+
+        public abstract long longs(long left, long right);
+        public abstract Number fallback(ELispBigNum left, ELispBigNum right);
+    }
+
+    public abstract static class FLogxorBinary extends BinaryBitwiseNode {
+        protected FLogxorBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public long longs(long left, long right) {
+            return left ^ right;
+        }
+        @Override
+        @Specialization
+        public Number fallback(ELispBigNum left, ELispBigNum right) {
+            return left.xor(right);
+        }
+    }
+
+    public abstract static class FLogandBinary extends BinaryBitwiseNode {
+        protected FLogandBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public long longs(long left, long right) {
+            return left & right;
+        }
+        @Override
+        @Specialization
+        public Number fallback(ELispBigNum left, ELispBigNum right) {
+            return left.and(right);
+        }
+    }
+
+    public abstract static class FLogiorBinary extends BinaryBitwiseNode {
+        protected FLogiorBinary(ELispExpressionNode left, ELispExpressionNode right) {
+            super(left, right);
+        }
+        @Override
+        @Specialization
+        public long longs(long left, long right) {
+            return left | right;
+        }
+        @Override
+        @Specialization
+        public Number fallback(ELispBigNum left, ELispBigNum right) {
+            return left.or(right);
         }
     }
 
@@ -2577,7 +2660,7 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logand", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FLogand extends ELispBuiltInBaseNode {
+    public abstract static class FLogand extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization(rewriteOn = ClassCastException.class)
         public static long logandLong(Object[] intsOrMarkers) {
             long result = -1;
@@ -2600,6 +2683,24 @@ public class BuiltInData extends ELispBuiltIns {
             }
             return ELispBigNum.wrap(result);
         }
+
+        public static ELispExpressionNode createBitwiseNode(
+                long defaultValue, ELispExpressionNode[] arguments,
+                BiFunction<ELispExpressionNode,ELispExpressionNode, ELispExpressionNode> factory
+        ) {
+            if (arguments.length == 0) {
+                return ELispInterpretedNode.literal(defaultValue);
+            }
+            if (arguments.length == 1) {
+                return new BitAsIsUnary(arguments[0]);
+            }
+            return varArgsToBinary(arguments, 0, factory);
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return createBitwiseNode(-1, arguments, BuiltInDataFactory.FLogandBinaryNodeGen::create);
+        }
     }
 
     /**
@@ -2612,7 +2713,7 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logior", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FLogior extends ELispBuiltInBaseNode {
+    public abstract static class FLogior extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization(rewriteOn = ClassCastException.class)
         public static long logorLong(Object[] intsOrMarkers) {
             long result = 0;
@@ -2635,6 +2736,11 @@ public class BuiltInData extends ELispBuiltIns {
             }
             return ELispBigNum.wrap(result);
         }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return FLogand.createBitwiseNode(0, arguments, BuiltInDataFactory.FLogiorBinaryNodeGen::create);
+        }
     }
 
     /**
@@ -2647,7 +2753,7 @@ public class BuiltInData extends ELispBuiltIns {
     @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logxor", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FLogxor extends ELispBuiltInBaseNode {
+    public abstract static class FLogxor extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization(rewriteOn = ClassCastException.class)
         public static long logxorLong(Object[] intsOrMarkers) {
             long result = 0;
@@ -2669,6 +2775,11 @@ public class BuiltInData extends ELispBuiltIns {
                 });
             }
             return ELispBigNum.wrap(result);
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return FLogand.createBitwiseNode(0, arguments, BuiltInDataFactory.FLogxorBinaryNodeGen::create);
         }
     }
 

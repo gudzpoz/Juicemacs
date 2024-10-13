@@ -5,26 +5,28 @@ i.e., How To Implement Your Own Shitty Emacs.
 
 * Notes
 
+** Truffle Options
+
+During performance testing, I found the following options (supplied to =Context=
+builders) quite useful:
+
+#+begin_src text
+  .allowExperimentalOptions(true)
+  .option("engine.TraceCompilation", "true")
+  .option("engine.CompilationFailuReaction", "Diagnose")
+  .option("engine.SpecializationStatistics", "true")
+  .option("compiler.TraceMethodExpansion", "truffleTier")
+#+end_src
+
+- =SpecializationStatistics= requires something like:
+
+  #+begin_src groovy
+    tasks.withType(JavaCompile) {
+        options.compilerArgs += '-Atruffle.dsl.GenerateSpecializationStatistics=true'
+    }
+  #+end_src
+
 ** Emacs
-
-** Truffle Function Calls
-
-It is quite hard to gather all the details needed to build an efficient function
-call system in Truffle. Basically, we want:
-
-1. Built-in functions with less boilerplate code
-2. Support for user-defined functions
-3. Fixed args, optional args and varargs
-4. Efficiency
-
-And we need the following mechanism:
-
-1. Global/local variable dereferencing for named function calls
-2. Vararg parameter passing
-3. Fixed arg parameter passing optimization
-
-We will try to first follow a tutorial and then look into how some official
-implementations do this.
 
 *** Emacs Lisp Problems
 
@@ -143,6 +145,25 @@ Basically:
 - =AbsFunctionBodyExprNode= uses =ReadFunctionArgExprNode= as a child node
   to read parameters from the =VirtualFrame=.
 - =@GenerateNodeFactory= is used to ease writing more built-in functions.
+
+** Truffle Function Calls
+
+It is quite hard to gather all the details needed to build an efficient function
+call system in Truffle. Basically, we want:
+
+1. Built-in functions with less boilerplate code
+2. Support for user-defined functions
+3. Fixed args, optional args and varargs
+4. Efficiency
+
+And we need the following mechanism:
+
+1. Global/local variable dereferencing for named function calls
+2. Vararg parameter passing
+3. Fixed arg parameter passing optimization
+
+We will try to first follow a tutorial and then look into how some official
+implementations do this.
 
 *** SimpleLanguage - Official Implementation #1
 

@@ -6,6 +6,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
+import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -39,26 +40,40 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LEXICAL_BINDING;
 /// and we must not reuse *those* frame slots. However, this can lead to excessive memory usage
 /// in cases like {@code let} in loops, so we do want to reuse slots as much as possible.
 ///
+/// ### Primitives On The Stack
+///
+/// In order to avoid excessive GC pressure, it is a good idea to avoid the cost of boxing and
+/// unboxing primitives when storing things into the frame. GraalJS does this by **rewriting**
+/// the frame descriptor to use a different frame slot kind for primitives when a primitive is
+/// written to the slot. However, this will invalidate the whole function compilation, causing
+/// significant slow down if this happens too often. (In JavaScript, this is mitigated by the
+/// fact that `long`, `double` or `SafeInt` are interchangeable internal types, but this is not
+/// the case in ELisp.)
+///
+/// Instead, we use a different strategy: we use a container object to store primitives -
+/// similar to [Long]/[Double] boxing, but mutable to avoid the allocation cost.
+/// The logic is implemented in [party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode].
+/// [ELispLexical] only implements the logic for object accessing.
+///
 public final class ELispLexical {
     /// Placeholder to mark a symbol "dynamic"
     public final static LexicalReference DYNAMIC = new LexicalReference(null, 0);
 
     public final static int NON_VAR_SLOT0 = 0;
     public final static int NON_VAR_SLOT1 = 1;
-    private final static int LEXICAL_FRAME_SLOT = 0;
-    private final static int MATERIALIZED_TOP_SLOT = 1;
+    private final static int MATERIALIZED_TOP_SLOT = 0;
+    private final static int LEXICAL_FRAME_SLOT = 1;
     private final static int SPILL_LIST_SLOT = 2;
     private final static int START_SLOT = 3;
-    private final static int MAX_SLOTS = 32;
+    public final static int MAX_SLOTS = 32;
 
     private final static FrameDescriptor LEXICAL_DESCRIPTOR;
     private final static FrameDescriptor DYNAMIC_DESCRIPTOR;
 
     static {
         FrameDescriptor.Builder lexical = FrameDescriptor.newBuilder(MAX_SLOTS);
-        lexical.addSlots(1, FrameSlotKind.Object);
         lexical.addSlots(1, FrameSlotKind.Int);
-        lexical.addSlots(MAX_SLOTS - 2, FrameSlotKind.Object);
+        lexical.addSlots(MAX_SLOTS - 1, FrameSlotKind.Object);
         LEXICAL_DESCRIPTOR = lexical.build();
         FrameDescriptor.Builder dynamic = FrameDescriptor.newBuilder(1);
         dynamic.addSlots(1, FrameSlotKind.Object);
@@ -67,6 +82,10 @@ public final class ELispLexical {
 
     public static FrameDescriptor frameDescriptor(boolean lexical) {
         return lexical ? LEXICAL_DESCRIPTOR : DYNAMIC_DESCRIPTOR;
+    }
+
+    public static void initFrame(VirtualFrame frame) {
+        frame.setInt(MATERIALIZED_TOP_SLOT, -1);
     }
 
     private final List<ELispSymbol> args;
@@ -154,6 +173,7 @@ public final class ELispLexical {
         }
         variables.add(symbol);
         variableIndices.add(index);
+        value = ELispFrameSlotNode.wrap(value);
         if (index < MAX_SLOTS) {
             frame.setObject(index, value);
         } else {
@@ -181,24 +201,6 @@ public final class ELispLexical {
     }
 
     @Nullable
-    private Object getVariableValue(VirtualFrame frame, ELispSymbol symbol) {
-        ELispLexical currentFrame = this;
-        while (true) {
-            int i = currentFrame.getIndex(symbol);
-            if (i != 0) {
-                return getVariable(frame, i);
-            }
-            if (currentFrame.materializedParent != null) {
-                frame = currentFrame.materializedParent;
-            }
-            currentFrame = currentFrame.parent;
-            if (currentFrame == null) {
-                return null;
-            }
-        }
-    }
-
-    @Nullable
     public LexicalReference getLexicalReference(VirtualFrame frame, ELispSymbol symbol) {
         VirtualFrame virtualFrame = frame;
         ELispLexical currentFrame = this;
@@ -208,7 +210,7 @@ public final class ELispLexical {
                 if (i > 0 && getVariable(frame, i) == DYNAMIC) {
                     return null;
                 }
-                return new LexicalReference(frame == virtualFrame ? null : frame, i);
+                return new LexicalReference(frame == virtualFrame ? null : frame.materialize(), i);
             }
             if (currentFrame.materializedParent != null) {
                 frame = currentFrame.materializedParent;
@@ -222,6 +224,9 @@ public final class ELispLexical {
 
     @Nullable
     public static ELispLexical getLexicalFrame(VirtualFrame frame) {
+        if (getMaterializedTop(frame) == -1)  {
+            return null;
+        }
         return (ELispLexical) frame.getObject(LEXICAL_FRAME_SLOT);
     }
 
@@ -232,9 +237,6 @@ public final class ELispLexical {
     }
 
     public static int getMaterializedTop(VirtualFrame frame) {
-        if (getLexicalFrame(frame) == null) {
-            return -1;
-        }
         return frame.getInt(MATERIALIZED_TOP_SLOT);
     }
 
@@ -274,8 +276,26 @@ public final class ELispLexical {
     }
 
     public static boolean isDynamic(VirtualFrame frame, ELispSymbol symbol) {
-        ELispLexical lexicalFrame = getLexicalFrame(frame);
-        return symbol.isSpecial() || (lexicalFrame != null && lexicalFrame.getVariableValue(frame, symbol) == DYNAMIC);
+        if (symbol.isSpecial()) {
+            return true;
+        }
+        ELispLexical currentFrame = getLexicalFrame(frame);
+        if (currentFrame == null) {
+            return false;
+        }
+        while (true) {
+            int i = currentFrame.getIndex(symbol);
+            if (i != 0) {
+                return getVariable(frame, i) == DYNAMIC;
+            }
+            if (currentFrame.materializedParent != null) {
+                frame = currentFrame.materializedParent;
+            }
+            currentFrame = currentFrame.parent;
+            if (currentFrame == null) {
+                return false;
+            }
+        }
     }
 
     public static Dynamic withLexicalBinding(boolean value) {
@@ -294,7 +314,7 @@ public final class ELispLexical {
         return new ELispInterpretedClosure.LexicalEnvironment(frame.materialize(), this);
     }
 
-    public record LexicalReference(@Nullable VirtualFrame frame, int index) {
+    public record LexicalReference(@Nullable MaterializedFrame frame, int index) {
     }
 
     public record Dynamic(ELispSymbol[] symbols, Object[] prevValues) implements AutoCloseable {
