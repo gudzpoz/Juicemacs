@@ -51,8 +51,11 @@ var ArrayList<String> extractEmacsTasks = []
 var ArrayList<List<String>> templateTasks = [
         ['Alloc', 'alloc.c'],
         ['Buffer', 'buffer.c'],
+        ['CallInt', 'callint.c'],
+        ['CaseTab', 'casetab.c'],
         ['CharSet', 'charset.c'],
         ['CharTab', 'chartab.c'],
+        ['Cmds', 'cmds.c'],
         ['Comp', 'comp.c'],
         ['Data', 'data.c'],
         ['EditFns', 'editfns.c'],
@@ -60,6 +63,7 @@ var ArrayList<List<String>> templateTasks = [
         ['Eval', 'eval.c'],
         ['FileIO', 'fileio.c'],
         ['Fns', 'fns.c'],
+        ['Keyboard', 'keyboard.c'],
         ['Keymap', 'keymap.c'],
         ['LRead', 'lread.c'],
         ['Print', 'print.c'],
@@ -70,8 +74,10 @@ var ArrayList<List<String>> templateTasks = [
 ]
 var base = "src/main/java/party/iroiro/juicemacs/elisp"
 var context = file("${base}/runtime/ELispContext.java")
+var initExtractionScript = file("scripts/extract_emacs_init.py")
+var utilsScript = file("scripts/extract_emacs_utils.py")
 templateTasks.each {
-    var templateScript = file("scripts/extract-emacs-src.py")
+    var templateScript = file("scripts/extract_emacs_src.py")
     var input = file("emacs/src/${it[1]}")
     var clazz = "BuiltIn${it[0]}"
     var target = file("${base}/forms/${clazz}.java")
@@ -80,7 +86,7 @@ templateTasks.each {
     var templateTaskName = "emacsGen${it[0]}"
     tasks.register(templateTaskName) {
         description = "${input}"
-        inputs.files input, templateScript
+        inputs.files input, templateScript, utilsScript, initExtractionScript
         outputs.files target, context
         doLast {
            exec {
@@ -91,20 +97,6 @@ templateTasks.each {
     }
     extractEmacsTasks.add(templateTaskName)
 }
-
-// Error type extraction from Emacs sources
-tasks.register("emacsGenDataCErrorTypes") {
-    description = 'Extract error types from Emacs data.c'
-    inputs.files file("emacs/src/data.c"), file("scripts/extract-emacs-errors.py")
-    outputs.file context
-    doLast {
-        exec {
-            commandLine 'python', 'scripts/extract-emacs-errors.py',
-                    '-i', 'emacs/src/data.c', '-o', context
-        }
-    }
-}
-extractEmacsTasks.add("emacsGenDataCErrorTypes")
 
 // Force sequential evaluation
 (0..<extractEmacsTasks.size() - 1).each { i ->

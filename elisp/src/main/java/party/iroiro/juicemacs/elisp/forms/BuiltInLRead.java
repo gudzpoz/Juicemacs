@@ -320,6 +320,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FLoad extends ELispBuiltInBaseNode {
         @Specialization
         public boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
+            // TODO: Potential lock candidate
             return loadFile(ELispLanguage.get(this), file);
         }
     }

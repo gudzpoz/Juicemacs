@@ -36,6 +36,17 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
         throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
     }
 
+    public static double asDouble(Object value) {
+        if (value instanceof Double d) {
+            return d;
+        }
+        throw ELispSignals.wrongTypeArgument(ELispContext.FLOATP, value);
+    }
+
+    public static double toDouble(double value) {
+        return value;
+    }
+
     public static Number asNum(Object value) {
         if (value instanceof Number n) {
             return n;

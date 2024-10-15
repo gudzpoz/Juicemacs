@@ -2046,7 +2046,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (= NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FEqlsign extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2072,7 +2071,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&lt; NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "<", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLss extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2100,7 +2098,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&gt; NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = ">", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FGtr extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2128,7 +2125,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&lt;= NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "<=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLeq extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2156,7 +2152,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (&gt;= NUMBER-OR-MARKER &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = ">=", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FGeq extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2247,7 +2242,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (+ &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "+", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FPlus extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2264,7 +2258,7 @@ public class BuiltInData extends ELispBuiltIns {
                         }
                     }
                     case Double _ -> {
-                        return tryAddDouble((double) sum, i, numbersOrMarkers);
+                        return tryAddDouble(toDouble(sum), i, numbersOrMarkers);
                     }
                     case ELispBigNum _ -> {
                         return tryAddBigNum(sum, i, numbersOrMarkers);
@@ -2319,7 +2313,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (- &amp;optional NUMBER-OR-MARKER &amp;rest MORE-NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "-", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FMinus extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2357,7 +2350,7 @@ public class BuiltInData extends ELispBuiltIns {
                         }
                     }
                     case Double _ -> {
-                        return tryMinusDouble((double) result, i, args);
+                        return tryMinusDouble(toDouble(result), i, args);
                     }
                     case ELispBigNum _ -> {
                         return tryMinusBigNum(BigInteger.valueOf(result), i, args);
@@ -2411,7 +2404,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (* &amp;rest NUMBERS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "*", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FTimes extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2432,7 +2424,7 @@ public class BuiltInData extends ELispBuiltIns {
                         }
                     }
                     case Double _ -> {
-                        return tryTimesDouble((double) product, i, args);
+                        return tryTimesDouble(toDouble(product), i, args);
                     }
                     case ELispBigNum _ -> {
                         return tryTimesBigNum(product, i, args);
@@ -2488,7 +2480,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (/ NUMBER &amp;rest DIVISORS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "/", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FQuo extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2657,7 +2648,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (logand &amp;rest INTS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logand", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLogand extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2710,7 +2700,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (logior &amp;rest INTS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logior", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLogior extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
@@ -2750,7 +2739,6 @@ public class BuiltInData extends ELispBuiltIns {
      * usage: (logxor &amp;rest INTS-OR-MARKERS)
      * </pre>
      */
-    @SuppressWarnings("PMD.ELispReduceCastExpressions")
     @ELispBuiltIn(name = "logxor", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FLogxor extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {

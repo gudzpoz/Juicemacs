@@ -13,6 +13,7 @@ import java.math.BigInteger;
 
 /// @see <a href="https://github.com/graalvm/simplelanguage/blob/master/language/src/main/java/com/oracle/truffle/sl/runtime/SLBigInteger.java">
 /// SLBigInteger.java</a>
+@SuppressWarnings("PMD.ShortMethodName")
 @ExportLibrary(InteropLibrary.class)
 public final class ELispBigNum extends Number implements TruffleObject, Comparable<ELispBigNum>, ELispValue {
     private final BigInteger value;

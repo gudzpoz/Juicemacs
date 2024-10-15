@@ -50,7 +50,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (or CONDITIONS...)
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "or", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FOr extends ELispBuiltInBaseNode {
@@ -65,6 +64,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 {
                     adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    executeGeneric(frame);
                 }
 
                 @ExplodeLoop
@@ -91,7 +95,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (and CONDITIONS...)
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "and", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FAnd extends ELispBuiltInBaseNode {
@@ -105,6 +108,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 {
                     adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    executeGeneric(frame);
                 }
 
                 @ExplodeLoop
@@ -134,7 +142,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (if COND THEN ELSE...)
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "if", minArgs = 2, maxArgs = 2, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FIf extends ELispBuiltInBaseNode {
@@ -613,6 +620,11 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
 
                     @Override
+                    public void executeVoid(VirtualFrame frame) {
+                        executeGeneric(frame);
+                    }
+
+                    @Override
                     public Object executeGeneric(VirtualFrame frame) {
                         @Nullable ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                         return new ELispInterpretedClosure(
@@ -668,8 +680,8 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultToplevelValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defaultToplevelValue(Object symbol) {
-            throw new UnsupportedOperationException();
+        public static Object defaultToplevelValue(ELispSymbol symbol) {
+            return symbol.getDefaultValue();
         }
     }
 
@@ -683,8 +695,9 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetDefaultToplevelValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setDefaultToplevelValue(Object symbol, Object value) {
-            throw new UnsupportedOperationException();
+        public static boolean setDefaultToplevelValue(ELispSymbol symbol, Object value) {
+            symbol.setDefaultValue(value);
+            return false;
         }
     }
 
@@ -740,7 +753,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (defvar SYMBOL &amp;optional INITVALUE DOCSTRING)
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "defvar", minArgs = 1, maxArgs = 3, varArgs = false, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FDefvar extends ELispBuiltInBaseNode {
@@ -756,6 +768,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 {
                     adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    executeGeneric(frame);
                 }
 
                 @Override
@@ -807,7 +824,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (defconst SYMBOL INITVALUE [DOCSTRING])
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "defconst", minArgs = 2, maxArgs = 3, varArgs = false, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FDefconst extends ELispBuiltInBaseNode {
@@ -821,6 +837,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 {
                     adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    executeGeneric(frame);
                 }
 
                 @Override
@@ -1095,7 +1116,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (while TEST BODY...)
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "while", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FWhile extends ELispBuiltInBaseNode {
@@ -1110,6 +1130,11 @@ public class BuiltInEval extends ELispBuiltIns {
                 {
                     adoptChildren();
                     loopNode.adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    executeGeneric(frame);
                 }
 
                 @Override
@@ -1197,7 +1222,6 @@ public class BuiltInEval extends ELispBuiltIns {
      * usage: (catch TAG BODY...)
      * </pre>
      */
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     @ELispBuiltIn(name = "catch", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FCatch extends ELispBuiltInBaseNode {
@@ -1214,6 +1238,13 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 {
                     adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    // Most usages of throw/catch are to change the return value.
+                    // So executeVoid probably will not be called.
+                    executeGeneric(frame);
                 }
 
                 @Override
@@ -1689,8 +1720,19 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHookWithArgs extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void runHookWithArgs(Object hook, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean runHookWithArgs(ELispSymbol hook, Object[] args) {
+            Object value = hook.getValue();
+            if (ELispSymbol.isNil(value)) {
+                return false;
+            }
+            if (FFunctionp.functionp(value)) {
+                FFuncall.funcall(value, args);
+                return false;
+            }
+            for (Object function : asCons(value)) {
+                FFuncall.funcall(function, args);
+            }
+            return false;
         }
     }
 

@@ -258,9 +258,15 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     public static ELispCons listOf(Object a, Object b) {
-        ELispCons cons = new ELispCons(a);
-        cons.setCdr(new ELispCons(b));
-        return cons;
+        return new ELispCons(a, new ELispCons(b));
+    }
+
+    public static Object listOf(Object... elements) {
+        ListBuilder builder = new ListBuilder();
+        for (Object element : elements) {
+            builder.add(element);
+        }
+        return builder.build();
     }
 
     public static Iterable<?> iterate(Object list) {

@@ -67,7 +67,7 @@
             instead of yielding a non-determinant error message in ClassCastException.
             Use utility functions to check and "cast" values instead of directly cast them.
         </description>
-        <priority>1</priority>
+        <priority>5</priority>
         <properties>
             <property name="xpath">
                 <value><![CDATA[
@@ -105,6 +105,28 @@
             </property>
         </properties>
     </rule>
+
+    <rule name="TruffleUseLongInsteadOfInt"
+          language="java"
+          message="Please use long literals instead of ints."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            This project uses longs as the numeric type for ELisp.
+            Moreover, the type system does not handle conversion between int and long,
+            making int literals a source of bugs. Please use long literals instead.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //NumericLiteral[@IntLiteral=true()]
+                [not(ancestor::Annotation)]
+                [not(ancestor::CastExpression)]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
 
     <!-- Some code styles -->
 

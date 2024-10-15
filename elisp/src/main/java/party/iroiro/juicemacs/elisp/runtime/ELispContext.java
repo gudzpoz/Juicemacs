@@ -36,6 +36,14 @@ public final class ELispContext {
         return INTERN_MAP.computeIfAbsent(symbol, ELispSymbol::new);
     }
 
+    @CompilerDirectives.TruffleBoundary
+    public static void unintern(ELispSymbol symbol) {
+        ELispSymbol old = INTERN_MAP.get(symbol.name());
+        if (old == symbol) {
+            INTERN_MAP.remove(symbol.name());
+        }
+    }
+
     public static String applyShorthands(String symbol) {
         // TODO: Implementation
         return symbol;
@@ -55,8 +63,11 @@ public final class ELispContext {
 
         initSymbols(allocSymbols());
         initSymbols(bufferSymbols());
+        initSymbols(callintSymbols());
+        initSymbols(casetabSymbols());
         initSymbols(charsetSymbols());
         initSymbols(chartabSymbols());
+        initSymbols(cmdsSymbols());
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
         initSymbols(editfnsSymbols());
@@ -64,6 +75,7 @@ public final class ELispContext {
         initSymbols(evalSymbols());
         initSymbols(fileioSymbols());
         initSymbols(fnsSymbols());
+        initSymbols(keyboardSymbols());
         initSymbols(keymapSymbols());
         initSymbols(lreadSymbols());
         initSymbols(printSymbols());
@@ -74,12 +86,14 @@ public final class ELispContext {
 
         T.setConstant(true);
         NIL.setConstant(true);
-        initErrorTypes();
 
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
+        initBuiltIns(language, new BuiltInCallInt());
+        initBuiltIns(language, new BuiltInCaseTab());
         initBuiltIns(language, new BuiltInCharSet());
         initBuiltIns(language, new BuiltInCharTab());
+        initBuiltIns(language, new BuiltInCmds());
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
         initBuiltIns(language, new BuiltInEditFns());
@@ -87,6 +101,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInEval());
         initBuiltIns(language, new BuiltInFileIO());
         initBuiltIns(language, new BuiltInFns());
+        initBuiltIns(language, new BuiltInKeyboard());
         initBuiltIns(language, new BuiltInKeymap());
         initBuiltIns(language, new BuiltInLRead());
         initBuiltIns(language, new BuiltInPrint());
@@ -96,6 +111,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInXFaces());
 
         ELispGlobals.initGlobalVariables();
+        ELispGlobals.postInitVariables();
     }
 
     private void initBuiltIns(ELispLanguage language, ELispBuiltIns builtIns) {
@@ -107,79 +123,6 @@ public final class ELispContext {
             INTERN_MAP.put(symbol.name(), symbol);
             symbol.setInterned(ELispSymbol.Interned.INTERNED_IN_INITIAL_OBARRAY);
         }
-    }
-
-    private void initErrorTypes() {
-        /* @generated region="data.c:error_initialization" by="extract-emacs-errors.py" */
-        ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(ERROR, false));
-        ERROR.putProperty(ERROR_MESSAGE, new ELispString("error"));
-        QUIT.putProperty(ERROR_CONDITIONS, new ELispCons(QUIT, false));
-        QUIT.putProperty(ERROR_MESSAGE, new ELispString("Quit"));
-        MINIBUFFER_QUIT.putProperty(ERROR_CONDITIONS, new ELispCons(MINIBUFFER_QUIT, new ELispCons(QUIT, false)));
-        MINIBUFFER_QUIT.putProperty(ERROR_MESSAGE, new ELispString("Quit"));
-        USER_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(USER_ERROR, new ELispCons(ERROR, false)));
-        USER_ERROR.putProperty(ERROR_MESSAGE, new ELispString(""));
-        WRONG_LENGTH_ARGUMENT.putProperty(ERROR_CONDITIONS, new ELispCons(WRONG_LENGTH_ARGUMENT, new ELispCons(ERROR, false)));
-        WRONG_LENGTH_ARGUMENT.putProperty(ERROR_MESSAGE, new ELispString("Wrong length argument"));
-        WRONG_TYPE_ARGUMENT.putProperty(ERROR_CONDITIONS, new ELispCons(WRONG_TYPE_ARGUMENT, new ELispCons(ERROR, false)));
-        WRONG_TYPE_ARGUMENT.putProperty(ERROR_MESSAGE, new ELispString("Wrong type argument"));
-        TYPE_MISMATCH.putProperty(ERROR_CONDITIONS, new ELispCons(TYPE_MISMATCH, new ELispCons(ERROR, false)));
-        TYPE_MISMATCH.putProperty(ERROR_MESSAGE, new ELispString("Types do not match"));
-        ARGS_OUT_OF_RANGE.putProperty(ERROR_CONDITIONS, new ELispCons(ARGS_OUT_OF_RANGE, new ELispCons(ERROR, false)));
-        ARGS_OUT_OF_RANGE.putProperty(ERROR_MESSAGE, new ELispString("Args out of range"));
-        VOID_FUNCTION.putProperty(ERROR_CONDITIONS, new ELispCons(VOID_FUNCTION, new ELispCons(ERROR, false)));
-        VOID_FUNCTION.putProperty(ERROR_MESSAGE, new ELispString("Symbol's function definition is void"));
-        CYCLIC_FUNCTION_INDIRECTION.putProperty(ERROR_CONDITIONS, new ELispCons(CYCLIC_FUNCTION_INDIRECTION, new ELispCons(ERROR, false)));
-        CYCLIC_FUNCTION_INDIRECTION.putProperty(ERROR_MESSAGE, new ELispString("Symbol's chain of function indirections contains a loop"));
-        CYCLIC_VARIABLE_INDIRECTION.putProperty(ERROR_CONDITIONS, new ELispCons(CYCLIC_VARIABLE_INDIRECTION, new ELispCons(ERROR, false)));
-        CYCLIC_VARIABLE_INDIRECTION.putProperty(ERROR_MESSAGE, new ELispString("Symbol's chain of variable indirections contains a loop"));
-        CIRCULAR_LIST.putProperty(ERROR_CONDITIONS, new ELispCons(CIRCULAR_LIST, new ELispCons(ERROR, false)));
-        CIRCULAR_LIST.putProperty(ERROR_MESSAGE, new ELispString("List contains a loop"));
-        VOID_VARIABLE.putProperty(ERROR_CONDITIONS, new ELispCons(VOID_VARIABLE, new ELispCons(ERROR, false)));
-        VOID_VARIABLE.putProperty(ERROR_MESSAGE, new ELispString("Symbol's value as variable is void"));
-        SETTING_CONSTANT.putProperty(ERROR_CONDITIONS, new ELispCons(SETTING_CONSTANT, new ELispCons(ERROR, false)));
-        SETTING_CONSTANT.putProperty(ERROR_MESSAGE, new ELispString("Attempt to set a constant symbol"));
-        TRAPPING_CONSTANT.putProperty(ERROR_CONDITIONS, new ELispCons(TRAPPING_CONSTANT, new ELispCons(ERROR, false)));
-        TRAPPING_CONSTANT.putProperty(ERROR_MESSAGE, new ELispString("Attempt to trap writes to a constant symbol"));
-        INVALID_READ_SYNTAX.putProperty(ERROR_CONDITIONS, new ELispCons(INVALID_READ_SYNTAX, new ELispCons(ERROR, false)));
-        INVALID_READ_SYNTAX.putProperty(ERROR_MESSAGE, new ELispString("Invalid read syntax"));
-        INVALID_FUNCTION.putProperty(ERROR_CONDITIONS, new ELispCons(INVALID_FUNCTION, new ELispCons(ERROR, false)));
-        INVALID_FUNCTION.putProperty(ERROR_MESSAGE, new ELispString("Invalid function"));
-        WRONG_NUMBER_OF_ARGUMENTS.putProperty(ERROR_CONDITIONS, new ELispCons(WRONG_NUMBER_OF_ARGUMENTS, new ELispCons(ERROR, false)));
-        WRONG_NUMBER_OF_ARGUMENTS.putProperty(ERROR_MESSAGE, new ELispString("Wrong number of arguments"));
-        NO_CATCH.putProperty(ERROR_CONDITIONS, new ELispCons(NO_CATCH, new ELispCons(ERROR, false)));
-        NO_CATCH.putProperty(ERROR_MESSAGE, new ELispString("No catch for tag"));
-        END_OF_FILE.putProperty(ERROR_CONDITIONS, new ELispCons(END_OF_FILE, new ELispCons(ERROR, false)));
-        END_OF_FILE.putProperty(ERROR_MESSAGE, new ELispString("End of file during parsing"));
-        ARITH_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)));
-        ARITH_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic error"));
-        BEGINNING_OF_BUFFER.putProperty(ERROR_CONDITIONS, new ELispCons(BEGINNING_OF_BUFFER, new ELispCons(ERROR, false)));
-        BEGINNING_OF_BUFFER.putProperty(ERROR_MESSAGE, new ELispString("Beginning of buffer"));
-        END_OF_BUFFER.putProperty(ERROR_CONDITIONS, new ELispCons(END_OF_BUFFER, new ELispCons(ERROR, false)));
-        END_OF_BUFFER.putProperty(ERROR_MESSAGE, new ELispString("End of buffer"));
-        BUFFER_READ_ONLY.putProperty(ERROR_CONDITIONS, new ELispCons(BUFFER_READ_ONLY, new ELispCons(ERROR, false)));
-        BUFFER_READ_ONLY.putProperty(ERROR_MESSAGE, new ELispString("Buffer is read-only"));
-        TEXT_READ_ONLY.putProperty(ERROR_CONDITIONS, new ELispCons(TEXT_READ_ONLY, new ELispCons(BUFFER_READ_ONLY, new ELispCons(ERROR, false))));
-        TEXT_READ_ONLY.putProperty(ERROR_MESSAGE, new ELispString("Text is read-only"));
-        INHIBITED_INTERACTION.putProperty(ERROR_CONDITIONS, new ELispCons(INHIBITED_INTERACTION, new ELispCons(ERROR, false)));
-        INHIBITED_INTERACTION.putProperty(ERROR_MESSAGE, new ELispString("User interaction while inhibited"));
-        DOMAIN_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(DOMAIN_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false))));
-        DOMAIN_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic domain error"));
-        RANGE_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(RANGE_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false))));
-        RANGE_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic range error"));
-        SINGULARITY_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(SINGULARITY_ERROR, new ELispCons(DOMAIN_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)))));
-        SINGULARITY_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic singularity error"));
-        OVERFLOW_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(OVERFLOW_ERROR, new ELispCons(RANGE_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)))));
-        OVERFLOW_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic overflow error"));
-        UNDERFLOW_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(UNDERFLOW_ERROR, new ELispCons(RANGE_ERROR, new ELispCons(ARITH_ERROR, new ELispCons(ERROR, false)))));
-        UNDERFLOW_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Arithmetic underflow error"));
-        RECURSION_ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(RECURSION_ERROR, new ELispCons(ERROR, false)));
-        RECURSION_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Excessive recursive calling error"));
-        EXCESSIVE_LISP_NESTING.putProperty(ERROR_CONDITIONS, new ELispCons(EXCESSIVE_LISP_NESTING, new ELispCons(RECURSION_ERROR, new ELispCons(ERROR, false))));
-        EXCESSIVE_LISP_NESTING.putProperty(ERROR_MESSAGE, new ELispString("Lisp nesting exceeds `max-lisp-eval-depth'"));
-        EXCESSIVE_VARIABLE_BINDING.putProperty(ERROR_CONDITIONS, new ELispCons(EXCESSIVE_VARIABLE_BINDING, new ELispCons(RECURSION_ERROR, new ELispCons(ERROR, false))));
-        EXCESSIVE_VARIABLE_BINDING.putProperty(ERROR_MESSAGE, new ELispString("Variable binding depth exceeds max-specpdl-size"));
-        /* @end region="data.c:error_initialization" */
     }
 
     /* @generated region="data.c" by="extract-emacs-src.py" */
@@ -1974,4 +1917,488 @@ public final class ELispContext {
         };
     }
     /* @end region="timefns.c" */
+    /* @generated region="casetab.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol CASE_TABLE = new ELispSymbol("case-table");
+    public final static ELispSymbol CASE_TABLE_P = new ELispSymbol("case-table-p");
+    private ELispSymbol[] casetabSymbols() {
+        return new ELispSymbol[]{
+                CASE_TABLE,
+                CASE_TABLE_P,
+        };
+    }
+    /* @end region="casetab.c" */
+    /* @generated region="cmds.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol EXPAND_ABBREV = new ELispSymbol("expand-abbrev");
+    public final static ELispSymbol INTERNAL_AUTO_FILL = new ELispSymbol("internal-auto-fill");
+    public final static ELispSymbol KILL_FORWARD_CHARS = new ELispSymbol("kill-forward-chars");
+    public final static ELispSymbol NO_SELF_INSERT = new ELispSymbol("no-self-insert");
+    public final static ELispSymbol OVERWRITE_MODE_BINARY = new ELispSymbol("overwrite-mode-binary");
+    public final static ELispSymbol POST_SELF_INSERT_HOOK = new ELispSymbol("post-self-insert-hook");
+    public final static ELispSymbol UNDO_AUTO_AMALGAMATE = new ELispSymbol("undo-auto-amalgamate");
+    public final static ELispSymbol UNDO_AUTO__THIS_COMMAND_AMALGAMATING = new ELispSymbol("undo-auto--this-command-amalgamating");
+    private ELispSymbol[] cmdsSymbols() {
+        return new ELispSymbol[]{
+                EXPAND_ABBREV,
+                INTERNAL_AUTO_FILL,
+                KILL_FORWARD_CHARS,
+                NO_SELF_INSERT,
+                OVERWRITE_MODE_BINARY,
+                POST_SELF_INSERT_HOOK,
+                UNDO_AUTO_AMALGAMATE,
+                UNDO_AUTO__THIS_COMMAND_AMALGAMATING,
+        };
+    }
+    /* @end region="cmds.c" */
+    /* @generated region="keyboard.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol ABOVE_HANDLE = new ELispSymbol("above-handle");
+    public final static ELispSymbol ACTIVATE_MARK_HOOK = new ELispSymbol("activate-mark-hook");
+    public final static ELispSymbol ACTIVATE_MENUBAR_HOOK = new ELispSymbol("activate-menubar-hook");
+    public final static ELispSymbol AFTER_HANDLE = new ELispSymbol("after-handle");
+    public final static ELispSymbol ATTEMPT_ORDERLY_SHUTDOWN_ON_FATAL_SIGNAL = new ELispSymbol("attempt-orderly-shutdown-on-fatal-signal");
+    public final static ELispSymbol ATTEMPT_STACK_OVERFLOW_RECOVERY = new ELispSymbol("attempt-stack-overflow-recovery");
+    public final static ELispSymbol AUTO_SAVE_INTERVAL = new ELispSymbol("auto-save-interval");
+    public final static ELispSymbol AUTO_SAVE_NO_MESSAGE = new ELispSymbol("auto-save-no-message");
+    public final static ELispSymbol AUTO_SAVE_TIMEOUT = new ELispSymbol("auto-save-timeout");
+    public final static ELispSymbol BEFORE_HANDLE = new ELispSymbol("before-handle");
+    public final static ELispSymbol BELOW_HANDLE = new ELispSymbol("below-handle");
+    public final static ELispSymbol BOTTOM = new ELispSymbol("bottom");
+    public final static ELispSymbol BOTTOM_DIVIDER = new ELispSymbol("bottom-divider");
+    public final static ELispSymbol BOTTOM_EDGE = new ELispSymbol("bottom-edge");
+    public final static ELispSymbol BOTTOM_LEFT_CORNER = new ELispSymbol("bottom-left-corner");
+    public final static ELispSymbol BOTTOM_RIGHT_CORNER = new ELispSymbol("bottom-right-corner");
+    public final static ELispSymbol CANNOT_SUSPEND = new ELispSymbol("cannot-suspend");
+    public final static ELispSymbol CBUTTON = new ELispSymbol(":button");
+    public final static ELispSymbol CENABLE = new ELispSymbol(":enable");
+    public final static ELispSymbol CFILTER = new ELispSymbol(":filter");
+    public final static ELispSymbol CHELP = new ELispSymbol(":help");
+    public final static ELispSymbol CIMAGE = new ELispSymbol(":image");
+    public final static ELispSymbol CKEYS = new ELispSymbol(":keys");
+    public final static ELispSymbol CKEY_SEQUENCE = new ELispSymbol(":key-sequence");
+    public final static ELispSymbol CLABEL = new ELispSymbol(":label");
+    public final static ELispSymbol CODING = new ELispSymbol("coding");
+    public final static ELispSymbol COMMAND_ERROR_DEFAULT_FUNCTION = new ELispSymbol("command-error-default-function");
+    public final static ELispSymbol COMMAND_ERROR_FUNCTION = new ELispSymbol("command-error-function");
+    public final static ELispSymbol COMMAND_EXECUTE = new ELispSymbol("command-execute");
+    public final static ELispSymbol CONCAT = new ELispSymbol("concat");
+    public final static ELispSymbol CONFIG_CHANGED_EVENT = new ELispSymbol("config-changed-event");
+    public final static ELispSymbol CRADIO = new ELispSymbol(":radio");
+    public final static ELispSymbol CRTL = new ELispSymbol(":rtl");
+    public final static ELispSymbol CTOGGLE = new ELispSymbol(":toggle");
+    public final static ELispSymbol CURRENT_KEY_REMAP_SEQUENCE = new ELispSymbol("current-key-remap-sequence");
+    public final static ELispSymbol CURRENT_MINIBUFFER_COMMAND = new ELispSymbol("current-minibuffer-command");
+    public final static ELispSymbol CVERT_ONLY = new ELispSymbol(":vert-only");
+    public final static ELispSymbol CVISIBLE = new ELispSymbol(":visible");
+    public final static ELispSymbol CWRAP = new ELispSymbol(":wrap");
+    public final static ELispSymbol DBUS_EVENT = new ELispSymbol("dbus-event");
+    public final static ELispSymbol DEACTIVATE_MARK = new ELispSymbol("deactivate-mark");
+    public final static ELispSymbol DEBUG_ON_EVENT = new ELispSymbol("debug-on-event");
+    public final static ELispSymbol DELAYED_WARNINGS_HOOK = new ELispSymbol("delayed-warnings-hook");
+    public final static ELispSymbol DELAYED_WARNINGS_LIST = new ELispSymbol("delayed-warnings-list");
+    public final static ELispSymbol DELETE_FRAME = new ELispSymbol("delete-frame");
+    public final static ELispSymbol DISABLED = new ELispSymbol("disabled");
+    public final static ELispSymbol DISABLE_INHIBIT_TEXT_CONVERSION = new ELispSymbol("disable-inhibit-text-conversion");
+    public final static ELispSymbol DISABLE_POINT_ADJUSTMENT = new ELispSymbol("disable-point-adjustment");
+    public final static ELispSymbol DISPLAY_MONITORS_CHANGED_FUNCTIONS = new ELispSymbol("display-monitors-changed-functions");
+    public final static ELispSymbol DOUBLE_CLICK_FUZZ = new ELispSymbol("double-click-fuzz");
+    public final static ELispSymbol DOUBLE_CLICK_TIME = new ELispSymbol("double-click-time");
+    public final static ELispSymbol DOWN = new ELispSymbol("down");
+    public final static ELispSymbol DRAG_INTERNAL_BORDER = new ELispSymbol("drag-internal-border");
+    public final static ELispSymbol DRAG_N_DROP = new ELispSymbol("drag-n-drop");
+    public final static ELispSymbol ECHO_AREA_CLEAR_HOOK = new ELispSymbol("echo-area-clear-hook");
+    public final static ELispSymbol ECHO_KEYSTROKES = new ELispSymbol("echo-keystrokes");
+    public final static ELispSymbol ECHO_KEYSTROKES_HELP = new ELispSymbol("echo-keystrokes-help");
+    public final static ELispSymbol ENABLE_DISABLED_MENUS_AND_BUTTONS = new ELispSymbol("enable-disabled-menus-and-buttons");
+    public final static ELispSymbol ENCODED = new ELispSymbol("encoded");
+    public final static ELispSymbol END_SCROLL = new ELispSymbol("end-scroll");
+    public final static ELispSymbol END_SESSION = new ELispSymbol("end-session");
+    public final static ELispSymbol EVENT_KIND = new ELispSymbol("event-kind");
+    public final static ELispSymbol EVENT_SYMBOL_ELEMENTS = new ELispSymbol("event-symbol-elements");
+    public final static ELispSymbol EVENT_SYMBOL_ELEMENT_MASK = new ELispSymbol("event-symbol-element-mask");
+    public final static ELispSymbol EXTRA_KEYBOARD_MODIFIERS = new ELispSymbol("extra-keyboard-modifiers");
+    public final static ELispSymbol FILE_NOTIFY = new ELispSymbol("file-notify");
+    public final static ELispSymbol FOCUS_IN = new ELispSymbol("focus-in");
+    public final static ELispSymbol FOCUS_OUT = new ELispSymbol("focus-out");
+    public final static ELispSymbol FUNCTION_KEY = new ELispSymbol("function-key");
+    public final static ELispSymbol FUNCTION_KEY_MAP = new ELispSymbol("function-key-map");
+    public final static ELispSymbol GLOBAL_DISABLE_POINT_ADJUSTMENT = new ELispSymbol("global-disable-point-adjustment");
+    public final static ELispSymbol GUI_SET_SELECTION = new ELispSymbol("gui-set-selection");
+    public final static ELispSymbol HANDLE = new ELispSymbol("handle");
+    public final static ELispSymbol HANDLE_SELECT_WINDOW = new ELispSymbol("handle-select-window");
+    public final static ELispSymbol HANDLE_SWITCH_FRAME = new ELispSymbol("handle-switch-frame");
+    public final static ELispSymbol HELP_CHAR = new ELispSymbol("help-char");
+    public final static ELispSymbol HELP_ECHO = new ELispSymbol("help-echo");
+    public final static ELispSymbol HELP_ECHO_INHIBIT_SUBSTITUTION = new ELispSymbol("help-echo-inhibit-substitution");
+    public final static ELispSymbol HELP_EVENT_LIST = new ELispSymbol("help-event-list");
+    public final static ELispSymbol HELP_FORM = new ELispSymbol("help-form");
+    public final static ELispSymbol HELP_FORM_SHOW = new ELispSymbol("help-form-show");
+    public final static ELispSymbol HELP__APPEND_KEYSTROKES_HELP = new ELispSymbol("help--append-keystrokes-help");
+    public final static ELispSymbol HORIZONTAL_HANDLE = new ELispSymbol("horizontal-handle");
+    public final static ELispSymbol ICONIFY_FRAME = new ELispSymbol("iconify-frame");
+    public final static ELispSymbol INHIBIT__RECORD_CHAR = new ELispSymbol("inhibit--record-char");
+    public final static ELispSymbol INPUT_DECODE_MAP = new ELispSymbol("input-decode-map");
+    public final static ELispSymbol INPUT_METHOD_EXIT_ON_FIRST_CHAR = new ELispSymbol("input-method-exit-on-first-char");
+    public final static ELispSymbol INPUT_METHOD_FUNCTION = new ELispSymbol("input-method-function");
+    public final static ELispSymbol INPUT_METHOD_PREVIOUS_MESSAGE = new ELispSymbol("input-method-previous-message");
+    public final static ELispSymbol INPUT_METHOD_USE_ECHO_AREA = new ELispSymbol("input-method-use-echo-area");
+    public final static ELispSymbol INPUT_PENDING_P_FILTER_EVENTS = new ELispSymbol("input-pending-p-filter-events");
+    public final static ELispSymbol INTERNAL_ECHO_KEYSTROKES_PREFIX = new ELispSymbol("internal-echo-keystrokes-prefix");
+    public final static ELispSymbol INTERNAL_TIMER_START_IDLE = new ELispSymbol("internal-timer-start-idle");
+    public final static ELispSymbol INTERNAL__TOP_LEVEL_MESSAGE = new ELispSymbol("internal--top-level-message");
+    public final static ELispSymbol KEYBOARD_TRANSLATE_TABLE = new ELispSymbol("keyboard-translate-table");
+    public final static ELispSymbol KEY_TRANSLATION_MAP = new ELispSymbol("key-translation-map");
+    public final static ELispSymbol LANGUAGE_CHANGE = new ELispSymbol("language-change");
+    public final static ELispSymbol LAST_COMMAND = new ELispSymbol("last-command");
+    public final static ELispSymbol LAST_COMMAND_EVENT = new ELispSymbol("last-command-event");
+    public final static ELispSymbol LAST_EVENT_DEVICE = new ELispSymbol("last-event-device");
+    public final static ELispSymbol LAST_EVENT_FRAME = new ELispSymbol("last-event-frame");
+    public final static ELispSymbol LAST_INPUT_EVENT = new ELispSymbol("last-input-event");
+    public final static ELispSymbol LAST_REPEATABLE_COMMAND = new ELispSymbol("last-repeatable-command");
+    public final static ELispSymbol LEFTMOST = new ELispSymbol("leftmost");
+    public final static ELispSymbol LEFT_EDGE = new ELispSymbol("left-edge");
+    public final static ELispSymbol LOCAL_FUNCTION_KEY_MAP = new ELispSymbol("local-function-key-map");
+    public final static ELispSymbol LONG_LINE_OPTIMIZATIONS_IN_COMMAND_HOOKS = new ELispSymbol("long-line-optimizations-in-command-hooks");
+    public final static ELispSymbol LUCID__MENU_GRAB_KEYBOARD = new ELispSymbol("lucid--menu-grab-keyboard");
+    public final static ELispSymbol MAKE_FRAME_VISIBLE = new ELispSymbol("make-frame-visible");
+    public final static ELispSymbol MENU_BAR_FINAL_ITEMS = new ELispSymbol("menu-bar-final-items");
+    public final static ELispSymbol MENU_ENABLE = new ELispSymbol("menu-enable");
+    public final static ELispSymbol MENU_PROMPTING = new ELispSymbol("menu-prompting");
+    public final static ELispSymbol MENU_PROMPT_MORE_CHAR = new ELispSymbol("menu-prompt-more-char");
+    public final static ELispSymbol META_PREFIX_CHAR = new ELispSymbol("meta-prefix-char");
+    public final static ELispSymbol MINIBUFFER_MESSAGE_TIMEOUT = new ELispSymbol("minibuffer-message-timeout");
+    public final static ELispSymbol MODIFIER_CACHE = new ELispSymbol("modifier-cache");
+    public final static ELispSymbol MOUSE_CLICK = new ELispSymbol("mouse-click");
+    public final static ELispSymbol MOUSE_FIXUP_HELP_MESSAGE = new ELispSymbol("mouse-fixup-help-message");
+    public final static ELispSymbol MOUSE_MOVEMENT = new ELispSymbol("mouse-movement");
+    public final static ELispSymbol MOVE_FRAME = new ELispSymbol("move-frame");
+    public final static ELispSymbol MWHEEL_COALESCE_SCROLL_EVENTS = new ELispSymbol("mwheel-coalesce-scroll-events");
+    public final static ELispSymbol NO_RECORD = new ELispSymbol("no-record");
+    public final static ELispSymbol NS_UNPUT_WORKING_TEXT = new ELispSymbol("ns-unput-working-text");
+    public final static ELispSymbol NUM_INPUT_KEYS = new ELispSymbol("num-input-keys");
+    public final static ELispSymbol NUM_NONMACRO_INPUT_EVENTS = new ELispSymbol("num-nonmacro-input-events");
+    public final static ELispSymbol OVERRIDING_LOCAL_MAP = new ELispSymbol("overriding-local-map");
+    public final static ELispSymbol OVERRIDING_LOCAL_MAP_MENU_FLAG = new ELispSymbol("overriding-local-map-menu-flag");
+    public final static ELispSymbol OVERRIDING_TERMINAL_LOCAL_MAP = new ELispSymbol("overriding-terminal-local-map");
+    public final static ELispSymbol PINCH = new ELispSymbol("pinch");
+    public final static ELispSymbol POLLING_PERIOD = new ELispSymbol("polling-period");
+    public final static ELispSymbol POST_COMMAND_HOOK = new ELispSymbol("post-command-hook");
+    public final static ELispSymbol POST_SELECT_REGION_HOOK = new ELispSymbol("post-select-region-hook");
+    public final static ELispSymbol PREEDIT_TEXT = new ELispSymbol("preedit-text");
+    public final static ELispSymbol PREFIX_HELP_COMMAND = new ELispSymbol("prefix-help-command");
+    public final static ELispSymbol PRE_COMMAND_HOOK = new ELispSymbol("pre-command-hook");
+    public final static ELispSymbol PRIMARY = new ELispSymbol("PRIMARY");
+    public final static ELispSymbol RATIO = new ELispSymbol("ratio");
+    public final static ELispSymbol REAL_LAST_COMMAND = new ELispSymbol("real-last-command");
+    public final static ELispSymbol RECORD_ALL_KEYS = new ELispSymbol("record-all-keys");
+    public final static ELispSymbol RIGHTMOST = new ELispSymbol("rightmost");
+    public final static ELispSymbol RIGHT_DIVIDER = new ELispSymbol("right-divider");
+    public final static ELispSymbol RIGHT_EDGE = new ELispSymbol("right-edge");
+    public final static ELispSymbol SAVED_REGION_SELECTION = new ELispSymbol("saved-region-selection");
+    public final static ELispSymbol SAVE_SESSION = new ELispSymbol("save-session");
+    public final static ELispSymbol SCROLL_BAR_MOVEMENT = new ELispSymbol("scroll-bar-movement");
+    public final static ELispSymbol SELECTION_INHIBIT_UPDATE_COMMANDS = new ELispSymbol("selection-inhibit-update-commands");
+    public final static ELispSymbol SELECTION_REQUEST = new ELispSymbol("selection-request");
+    public final static ELispSymbol SELECT_ACTIVE_REGIONS = new ELispSymbol("select-active-regions");
+    public final static ELispSymbol SELECT_WINDOW = new ELispSymbol("select-window");
+    public final static ELispSymbol SHOW_HELP_FUNCTION = new ELispSymbol("show-help-function");
+    public final static ELispSymbol SIGUSR2 = new ELispSymbol("sigusr2");
+    public final static ELispSymbol SPECIAL_EVENT_MAP = new ELispSymbol("special-event-map");
+    public final static ELispSymbol SUSPEND_HOOK = new ELispSymbol("suspend-hook");
+    public final static ELispSymbol SUSPEND_RESUME_HOOK = new ELispSymbol("suspend-resume-hook");
+    public final static ELispSymbol SWITCH_FRAME = new ELispSymbol("switch-frame");
+    public final static ELispSymbol SYSTEM_KEY_ALIST = new ELispSymbol("system-key-alist");
+    public final static ELispSymbol TAB_BAR_SEPARATOR_IMAGE_EXPRESSION = new ELispSymbol("tab-bar-separator-image-expression");
+    public final static ELispSymbol TEXT_CONVERSION = new ELispSymbol("text-conversion");
+    public final static ELispSymbol THIS_COMMAND = new ELispSymbol("this-command");
+    public final static ELispSymbol THIS_COMMAND_KEYS_SHIFT_TRANSLATED = new ELispSymbol("this-command-keys-shift-translated");
+    public final static ELispSymbol THIS_ORIGINAL_COMMAND = new ELispSymbol("this-original-command");
+    public final static ELispSymbol THREAD_EVENT = new ELispSymbol("thread-event");
+    public final static ELispSymbol THROW_ON_INPUT = new ELispSymbol("throw-on-input");
+    public final static ELispSymbol TIMER_EVENT_HANDLER = new ELispSymbol("timer-event-handler");
+    public final static ELispSymbol TIMER_IDLE_LIST = new ELispSymbol("timer-idle-list");
+    public final static ELispSymbol TIMER_LIST = new ELispSymbol("timer-list");
+    public final static ELispSymbol TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION = new ELispSymbol("tool-bar-separator-image-expression");
+    public final static ELispSymbol TOP = new ELispSymbol("top");
+    public final static ELispSymbol TOP_EDGE = new ELispSymbol("top-edge");
+    public final static ELispSymbol TOP_LEFT_CORNER = new ELispSymbol("top-left-corner");
+    public final static ELispSymbol TOP_RIGHT_CORNER = new ELispSymbol("top-right-corner");
+    public final static ELispSymbol TOUCHSCREEN = new ELispSymbol("touchscreen");
+    public final static ELispSymbol TOUCHSCREEN_BEGIN = new ELispSymbol("touchscreen-begin");
+    public final static ELispSymbol TOUCHSCREEN_END = new ELispSymbol("touchscreen-end");
+    public final static ELispSymbol TOUCHSCREEN_UPDATE = new ELispSymbol("touchscreen-update");
+    public final static ELispSymbol TOUCH_END = new ELispSymbol("touch-end");
+    public final static ELispSymbol TRACK_MOUSE = new ELispSymbol("track-mouse");
+    public final static ELispSymbol TRANSLATE_UPPER_CASE_KEY_BINDINGS = new ELispSymbol("translate-upper-case-key-bindings");
+    public final static ELispSymbol TTY_ERASE_CHAR = new ELispSymbol("tty-erase-char");
+    public final static ELispSymbol TTY_SELECT_ACTIVE_REGIONS = new ELispSymbol("tty-select-active-regions");
+    public final static ELispSymbol UNDEFINED = new ELispSymbol("undefined");
+    public final static ELispSymbol UNDO_AUTO__ADD_BOUNDARY = new ELispSymbol("undo-auto--add-boundary");
+    public final static ELispSymbol UNDO_AUTO__UNDOABLY_CHANGED_BUFFERS = new ELispSymbol("undo-auto--undoably-changed-buffers");
+    public final static ELispSymbol UNREAD_COMMAND_EVENTS = new ELispSymbol("unread-command-events");
+    public final static ELispSymbol UNREAD_INPUT_METHOD_EVENTS = new ELispSymbol("unread-input-method-events");
+    public final static ELispSymbol UNREAD_POST_INPUT_METHOD_EVENTS = new ELispSymbol("unread-post-input-method-events");
+    public final static ELispSymbol UP = new ELispSymbol("up");
+    public final static ELispSymbol VERTICAL_LINE = new ELispSymbol("vertical-line");
+    public final static ELispSymbol WHILE_NO_INPUT_IGNORE_EVENTS = new ELispSymbol("while-no-input-ignore-events");
+    public final static ELispSymbol WINDOW_EDGES = new ELispSymbol("window-edges");
+    public final static ELispSymbol XTERM__SET_SELECTION = new ELispSymbol("xterm--set-selection");
+    public final static ELispSymbol XWIDGET_DISPLAY_EVENT = new ELispSymbol("xwidget-display-event");
+    public final static ELispSymbol XWIDGET_EVENT = new ELispSymbol("xwidget-event");
+    private ELispSymbol[] keyboardSymbols() {
+        return new ELispSymbol[]{
+                ABOVE_HANDLE,
+                ACTIVATE_MARK_HOOK,
+                ACTIVATE_MENUBAR_HOOK,
+                AFTER_HANDLE,
+                ATTEMPT_ORDERLY_SHUTDOWN_ON_FATAL_SIGNAL,
+                ATTEMPT_STACK_OVERFLOW_RECOVERY,
+                AUTO_SAVE_INTERVAL,
+                AUTO_SAVE_NO_MESSAGE,
+                AUTO_SAVE_TIMEOUT,
+                BEFORE_HANDLE,
+                BELOW_HANDLE,
+                BOTTOM,
+                BOTTOM_DIVIDER,
+                BOTTOM_EDGE,
+                BOTTOM_LEFT_CORNER,
+                BOTTOM_RIGHT_CORNER,
+                CANNOT_SUSPEND,
+                CBUTTON,
+                CENABLE,
+                CFILTER,
+                CHELP,
+                CIMAGE,
+                CKEYS,
+                CKEY_SEQUENCE,
+                CLABEL,
+                CODING,
+                COMMAND_ERROR_DEFAULT_FUNCTION,
+                COMMAND_ERROR_FUNCTION,
+                COMMAND_EXECUTE,
+                CONCAT,
+                CONFIG_CHANGED_EVENT,
+                CRADIO,
+                CRTL,
+                CTOGGLE,
+                CURRENT_KEY_REMAP_SEQUENCE,
+                CURRENT_MINIBUFFER_COMMAND,
+                CVERT_ONLY,
+                CVISIBLE,
+                CWRAP,
+                DBUS_EVENT,
+                DEACTIVATE_MARK,
+                DEBUG_ON_EVENT,
+                DELAYED_WARNINGS_HOOK,
+                DELAYED_WARNINGS_LIST,
+                DELETE_FRAME,
+                DISABLED,
+                DISABLE_INHIBIT_TEXT_CONVERSION,
+                DISABLE_POINT_ADJUSTMENT,
+                DISPLAY_MONITORS_CHANGED_FUNCTIONS,
+                DOUBLE_CLICK_FUZZ,
+                DOUBLE_CLICK_TIME,
+                DOWN,
+                DRAG_INTERNAL_BORDER,
+                DRAG_N_DROP,
+                ECHO_AREA_CLEAR_HOOK,
+                ECHO_KEYSTROKES,
+                ECHO_KEYSTROKES_HELP,
+                ENABLE_DISABLED_MENUS_AND_BUTTONS,
+                ENCODED,
+                END_SCROLL,
+                END_SESSION,
+                EVENT_KIND,
+                EVENT_SYMBOL_ELEMENTS,
+                EVENT_SYMBOL_ELEMENT_MASK,
+                EXTRA_KEYBOARD_MODIFIERS,
+                FILE_NOTIFY,
+                FOCUS_IN,
+                FOCUS_OUT,
+                FUNCTION_KEY,
+                FUNCTION_KEY_MAP,
+                GLOBAL_DISABLE_POINT_ADJUSTMENT,
+                GUI_SET_SELECTION,
+                HANDLE,
+                HANDLE_SELECT_WINDOW,
+                HANDLE_SWITCH_FRAME,
+                HELP_CHAR,
+                HELP_ECHO,
+                HELP_ECHO_INHIBIT_SUBSTITUTION,
+                HELP_EVENT_LIST,
+                HELP_FORM,
+                HELP_FORM_SHOW,
+                HELP_KEY_BINDING,
+                HELP__APPEND_KEYSTROKES_HELP,
+                HORIZONTAL_HANDLE,
+                ICONIFY_FRAME,
+                INHIBIT__RECORD_CHAR,
+                INPUT_DECODE_MAP,
+                INPUT_METHOD_EXIT_ON_FIRST_CHAR,
+                INPUT_METHOD_FUNCTION,
+                INPUT_METHOD_PREVIOUS_MESSAGE,
+                INPUT_METHOD_USE_ECHO_AREA,
+                INPUT_PENDING_P_FILTER_EVENTS,
+                INTERNAL_ECHO_KEYSTROKES_PREFIX,
+                INTERNAL_TIMER_START_IDLE,
+                INTERNAL__TOP_LEVEL_MESSAGE,
+                KEYBOARD_TRANSLATE_TABLE,
+                KEY_TRANSLATION_MAP,
+                LANGUAGE_CHANGE,
+                LAST_COMMAND,
+                LAST_COMMAND_EVENT,
+                LAST_EVENT_DEVICE,
+                LAST_EVENT_FRAME,
+                LAST_INPUT_EVENT,
+                LAST_NONMENU_EVENT,
+                LAST_REPEATABLE_COMMAND,
+                LEFT,
+                LEFTMOST,
+                LEFT_EDGE,
+                LOCAL_FUNCTION_KEY_MAP,
+                LONG_LINE_OPTIMIZATIONS_IN_COMMAND_HOOKS,
+                LUCID__MENU_GRAB_KEYBOARD,
+                MAKE_FRAME_VISIBLE,
+                MENU_BAR_FINAL_ITEMS,
+                MENU_ENABLE,
+                MENU_PROMPTING,
+                MENU_PROMPT_MORE_CHAR,
+                META_PREFIX_CHAR,
+                MINIBUFFER_MESSAGE_TIMEOUT,
+                MODIFIER_CACHE,
+                MOUSE_CLICK,
+                MOUSE_FIXUP_HELP_MESSAGE,
+                MOUSE_MOVEMENT,
+                MOVE_FRAME,
+                MWHEEL_COALESCE_SCROLL_EVENTS,
+                NO_RECORD,
+                NS_UNPUT_WORKING_TEXT,
+                NUM_INPUT_KEYS,
+                NUM_NONMACRO_INPUT_EVENTS,
+                OVERRIDING_LOCAL_MAP,
+                OVERRIDING_LOCAL_MAP_MENU_FLAG,
+                OVERRIDING_TERMINAL_LOCAL_MAP,
+                PINCH,
+                POLLING_PERIOD,
+                POST_COMMAND_HOOK,
+                POST_SELECT_REGION_HOOK,
+                PREEDIT_TEXT,
+                PREFIX_HELP_COMMAND,
+                PRE_COMMAND_HOOK,
+                PRIMARY,
+                RATIO,
+                REAL_LAST_COMMAND,
+                REAL_THIS_COMMAND,
+                RECORD_ALL_KEYS,
+                RIGHT,
+                RIGHTMOST,
+                RIGHT_DIVIDER,
+                RIGHT_EDGE,
+                SAVED_REGION_SELECTION,
+                SAVE_SESSION,
+                SCROLL_BAR_MOVEMENT,
+                SELECTION_INHIBIT_UPDATE_COMMANDS,
+                SELECTION_REQUEST,
+                SELECT_ACTIVE_REGIONS,
+                SELECT_WINDOW,
+                SHOW_HELP_FUNCTION,
+                SIGUSR2,
+                SPECIAL_EVENT_MAP,
+                SUSPEND_HOOK,
+                SUSPEND_RESUME_HOOK,
+                SWITCH_FRAME,
+                SYSTEM_KEY_ALIST,
+                TAB_BAR_SEPARATOR_IMAGE_EXPRESSION,
+                TEXT_CONVERSION,
+                THIS_COMMAND,
+                THIS_COMMAND_KEYS_SHIFT_TRANSLATED,
+                THIS_ORIGINAL_COMMAND,
+                THREAD_EVENT,
+                THROW_ON_INPUT,
+                TIMER_EVENT_HANDLER,
+                TIMER_IDLE_LIST,
+                TIMER_LIST,
+                TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION,
+                TOP,
+                TOP_EDGE,
+                TOP_LEFT_CORNER,
+                TOP_LEVEL,
+                TOP_RIGHT_CORNER,
+                TOUCHSCREEN,
+                TOUCHSCREEN_BEGIN,
+                TOUCHSCREEN_END,
+                TOUCHSCREEN_UPDATE,
+                TOUCH_END,
+                TRACK_MOUSE,
+                TRANSLATE_UPPER_CASE_KEY_BINDINGS,
+                TTY_ERASE_CHAR,
+                TTY_SELECT_ACTIVE_REGIONS,
+                UNDEFINED,
+                UNDO_AUTO__ADD_BOUNDARY,
+                UNDO_AUTO__UNDOABLY_CHANGED_BUFFERS,
+                UNREAD_COMMAND_EVENTS,
+                UNREAD_INPUT_METHOD_EVENTS,
+                UNREAD_POST_INPUT_METHOD_EVENTS,
+                UP,
+                VERTICAL_LINE,
+                WHILE_NO_INPUT_IGNORE_EVENTS,
+                WINDOW_EDGES,
+                XTERM__SET_SELECTION,
+                XWIDGET_DISPLAY_EVENT,
+                XWIDGET_EVENT,
+        };
+    }
+    /* @end region="keyboard.c" */
+    /* @generated region="callint.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol COMMAND_DEBUG_STATUS = new ELispSymbol("command-debug-status");
+    public final static ELispSymbol COMMAND_HISTORY = new ELispSymbol("command-history");
+    public final static ELispSymbol CURRENT_PREFIX_ARG = new ELispSymbol("current-prefix-arg");
+    public final static ELispSymbol ENABLE_RECURSIVE_MINIBUFFERS = new ELispSymbol("enable-recursive-minibuffers");
+    public final static ELispSymbol EVAL_MINIBUFFER = new ELispSymbol("eval-minibuffer");
+    public final static ELispSymbol FUNCALL_INTERACTIVELY = new ELispSymbol("funcall-interactively");
+    public final static ELispSymbol HANDLE_SHIFT_SELECTION = new ELispSymbol("handle-shift-selection");
+    public final static ELispSymbol IF = new ELispSymbol("if");
+    public final static ELispSymbol INHIBIT_MOUSE_EVENT_CHECK = new ELispSymbol("inhibit-mouse-event-check");
+    public final static ELispSymbol INTERACTIVE_ARGS = new ELispSymbol("interactive-args");
+    public final static ELispSymbol LAST_PREFIX_ARG = new ELispSymbol("last-prefix-arg");
+    public final static ELispSymbol LET = new ELispSymbol("let");
+    public final static ELispSymbol LETX = new ELispSymbol("let*");
+    public final static ELispSymbol LIST = new ELispSymbol("list");
+    public final static ELispSymbol MARK_EVEN_IF_INACTIVE = new ELispSymbol("mark-even-if-inactive");
+    public final static ELispSymbol MINUS = new ELispSymbol("-");
+    public final static ELispSymbol MOUSE_LEAVE_BUFFER_HOOK = new ELispSymbol("mouse-leave-buffer-hook");
+    public final static ELispSymbol PLUS = new ELispSymbol("+");
+    public final static ELispSymbol PREFIX_ARG = new ELispSymbol("prefix-arg");
+    public final static ELispSymbol PROGN = new ELispSymbol("progn");
+    public final static ELispSymbol READ_FILE_NAME = new ELispSymbol("read-file-name");
+    public final static ELispSymbol READ_NUMBER = new ELispSymbol("read-number");
+    public final static ELispSymbol SAVE_EXCURSION = new ELispSymbol("save-excursion");
+    public final static ELispSymbol WHEN = new ELispSymbol("when");
+    private ELispSymbol[] callintSymbols() {
+        return new ELispSymbol[]{
+                COMMAND_DEBUG_STATUS,
+                COMMAND_HISTORY,
+                CURRENT_PREFIX_ARG,
+                ENABLE_RECURSIVE_MINIBUFFERS,
+                EVAL_MINIBUFFER,
+                FUNCALL_INTERACTIVELY,
+                HANDLE_SHIFT_SELECTION,
+                IF,
+                INHIBIT_MOUSE_EVENT_CHECK,
+                INTERACTIVE_ARGS,
+                LAST_PREFIX_ARG,
+                LET,
+                LETX,
+                LIST,
+                MARK_EVEN_IF_INACTIVE,
+                MINUS,
+                MOUSE_LEAVE_BUFFER_HOOK,
+                PLUS,
+                PREFIX_ARG,
+                PROGN,
+                READ_FILE_NAME,
+                READ_NUMBER,
+                SAVE_EXCURSION,
+                WHEN,
+        };
+    }
+    /* @end region="callint.c" */
 }

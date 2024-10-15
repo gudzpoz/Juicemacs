@@ -20,6 +20,13 @@ from pyparsing import (
 )
 from xml.sax.saxutils import escape as escape_xml
 
+from extract_emacs_utils import (
+    replace_or_insert_region_general,
+    extract_syms_section,
+    remove_statements,
+    exec_c_as_python,
+)
+from extract_emacs_init import exec_init_func, Variable
 from subroutines import extract_defuns
 
 parser = argparse.ArgumentParser(
@@ -329,92 +336,6 @@ maxArgs = {upper}\
     }}'''
 
 
-@dataclasses.dataclass
-class Variable:
-    name: str
-    c_name: str
-    lisp_type: str
-    init_value: typing.Any
-
-    def jname(self):
-        stem = self.c_name[1:] if self.c_name[0] == 'V' else self.c_name
-        camel = ''.join(segment.capitalize() for segment in stem.split('_'))
-        var_name = camel[0].lower() + camel[1:]
-        return var_name
-
-    def symbol_jname(self):
-        return '_'.join(
-            seg.upper() for seg in self.name.split('-')
-        )
-
-    def jtype(self):
-        t = self.lisp_type
-        if t == 'INT':
-            return 'long', '0'
-        elif t == 'BOOL':
-            return 'boolean', 'false'
-        elif t.startswith('LISP'):
-            return 'Object', 'false /* uninitialized */'
-        else:
-            return 'Object', 'null /* TODO */'
-
-    @classmethod
-    def value(cls, v):
-        if v is None:
-            return None
-        if type(v) is bool:
-            return 'true' if v else 'false'
-        if type(v) is int:
-            return f'{v}'
-        if type(v) is str:
-            return f'new ELispString({json.dumps(v)})'
-        if type(v) is float:
-            return f'{v}'
-        if type(v) is tuple:
-            if len(v) == 1:
-                return f'new ELispCons({cls.value(v[0])})'
-            if len(v) == 2:
-                return (
-                    f'ELispCons.listOf({cls.value(v[0])}, {cls.value(v[1])})'
-                )
-            raise Exception(v)
-        if type(v) is dict:
-            if 'symbol' in v:
-                return v['symbol'][1:].upper()
-            if 'CALLN' in v:
-                if v['CALLN'] == 'FMakeHashTable.makeHashTable':
-                    return f'''{v["CALLN"]}(new Object[]{{{
-                        ", ".join(cls.value(arg) for arg in v["args"])
-                    }}})'''
-                return f'{v["CALLN"]}({
-                    ", ".join(cls.value(arg) for arg in v["args"])})'
-            if 'raw' in v:
-                return v['raw']
-        raise Exception(v)
-
-    def format(self):
-        t, default_v = self.jtype()
-        v = self.value(self.init_value)
-        v = default_v if v is None else v
-        if t == 'long':
-            v = f'{int(v):_}'
-        if t == 'boolean':
-            if v == '1':
-                v = 'true'
-            elif v == '0':
-                v = 'false'
-            value = v
-        else:
-            value = f'({t}) {v}'
-        if value == '(Object) NIL':
-            value = 'false'
-        return (
-            f'ELispSymbol.Value.Forwarded {self.jname()} = '
-            f'new ELispSymbol.Value.Forwarded({value})'
-        )
-
-    def init(self):
-        return f'{self.symbol_jname()}.forwardTo({self.jname()})'
 
 
 def arg_count(n: int):
@@ -439,19 +360,6 @@ DEFSYM_REGEX = re.compile(
     re.MULTILINE | re.DOTALL,
 )
 DEFSYM_DETECT = re.compile(r'DEFSYM\s*\((\w+),')
-DEFVAR_REGEX = re.compile(
-    r'DEFVAR_(\w+?)\s*\('
-    r'\s*"([^"]+?)"\s*,'
-    r'\s*(\w+?)\s*,',
-    re.MULTILINE | re.DOTALL,
-)
-DEFVAR_BUF_REGEX = re.compile(
-    r'DEFVAR_PER_BUFFER\s*\('
-    r'\s*"([^"]+?)"\s*,'
-    r'\s*&BVAR\s*\(\s*current_buffer\s*,\s*(\w+)\s*\)\s*,'
-    r'\s*(\w+)\s*,'
-)
-DEFVAR_DETECT = re.compile(r'DEFVAR_\w+\s*\("(\S+?)"')
 
 
 with open(args.filename, 'r') as f:
@@ -498,100 +406,8 @@ with open(args.filename, 'r') as f:
     )
 
     # Variables
-    ifdef_inits = [
-        'Vload_suffixes',
-        'Vmodule_file_suffix',
-        'Vdynamic_library_suffixes',
-        'Vdynamic_library_alist',
-        'Vface_ignored_fonts',
-    ]
-
-    class LazyDict(dict):
-        def __missing__(self, key: str):
-            if key[0] == 'Q':
-                return {'symbol': key}
-            if key[0] == 'F':
-                return lambda *args: {'CALLN': (
-                    f'{LispSubroutine.better_fname(key)}.'
-                    f'''{LispSubroutine.lower(
-                        LispSubroutine.better_fname(key)
-                    )}'''
-                ), 'args': args}
-            if key == 'CALLN':
-                return lambda func, *args: {
-                    'CALLN': func()['CALLN'],
-                    'args': args,
-                }
-            raise Exception(f'unsupported: {key}')
-
-    def ID(i):  # identity
-        return i
-    ENV = LazyDict({
-        'make_float': ID,
-        'make_fixnum': ID,
-        'build_pure_c_string': ID,
-        'build_string': ID,
-        'build_unibyte_string': ID,
-        'empty_unibyte_string': '',
-        'intern_c_string': ID,
-        'true': True,
-        'false': False,
-        'pure_list': lambda *items: tuple(items),
-        'MOST_POSITIVE_FIXNUM': {'raw': 'Long.MAX_VALUE'},
-        'MOST_NEGATIVE_FIXNUM': {'raw': 'Long.MIN_VALUE'},
-        'CURRENT_TIME_LIST': True,
-        'list1': lambda a: (a,),
-        'decode_env_path': lambda *args: ('',),
-        'PATH_DUMPLOADSEARCH': '',
-        'SYSTEM_TYPE': 'jvm',
-        'EMACS_CONFIGURATION': '',
-        'EMACS_CONFIG_OPTIONS': '',
-        'EMACS_CONFIG_FEATURES': '',
-        'emacs_copyright': 'TODO: Copy over GPL',
-        'emacs_version': '30.0',
-        'emacs_bugreport': '',
-    })
-    detected = DEFVAR_DETECT.findall(contents)
-    matches = DEFVAR_REGEX.findall(contents)
-    buffer_local = DEFVAR_BUF_REGEX.findall(contents)
-    matched_names = set(m[1] for m in matches).union(
-        set(m[0] for m in buffer_local)
-    )
-    assert (
-        set(detected) == matched_names
-    ), set(detected) - matched_names
-    assert len(matched_names) == len(detected)
-    init_section = contents[contents.find('\nsyms_of_') + 9:]
-    if Path(args.filename).stem not in ['search', 'timefns']:
-        assert '\nsyms_of_' not in init_section
-    variables: list[Variable] = []
-    for lisp_type, name, c_name in matches:
-        init = re.compile(
-            f'\\s+{c_name}\\s*=\\s*([^;]+);'
-        ).findall(init_section)
-        init_value = None
-        if c_name not in ifdef_inits:
-            assert len(init) <= 1, (name, init)
-            if c_name == 'Vbytecomp_version_regexp':
-                # TODO: This needs manual updates.
-                init_value = \
-                    "^;;;.\\(?:in Emacs version\\|bytecomp version FSF\\)"
-                assert json.dumps(init_value) in contents
-            elif c_name == 'Vsource_directory':
-                init_value = {'raw': 'new ELispString("")'}
-            elif c_name == 'Vpath_separator':
-                init_value = '/'
-            elif c_name == 'Vface_new_frame_defaults':
-                init_value = {'raw': 'new ELispHashtable()'}
-            elif len(init) > 0:
-                try:
-                    init_value = eval(
-                        init[0].replace('\n', '').split('=')[-1],
-                        ENV,
-                    )
-                except Exception as e:
-                    raise Exception(c_name, e)
-        variables.append(Variable(name, c_name, lisp_type, init_value))
+    stem = Path(args.filename).stem
+    variables, var_post_inits = exec_init_func(stem, contents)
     for v in variables:
         if v.symbol_jname() not in symbols:
             symbols[v.symbol_jname()] = v.name
@@ -666,26 +482,12 @@ with open(args.java, 'w') as f:
 ##################
 
 def replace_or_insert_region(contents: str, marker: str, update: str):
-    section_start = (
-        f'    /* @generated region="{marker}" by="extract-emacs-src.py" */\n'
+    return replace_or_insert_region_general(
+        contents,
+        marker,
+        update,
+        'extract-emacs-src.py',
     )
-    section_end = (
-        f'    /* @end region="{marker}" */\n'
-    )
-    if section_start in contents:
-        start = contents.index(section_start)
-        end = contents.index(section_end)
-        assert start < end
-        return (
-            f'{contents[:start]}{section_start}'
-            f'{update}{contents[end:]}'
-        )
-    else:
-        last = contents.rfind('}')
-        return (
-            f'{contents[:last]}{section_start}{update}'
-            f'{section_end}{contents[last:]}'
-        )
 
 
 JAVA_SYMBOL_DETECT = re.compile(
@@ -741,6 +543,9 @@ with open(args.globals, 'r') as f:
         ) + f'''
     private static void {stem}Vars() {{
 {'\n'.join(f'        {v.init()};' for v in variables)}
+    }}
+    private static void {stem}PostInitVars() {{
+{'\n'.join(f'        {line}' for line in var_post_inits)}
     }}
 ''',
     )
