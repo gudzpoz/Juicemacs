@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
@@ -70,20 +71,20 @@ public abstract class ELispBuiltIns {
                         builtIn.minArgs(),
                         varArgs ? -1 : builtIn.maxArgs()
                 );
-                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), wrapper, null);
-                ELispSubroutine.InlineInfo inlineInfo;
+                FunctionRootNode rootNode = new FunctionRootNode(language, builtIn.name(), wrapper, null); // NOPMD
+                ELispSubroutine.@Nullable InlineInfo inlineInfo = null;
+                @Nullable Object inliner = null;
                 if (inline && !builtIn.rawArg()) {
+                    inliner = function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory
+                            ? inlineFactory
+                            : factory;
+                }
+                if (inliner != null || builtIn.rawArg()) {
                     inlineInfo = new ELispSubroutine.InlineInfo(
                             builtIn,
-                            function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory
-                                    ? inlineFactory
-                                    : factory,
+                            inliner,
                             Truffle.getRuntime().createAssumption()
                     );
-                } else if (builtIn.rawArg()) {
-                    inlineInfo = new ELispSubroutine.InlineInfo(builtIn, null, Truffle.getRuntime().createAssumption());
-                } else {
-                    inlineInfo = null;
                 }
                 context.registerFunction(
                         builtIn.name(),

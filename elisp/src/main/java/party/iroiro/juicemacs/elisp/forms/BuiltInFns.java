@@ -527,6 +527,11 @@ public class BuiltInFns extends ELispBuiltIns {
         }
 
         @Specialization
+        public static Object copySequenceCharTable(ELispCharTable arg) {
+            return arg.copy();
+        }
+
+        @Specialization
         public static Object copySequenceBoolVec(ELispBoolVector arg) {
             return new ELispBoolVector(arg);
         }
@@ -637,8 +642,9 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringToMultibyte extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringToMultibyte(Object string) {
-            throw new UnsupportedOperationException();
+        public static ELispString stringToMultibyte(ELispString string) {
+            // TODO: Support unibyte?
+            return string;
         }
     }
 
@@ -1079,7 +1085,7 @@ public class BuiltInFns extends ELispBuiltIns {
         }
 
         @Specialization
-        public static Object nreverseBoolVec(ELispBoolVector seq) {
+        public static ELispBoolVector nreverseBoolVec(ELispBoolVector seq) {
             return seq.reverse();
         }
 
@@ -1118,8 +1124,24 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReverse extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void reverse(Object seq) {
-            throw new UnsupportedOperationException();
+        public static boolean reverseNil(ELispSymbol seq) {
+            return FNreverse.nreverseNil(seq);
+        }
+        @Specialization
+        public static ELispBoolVector reverseBoolVec(ELispBoolVector seq) {
+            return FNreverse.nreverseBoolVec(seq);
+        }
+        @Specialization
+        public static ELispVector reverseVec(ELispVector seq) {
+            return FNreverse.nreverseVec(seq);
+        }
+        @Specialization
+        public static ELispString reverseString(ELispString seq) {
+            return FNreverse.nreverseString(seq);
+        }
+        @Specialization
+        public static ELispCons reverseList(ELispCons seq) {
+            return FNreverse.nreverseList(seq);
         }
     }
 

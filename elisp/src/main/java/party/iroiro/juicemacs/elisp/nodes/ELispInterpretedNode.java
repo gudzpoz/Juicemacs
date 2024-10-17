@@ -613,6 +613,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 return node;
             }
             Object function = getIndirectFunction(cons.car());
+            if (ELispSymbol.isNil(function)) {
+                throw ELispSignals.voidFunction(cons.car());
+            }
             int newType = switch (function) {
                 case ELispSubroutine(_, boolean specialForm, _) when specialForm -> FORM_SPECIAL;
                 case ELispSubroutine(_, _, ELispSubroutine.InlineInfo factory) when factory != null -> FORM_INLINED;

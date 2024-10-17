@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ruleset name="NoBoxedPrimitivesRule"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        This is a custom PMD rule that checks for the use of boxed primitives.
+    </description>
+
+    <rule name="NoBoxedPrimitivesRule"
+          language="java"
+          class="party.iroiro.juicemacs.pmd.NoBoxedPrimitivesRule"
+          message="Avoid implicitly boxed primitive: ''{0}'' (''{1}'').">
+        <description>
+            This rule checks for the use of boxed primitives and suggests using the primitive type instead.
+        </description>
+        <priority>1</priority>
+        <example>
+            <![CDATA[
+public class Example {
+    Object o = 1; // bad
+    int i = 1; // better
+}
+]]>
+        </example>
+    </rule>
+</ruleset>

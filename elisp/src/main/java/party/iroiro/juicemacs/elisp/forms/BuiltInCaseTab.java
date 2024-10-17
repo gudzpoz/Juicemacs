@@ -22,26 +22,26 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         for (int i = 0; i < 128; i++) {
             boolean up = 'A' <= i && i <= 'Z';
             boolean down = 'a' <= i && i <= 'z';
-            asciiDownCase.setChar(i, up ? i + ('a' - 'A') : i);
-            int toUpper = down ? i + ('A' - 'a') : i;
+            asciiDownCase.setChar(i, (long) (up ? i + ('a' - 'A') : i));
+            long toUpper = down ? i + ('A' - 'a') : i;
             asciiUpCase.setChar(i, toUpper);
-            asciiEqv.setChar(i, (up ? i + ('a' - 'A') : toUpper));
+            asciiEqv.setChar(i, up ? (long) (i + ('a' - 'A')) : toUpper);
         }
         asciiDownCase.setExtra(0, asciiUpCase);
         asciiDownCase.setExtra(1, BuiltInFns.FCopySequence.copySequenceCharTable(asciiDownCase));
         asciiDownCase.setExtra(2, asciiEqv);
-        ASCII_DOWNCASE_TABLE = asciiDownCase;
-        ASCII_UPCASE_TABLE = asciiUpCase;
-        ASCII_EQV_TABLE = asciiEqv;
+        asciiDowncaseTable = asciiDownCase;
+        asciiUpcaseTable = asciiUpCase;
+        asciiEqvTable = asciiEqv;
         setCaseTable(asciiDownCase, true);
 
         return BuiltInCaseTabFactory.getFactories();
     }
 
-    private static ELispCharTable ASCII_DOWNCASE_TABLE;
-    private static ELispCharTable ASCII_UPCASE_TABLE;
-    private static ELispCharTable ASCII_CANON_TABLE;
-    private static ELispCharTable ASCII_EQV_TABLE;
+    private static ELispCharTable asciiDowncaseTable;
+    private static ELispCharTable asciiUpcaseTable;
+    private static ELispCharTable asciiCanonTable;
+    private static ELispCharTable asciiEqvTable;
 
     private static ELispCharTable asCharTable(Object object) {
         if (object instanceof ELispCharTable charTable) {
@@ -76,10 +76,10 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         }
         asCharTable(canon).setExtra(2, eqv);
         if (standard) {
-            ASCII_DOWNCASE_TABLE = caseTable;
-            ASCII_UPCASE_TABLE = asCharTable(up);
-            ASCII_EQV_TABLE = asCharTable(eqv);
-            ASCII_CANON_TABLE = asCharTable(canon);
+            asciiDowncaseTable = caseTable;
+            asciiUpcaseTable = asCharTable(up);
+            asciiEqvTable = asCharTable(eqv);
+            asciiCanonTable = asCharTable(canon);
         } else {
             // TODO: Set buffer case tables
         }
@@ -137,7 +137,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
     public abstract static class FStandardCaseTable extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispCharTable standardCaseTable() {
-            return ASCII_DOWNCASE_TABLE;
+            return asciiDowncaseTable;
         }
     }
 

@@ -111,6 +111,9 @@ public abstract class ELispSignals {
     public static ELispSignalException invalidFunction(Object function) {
         return signal(ELispContext.INVALID_FUNCTION, function);
     }
+    public static ELispSignalException voidFunction(Object function) {
+        return signal(ELispContext.VOID_FUNCTION, function);
+    }
     //#endregion Function operations
 
     //#region File operations

@@ -1,11 +1,11 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import java.util.List;
-
 public abstract class AbstractELispVector extends ELispVectorLike<Object> {
-    protected final List<Object> inner;
+    // TODO: Reduce copies in the old List API
+    // TODO: Transparent long[]/double[] vectors
+    protected final Object[] inner;
 
-    public AbstractELispVector(List<Object> inner) {
+    public AbstractELispVector(Object[] inner) {
         this.inner = inner;
     }
 
@@ -16,16 +16,18 @@ public abstract class AbstractELispVector extends ELispVectorLike<Object> {
 
     @Override
     public Object get(int index) {
-        return inner.get(index);
+        return inner[index];
     }
 
     @Override
     public Object set(int index, Object element) {
-        return inner.set(index, element);
+        Object old = inner[index];
+        inner[index] = element;
+        return old;
     }
 
     @Override
     public int size() {
-        return inner.size();
+        return inner.length;
     }
 }

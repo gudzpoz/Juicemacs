@@ -4,6 +4,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode;
@@ -90,7 +91,7 @@ public final class ELispLexical {
 
     private final List<ELispSymbol> args;
     private final List<ELispSymbol> variables;
-    private final List<Integer> variableIndices;
+    private final IntArrayList variableIndices;
     private boolean materialized;
     private int topIndex;
     @Nullable
@@ -104,7 +105,7 @@ public final class ELispLexical {
                         List<ELispSymbol> requiredArgs) {
         this.args = requiredArgs;
         this.variables = new ArrayList<>();
-        this.variableIndices = new ArrayList<>();
+        this.variableIndices = new IntArrayList();
         this.parent = parent;
         this.materialized = false;
         if (parent == null) {

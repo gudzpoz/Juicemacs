@@ -3,13 +3,33 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
+import java.util.HashMap;
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHARSETP;
 
 public class BuiltInCharSet extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCharSetFactory.getFactories();
+    }
+
+    private final static HashMap<ELispSymbol, ELispVector> CHARSET_HASH_TABLE = new HashMap<>();
+
+    public static void defineCharsetInternal(
+            ELispSymbol name,
+            int dimension,
+            String codeSpaceChars,
+            int minCode, int maxCode,
+            int isoFinal, int isoRevision, int emacsMuleId,
+            int boolAsciiCompatible, int boolSupplementary,
+            int codeOffset
+    ) {
+        // TODO
     }
 
     /**
@@ -21,8 +41,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharsetp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charsetp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean charsetp(ELispSymbol object) {
+            return CHARSET_HASH_TABLE.containsKey(object);
         }
     }
 
@@ -93,8 +113,12 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharsetPlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charsetPlist(Object charset) {
-            throw new UnsupportedOperationException();
+        public static ELispVector charsetPlist(ELispSymbol charset) {
+            ELispVector vector = CHARSET_HASH_TABLE.get(charset);
+            if (vector == null) {
+                throw ELispSignals.wrongTypeArgument(CHARSETP, charset);
+            }
+            return vector;
         }
     }
 

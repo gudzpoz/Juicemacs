@@ -4,10 +4,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSyntaxTable;
 
 import java.util.Iterator;
 import java.util.List;
@@ -84,7 +86,8 @@ public class BuiltInSearch extends ELispBuiltIns {
             boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
             ELispRegExp pattern = ELispRegExp.compile(regexp.toTruffleString(), !caseSensitive);
             int from = isNil(start) ? 0 : asInt(start);
-            ELispRegExp.MatcherResult match = pattern.matcher(string.toString(), null);// TODO: syntax table
+            @Nullable ELispSyntaxTable syntaxTable = null; // TODO: syntax table
+            ELispRegExp.MatcherResult match = pattern.matcher(string.toString(), syntaxTable);
             if (match.matcher().find(from)) {
                 if (!inhibitModify) {
                     ELispCons.ListBuilder builder = new ELispCons.ListBuilder();

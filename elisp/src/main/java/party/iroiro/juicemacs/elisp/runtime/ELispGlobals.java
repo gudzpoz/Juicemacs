@@ -11,7 +11,12 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.defineCharsetInternal;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
-@SuppressWarnings({"RedundantCast", "UnnecessaryUnicodeEscape"})
+@SuppressWarnings({
+        "PMD.UnnecessaryCast",
+        "PMD.UseUnderscoresInNumericLiterals",
+        "RedundantCast",
+        "UnnecessaryUnicodeEscape"
+})
 public class ELispGlobals {
     public static void initGlobalVariables() {
         allocVars();

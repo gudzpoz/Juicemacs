@@ -296,13 +296,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             // bool-vec, hash-table, etc. are not copied
             return switch (obj) {
                 case ELispString s -> new ELispString(s.toString());
-                case ELispVector v -> {
-                    ArrayList<Object> inner = new ArrayList<>(v.size());
-                    for (Object o : v) {
-                        inner.add(purecopy(o));
-                    }
-                    yield new ELispVector(inner);
-                }
+                case ELispVector v -> new ELispVector(v);
                 case ELispCons cons -> new ELispCons(purecopy(cons.car()), purecopy(cons.cdr()));
                 default -> obj;
             };

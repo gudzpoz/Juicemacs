@@ -59,6 +59,7 @@ public final class ELispContext {
     }
 
     public void initGlobal(ELispLanguage language) {
+        // TODO: Ensure that this is only called once
         CURRENT_BUFFER.setDefaultValue(new ELispBuffer());
 
         initSymbols(allocSymbols());

@@ -1,0 +1,15 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+repositories {
+}
+
+dependencies {
+    implementation 'net.sourceforge.pmd:pmd-java:7.6.0'
+    testImplementation 'net.sourceforge.pmd:pmd-test:7.6.0'
+}

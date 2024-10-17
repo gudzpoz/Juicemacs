@@ -2232,7 +2232,7 @@ public class BuiltInData extends ELispBuiltIns {
                 }
             } catch (IOException ignored) {
             }
-            return 0;
+            return 0L;
         }
     }
 
@@ -2263,7 +2263,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case ELispBigNum _ -> {
                         return tryAddBigNum(sum, i, numbersOrMarkers);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, numbersOrMarkers[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, numbersOrMarkers[i]);
                 }
             }
             return sum;
@@ -2279,7 +2279,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case Double _ -> {
                         return tryAddDouble(sum.doubleValue(), i, args);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(sum);
@@ -2328,14 +2328,14 @@ public class BuiltInData extends ELispBuiltIns {
                     case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).negate());
                     case Double d -> -d;
                     case ELispBigNum n -> n.negate();
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
                 };
             }
             return switch (arg0) {
                 case Long l -> tryMinusLong(l, 1, args);
                 case ELispBigNum n -> tryMinusBigNum(n.asBigInteger(), 1, args);
                 case Double d -> tryMinusDouble(d, 1, args);
-                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
+                default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
             };
         }
 
@@ -2355,7 +2355,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case ELispBigNum _ -> {
                         return tryMinusBigNum(BigInteger.valueOf(result), i, args);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return result;
@@ -2370,7 +2370,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case Double _ -> {
                         return tryMinusDouble(result.doubleValue(), i, args);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(result);
@@ -2409,27 +2409,23 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FTimes extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public static Object timesAny(Object[] numbersOrMarkers) {
-            return tryTimesLong(numbersOrMarkers);
-        }
-
-        public static Object tryTimesLong(Object[] args) {
             long product = 1;
-            for (int i = 0; i < args.length; i++) {
-                switch (args[i]) {
+            for (int i = 0; i < numbersOrMarkers.length; i++) {
+                switch (numbersOrMarkers[i]) {
                     case Long l -> {
                         try {
                             product = Math.multiplyExact(product, l);
                         } catch (ArithmeticException e) {
-                            return tryTimesBigNum(product, i, args);
+                            return tryTimesBigNum(product, i, numbersOrMarkers);
                         }
                     }
                     case Double _ -> {
-                        return tryTimesDouble(toDouble(product), i, args);
+                        return tryTimesDouble(toDouble(product), i, numbersOrMarkers);
                     }
                     case ELispBigNum _ -> {
-                        return tryTimesBigNum(product, i, args);
+                        return tryTimesBigNum(product, i, numbersOrMarkers);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, numbersOrMarkers[i]);
                 }
             }
             return product;
@@ -2445,7 +2441,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case Double _ -> {
                         return tryTimesDouble(product.doubleValue(), i, args);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(product);
@@ -2494,7 +2490,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case Long l -> tryQuoLong(l, divisors);
                 case ELispBigNum n -> tryQuoBigNum(n.asBigInteger(), 0, divisors);
                 case Double d -> tryQuoDouble(d, divisors);
-                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
+                default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
         }
 
@@ -2512,7 +2508,7 @@ public class BuiltInData extends ELispBuiltIns {
                     case ELispBigNum _ -> {
                         return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors);
                     }
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, divisors[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, divisors[i]);
                 }
             }
             return quo;
@@ -2525,7 +2521,7 @@ public class BuiltInData extends ELispBuiltIns {
                 switch (args[i]) {
                     case ELispBigNum n -> quo = quo.divide(n.asBigInteger());
                     case Long l -> quo = quo.divide(BigInteger.valueOf(l));
-                    case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
+                    default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
             }
             return ELispBigNum.wrap(quo);
@@ -2668,7 +2664,7 @@ public class BuiltInData extends ELispBuiltIns {
                 result = result.and(switch (arg) {
                     case Long l -> BigInteger.valueOf(l);
                     case ELispBigNum n -> n.asBigInteger();
-                    case null, default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
+                    default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
                 });
             }
             return ELispBigNum.wrap(result);
@@ -2720,7 +2716,7 @@ public class BuiltInData extends ELispBuiltIns {
                 result = result.or(switch (arg) {
                     case Long l -> BigInteger.valueOf(l);
                     case ELispBigNum n -> n.asBigInteger();
-                    case null, default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
+                    default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
                 });
             }
             return ELispBigNum.wrap(result);
@@ -2759,7 +2755,7 @@ public class BuiltInData extends ELispBuiltIns {
                 result = result.xor(switch (arg) {
                     case Long l -> BigInteger.valueOf(l);
                     case ELispBigNum n -> n.asBigInteger();
-                    case null, default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
+                    default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, arg);
                 });
             }
             return ELispBigNum.wrap(result);
@@ -2877,7 +2873,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).add(BigInteger.ONE));
                 case Double d -> d + 1;
                 case ELispBigNum n -> n.add1();
-                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
+                default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
         }
     }
@@ -2907,7 +2903,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).subtract(BigInteger.ONE));
                 case Double d -> d - 1;
                 case ELispBigNum n -> n.sub1();
-                case null, default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
+                default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
         }
     }

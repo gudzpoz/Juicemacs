@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<test-data
+        xmlns="http://pmd.sourceforge.net/rule-tests"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://pmd.sourceforge.net/rule-tests http://pmd.sourceforge.net/rule-tests_1_0_0.xsd">
+    <test-code>
+        <description>Negative case - method: int into int</description>
+        <expected-problems>0</expected-problems>
+        <code><![CDATA[
+public class Example {
+    public void test() {
+        Integer.valueOf(1);
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - method: Integer into Object</description>
+        <expected-problems>1</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'java.lang.Integer' ('Integer.valueOf(1)').</message>
+        </expected-messages>
+        <code><![CDATA[
+import java.util.Objects;
+
+public class Example {
+    public void test() {
+        Objects.hashCode(Integer.valueOf(1));
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - method: int into Object</description>
+        <expected-problems>1</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+        </expected-messages>
+        <code><![CDATA[
+import java.util.List;
+
+public class Example {
+    public void test() {
+        List.of(1);
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - array: int into Object</description>
+        <expected-problems>2</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+            <message>Avoid implicitly boxed primitive: 'int' ('2').</message>
+        </expected-messages>
+        <code><![CDATA[
+public class Example {
+    public void test() {
+        Object[] arr = {1};
+        arr = new Object[]{2};
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - local var: int into Object</description>
+        <expected-problems>1</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+        </expected-messages>
+        <code><![CDATA[
+public class Example {
+    public void test() {
+        Object a = 1;
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - assignment: int into Object</description>
+        <expected-problems>1</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+        </expected-messages>
+        <code><![CDATA[
+public class Example {
+    public void test() {
+        Object a;
+        a = 1;
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - return: int into Object</description>
+        <expected-problems>1</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+        </expected-messages>
+        <code><![CDATA[
+public class Example {
+    public Object test() {
+        return 1;
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - lambda return: int into Object</description>
+        <expected-problems>2</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+        </expected-messages>
+        <code><![CDATA[
+public class Example {
+    public void test() {
+        Lambda lambda = () -> { return 1; };
+        Lambda lambda = () -> 1;
+    }
+    interface Lambda {
+        Object test();
+    }
+}
+     ]]></code>
+    </test-code>
+    <test-code>
+        <description>Positive case - field: int into Object</description>
+        <expected-problems>1</expected-problems>
+        <expected-messages>
+            <message>Avoid implicitly boxed primitive: 'int' ('1').</message>
+        </expected-messages>
+        <code><![CDATA[
+public class Example {
+    public Object a = 1;
+}
+     ]]></code>
+    </test-code>
+</test-data>

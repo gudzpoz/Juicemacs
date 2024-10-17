@@ -461,7 +461,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     if (lexical == null) {
                         top = DYNAMIC;
                         write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
-                                newIndex, null, inner
+                                newIndex,
+                                null, // PMD: Null
+                                inner
                         );
                         adoptChildren();
                         write.adoptChildren();

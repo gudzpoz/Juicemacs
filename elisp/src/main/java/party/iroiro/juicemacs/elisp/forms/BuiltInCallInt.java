@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -100,6 +101,7 @@ public class BuiltInCallInt extends ELispBuiltIns {
     public abstract static class FInteractive extends ELispBuiltInBaseNode {
         @Specialization
         public static Void interactive(Object argDescriptor) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new UnsupportedOperationException();
         }
     }

@@ -63,7 +63,7 @@ public final class ELispSymbol implements ELispValue {
      * Indicates whether the value is thread-locally overridden.
      */
     @Nullable
-    private ThreadLocalValue threadLocalValue;
+    private ThreadLocalValue threadLocalValue = null;
     /**
      * Indicates whether operations are needed before any writes.
      */
@@ -96,7 +96,6 @@ public final class ELispSymbol implements ELispValue {
 
     public ELispSymbol(String name) {
         this.value = new Value.PlainValue(UNBOUND_);
-        this.threadLocalValue = null;
         this.trappedWrite = TrappedWrite.NORMAL_WRITE;
         this.interned = Interned.UNINTERNED;
         this.name = name;

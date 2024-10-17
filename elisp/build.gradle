@@ -12,8 +12,15 @@ ext {
 }
 
 dependencies {
+    pmd project(':commons:pmd-no-int')
+    pmd 'net.sourceforge.pmd:pmd-ant:7.6.0'
+    pmd 'net.sourceforge.pmd:pmd-java:7.6.0'
+
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
+    implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
+    implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
     implementation 'com.lodborg:interval-tree:1.0.0'
+
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
     runtimeOnly "org.graalvm.truffle:truffle-runtime:${truffleVersion}"

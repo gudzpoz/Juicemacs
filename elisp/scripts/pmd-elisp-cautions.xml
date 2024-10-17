@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 
 <ruleset name="ELisp Cautions"
-    xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
 
     <description>
         Things to avoid in this subproject
@@ -106,51 +106,51 @@
         </properties>
     </rule>
 
-    <rule name="TruffleUseLongInsteadOfInt"
+    <rule name="TruffleDoNotUseNull"
           language="java"
-          message="Please use long literals instead of ints."
+          message="Do not introduce null values into the code."
           class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <description>
-            This project uses longs as the numeric type for ELisp.
-            Moreover, the type system does not handle conversion between int and long,
-            making int literals a source of bugs. Please use long literals instead.
+            We use Boolean.FALSE to represent nil values and expect
+            no null value in code. Use false in place of null if you
+            must.
         </description>
         <priority>1</priority>
         <properties>
             <property name="xpath">
                 <value><![CDATA[
-                //NumericLiteral[@IntLiteral=true()]
-                [not(ancestor::Annotation)]
-                [not(ancestor::CastExpression)]
+                //NullLiteral
+                [not(ancestor::InfixExpression[@Operator=("==", "!=")])]
+                [not(ancestor::*//Annotation[@SimpleName="Nullable"])]
                 ]]></value>
             </property>
         </properties>
     </rule>
 
+    <rule ref="party/iroiro/juicemacs/pmd/NoBoxedPrimitivesRule.xml"/>
 
     <!-- Some code styles -->
 
-    <rule ref="category/java/codestyle.xml/AvoidDollarSigns" />
-    <rule ref="category/java/codestyle.xml/AvoidProtectedFieldInFinalClass" />
-    <rule ref="category/java/codestyle.xml/AvoidProtectedMethodInFinalClassNotExtending" />
-    <rule ref="category/java/codestyle.xml/AvoidUsingNativeCode" />
-    <rule ref="category/java/codestyle.xml/BooleanGetMethodName" />
-    <rule ref="category/java/codestyle.xml/ConfusingTernary" />
-    <rule ref="category/java/codestyle.xml/ControlStatementBraces" />
-    <rule ref="category/java/codestyle.xml/FieldNamingConventions" />
-    <rule ref="category/java/codestyle.xml/IdenticalCatchBranches" />
-    <rule ref="category/java/codestyle.xml/LambdaCanBeMethodReference" />
-    <rule ref="category/java/codestyle.xml/PrematureDeclaration" />
-    <rule ref="category/java/codestyle.xml/UnnecessaryCast" />
-    <rule ref="category/java/codestyle.xml/UnnecessaryLocalBeforeReturn" />
-    <rule ref="category/java/codestyle.xml/UnnecessaryModifier" />
-    <rule ref="category/java/codestyle.xml/UnnecessaryReturn" />
-    <rule ref="category/java/codestyle.xml/UnnecessarySemicolon" />
-    <rule ref="category/java/codestyle.xml/UseDiamondOperator" />
-    <rule ref="category/java/codestyle.xml/UseExplicitTypes" />
-    <rule ref="category/java/codestyle.xml/UselessParentheses" />
-    <rule ref="category/java/codestyle.xml/UselessQualifiedThis" />
-    <rule ref="category/java/codestyle.xml/UseShortArrayInitializer" />
-    <rule ref="category/java/codestyle.xml/UseUnderscoresInNumericLiterals" />
+    <rule ref="category/java/codestyle.xml/AvoidDollarSigns"/>
+    <rule ref="category/java/codestyle.xml/AvoidProtectedFieldInFinalClass"/>
+    <rule ref="category/java/codestyle.xml/AvoidProtectedMethodInFinalClassNotExtending"/>
+    <rule ref="category/java/codestyle.xml/AvoidUsingNativeCode"/>
+    <rule ref="category/java/codestyle.xml/BooleanGetMethodName"/>
+    <rule ref="category/java/codestyle.xml/ConfusingTernary"/>
+    <rule ref="category/java/codestyle.xml/ControlStatementBraces"/>
+    <rule ref="category/java/codestyle.xml/FieldNamingConventions"/>
+    <rule ref="category/java/codestyle.xml/IdenticalCatchBranches"/>
+    <rule ref="category/java/codestyle.xml/LambdaCanBeMethodReference"/>
+    <rule ref="category/java/codestyle.xml/PrematureDeclaration"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryCast"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryLocalBeforeReturn"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryModifier"/>
+    <rule ref="category/java/codestyle.xml/UnnecessaryReturn"/>
+    <rule ref="category/java/codestyle.xml/UnnecessarySemicolon"/>
+    <rule ref="category/java/codestyle.xml/UseDiamondOperator"/>
+    <rule ref="category/java/codestyle.xml/UseExplicitTypes"/>
+    <rule ref="category/java/codestyle.xml/UselessQualifiedThis"/>
+    <rule ref="category/java/codestyle.xml/UseShortArrayInitializer"/>
+    <rule ref="category/java/codestyle.xml/UseUnderscoresInNumericLiterals"/>
 
 </ruleset>
