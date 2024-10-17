@@ -9,7 +9,6 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -163,7 +162,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FMakeVector extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispVector makeVector(long length, Object init) {
-            return new ELispVector(new ArrayList<>(Collections.nCopies((int) length, init)));
+            return new ELispVector(Collections.nCopies((int) length, init));
         }
     }
 
@@ -179,7 +178,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FVector extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispVector vector(Object[] objects) {
-            return new ELispVector(new ArrayList<>(Arrays.asList(objects)));
+            return new ELispVector(Arrays.asList(objects));
         }
     }
 

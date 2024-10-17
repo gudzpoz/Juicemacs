@@ -2,19 +2,22 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicMapUtil;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public final class ELispHashtable implements ELispValue {
 
-    private final HashMap<ELispHashtable.ELispHashtableKey, Object> inner;
+    private final EconomicMap<Object, Object> inner;
     private final Object eqSymbol;
 
     public ELispHashtable() {
@@ -23,44 +26,67 @@ public final class ELispHashtable implements ELispValue {
 
     public ELispHashtable(Object testSym) {
         this.eqSymbol = testSym;
-        BiPredicate<Object, Object> test;
-        if (testSym == EQ) {
-            test = BuiltInData.FEq::eq;
-        } else if (testSym == EQL) {
-            test = BuiltInFns.FEql::eql;
+        Equivalence test;
+        if (testSym == EQL) {
+            test = new Equivalence() {
+                @Override
+                public boolean equals(Object a, Object b) {
+                    return BuiltInFns.FEql.eql(a, b);
+                }
+                @Override
+                public int hashCode(Object o) {
+                    return o.hashCode();
+                }
+            };
         } else if (testSym == EQUAL) {
-            test = BuiltInFns.FEqual::equal;
+            test = new Equivalence() {
+                @Override
+                public boolean equals(Object a, Object b) {
+                    return BuiltInFns.FEqual.equal(a, b);
+                }
+                @Override
+                public int hashCode(Object o) {
+                    return o.hashCode();
+                }
+            };
         } else {
-            test = BuiltInData.FEq::eq;
+            test = new Equivalence() {
+                @Override
+                public boolean equals(Object a, Object b) {
+                    return BuiltInData.FEq.eq(a, b);
+                }
+                @Override
+                public int hashCode(Object o) {
+                    return o.hashCode();
+                }
+            };
         }
-        this.eq = test;
-        this.inner = new HashMap<>();
+        this.inner = EconomicMap.create(test);
     }
 
     @CompilerDirectives.TruffleBoundary
     public void put(Object key, Object value) {
-        inner.put(new ELispHashtableKey(key), value);
+        inner.put(key, value);
     }
 
     @CompilerDirectives.TruffleBoundary
     public boolean containsKey(Object key) {
-        return inner.containsKey(new ELispHashtableKey(key));
+        return inner.containsKey(key);
     }
 
     @CompilerDirectives.TruffleBoundary
     public Object get(Object key) {
-        Object o = inner.get(new ELispHashtableKey(key));
-        return o == null ? false : o;
+        return Objects.requireNonNullElse(inner.get(key), false);
     }
 
     @CompilerDirectives.TruffleBoundary
     public Object get(Object k, Object defaultValue) {
-        return inner.getOrDefault(new ELispHashtableKey(k), defaultValue);
+        return inner.get(k, defaultValue);
     }
 
     @CompilerDirectives.TruffleBoundary
     public void remove(Object key) {
-        inner.remove(new ELispHashtableKey(key));
+        inner.removeKey(key);
     }
 
     public int size() {
@@ -69,34 +95,17 @@ public final class ELispHashtable implements ELispValue {
 
     @CompilerDirectives.TruffleBoundary
     public void forEach(BiConsumer<Object, Object> action) {
-        inner.forEach((k, v) -> action.accept(k.key, v));
+        MapCursor<Object, Object> cursor = inner.getEntries();
+        while (cursor.advance()) {
+            action.accept(cursor.getKey(), cursor.getValue());
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
     @Override
     public boolean lispEquals(Object other) {
-        return other instanceof ELispHashtable t && eq == t.eq && inner.equals(t.inner);
+        return other instanceof ELispHashtable t && eqSymbol == t.eqSymbol && EconomicMapUtil.equals(inner, t.inner);
     }
-
-    protected final class ELispHashtableKey {
-        private final Object key;
-
-        private ELispHashtableKey(Object key) {
-            this.key = key;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof ELispHashtableKey other && eq.test(key, other.key);
-        }
-
-        @Override
-        public int hashCode() {
-            return key.hashCode();
-        }
-    }
-
-    public final BiPredicate<Object, Object> eq;
 
     @CompilerDirectives.TruffleBoundary
     public static ELispHashtable hashTableFromPlist(List<Object> list) {

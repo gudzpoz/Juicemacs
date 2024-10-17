@@ -7,7 +7,7 @@ import java.util.List;
 public final class ELispByteCode extends AbstractELispVector {
 
     private ELispByteCode(List<Object> inner) {
-        super(inner);
+        super(inner.toArray());
     }
 
     public static ELispByteCode create(List<Object> inner) {

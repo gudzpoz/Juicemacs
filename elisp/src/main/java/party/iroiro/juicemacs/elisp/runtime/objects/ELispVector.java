@@ -1,19 +1,23 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class ELispVector extends AbstractELispVector {
     public ELispVector(List<Object> inner) {
+        super(inner.toArray());
+    }
+
+    public ELispVector(Object[] inner) {
         super(inner);
     }
 
     public ELispVector(ELispVector other) {
-        super(new ArrayList<>(other.inner));
+        super(Arrays.copyOf(other.inner, other.inner.length));
     }
 
     public ELispVector reverse() {
-        return new ELispVector(new ArrayList<>(inner.reversed()));
+        return new ELispVector(Arrays.asList(inner).reversed());
     }
 
     @Override

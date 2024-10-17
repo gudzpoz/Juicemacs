@@ -6,7 +6,7 @@ import java.util.List;
 
 public class ELispRecord extends AbstractELispVector {
     public ELispRecord(List<Object> inner) {
-        super(inner);
+        super(inner.toArray());
         if (inner.isEmpty()) {
             throw ELispSignals.invalidReadSyntax("Empty record");
         }

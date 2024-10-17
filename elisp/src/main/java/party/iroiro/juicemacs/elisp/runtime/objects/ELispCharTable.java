@@ -4,6 +4,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -102,19 +104,15 @@ public class ELispCharTable extends AbstractELispVector {
     public final static int SUB_CONTENT_BASE_SLOT = 2;
 
     private ELispCharTable(List<Object> inner) {
-        super(inner);
+        super(inner.toArray());
     }
 
     public ELispCharTable(Object init, int extraSlots) {
-        this(getInner(init, extraSlots));
+        this(Collections.nCopies(CHARTAB_STANDARD_SLOTS + extraSlots, init));
     }
 
-    private static List<Object> getInner(Object init, int extraSlots) {
-        ArrayList<Object> objects = new ArrayList<>(CHARTAB_STANDARD_SLOTS + extraSlots);
-        for (int i = 0; i < CHARTAB_STANDARD_SLOTS + extraSlots; i++) {
-            objects.add(init);
-        }
-        return objects;
+    public ELispCharTable copy() {
+        return new ELispCharTable(Arrays.asList(inner));
     }
 
     public void setDefault(Object value) {
@@ -261,7 +259,7 @@ public class ELispCharTable extends AbstractELispVector {
         public final static int MIN_CHAR_SLOT = 1;
 
         private SubTable(List<Object> inner) {
-            super(inner);
+            super(inner.toArray());
         }
 
         public SubTable(int depth, int minChar, Object defaultValue) {

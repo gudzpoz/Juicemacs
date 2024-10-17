@@ -32,7 +32,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public ELispInterpretedClosure(
             Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
     ) {
-        super(List.of(args, body, env, doc, iForm));
+        super(new Object[]{args, body, env, doc, iForm});
         this.rootNode = rootNode;
     }
 
