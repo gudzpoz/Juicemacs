@@ -28,7 +28,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
         return index < arguments.length ? arguments[this.index] : false;
     }
 
-    public static sealed class ArgCountVerificationNode extends ELispExpressionNode {
+    public static class ArgCountVerificationNode extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
         @Child
         private ELispExpressionNode function;
@@ -58,6 +58,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
 
         @Override
         public void executeVoid(VirtualFrame frame) {
+            super.executeVoid(frame);
         }
 
         @Override
@@ -69,29 +70,17 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             )) {
                 throw wrongNumberOfArguments(length);
             }
-            return function.executeGeneric(frame);
+            try {
+                return function.executeGeneric(frame);
+            } catch (RuntimeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw remapException(e);
+            }
         }
 
         @Override
         public SourceSection getSourceSection() {
             return function.getSourceSection();
-        }
-    }
-
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
-    public static final class DslExceptionRemapNode extends ArgCountVerificationNode {
-        public DslExceptionRemapNode(ELispExpressionNode function, int minArgs, int maxArgs) {
-            super(function, minArgs, maxArgs);
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            try {
-                return super.executeGeneric(frame);
-            } catch (RuntimeException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw remapException(e);
-            }
         }
     }
 

@@ -7,6 +7,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
+
 public class BuiltInCallInt extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -100,8 +102,8 @@ public class BuiltInCallInt extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInteractive extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void interactive(Object argDescriptor) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static Void interactiveBailout(Object argDescriptor) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             throw new UnsupportedOperationException();
         }
     }

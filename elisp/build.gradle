@@ -45,7 +45,7 @@ test {
     jvmArgs [
             '-Djdk.graal.Dump=:0',
             '-Dpolyglot.engine.TraceCompilation=true',
-            '-Dpolyglot.engine.CompilationFailureAction=Diagnose',
+            '-Dpolyglot.engine.CompilationFailureAction=Silent',
     ]
 }
 

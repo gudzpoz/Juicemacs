@@ -66,7 +66,7 @@ public abstract class ELispBuiltIns {
                 }
                 ELispExpressionNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));
                 function.adoptChildren();
-                ReadFunctionArgNode.DslExceptionRemapNode wrapper = new ReadFunctionArgNode.DslExceptionRemapNode(
+                ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                         function,
                         builtIn.minArgs(),
                         varArgs ? -1 : builtIn.maxArgs()

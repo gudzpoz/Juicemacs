@@ -37,6 +37,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 @SuppressWarnings({"DefaultAnnotationParam", "ForLoopReplaceableByForEach"})
 public class BuiltInEval extends ELispBuiltIns {
 
+    public static final String ELISP_SPECIAL_FORM = "elisp special form";
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEvalFactory.getFactories();
@@ -54,36 +56,38 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOr extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode or(Object[] conditions) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            ELispExpressionNode[] expressions = ELispInterpretedNode.create(conditions);
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                private ELispExpressionNode[] nodes = expressions;
+        public static ELispExpressionNode orBailout(Object[] conditions) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new OrNode(conditions);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class OrNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Children
+            private ELispExpressionNode[] nodes;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    executeGeneric(frame);
-                }
+            public OrNode(Object[] conditions) {
+                nodes = ELispInterpretedNode.create(conditions);
+                adoptChildren();
+            }
 
-                @ExplodeLoop
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    int length = nodes.length;
-                    for (int i = 0; i < length; i++) {
-                        Object result = nodes[i].executeGeneric(frame);
-                        if (!ELispSymbol.isNil(result)) {
-                            return result;
-                        }
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                executeGeneric(frame);
+            }
+
+            @ExplodeLoop
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                int length = nodes.length;
+                for (int i = 0; i < length; i++) {
+                    Object result = nodes[i].executeGeneric(frame);
+                    if (!ELispSymbol.isNil(result)) {
+                        return result;
                     }
-                    return false;
                 }
-            };
+                return false;
+            }
         }
     }
 
@@ -99,37 +103,40 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAnd extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode and(Object[] conditions) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                private ELispExpressionNode[] nodes = ELispInterpretedNode.create(conditions);
+        public static ELispExpressionNode andBailout(Object[] conditions) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new AndNode(conditions);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class AndNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Children
+            private ELispExpressionNode[] nodes;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    executeGeneric(frame);
-                }
+            public AndNode(Object[] conditions) {
+                nodes = ELispInterpretedNode.create(conditions);
+                adoptChildren();
+            }
 
-                @ExplodeLoop
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    Object lastResult = true;
-                    int length = nodes.length;
-                    for (int i = 0; i < length; i++) {
-                        ELispExpressionNode node = nodes[i];
-                        lastResult = node.executeGeneric(frame);
-                        if (ELispSymbol.isNil(lastResult)) {
-                            return false;
-                        }
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                executeGeneric(frame);
+            }
+
+            @ExplodeLoop
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                Object lastResult = true;
+                int length = nodes.length;
+                for (int i = 0; i < length; i++) {
+                    ELispExpressionNode node = nodes[i];
+                    lastResult = node.executeGeneric(frame);
+                    if (ELispSymbol.isNil(lastResult)) {
+                        return false;
                     }
-                    return lastResult;
                 }
-            };
+                return lastResult;
+            }
         }
     }
 
@@ -146,40 +153,45 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIf extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode if_(Object cond, Object then, Object[] else_) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode condition = ELispInterpretedNode.create(cond);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode thenBranch = ELispInterpretedNode.create(then);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode elseBranch = FProgn.progn(else_);
+        public static ELispExpressionNode ifBailout(Object cond, Object then, Object[] else_) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new IfNode(cond, then, else_);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class IfNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode condition;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode thenBranch;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode elseBranch;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
-                        elseBranch.executeVoid(frame);
-                        return;
-                    }
-                    thenBranch.executeVoid(frame);
-                }
+            public IfNode(Object cond, Object then, Object[] else_) {
+                condition = ELispInterpretedNode.create(cond);
+                thenBranch = ELispInterpretedNode.create(then);
+                elseBranch = FProgn.progn(else_);
+                adoptChildren();
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
-                        return elseBranch.executeGeneric(frame);
-                    }
-                    return thenBranch.executeGeneric(frame);
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                    elseBranch.executeVoid(frame);
+                    return;
                 }
-            };
+                thenBranch.executeVoid(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                    return elseBranch.executeGeneric(frame);
+                }
+                return thenBranch.executeGeneric(frame);
+            }
         }
     }
 
@@ -200,55 +212,59 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCond extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode cond(Object[] clauses) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<ELispExpressionNode> conditionNodes = new ArrayList<>();
-            List<ELispExpressionNode> cases = new ArrayList<>();
-            for (Object clause : clauses) {
-                ELispCons cons = asCons(clause);
-                conditionNodes.add(ELispInterpretedNode.create(cons.car()));
-                List<Object> body = new ArrayList<>();
-                ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(1);
-                while (iterator.hasNext()) {
-                    body.add(iterator.next());
+        public static ELispExpressionNode condBailout(Object[] clauses) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new CondNode(clauses);
+        }
+
+        private static class CondNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Children
+            ELispExpressionNode[] conditions;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Children
+            ELispExpressionNode[] thenCases;
+
+            public CondNode(Object[] clauses) {
+                List<ELispExpressionNode> conditionNodes = new ArrayList<>();
+                List<ELispExpressionNode> cases = new ArrayList<>();
+                for (Object clause : clauses) {
+                    ELispCons cons = asCons(clause);
+                    conditionNodes.add(ELispInterpretedNode.create(cons.car()));
+                    List<Object> body = new ArrayList<>();
+                    ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(1);
+                    while (iterator.hasNext()) {
+                        body.add(iterator.next());
+                    }
+                    cases.add(FProgn.progn(body.toArray(new Object[0])));
                 }
-                cases.add(FProgn.progn(body.toArray(new Object[0])));
+                conditions = conditionNodes.toArray(new ELispExpressionNode[0]);
+                thenCases = cases.toArray(new ELispExpressionNode[0]);
+                adoptChildren();
             }
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                ELispExpressionNode[] conditions = conditionNodes.toArray(new ELispExpressionNode[0]);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Children
-                ELispExpressionNode[] thenCases = cases.toArray(new ELispExpressionNode[0]);
 
-                {
-                    adoptChildren();
-                }
-
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    int length = conditions.length;
-                    for (int i = 0; i < length; i++) {
-                        if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
-                            thenCases[i].executeVoid(frame);
-                            return;
-                        }
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                int length = conditions.length;
+                for (int i = 0; i < length; i++) {
+                    if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
+                        thenCases[i].executeVoid(frame);
+                        return;
                     }
                 }
+            }
 
-                @ExplodeLoop
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    int length = conditions.length;
-                    for (int i = 0; i < length; i++) {
-                        if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
-                            return thenCases[i].executeGeneric(frame);
-                        }
+            @ExplodeLoop
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                int length = conditions.length;
+                for (int i = 0; i < length; i++) {
+                    if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
+                        return thenCases[i].executeGeneric(frame);
                     }
-                    return false;
                 }
-            };
+                return false;
+            }
         }
     }
 
@@ -262,8 +278,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FProgn extends ELispBuiltInBaseNode {
         @Specialization
+        public static ELispExpressionNode prognBailout(Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return progn(body);
+        }
+
         public static ELispExpressionNode progn(Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (body.length == 0) {
                 return ELispInterpretedNode.literal(false);
             }
@@ -336,33 +356,37 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FProg1 extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode prog1(Object first, Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode firstNode = ELispInterpretedNode.create(first);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode others = FProgn.progn(body);
+        public static ELispExpressionNode prog1Bailout(Object first, Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new Prog1Node(first, body);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class Prog1Node extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode firstNode;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode others;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    firstNode.executeVoid(frame);
-                    others.executeVoid(frame);
-                }
+            public Prog1Node(Object first, Object[] body) {
+                firstNode = ELispInterpretedNode.create(first);
+                others = FProgn.progn(body);
+                adoptChildren();
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    Object result = firstNode.executeGeneric(frame);
-                    others.executeVoid(frame);
-                    return result;
-                }
-            };
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                firstNode.executeVoid(frame);
+                others.executeVoid(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                Object result = firstNode.executeGeneric(frame);
+                others.executeVoid(frame);
+                return result;
+            }
         }
     }
 
@@ -492,8 +516,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         @Specialization
-        public static ELispExpressionNode setq(Object[] args) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode setqBailout(Object[] args) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             if (args.length % 2 != 0) {
                 return new ELispExpressionNode() {
                     @Override
@@ -537,8 +561,8 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FQuote extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode quote(Object arg) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode quoteBailout(Object arg) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             return ELispInterpretedNode.literal(arg);
         }
     }
@@ -583,64 +607,73 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFunction extends ELispBuiltInBaseNode {
         @Specialization
+        public static ELispExpressionNode functionBailout(Object arg) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return function(arg);
+        }
+
         public static ELispExpressionNode function(Object arg) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (arg instanceof ELispCons def && def.car() == LAMBDA) {
-                ELispCons.BrentTortoiseHareIterator iterator = def.listIterator(1);
-                Object args = iterator.next();
-                ELispInterpretedNode docString = null;
-                if (iterator.hasNext()) {
-                    docString = switch (iterator.currentCons().car()) {
-                        case ELispString s -> ELispInterpretedNode.create(s);
-                        case ELispCons cons when cons.car() == CDOCUMENTATION && cons.cdr() instanceof ELispCons doc ->
-                                ELispInterpretedNode.create(doc.car());
-                        default -> null;
-                    };
-                }
-                if (docString == null) {
-                    docString = ELispInterpretedNode.create(false);
-                } else {
-                    iterator.next();
-                }
-                Object interactive = NIL;
-                if (iterator.hasNext()) {
-                    if (iterator.currentCons().car() instanceof ELispCons cons && cons.car() == INTERACTIVE) {
-                        interactive = cons;
-                        iterator.next();
-                    }
-                }
-                ELispCons body = iterator.hasNext() ? iterator.currentCons() : new ELispCons(false);
-                ELispInterpretedNode finalDocString = docString;
-                Object finalInteractive = interactive;
-                return new ELispExpressionNode() {
-                    @SuppressWarnings("FieldMayBeFinal")
-                    @Child
-                    ELispExpressionNode doc = finalDocString;
+                return getDefinition(def);
+            }
+            return ELispInterpretedNode.literal(arg);
+        }
 
-                    {
-                        adoptChildren();
-                    }
-
-                    @Override
-                    public void executeVoid(VirtualFrame frame) {
-                        executeGeneric(frame);
-                    }
-
-                    @Override
-                    public Object executeGeneric(VirtualFrame frame) {
-                        @Nullable ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                        return new ELispInterpretedClosure(
-                                args,
-                                body,
-                                lexicalFrame == null ? false : lexicalFrame.getEnv(frame),
-                                doc.executeGeneric(frame),
-                                finalInteractive,
-                                getRootNode()
-                        );
-                    }
+        private static ELispExpressionNode getDefinition(ELispCons def) {
+            CompilerDirectives.transferToInterpreter();
+            ELispCons.BrentTortoiseHareIterator iterator = def.listIterator(1);
+            Object args = iterator.next();
+            ELispInterpretedNode docString = null;
+            if (iterator.hasNext()) {
+                docString = switch (iterator.currentCons().car()) {
+                    case ELispString s -> ELispInterpretedNode.create(s);
+                    case ELispCons cons when cons.car() == CDOCUMENTATION && cons.cdr() instanceof ELispCons doc ->
+                            ELispInterpretedNode.create(doc.car());
+                    default -> null;
                 };
             }
-            return FQuote.quote(arg);
+            if (docString == null) {
+                docString = ELispInterpretedNode.create(false);
+            } else {
+                iterator.next();
+            }
+            Object interactive = NIL;
+            if (iterator.hasNext()) {
+                if (iterator.currentCons().car() instanceof ELispCons cons && cons.car() == INTERACTIVE) {
+                    interactive = cons;
+                    iterator.next();
+                }
+            }
+            ELispCons body = iterator.hasNext() ? iterator.currentCons() : new ELispCons(false);
+            ELispInterpretedNode finalDocString = docString;
+            Object finalInteractive = interactive;
+            return new ELispExpressionNode() {
+                @SuppressWarnings("FieldMayBeFinal")
+                @Child
+                ELispExpressionNode doc = finalDocString;
+
+                {
+                    adoptChildren();
+                }
+
+                @Override
+                public void executeVoid(VirtualFrame frame) {
+                    executeGeneric(frame);
+                }
+
+                @Override
+                public Object executeGeneric(VirtualFrame frame) {
+                    @Nullable ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    return new ELispInterpretedClosure(
+                            args,
+                            body,
+                            lexicalFrame == null ? false : lexicalFrame.getEnv(frame),
+                            doc.executeGeneric(frame),
+                            finalInteractive,
+                            getRootNode()
+                    );
+                }
+            };
         }
     }
 
@@ -759,36 +792,42 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefvar extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode defvar(VirtualFrame frame, Object symbol, Object initvalue, Object docstring) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode defvarBailout(VirtualFrame frame, Object symbol, Object initvalue, Object docstring) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             boolean initValueMissing = frame.getArguments().length < 2;
-            // TODO: Distinguish between (defvar a) and (defvar a nil)?
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode init = ELispInterpretedNode.create(initvalue);
+            return new DefVarNode(symbol, initvalue, initValueMissing);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class DefVarNode extends ELispExpressionNode {
+            private final Object symbol;
+            private final boolean initValueMissing;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode init;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    executeGeneric(frame);
-                }
+            public DefVarNode(Object symbol, Object initvalue, boolean initValueMissing) {
+                this.symbol = symbol;
+                this.initValueMissing = initValueMissing;
+                init = ELispInterpretedNode.create(initvalue);
+                adoptChildren();
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    ELispSymbol sym = asSym(symbol);
-                    if (initValueMissing) {
-                        ELispLexical.markDynamic(frame, sym);
-                    } else {
-                        sym.setSpecial(true);
-                        sym.setDefaultValue(init.executeGeneric(frame));
-                    }
-                    return symbol;
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                executeGeneric(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                ELispSymbol sym = asSym(symbol);
+                if (initValueMissing) {
+                    ELispLexical.markDynamic(frame, sym);
+                } else {
+                    sym.setSpecial(true);
+                    sym.setDefaultValue(init.executeGeneric(frame));
                 }
-            };
+                return symbol;
+            }
         }
     }
 
@@ -830,32 +869,37 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefconst extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode defconst(Object symbol, Object initvalue, Object docstring) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode init = ELispInterpretedNode.create(initvalue);
+        public static ELispExpressionNode defconstBailout(Object symbol, Object initvalue, Object docstring) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new DefConstNode(symbol, initvalue);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class DefConstNode extends ELispExpressionNode {
+            private final Object symbol;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode init;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    executeGeneric(frame);
-                }
+            public DefConstNode(Object symbol, Object initvalue) {
+                this.symbol = symbol;
+                init = ELispInterpretedNode.create(initvalue);
+                adoptChildren();
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    ELispSymbol sym = asSym(symbol);
-                    sym.setValue(init.executeGeneric(frame));
-                    sym.setSpecial(true);
-                    // Emacs actually allows modifying defconst constants...
-                    // So we are not calling sym.setConstant(true) here.
-                    return symbol;
-                }
-            };
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                executeGeneric(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                ELispSymbol sym = asSym(symbol);
+                sym.setValue(init.executeGeneric(frame));
+                sym.setSpecial(true);
+                // Emacs actually allows modifying defconst constants...
+                // So we are not calling sym.setConstant(true) here.
+                return symbol;
+            }
         }
     }
 
@@ -902,44 +946,48 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLetx extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode letx(Object varlist, Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                FLet.MakeScopeNode scopeNode = FLet.makeScope(varlist, true);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode bodyNode = FProgn.progn(body);
+        public static ELispExpressionNode letxBailout(Object varlist, Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new LetxNode(varlist, body);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class LetxNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            FLet.MakeScopeNode scopeNode;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode bodyNode;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
-                        bodyNode.executeVoid(frame);
-                    } finally {
-                        if (lexicalFrame != null) {
-                            lexicalFrame.restore(frame);
-                        }
+            public LetxNode(Object varlist, Object[] body) {
+                scopeNode = FLet.makeScope(varlist, true);
+                bodyNode = new FProgn.PrognBlockNode(ELispInterpretedNode.create(body));
+                adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
+                    bodyNode.executeVoid(frame);
+                } finally {
+                    if (lexicalFrame != null) {
+                        lexicalFrame.restore(frame);
                     }
                 }
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
-                        return bodyNode.executeGeneric(frame);
-                    } finally {
-                        if (lexicalFrame != null) {
-                            lexicalFrame.restore(frame);
-                        }
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
+                    return bodyNode.executeGeneric(frame);
+                } finally {
+                    if (lexicalFrame != null) {
+                        lexicalFrame.restore(frame);
                     }
                 }
-            };
+            }
         }
     }
 
@@ -1040,7 +1088,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
         }
         static MakeScopeNode makeScope(Object varlist, boolean progressive) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             List<Object> symbolList = new ArrayList<>();
             List<ELispInterpretedNode> values = new ArrayList<>();
             for (Object assignment : ELispCons.iterate(varlist)) {
@@ -1066,44 +1114,52 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         @Specialization
+        public static ELispExpressionNode letBailout(Object varlist, Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return let(varlist, body);
+        }
+
         public static ELispExpressionNode let(Object varlist, Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                MakeScopeNode scopeNode = FLet.makeScope(varlist, false);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode bodyNode = FProgn.progn(body);
+            return new LetNode(varlist, body);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class LetNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            MakeScopeNode scopeNode;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode bodyNode;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
-                        bodyNode.executeVoid(frame);
-                    } finally {
-                        if (lexicalFrame != null) {
-                            lexicalFrame.restore(frame);
-                        }
+            public LetNode(Object varlist, Object[] body) {
+                scopeNode = FLet.makeScope(varlist, false);
+                bodyNode = FProgn.progn(body);
+                adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
+                    bodyNode.executeVoid(frame);
+                } finally {
+                    if (lexicalFrame != null) {
+                        lexicalFrame.restore(frame);
                     }
                 }
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                    try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
-                        return bodyNode.executeGeneric(frame);
-                    } finally {
-                        if (lexicalFrame != null) {
-                            lexicalFrame.restore(frame);
-                        }
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
+                    return bodyNode.executeGeneric(frame);
+                } finally {
+                    if (lexicalFrame != null) {
+                        lexicalFrame.restore(frame);
                     }
                 }
-            };
+            }
         }
     }
 
@@ -1122,29 +1178,9 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FWhile extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode while_(Object test, Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                LoopNode loopNode = Truffle.getRuntime().createLoopNode(new RepeatingBodyNode(test, body));
-
-                {
-                    adoptChildren();
-                    loopNode.adoptChildren();
-                }
-
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    executeGeneric(frame);
-                }
-
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    loopNode.execute(frame);
-                    return false;
-                }
-            };
+        public static ELispExpressionNode whileBailout(Object test, Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new WhileNode(test, body);
         }
 
         private final static class RepeatingBodyNode extends Node implements RepeatingNode {
@@ -1169,6 +1205,29 @@ public class BuiltInEval extends ELispBuiltIns {
                     bodyNode.executeVoid(frame);
                     return true;
                 }
+            }
+        }
+
+        private static class WhileNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            LoopNode loopNode;
+
+            public WhileNode(Object test, Object[] body) {
+                loopNode = Truffle.getRuntime().createLoopNode(new RepeatingBodyNode(test, body));
+                adoptChildren();
+                loopNode.adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                executeGeneric(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                loopNode.execute(frame);
+                return false;
             }
         }
     }
@@ -1228,40 +1287,44 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCatch extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode catch_(Object tag, Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode tagNode = ELispInterpretedNode.create(tag);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode bodyNodes = FProgn.progn(body);
+        public static ELispExpressionNode catchBailout(Object tag, Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new CatchNode(tag, body);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class CatchNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode tagNode;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode bodyNodes;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    // Most usages of throw/catch are to change the return value.
-                    // So executeVoid probably will not be called.
-                    executeGeneric(frame);
-                }
+            public CatchNode(Object tag, Object[] body) {
+                tagNode = ELispInterpretedNode.create(tag);
+                bodyNodes = FProgn.progn(body);
+                adoptChildren();
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    Object tag = tagNode.executeGeneric(frame);
-                    try {
-                        return bodyNodes.executeGeneric(frame);
-                    } catch (ELispSignals.ELispCatchException e) {
-                        if (!ELispSymbol.isNil(tag) && e.getTag() == tag) {
-                            return e.getData();
-                        }
-                        throw e;
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                // Most usages of throw/catch are to change the return value.
+                // So executeVoid probably will not be called.
+                executeGeneric(frame);
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                Object tag = tagNode.executeGeneric(frame);
+                try {
+                    return bodyNodes.executeGeneric(frame);
+                } catch (ELispSignals.ELispCatchException e) {
+                    if (!ELispSymbol.isNil(tag) && e.getTag() == tag) {
+                        return e.getData();
                     }
+                    throw e;
                 }
-            };
+            }
         }
     }
 
@@ -1293,41 +1356,45 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnwindProtect extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode unwindProtect(Object bodyform, Object[] unwindforms) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode body = ELispInterpretedNode.create(bodyform);
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode unwind = FProgn.progn(unwindforms);
+        public static ELispExpressionNode unwindProtectBailout(Object bodyform, Object[] unwindforms) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return new UnwindProtectNode(bodyform, unwindforms);
+        }
 
-                {
-                    adoptChildren();
-                }
+        private static class UnwindProtectNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode body;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode unwind;
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    try {
-                        body.executeVoid(frame);
-                    } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
-                        unwind.executeVoid(frame);
-                        throw e;
-                    }
-                }
+            public UnwindProtectNode(Object bodyform, Object[] unwindforms) {
+                body = ELispInterpretedNode.create(bodyform);
+                unwind = FProgn.progn(unwindforms);
+                adoptChildren();
+            }
 
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    // TODO: Add test once we have signal support
-                    try {
-                        return body.executeGeneric(frame);
-                    } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
-                        unwind.executeVoid(frame);
-                        throw e;
-                    }
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                try {
+                    body.executeVoid(frame);
+                } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
+                    unwind.executeVoid(frame);
+                    throw e;
                 }
-            };
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                // TODO: Add test once we have signal support
+                try {
+                    return body.executeGeneric(frame);
+                } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
+                    unwind.executeVoid(frame);
+                    throw e;
+                }
+            }
         }
     }
 
@@ -1370,8 +1437,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FConditionCase extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode conditionCase(Object var, Object bodyform, Object[] handlers) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode conditionCaseBailout(Object var, Object bodyform, Object[] handlers) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return getConditionCaseNode(var, bodyform, handlers);
+        }
+
+        private static ConditionCaseNode getConditionCaseNode(Object var, Object bodyform, Object[] handlers) {
             int length = handlers.length;
             int successIndex = -1;
             Object[] conditionNames = new Object[length];
@@ -1395,81 +1466,94 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
             }
             int finalSuccessIndex = successIndex;
-            return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode body = ELispInterpretedNode.create(bodyform);
+            return new ConditionCaseNode(bodyform, finalSuccessIndex, bodies, length, conditionNames, var);
+        }
 
-                {
-                    adoptChildren();
+        private static class ConditionCaseNode extends ELispExpressionNode {
+            private final int finalSuccessIndex;
+            private final @Nullable Object[] bodies;
+            private final int length;
+            private final Object[] conditionNames;
+            private final Object var;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            ELispExpressionNode body;
+
+            public ConditionCaseNode(Object bodyform, int finalSuccessIndex, @Nullable Object[] bodies, int length, Object[] conditionNames, Object var) {
+                this.finalSuccessIndex = finalSuccessIndex;
+                this.bodies = bodies;
+                this.length = length;
+                this.conditionNames = conditionNames;
+                this.var = var;
+                body = ELispInterpretedNode.create(bodyform);
+                adoptChildren();
+            }
+
+            private static boolean matches(ELispSymbol conditionName, Object tag) {
+                Object property = asSym(tag).getProperty(ELispContext.ERROR_CONDITIONS);
+                if (property instanceof ELispCons list) {
+                    return list.contains(conditionName);
                 }
+                return false;
+            }
 
-                private static boolean matches(ELispSymbol conditionName, Object tag) {
-                    Object property = asSym(tag).getProperty(ELispContext.ERROR_CONDITIONS);
-                    if (property instanceof ELispCons list) {
-                        return list.contains(conditionName);
-                    }
-                    return false;
-                }
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                // TODO
+                super.executeVoid(frame);
+            }
 
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    // TODO
-                    super.executeVoid(frame);
-                }
-
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    try {
-                        Object o = body.executeGeneric(frame);
-                        if (finalSuccessIndex != -1) {
-                            Object handler = bodies[finalSuccessIndex];
-                            if (handler != null) {
-                                return handle(frame, o, handler);
-                            }
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                try {
+                    Object o = body.executeGeneric(frame);
+                    if (finalSuccessIndex != -1) {
+                        Object handler = bodies[finalSuccessIndex];
+                        if (handler != null) {
+                            return handle(frame, o, handler);
                         }
-                        return o;
-                    } catch (ELispSignals.ELispSignalException e) {
-                        int i;
-                        for (i = 0; i < length; i++) {
-                            Object conditionName = conditionNames[i];
-                            boolean shouldHandle = false;
-                            if (ELispSymbol.isT(conditionName)) {
-                                shouldHandle = true;
-                            } else if (conditionName instanceof ELispCons list) {
-                                for (Object sym : list) {
-                                    if (sym instanceof ELispSymbol symbol) {
-                                        if (matches(symbol, e.getTag())) {
-                                            shouldHandle = true;
-                                        }
+                    }
+                    return o;
+                } catch (ELispSignals.ELispSignalException e) {
+                    int i;
+                    for (i = 0; i < length; i++) {
+                        Object conditionName = conditionNames[i];
+                        boolean shouldHandle = false;
+                        if (ELispSymbol.isT(conditionName)) {
+                            shouldHandle = true;
+                        } else if (conditionName instanceof ELispCons list) {
+                            for (Object sym : list) {
+                                if (sym instanceof ELispSymbol symbol) {
+                                    if (matches(symbol, e.getTag())) {
+                                        shouldHandle = true;
                                     }
                                 }
-                            } else {
-                                if (matches(asSym(conditionName), e.getTag())) {
-                                    shouldHandle = true;
-                                }
                             }
-                            if (shouldHandle) {
-                                Object handler = bodies[i];
-                                if (handler == null) {
-                                    return false;
-                                }
-                                ELispCons error = new ELispCons(e.getTag(), e.getData());
-                                return handle(frame, error, handler);
+                        } else {
+                            if (matches(asSym(conditionName), e.getTag())) {
+                                shouldHandle = true;
                             }
                         }
-                        throw e;
+                        if (shouldHandle) {
+                            Object handler = bodies[i];
+                            if (handler == null) {
+                                return false;
+                            }
+                            ELispCons error = new ELispCons(e.getTag(), e.getData());
+                            return handle(frame, error, handler);
+                        }
                     }
+                    throw e;
                 }
+            }
 
-                private Object handle(VirtualFrame frame, Object data, Object handler) {
-                    CompilerDirectives.transferToInterpreter();
-                    return FLet.let(
-                            new ELispCons(ELispCons.listOf(var, ELispCons.listOf(ELispContext.QUOTE, data))),
-                            asCons(handler).toArray()
-                    ).executeGeneric(frame);
-                }
-            };
+            private Object handle(VirtualFrame frame, Object data, Object handler) {
+                CompilerDirectives.transferToInterpreter();
+                return FLet.let(
+                        new ELispCons(ELispCons.listOf(var, ELispCons.listOf(ELispContext.QUOTE, data))),
+                        asCons(handler).toArray()
+                ).executeGeneric(frame);
+            }
         }
     }
 
@@ -1633,7 +1717,14 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FEval extends ELispBuiltInBaseNode {
         @Specialization
         public Object eval(Object form, boolean lexical) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            try {
+                return CompilerDirectives.interpreterOnly(() -> evalForm(form, lexical));
+            } catch (Exception e) {
+                throw e instanceof RuntimeException re ? re : CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private Object evalForm(Object form, boolean lexical) {
             ELispExpressionNode expr = ELispInterpretedNode.create(new Object[]{form}, lexical);
             Source source = this.getRootNode().getSourceSection().getSource();
             SourceSection sourceSection =
@@ -1845,7 +1936,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (function instanceof ELispSymbol symbol) {
                 function = symbol.getIndirectFunction();
             }
-            if (function instanceof ELispSubroutine subroutine) {
+            if (function instanceof ELispSubroutine subroutine && !subroutine.specialForm()) {
                 return subroutine.body().callTarget().call(arguments);
             }
             if (function instanceof ELispInterpretedClosure closure) {

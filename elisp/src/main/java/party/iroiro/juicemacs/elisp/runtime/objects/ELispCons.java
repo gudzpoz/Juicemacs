@@ -119,6 +119,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         @Override
         public boolean hasNext() {
+            return hasNextCdr();
+        }
+
+        public boolean hasNextCons() {
             return tail instanceof ELispCons;
         }
 
@@ -207,6 +211,27 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         public void add(Object e) {
             throw new UnsupportedOperationException();
         }
+
+        public Object[] toArray() {
+            if (!hasNext()) {
+                return new Object[0];
+            }
+            List<Object> list = new ArrayList<>();
+            while (hasNext()) {
+                list.add(next());
+            }
+            return list.toArray();
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return this == o;
+    }
+
+    @Override
+    public int hashCode() {
+        return System.identityHashCode(this);
     }
 
     @Override
@@ -214,7 +239,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         StringBuilder sb = new StringBuilder("(").append(ELispValue.display(car()));
         BrentTortoiseHareIterator i = listIterator(1);
         while (i.hasNextCdr()) {
-            if (i.hasNext()) {
+            if (i.hasNextCons()) {
                 sb.append(" ").append(ELispValue.display(i.next()));
             } else {
                 sb.append(" . ").append(ELispValue.display(i.current()));

@@ -15,7 +15,7 @@
     <rule
             name="ELispAlwaysInterpretSpecialForms"
             language="java"
-            message="Add CompilerDirectives.transferToInterpreterAndInvalidate() to special forms"
+            message="Add CompilerDirectives.bailout(...) to special forms"
             class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <description>
             ELisp special forms return dynamically generated AST nodes and should always be interpreted.
@@ -29,7 +29,10 @@
                 [ModifierList/Annotation[@SimpleName="ELispBuiltIn"]/AnnotationMemberList/MemberValuePair[@Image="rawArg"]]
                 /ClassBody/MethodDeclaration
                 [pmd-java:hasAnnotation("com.oracle.truffle.api.dsl.Specialization")]
-                [not(Block/ExpressionStatement/MethodCall[@MethodName="transferToInterpreterAndInvalidate"])]
+                [
+                 not(Block/ExpressionStatement/MethodCall[@MethodName="bailout"])
+                 or (not(ends-with(@Name, "Bailout")))
+                ]
                 ]]></value>
             </property>
         </properties>

@@ -12,6 +12,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
+
 public class BuiltInEditFns extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -419,8 +421,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSaveExcursion extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode saveExcursion(Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode saveExcursionBailout(Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             throw new UnsupportedOperationException();
         }
     }
@@ -436,8 +438,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSaveCurrentBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode saveCurrentBuffer(Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode saveCurrentBufferBailout(Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             throw new UnsupportedOperationException();
         }
     }
@@ -1360,8 +1362,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSaveRestriction extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispExpressionNode saveRestriction(Object[] body) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        public static ELispExpressionNode saveRestrictionBailout(Object[] body) {
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             throw new UnsupportedOperationException();
         }
     }

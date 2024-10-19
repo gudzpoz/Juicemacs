@@ -385,10 +385,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             List<ELispExpressionNode> restNodes = new ArrayList<>();
             ELispCons.BrentTortoiseHareIterator argIterator = cons.listIterator(1);
             while (argIterator.hasNext()) {
+                ELispInterpretedNode node = ELispInterpretedNode.create(argIterator.next());
                 if (nodes.size() < info.maxArgs()) {
-                    nodes.add(ELispInterpretedNode.create(argIterator.next()));
+                    nodes.add(node);
                 } else {
-                    restNodes.add(ELispInterpretedNode.create(argIterator.next()));
+                    restNodes.add(node);
                 }
             }
             while (nodes.size() < info.maxArgs()) {
@@ -427,7 +428,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Override
         public void executeVoid(VirtualFrame frame) {
             try {
-                Objects.requireNonNull(inlinedNode).executeVoid(frame);
+                inlinedNode.executeVoid(frame);
             } catch (RuntimeException e) {
                 throw remapException(e);
             }
@@ -436,7 +437,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Override
         public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
             try {
-                return Objects.requireNonNull(inlinedNode).executeLong(frame);
+                return inlinedNode.executeLong(frame);
             } catch (RuntimeException e) {
                 throw remapException(e);
             }
@@ -445,7 +446,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Override
         public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
             try {
-                return Objects.requireNonNull(inlinedNode).executeDouble(frame);
+                return inlinedNode.executeDouble(frame);
             } catch (RuntimeException e) {
                 throw remapException(e);
             }
@@ -454,7 +455,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Override
         public Object executeGeneric(VirtualFrame frame) {
             try {
-                return Objects.requireNonNull(inlinedNode).executeGeneric(frame);
+                return inlinedNode.executeGeneric(frame);
             } catch (RuntimeException e) {
                 throw remapException(e);
             }
@@ -620,7 +621,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 case ELispSubroutine(_, boolean specialForm, _) when specialForm -> FORM_SPECIAL;
                 case ELispSubroutine(_, _, ELispSubroutine.InlineInfo factory) when factory != null -> FORM_INLINED;
                 case ELispCons c when c.car() == MACRO -> FORM_MACRO;
-                default -> FORM_FUNCTION;
+                case ELispCons c when c.car() == LAMBDA -> FORM_FUNCTION;
+                case ELispSubroutine _, ELispInterpretedClosure _, ELispExpressionNode _ -> FORM_FUNCTION;
+                default -> throw ELispSignals.invalidFunction(cons.car());
             };
             if (node == null || type != newType || node.getFunction() != function) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
