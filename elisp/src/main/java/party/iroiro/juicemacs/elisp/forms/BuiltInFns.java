@@ -1,9 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -486,8 +483,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FVconcat extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void vconcat(Object[] sequences) {
-            throw new UnsupportedOperationException();
+        public static ELispVector vconcat(Object[] sequences) {
+            ArrayList<Object> list = new ArrayList<>();
+            for (Object sequence : sequences) {
+                Iterator<?> i = iterateSequence(sequence);
+                while (i.hasNext()) {
+                    list.add(i.next());
+                }
+            }
+            return new ELispVector(list);
         }
     }
 
@@ -505,7 +509,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCopySequence extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object copySequenceNil(ELispSymbol arg) {
+        public static boolean copySequenceNil(ELispSymbol arg) {
             if (ELispSymbol.isNil(arg)) {
                 return false;
             }
@@ -513,31 +517,31 @@ public class BuiltInFns extends ELispBuiltIns {
         }
 
         @Specialization
-        public static Object copySequenceList(ELispCons arg) {
+        public static ELispCons copySequenceList(ELispCons arg) {
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             for (Object e : arg) {
                 builder.add(e);
             }
-            return builder.build();
+            return asCons(builder.build());
         }
 
         @Specialization
-        public static Object copySequenceVector(ELispVector arg) {
+        public static ELispVector copySequenceVector(ELispVector arg) {
             return new ELispVector(arg);
         }
 
         @Specialization
-        public static Object copySequenceCharTable(ELispCharTable arg) {
+        public static ELispCharTable copySequenceCharTable(ELispCharTable arg) {
             return arg.copy();
         }
 
         @Specialization
-        public static Object copySequenceBoolVec(ELispBoolVector arg) {
+        public static ELispBoolVector copySequenceBoolVec(ELispBoolVector arg) {
             return new ELispBoolVector(arg);
         }
 
         @Specialization
-        public static Object copySequenceString(ELispString arg) {
+        public static ELispString copySequenceString(ELispString arg) {
             return new ELispString(arg.toString());
         }
     }
@@ -1256,8 +1260,31 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPlistPut extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void plistPut(Object plist, Object prop, Object val, Object predicate) {
+        public static ELispCons plistPut(Object plist, Object prop, Object val, Object predicate) {
+            if (ELispSymbol.isNil(predicate)) {
+                return plistPut(plist, prop, val);
+            }
             throw new UnsupportedOperationException();
+        }
+
+        private static ELispCons plistPut(Object plist, Object prop, Object val) {
+            if (ELispSymbol.isNil(plist)) {
+                return ELispCons.listOf(prop, val);
+            }
+            ELispCons list = asCons(plist);
+            ELispCons.BrentTortoiseHareIterator i = list.listIterator(0);
+            ELispCons tail;
+            do {
+                Object key = i.next();
+                tail = i.currentCons();
+                if (key.equals(prop)) {
+                    tail.setCar(val);
+                    return list;
+                    }
+                i.next();
+            } while (i.hasNext());
+            tail.setCdr(ELispCons.listOf(prop, val));
+            return list;
         }
     }
 

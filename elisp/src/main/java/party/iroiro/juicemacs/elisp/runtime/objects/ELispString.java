@@ -32,6 +32,10 @@ public final class ELispString implements ELispValue {
         return value.codePointLengthUncached(ENCODING);
     }
 
+    public long codepointAt(int idx) {
+        return value.codePointAtIndexUncached(idx, ENCODING);
+    }
+
     public AbstractTruffleString value() {
         return value;
     }

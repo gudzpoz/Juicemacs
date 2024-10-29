@@ -1,14 +1,15 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc.*;
+import party.iroiro.juicemacs.elisp.forms.BuiltInCharTab.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInKeymap.*;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispHashtable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
+
+import java.util.Collections;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.defineCharsetInternal;
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 @SuppressWarnings({
@@ -22,10 +23,13 @@ public class ELispGlobals {
         allocVars();
         bufferVars();
         callintVars();
+        casefiddleVars();
         casetabVars();
+        characterVars();
         charsetVars();
         chartabVars();
         cmdsVars();
+        codingVars();
         compVars();
         dataVars();
         editfnsVars();
@@ -47,10 +51,13 @@ public class ELispGlobals {
         allocPostInitVars();
         bufferPostInitVars();
         callintPostInitVars();
+        casefiddlePostInitVars();
         casetabPostInitVars();
+        characterPostInitVars();
         charsetPostInitVars();
         chartabPostInitVars();
         cmdsPostInitVars();
+        codingPostInitVars();
         compPostInitVars();
         dataPostInitVars();
         editfnsPostInitVars();
@@ -964,4 +971,144 @@ public class ELispGlobals {
 
     }
     /* @end region="callint.c" */
+    /* @generated region="casefiddle.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded regionExtractFunction = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded caseSymbolsAsWords = new ELispSymbol.Value.Forwarded(false);
+
+    private static void casefiddleVars() {
+        REGION_EXTRACT_FUNCTION.forwardTo(regionExtractFunction);
+        CASE_SYMBOLS_AS_WORDS.forwardTo(caseSymbolsAsWords);
+    }
+    private static void casefiddlePostInitVars() {
+        CASE_SYMBOLS_AS_WORDS.setBufferLocal(true);
+    }
+    /* @end region="casefiddle.c" */
+    /* @generated region="coding.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded codingSystemList = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded codingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded codingCategoryList = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static ELispSymbol.Value.Forwarded codingSystemForRead = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded codingSystemForWrite = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded lastCodingSystemUsed = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded lastCodeConversionError = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded inhibitEolConversion = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded inheritProcessCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded fileCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded processCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded networkCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded localeCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded eolMnemonicUnix = new ELispSymbol.Value.Forwarded((Object) new ELispString(":"));
+    public static ELispSymbol.Value.Forwarded eolMnemonicDos = new ELispSymbol.Value.Forwarded((Object) new ELispString("\\"));
+    public static ELispSymbol.Value.Forwarded eolMnemonicMac = new ELispSymbol.Value.Forwarded((Object) new ELispString("/"));
+    public static ELispSymbol.Value.Forwarded eolMnemonicUndecided = new ELispSymbol.Value.Forwarded((Object) new ELispString(":"));
+    public static ELispSymbol.Value.Forwarded enableCharacterTranslation = new ELispSymbol.Value.Forwarded((Object) T);
+    public static ELispSymbol.Value.Forwarded standardTranslationTableForDecode = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded standardTranslationTableForEncode = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded charsetRevisionTable = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded defaultProcessCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded latinExtraCodeTable = new ELispSymbol.Value.Forwarded((Object) new ELispVector(Collections.nCopies(256, false)));
+    public static ELispSymbol.Value.Forwarded selectSafeCodingSystemFunction = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded codingSystemRequireWarning = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded inhibitIsoEscapeDetection = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded inhibitNullByteDetection = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded disableAsciiOptimization = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded translationTableForInput = new ELispSymbol.Value.Forwarded(false);
+
+    private static void codingVars() {
+        CODING_SYSTEM_LIST.forwardTo(codingSystemList);
+        CODING_SYSTEM_ALIST.forwardTo(codingSystemAlist);
+        CODING_CATEGORY_LIST.forwardTo(codingCategoryList);
+        CODING_SYSTEM_FOR_READ.forwardTo(codingSystemForRead);
+        CODING_SYSTEM_FOR_WRITE.forwardTo(codingSystemForWrite);
+        LAST_CODING_SYSTEM_USED.forwardTo(lastCodingSystemUsed);
+        LAST_CODE_CONVERSION_ERROR.forwardTo(lastCodeConversionError);
+        INHIBIT_EOL_CONVERSION.forwardTo(inhibitEolConversion);
+        INHERIT_PROCESS_CODING_SYSTEM.forwardTo(inheritProcessCodingSystem);
+        FILE_CODING_SYSTEM_ALIST.forwardTo(fileCodingSystemAlist);
+        PROCESS_CODING_SYSTEM_ALIST.forwardTo(processCodingSystemAlist);
+        NETWORK_CODING_SYSTEM_ALIST.forwardTo(networkCodingSystemAlist);
+        LOCALE_CODING_SYSTEM.forwardTo(localeCodingSystem);
+        EOL_MNEMONIC_UNIX.forwardTo(eolMnemonicUnix);
+        EOL_MNEMONIC_DOS.forwardTo(eolMnemonicDos);
+        EOL_MNEMONIC_MAC.forwardTo(eolMnemonicMac);
+        EOL_MNEMONIC_UNDECIDED.forwardTo(eolMnemonicUndecided);
+        ENABLE_CHARACTER_TRANSLATION.forwardTo(enableCharacterTranslation);
+        STANDARD_TRANSLATION_TABLE_FOR_DECODE.forwardTo(standardTranslationTableForDecode);
+        STANDARD_TRANSLATION_TABLE_FOR_ENCODE.forwardTo(standardTranslationTableForEncode);
+        CHARSET_REVISION_TABLE.forwardTo(charsetRevisionTable);
+        DEFAULT_PROCESS_CODING_SYSTEM.forwardTo(defaultProcessCodingSystem);
+        LATIN_EXTRA_CODE_TABLE.forwardTo(latinExtraCodeTable);
+        SELECT_SAFE_CODING_SYSTEM_FUNCTION.forwardTo(selectSafeCodingSystemFunction);
+        CODING_SYSTEM_REQUIRE_WARNING.forwardTo(codingSystemRequireWarning);
+        INHIBIT_ISO_ESCAPE_DETECTION.forwardTo(inhibitIsoEscapeDetection);
+        INHIBIT_NULL_BYTE_DETECTION.forwardTo(inhibitNullByteDetection);
+        DISABLE_ASCII_OPTIMIZATION.forwardTo(disableAsciiOptimization);
+        TRANSLATION_TABLE_FOR_INPUT.forwardTo(translationTableForInput);
+    }
+    private static void codingPostInitVars() {
+        CODING_SYSTEM_HISTORY.setValue(NIL);
+        INSERT_FILE_CONTENTS.putProperty(TARGET_IDX, (long) (0));
+        WRITE_REGION.putProperty(TARGET_IDX, (long) (2));
+        CALL_PROCESS.putProperty(TARGET_IDX, (long) (0));
+        CALL_PROCESS_REGION.putProperty(TARGET_IDX, (long) (2));
+        START_PROCESS.putProperty(TARGET_IDX, (long) (2));
+        OPEN_NETWORK_STREAM.putProperty(TARGET_IDX, (long) (3));
+        CODING_SYSTEM_ERROR.putProperty(ERROR_CONDITIONS, ELispCons.listOf(CODING_SYSTEM_ERROR, ERROR));
+        CODING_SYSTEM_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Invalid coding system"));
+        TRANSLATION_TABLE.putProperty(CHAR_TABLE_EXTRA_SLOTS, (long) (2));
+        ELispVector codingCategoryTable = new ELispVector(Collections.nCopies(CODING_CATEGORY_MAX, false));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_7, ELispContext.intern("coding-category-iso-7"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_7_TIGHT, ELispContext.intern("coding-category-iso-7-tight"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_8_1, ELispContext.intern("coding-category-iso-8-1"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_8_2, ELispContext.intern("coding-category-iso-8-2"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_7_ELSE, ELispContext.intern("coding-category-iso-7-else"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_8_ELSE, ELispContext.intern("coding-category-iso-8-else"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_8_AUTO, ELispContext.intern("coding-category-utf-8-auto"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_8_NOSIG, ELispContext.intern("coding-category-utf-8"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_8_SIG, ELispContext.intern("coding-category-utf-8-sig"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_BE, ELispContext.intern("coding-category-utf-16-be"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_AUTO, ELispContext.intern("coding-category-utf-16-auto"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_LE, ELispContext.intern("coding-category-utf-16-le"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_BE_NOSIG, ELispContext.intern("coding-category-utf-16-be-nosig"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_LE_NOSIG, ELispContext.intern("coding-category-utf-16-le-nosig"));
+        codingCategoryTable.set(CODING_CATEGORY_CHARSET, ELispContext.intern("coding-category-charset"));
+        codingCategoryTable.set(CODING_CATEGORY_SJIS, ELispContext.intern("coding-category-sjis"));
+        codingCategoryTable.set(CODING_CATEGORY_BIG5, ELispContext.intern("coding-category-big5"));
+        codingCategoryTable.set(CODING_CATEGORY_CCL, ELispContext.intern("coding-category-ccl"));
+        codingCategoryTable.set(CODING_CATEGORY_EMACS_MULE, ELispContext.intern("coding-category-emacs-mule"));
+        codingCategoryTable.set(CODING_CATEGORY_RAW_TEXT, ELispContext.intern("coding-category-raw-text"));
+        codingCategoryTable.set(CODING_CATEGORY_UNDECIDED, ELispContext.intern("coding-category-undecided"));
+        // TODO: setup coding system
+    }
+    /* @end region="coding.c" */
+    /* @generated region="character.c" by="extract-emacs-src.py" */
+    public static ELispSymbol.Value.Forwarded translationTableVector = new ELispSymbol.Value.Forwarded((Object) new ELispVector(Collections.nCopies(16, false)));
+    public static ELispSymbol.Value.Forwarded autoFillChars = new ELispSymbol.Value.Forwarded((Object) FMakeCharTable.makeCharTable(AUTO_FILL_CHARS, NIL));
+    public static ELispSymbol.Value.Forwarded charWidthTable = new ELispSymbol.Value.Forwarded((Object) FMakeCharTable.makeCharTable(NIL, (long) (1)));
+    public static ELispSymbol.Value.Forwarded ambiguousWidthChars = new ELispSymbol.Value.Forwarded((Object) FMakeCharTable.makeCharTable(NIL, NIL));
+    public static ELispSymbol.Value.Forwarded printableChars = new ELispSymbol.Value.Forwarded((Object) FMakeCharTable.makeCharTable(NIL, NIL));
+    public static ELispSymbol.Value.Forwarded charScriptTable = new ELispSymbol.Value.Forwarded((Object) FMakeCharTable.makeCharTable(CHAR_SCRIPT_TABLE, NIL));
+    public static ELispSymbol.Value.Forwarded scriptRepresentativeChars = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded unicodeCategoryTable = new ELispSymbol.Value.Forwarded(false);
+
+    private static void characterVars() {
+        TRANSLATION_TABLE_VECTOR.forwardTo(translationTableVector);
+        AUTO_FILL_CHARS.forwardTo(autoFillChars);
+        CHAR_WIDTH_TABLE.forwardTo(charWidthTable);
+        AMBIGUOUS_WIDTH_CHARS.forwardTo(ambiguousWidthChars);
+        PRINTABLE_CHARS.forwardTo(printableChars);
+        CHAR_SCRIPT_TABLE.forwardTo(charScriptTable);
+        SCRIPT_REPRESENTATIVE_CHARS.forwardTo(scriptRepresentativeChars);
+        UNICODE_CATEGORY_TABLE.forwardTo(unicodeCategoryTable);
+    }
+    private static void characterPostInitVars() {
+        FMakeCharTable.makeCharTable(AUTO_FILL_CHARS, NIL).setChar(32, T);
+        FMakeCharTable.makeCharTable(AUTO_FILL_CHARS, NIL).setChar(10, T);
+        FMakeCharTable.makeCharTable(NIL, (long) (1)).setRange(128, 159, (long) (4));
+        FMakeCharTable.makeCharTable(NIL, (long) (1)).setRange(4194176, 4194303, (long) (4));
+        FSetCharTableRange.setCharTableRange(FMakeCharTable.makeCharTable(NIL, NIL), new ELispCons((long) (32), (long) (126)), T);
+        FSetCharTableRange.setCharTableRange(FMakeCharTable.makeCharTable(NIL, NIL), new ELispCons((long) (160), (long) (4194175)), T);
+        CHAR_SCRIPT_TABLE.putProperty(CHAR_TABLE_EXTRA_SLOTS, (long) (1));
+    }
+    /* @end region="character.c" */
 }

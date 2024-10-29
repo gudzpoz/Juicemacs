@@ -102,6 +102,9 @@ public abstract class ELispSignals {
     public static ELispSignalException argsOutOfRange(Object object, long index) {
         return signal(ELispContext.ARGS_OUT_OF_RANGE, object, index);
     }
+    public static ELispSignalException argsOutOfRange(Object object, long left, long right) {
+        return signal(ELispContext.ARGS_OUT_OF_RANGE, object, left, right);
+    }
     public static ELispSignalException wrongNumberOfArguments(Object function, long actual) {
         return signal(ELispContext.WRONG_NUMBER_OF_ARGUMENTS, function, actual);
     }

@@ -65,10 +65,13 @@ public final class ELispContext {
         initSymbols(allocSymbols());
         initSymbols(bufferSymbols());
         initSymbols(callintSymbols());
+        initSymbols(casefiddleSymbols());
         initSymbols(casetabSymbols());
+        initSymbols(characterSymbols());
         initSymbols(charsetSymbols());
         initSymbols(chartabSymbols());
         initSymbols(cmdsSymbols());
+        initSymbols(codingSymbols());
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
         initSymbols(editfnsSymbols());
@@ -91,10 +94,13 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
         initBuiltIns(language, new BuiltInCallInt());
+        initBuiltIns(language, new BuiltInCaseFiddle());
         initBuiltIns(language, new BuiltInCaseTab());
+        initBuiltIns(language, new BuiltInCharacter());
         initBuiltIns(language, new BuiltInCharSet());
         initBuiltIns(language, new BuiltInCharTab());
         initBuiltIns(language, new BuiltInCmds());
+        initBuiltIns(language, new BuiltInCoding());
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
         initBuiltIns(language, new BuiltInEditFns());
@@ -2402,4 +2408,212 @@ public final class ELispContext {
         };
     }
     /* @end region="callint.c" */
+    /* @generated region="casefiddle.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol BOUNDS = new ELispSymbol("bounds");
+    public final static ELispSymbol CASE_SYMBOLS_AS_WORDS = new ELispSymbol("case-symbols-as-words");
+    public final static ELispSymbol IDENTITY = new ELispSymbol("identity");
+    public final static ELispSymbol LOWERCASE = new ELispSymbol("lowercase");
+    public final static ELispSymbol REGION_EXTRACT_FUNCTION = new ELispSymbol("region-extract-function");
+    public final static ELispSymbol SPECIAL_LOWERCASE = new ELispSymbol("special-lowercase");
+    public final static ELispSymbol SPECIAL_TITLECASE = new ELispSymbol("special-titlecase");
+    public final static ELispSymbol SPECIAL_UPPERCASE = new ELispSymbol("special-uppercase");
+    public final static ELispSymbol TITLECASE = new ELispSymbol("titlecase");
+    public final static ELispSymbol UPPERCASE = new ELispSymbol("uppercase");
+    private ELispSymbol[] casefiddleSymbols() {
+        return new ELispSymbol[]{
+                BOUNDS,
+                CASE_SYMBOLS_AS_WORDS,
+                IDENTITY,
+                LOWERCASE,
+                REGION_EXTRACT_FUNCTION,
+                SPECIAL_LOWERCASE,
+                SPECIAL_TITLECASE,
+                SPECIAL_UPPERCASE,
+                TITLECASE,
+                UPPERCASE,
+        };
+    }
+    /* @end region="casefiddle.c" */
+    /* @generated region="coding.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol BIG = new ELispSymbol("big");
+    public final static ELispSymbol BIG5 = new ELispSymbol("big5");
+    public final static ELispSymbol BUFFER_FILE_CODING_SYSTEM = new ELispSymbol("buffer-file-coding-system");
+    public final static ELispSymbol CALL_PROCESS = new ELispSymbol("call-process");
+    public final static ELispSymbol CALL_PROCESS_REGION = new ELispSymbol("call-process-region");
+    public final static ELispSymbol CASCII_COMPATIBLE_P = new ELispSymbol(":ascii-compatible-p");
+    public final static ELispSymbol CCATEGORY = new ELispSymbol(":category");
+    public final static ELispSymbol CDECODE_TRANSLATION_TABLE = new ELispSymbol(":decode-translation-table");
+    public final static ELispSymbol CDEFAULT_CHAR = new ELispSymbol(":default-char");
+    public final static ELispSymbol CENCODE_TRANSLATION_TABLE = new ELispSymbol(":encode-translation-table");
+    public final static ELispSymbol CHARSET = new ELispSymbol("charset");
+    public final static ELispSymbol CHARSET_REVISION_TABLE = new ELispSymbol("charset-revision-table");
+    public final static ELispSymbol CMNEMONIC = new ELispSymbol(":mnemonic");
+    public final static ELispSymbol CODING_CATEGORY_LIST = new ELispSymbol("coding-category-list");
+    public final static ELispSymbol CODING_SYSTEM_ALIST = new ELispSymbol("coding-system-alist");
+    public final static ELispSymbol CODING_SYSTEM_DEFINE_FORM = new ELispSymbol("coding-system-define-form");
+    public final static ELispSymbol CODING_SYSTEM_ERROR = new ELispSymbol("coding-system-error");
+    public final static ELispSymbol CODING_SYSTEM_FOR_READ = new ELispSymbol("coding-system-for-read");
+    public final static ELispSymbol CODING_SYSTEM_FOR_WRITE = new ELispSymbol("coding-system-for-write");
+    public final static ELispSymbol CODING_SYSTEM_HISTORY = new ELispSymbol("coding-system-history");
+    public final static ELispSymbol CODING_SYSTEM_LIST = new ELispSymbol("coding-system-list");
+    public final static ELispSymbol CODING_SYSTEM_P = new ELispSymbol("coding-system-p");
+    public final static ELispSymbol CODING_SYSTEM_REQUIRE_WARNING = new ELispSymbol("coding-system-require-warning");
+    public final static ELispSymbol CPOST_READ_CONVERSION = new ELispSymbol(":post-read-conversion");
+    public final static ELispSymbol CPRE_WRITE_CONVERSION = new ELispSymbol(":pre-write-conversion");
+    public final static ELispSymbol DEFAULT_PROCESS_CODING_SYSTEM = new ELispSymbol("default-process-coding-system");
+    public final static ELispSymbol DEFINE_CODING_SYSTEM_INTERNAL = new ELispSymbol("define-coding-system-internal");
+    public final static ELispSymbol DISABLE_ASCII_OPTIMIZATION = new ELispSymbol("disable-ascii-optimization");
+    public final static ELispSymbol DOS = new ELispSymbol("dos");
+    public final static ELispSymbol EMACS_MULE = new ELispSymbol("emacs-mule");
+    public final static ELispSymbol ENABLE_CHARACTER_TRANSLATION = new ELispSymbol("enable-character-translation");
+    public final static ELispSymbol EOL_MNEMONIC_DOS = new ELispSymbol("eol-mnemonic-dos");
+    public final static ELispSymbol EOL_MNEMONIC_MAC = new ELispSymbol("eol-mnemonic-mac");
+    public final static ELispSymbol EOL_MNEMONIC_UNDECIDED = new ELispSymbol("eol-mnemonic-undecided");
+    public final static ELispSymbol EOL_MNEMONIC_UNIX = new ELispSymbol("eol-mnemonic-unix");
+    public final static ELispSymbol FILENAMEP = new ELispSymbol("filenamep");
+    public final static ELispSymbol FILE_CODING_SYSTEM_ALIST = new ELispSymbol("file-coding-system-alist");
+    public final static ELispSymbol IGNORED = new ELispSymbol("ignored");
+    public final static ELispSymbol INHERIT_PROCESS_CODING_SYSTEM = new ELispSymbol("inherit-process-coding-system");
+    public final static ELispSymbol INHIBIT_EOL_CONVERSION = new ELispSymbol("inhibit-eol-conversion");
+    public final static ELispSymbol INHIBIT_ISO_ESCAPE_DETECTION = new ELispSymbol("inhibit-iso-escape-detection");
+    public final static ELispSymbol INHIBIT_NULL_BYTE_DETECTION = new ELispSymbol("inhibit-null-byte-detection");
+    public final static ELispSymbol INSUFFICIENT_SOURCE = new ELispSymbol("insufficient-source");
+    public final static ELispSymbol INTERRUPTED = new ELispSymbol("interrupted");
+    public final static ELispSymbol INVALID_SOURCE = new ELispSymbol("invalid-source");
+    public final static ELispSymbol ISO_2022 = new ELispSymbol("iso-2022");
+    public final static ELispSymbol LAST_CODE_CONVERSION_ERROR = new ELispSymbol("last-code-conversion-error");
+    public final static ELispSymbol LAST_CODING_SYSTEM_USED = new ELispSymbol("last-coding-system-used");
+    public final static ELispSymbol LATIN_EXTRA_CODE_TABLE = new ELispSymbol("latin-extra-code-table");
+    public final static ELispSymbol LITTLE = new ELispSymbol("little");
+    public final static ELispSymbol LOCALE_CODING_SYSTEM = new ELispSymbol("locale-coding-system");
+    public final static ELispSymbol MAC = new ELispSymbol("mac");
+    public final static ELispSymbol NETWORK_CODING_SYSTEM_ALIST = new ELispSymbol("network-coding-system-alist");
+    public final static ELispSymbol NO_CONVERSION = new ELispSymbol("no-conversion");
+    public final static ELispSymbol OPEN_NETWORK_STREAM = new ELispSymbol("open-network-stream");
+    public final static ELispSymbol PROCESS_CODING_SYSTEM_ALIST = new ELispSymbol("process-coding-system-alist");
+    public final static ELispSymbol RAW_TEXT = new ELispSymbol("raw-text");
+    public final static ELispSymbol SELECT_SAFE_CODING_SYSTEM_FUNCTION = new ELispSymbol("select-safe-coding-system-function");
+    public final static ELispSymbol SHIFT_JIS = new ELispSymbol("shift-jis");
+    public final static ELispSymbol STANDARD_TRANSLATION_TABLE_FOR_DECODE = new ELispSymbol("standard-translation-table-for-decode");
+    public final static ELispSymbol STANDARD_TRANSLATION_TABLE_FOR_ENCODE = new ELispSymbol("standard-translation-table-for-encode");
+    public final static ELispSymbol START_PROCESS = new ELispSymbol("start-process");
+    public final static ELispSymbol TARGET_IDX = new ELispSymbol("target-idx");
+    public final static ELispSymbol TRANSLATION_TABLE = new ELispSymbol("translation-table");
+    public final static ELispSymbol TRANSLATION_TABLE_FOR_INPUT = new ELispSymbol("translation-table-for-input");
+    public final static ELispSymbol TRANSLATION_TABLE_ID = new ELispSymbol("translation-table-id");
+    public final static ELispSymbol UNDECIDED = new ELispSymbol("undecided");
+    public final static ELispSymbol UNIX = new ELispSymbol("unix");
+    public final static ELispSymbol UNKNOWN_ERROR = new ELispSymbol("Unknown error");
+    public final static ELispSymbol US_ASCII = new ELispSymbol("us-ascii");
+    public final static ELispSymbol UTF_16 = new ELispSymbol("utf-16");
+    public final static ELispSymbol UTF_16LE = new ELispSymbol("utf-16le");
+    public final static ELispSymbol UTF_8 = new ELispSymbol("utf-8");
+    public final static ELispSymbol UTF_8_EMACS = new ELispSymbol("utf-8-emacs");
+    public final static ELispSymbol UTF_8_STRING_P = new ELispSymbol("utf-8-string-p");
+    public final static ELispSymbol UTF_8_UNIX = new ELispSymbol("utf-8-unix");
+    private ELispSymbol[] codingSymbols() {
+        return new ELispSymbol[]{
+                BIG,
+                BIG5,
+                BUFFER_FILE_CODING_SYSTEM,
+                CALL_PROCESS,
+                CALL_PROCESS_REGION,
+                CASCII_COMPATIBLE_P,
+                CCATEGORY,
+                CDECODE_TRANSLATION_TABLE,
+                CDEFAULT_CHAR,
+                CENCODE_TRANSLATION_TABLE,
+                CHARSET,
+                CHARSET_REVISION_TABLE,
+                CMNEMONIC,
+                CODING_CATEGORY_LIST,
+                CODING_SYSTEM_ALIST,
+                CODING_SYSTEM_DEFINE_FORM,
+                CODING_SYSTEM_ERROR,
+                CODING_SYSTEM_FOR_READ,
+                CODING_SYSTEM_FOR_WRITE,
+                CODING_SYSTEM_HISTORY,
+                CODING_SYSTEM_LIST,
+                CODING_SYSTEM_P,
+                CODING_SYSTEM_REQUIRE_WARNING,
+                CPOST_READ_CONVERSION,
+                CPRE_WRITE_CONVERSION,
+                DEFAULT_PROCESS_CODING_SYSTEM,
+                DEFINE_CODING_SYSTEM_INTERNAL,
+                DISABLE_ASCII_OPTIMIZATION,
+                DOS,
+                EMACS_MULE,
+                ENABLE_CHARACTER_TRANSLATION,
+                EOL_MNEMONIC_DOS,
+                EOL_MNEMONIC_MAC,
+                EOL_MNEMONIC_UNDECIDED,
+                EOL_MNEMONIC_UNIX,
+                FILENAMEP,
+                FILE_CODING_SYSTEM_ALIST,
+                IGNORED,
+                INHERIT_PROCESS_CODING_SYSTEM,
+                INHIBIT_EOL_CONVERSION,
+                INHIBIT_ISO_ESCAPE_DETECTION,
+                INHIBIT_NULL_BYTE_DETECTION,
+                INSUFFICIENT_SOURCE,
+                INTERRUPTED,
+                INVALID_SOURCE,
+                ISO_2022,
+                LAST_CODE_CONVERSION_ERROR,
+                LAST_CODING_SYSTEM_USED,
+                LATIN_EXTRA_CODE_TABLE,
+                LITTLE,
+                LOCALE_CODING_SYSTEM,
+                MAC,
+                NETWORK_CODING_SYSTEM_ALIST,
+                NO_CONVERSION,
+                OPEN_NETWORK_STREAM,
+                PROCESS_CODING_SYSTEM_ALIST,
+                RAW_TEXT,
+                SELECT_SAFE_CODING_SYSTEM_FUNCTION,
+                SHIFT_JIS,
+                STANDARD_TRANSLATION_TABLE_FOR_DECODE,
+                STANDARD_TRANSLATION_TABLE_FOR_ENCODE,
+                START_PROCESS,
+                TARGET_IDX,
+                TRANSLATION_TABLE,
+                TRANSLATION_TABLE_FOR_INPUT,
+                TRANSLATION_TABLE_ID,
+                UNDECIDED,
+                UNIX,
+                UNKNOWN_ERROR,
+                US_ASCII,
+                UTF_16,
+                UTF_16LE,
+                UTF_8,
+                UTF_8_EMACS,
+                UTF_8_STRING_P,
+                UTF_8_UNIX,
+        };
+    }
+    /* @end region="coding.c" */
+    /* @generated region="character.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol AMBIGUOUS_WIDTH_CHARS = new ELispSymbol("ambiguous-width-chars");
+    public final static ELispSymbol AUTO_FILL_CHARS = new ELispSymbol("auto-fill-chars");
+    public final static ELispSymbol CHARACTERP = new ELispSymbol("characterp");
+    public final static ELispSymbol CHAR_SCRIPT_TABLE = new ELispSymbol("char-script-table");
+    public final static ELispSymbol CHAR_WIDTH_TABLE = new ELispSymbol("char-width-table");
+    public final static ELispSymbol PRINTABLE_CHARS = new ELispSymbol("printable-chars");
+    public final static ELispSymbol SCRIPT_REPRESENTATIVE_CHARS = new ELispSymbol("script-representative-chars");
+    public final static ELispSymbol TRANSLATION_TABLE_VECTOR = new ELispSymbol("translation-table-vector");
+    public final static ELispSymbol UNICODE_CATEGORY_TABLE = new ELispSymbol("unicode-category-table");
+    private ELispSymbol[] characterSymbols() {
+        return new ELispSymbol[]{
+                AMBIGUOUS_WIDTH_CHARS,
+                AUTO_FILL_CHARS,
+                CHARACTERP,
+                CHAR_SCRIPT_TABLE,
+                CHAR_WIDTH_TABLE,
+                PRINTABLE_CHARS,
+                SCRIPT_REPRESENTATIVE_CHARS,
+                TRANSLATION_TABLE_VECTOR,
+                UNICODE_CATEGORY_TABLE,
+        };
+    }
+    /* @end region="character.c" */
 }

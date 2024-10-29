@@ -16,6 +16,7 @@ dependencies {
     pmd 'net.sourceforge.pmd:pmd-ant:7.6.0'
     pmd 'net.sourceforge.pmd:pmd-java:7.6.0'
 
+    implementation 'org.apache.commons:commons-text:1.12.0'
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
     implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
     implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
@@ -59,10 +60,13 @@ var ArrayList<List<String>> templateTasks = [
         ['Alloc', 'alloc.c'],
         ['Buffer', 'buffer.c'],
         ['CallInt', 'callint.c'],
+        ['CaseFiddle', 'casefiddle.c'],
         ['CaseTab', 'casetab.c'],
+        ['Character', 'character.c'],
         ['CharSet', 'charset.c'],
         ['CharTab', 'chartab.c'],
         ['Cmds', 'cmds.c'],
+        ['Coding', 'coding.c'],
         ['Comp', 'comp.c'],
         ['Data', 'data.c'],
         ['EditFns', 'editfns.c'],

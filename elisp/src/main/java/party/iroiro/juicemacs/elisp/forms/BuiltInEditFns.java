@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import java.net.InetAddress;
@@ -1503,8 +1504,17 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPropertize extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void propertize(Object string, Object[] properties) {
-            throw new UnsupportedOperationException();
+        public static ELispString propertize(ELispString string, Object[] properties) {
+            // TODO
+            ELispString s = BuiltInFns.FCopySequence.copySequenceString(string);
+            long length = s.codepointCount();
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            for (int i = 0; i < length; i += 2) {
+                builder.add(properties[i]);
+                builder.add(properties[i + 1]);
+            }
+            s.syncFromPlist(List.of(false, 0L, length, builder.build()));
+            return s;
         }
     }
 
@@ -1586,8 +1596,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFormat extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void format(Object string, Object[] objects) {
-            throw new UnsupportedOperationException();
+        public static ELispString format(ELispString string, Object[] objects) {
+            // TODO
+            return new ELispString(String.format(string.toString(), objects));
         }
     }
 

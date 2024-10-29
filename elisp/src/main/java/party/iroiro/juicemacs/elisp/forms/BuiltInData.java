@@ -2018,8 +2018,40 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAref extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void aref(Object array, Object idx) {
-            throw new UnsupportedOperationException();
+        public static Object arefVec(ELispVector array, long idx) {
+            return array.get((int) idx);
+        }
+        @Specialization
+        public static Object arefStr(ELispString array, long idx) {
+            return array.codepointAt((int) idx);
+        }
+        @Specialization
+        public static Object arefCharTable(ELispCharTable array, long idx) {
+            return array.getChar((int) idx);
+        }
+        @Specialization
+        public static Object arefBoolVec(ELispBoolVector array, long idx) {
+            return array.get((int) idx);
+        }
+        @Specialization
+        public static Object arefRecord(ELispRecord array, long idx) {
+            return array.get((int) idx);
+        }
+        @Specialization
+        public static Object arefBytecode(ELispByteCode array, long idx) {
+            return array.get((int) idx);
+        }
+        @Specialization
+        public static Object aref(Object array, long idx) {
+            return switch (array) {
+                case ELispVector vec -> vec.get((int) idx);
+                case ELispString str -> str.codepointAt((int) idx);
+                case ELispCharTable charTable -> charTable.getChar((int) idx);
+                case ELispBoolVector boolVec -> boolVec.get((int) idx);
+                case ELispRecord record -> record.get((int) idx);
+                case ELispByteCode bytecode -> bytecode.get((int) idx);
+                default -> throw ELispSignals.wrongTypeArgument(ARRAYP, array);
+            };
         }
     }
 

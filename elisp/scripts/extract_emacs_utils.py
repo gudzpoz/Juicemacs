@@ -65,6 +65,8 @@ def extract_syms_section(
     if fname == 'syms_of_keyboard':
         syms_body = prune_func('mark_kboards', syms_body)
         syms_body = prune_func('keys_of_keyboard', syms_body)
+    if fname == 'syms_of_coding':
+        syms_body = prune_func('reset_coding_after_pdumper_load', syms_body)
     if f'{fname}_for_pdumper (void)' in syms_body:
         syms_body = prune_func(f'{fname}_for_pdumper', syms_body)
 

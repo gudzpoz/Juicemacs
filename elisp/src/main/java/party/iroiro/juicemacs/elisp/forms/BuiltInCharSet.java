@@ -3,14 +3,16 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHARSETP;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class BuiltInCharSet extends ELispBuiltIns {
     @Override
@@ -18,7 +20,133 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return BuiltInCharSetFactory.getFactories();
     }
 
+    private enum CharsetMethod {
+        OFFSET,
+        MAP,
+        SUBSET,
+        SUPERSET
+    }
+
+    private record ELispCharset(
+            int id,
+            ELispVector attributes,
+            int dimension,
+            byte[] codeSpaceMask,
+            int[] codeSpace,
+            boolean codeLinearP,
+            boolean isoChars96,
+            boolean asciiCompatibleP,
+            boolean supplementaryP,
+            boolean compactCodesP,
+            boolean unifiedP,
+            int isoFinal,
+            int isoRevision,
+            int emacsMuleId,
+            CharsetMethod method,
+            long minCode,
+            long maxCode,
+            long charIndexOffset,
+            long minChar,
+            long maxChar,
+            long invalidCode,
+            byte[] fastMap,
+            long codeOffset
+    ) {
+        public static long codepointToIndex(
+                long codepoint,
+                boolean codeLinearP, long minCode,
+                byte[] codeSpaceMask, int[] codeSpace, long charIndexOffset
+        ) {
+            if (codeLinearP) {
+                return codepoint - minCode;
+            }
+            if (
+                    (codeSpaceMask[Math.toIntExact(codepoint >> 24)] & 0x8) == 0
+                            || (codeSpaceMask[Math.toIntExact((codepoint >> 16) & 0xFF)] & 0x4) == 0
+                            || (codeSpaceMask[Math.toIntExact((codepoint >> 8) & 0xFF)] & 0x2) == 0
+                            || (codeSpaceMask[Math.toIntExact(codepoint & 0xFF)] & 0x1) == 0
+            ) {
+                return -1;
+            }
+            return ((((codepoint >> 24) & 0xFF) - codeSpace[12]) * codeSpace[11])
+                    + (((codepoint >> 16) & 0xFF) - codeSpace[8]) * codeSpace[7]
+                    + (((codepoint >> 8) & 0xFF) - codeSpace[4]) * codeSpace[3]
+                    + ((codepoint & 0xFF) - codeSpace[0])
+                    - charIndexOffset;
+        }
+    }
+
+    private final static ArrayList<ELispCharset> CHARSET_LIST = new ArrayList<>();
     private final static HashMap<ELispSymbol, ELispVector> CHARSET_HASH_TABLE = new HashMap<>();
+
+    private static ELispCharset getCharset(Object symbol) {
+        ELispVector vec = getCharsetAttr(symbol);
+        //noinspection SequencedCollectionMethodCanBeUsed
+        int index = ELispBuiltInBaseNode.asInt(vec.get(CHARSET_ATTR_ID));
+        return CHARSET_LIST.get(index);
+    }
+
+    private static ELispVector getCharsetAttr(Object symbol) {
+        //noinspection SuspiciousMethodCalls
+        ELispVector vec = CHARSET_HASH_TABLE.get(symbol);
+        if (vec == null) {
+            throw ELispSignals.wrongTypeArgument(CHARSETP, symbol);
+        }
+        return vec;
+    }
+
+    //#region: enum define_charset_arg_index
+    // The following documentation is partly copied from `define-charset` (defined in `mule.el`) in GNU Emacs
+    /// the name of the charset (e.g., [ELispContext#ASCII] or [ELispContext#UNICODE])
+    private final static int CHARSET_ARG_NAME = 0;
+    /// `0`, `1`, `2`, or `3`, the dimension (a.k.a., max byte length) of code-points of the charset
+    private final static int CHARSET_ARG_DIMENSION = 1;
+    /// the byte code range of each dimension (read: byte) of the charset: `[min-1 max-1 ...]`
+    private final static int CHARSET_ARG_CODE_SPACE = 2;
+    /// the minimum code-point of the charset
+    private final static int CHARSET_ARG_MIN_CODE = 3;
+    /// the maximum code-point of the charset
+    private final static int CHARSET_ARG_MAX_CODE = 4;
+    /// the final char of the charset for ISO-2022 encoding
+    private final static int CHARSET_ARG_ISO_FINAL = 5;
+    /// the revision number of the charset for ISO-2022 encoding
+    private final static int CHARSET_ARG_ISO_REVISION = 6;
+    /// 0, or 129..255
+    private final static int CHARSET_ARG_EMACS_MULE_ID = 7;
+    /// true if the first 128 code points map to ASCII
+    private final static int CHARSET_ARG_ASCII_COMPATIBLE_P = 8;
+    /// true if used only as a parent or a subset of some other charset
+    private final static int CHARSET_ARG_SUPPLEMENTARY_P = 9;
+    /// a nonnegative integer that can be used as an invalid code point of the charset.
+    private final static int CHARSET_ARG_INVALID_CODE = 10;
+    /// an integer added to the index number of a character to get the corresponding character code
+    private final static int CHARSET_ARG_CODE_OFFSET = 11;
+    /// codepoint to character byte-sequence mapping, vector or name of a file
+    private final static int CHARSET_ARG_MAP = 12;
+    /// a list: `( PARENT MIN-CODE MAX-CODE OFFSET )`
+    private final static int CHARSET_ARG_SUBSET = 13;
+    /// a list of parent charsets
+    private final static int CHARSET_ARG_SUPERSET = 14;
+    /// similar to `CHARSET_ARG_MAP`, but maps to Unicode
+    private final static int CHARSET_ARG_UNIFY_MAP = 15;
+    /// the property list of the charset
+    private final static int CHARSET_ARG_PLIST = 16;
+    /// the maximum number of arguments
+    private final static int CHARSET_ARG_MAX = 17;
+    //#endregion
+    //#region: enum charset_attr_index
+    private final static int CHARSET_ATTR_ID = 0;
+    private final static int CHARSET_ATTR_NAME = 1;
+    private final static int CHARSET_ATTR_PLIST = 2;
+    private final static int CHARSET_ATTR_MAP = 3;
+    private final static int CHARSET_ATTR_DECODER = 4;
+    private final static int CHARSET_ATTR_ENCODER = 5;
+    private final static int CHARSET_ATTR_SUBSET = 6;
+    private final static int CHARSET_ATTR_SUPERSET = 7;
+    private final static int CHARSET_ATTR_UNIFY_MAP = 8;
+    private final static int CHARSET_ATTR_DEUNIFIER = 9;
+    private final static int CHARSET_ATTR_MAX = 10;
+    //#endregion
 
     public static void defineCharsetInternal(
             ELispSymbol name,
@@ -29,7 +157,40 @@ public class BuiltInCharSet extends ELispBuiltIns {
             int boolAsciiCompatible, int boolSupplementary,
             int codeOffset
     ) {
-        // TODO
+        Object[] args = Collections.nCopies(CHARSET_ARG_MAX, false).toArray();
+        args[CHARSET_ARG_NAME] = name;
+        args[CHARSET_ARG_DIMENSION] = (long) dimension;
+        args[CHARSET_ARG_CODE_SPACE] = new ELispVector(
+                (codeSpaceChars + "\0").chars().mapToObj(Long::valueOf).toArray()
+        );
+        args[CHARSET_ARG_MIN_CODE] = (long) minCode;
+        args[CHARSET_ARG_MAX_CODE] = (long) maxCode;
+        args[CHARSET_ARG_ISO_FINAL] = isoFinal < 0 ? false : (long) isoFinal;
+        args[CHARSET_ARG_ISO_REVISION] = (long) isoRevision;
+        args[CHARSET_ARG_EMACS_MULE_ID] = emacsMuleId < 0 ? false : (long) emacsMuleId;
+        args[CHARSET_ARG_ASCII_COMPATIBLE_P] = boolAsciiCompatible != 0;
+        args[CHARSET_ARG_SUPPLEMENTARY_P] = boolSupplementary != 0;
+
+        args[CHARSET_ARG_CODE_OFFSET] = (long) codeOffset;
+
+        args[CHARSET_ARG_PLIST] = ELispCons.listOf(
+                CNAME,
+                args[CHARSET_ARG_NAME],
+                intern(":dimension"),
+                args[CHARSET_ARG_DIMENSION],
+                intern(":code-space"),
+                args[CHARSET_ARG_CODE_SPACE],
+                intern(":iso-final-char"),
+                args[CHARSET_ARG_ISO_FINAL],
+                intern(":emacs-mule-id"),
+                args[CHARSET_ARG_EMACS_MULE_ID],
+                intern(":ascii-compatible-p"),
+                args[CHARSET_ARG_ASCII_COMPATIBLE_P],
+                intern(":code-offset"),
+                args[CHARSET_ARG_CODE_OFFSET]
+        );
+
+        FDefineCharsetInternal.defineCharsetInternal(args);
     }
 
     /**
@@ -41,8 +202,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharsetp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean charsetp(ELispSymbol object) {
-            return CHARSET_HASH_TABLE.containsKey(object);
+        public static boolean charsetp(Object object) {
+            return object instanceof ELispSymbol symbol && CHARSET_HASH_TABLE.containsKey(symbol);
         }
     }
 
@@ -85,8 +246,266 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefineCharsetInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defineCharsetInternal(Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean defineCharsetInternal(Object[] args) {
+            if (args.length != CHARSET_ARG_MAX) {
+                throw ELispSignals.wrongNumberOfArguments(DEFINE_CHARSET_INTERNAL, args.length);
+            }
+
+            ELispVector attrs = new ELispVector(Collections.nCopies(CHARSET_ATTR_MAX, false));
+
+            ELispSymbol name = asSym(args[CHARSET_ARG_NAME]);
+            attrs.set(CHARSET_ATTR_NAME, name);
+
+            Object codeSpaceVal = args[CHARSET_ARG_CODE_SPACE];
+            int[] codeSpace = new int[15];
+            int dimension = 1;
+            for (int i = 0, nchars = 1; true; i++) {
+                // TODO: codeSpaceVal can be any sequence?
+                long minByte = asLong(BuiltInData.FAref.aref(codeSpaceVal, i * 2L), 0, 255);
+                long maxByte = asLong(BuiltInData.FAref.aref(codeSpaceVal, i * 2L + 1), minByte, 255);
+                codeSpace[i * 4] = Math.toIntExact(minByte);
+                codeSpace[i * 4 + 1] = Math.toIntExact(maxByte);
+                codeSpace[i * 4 + 2] = Math.toIntExact(maxByte - minByte + 1);
+                if (maxByte > 0) {
+                    dimension = i + 1;
+                }
+                if (i == 3) {
+                    break;
+                }
+                nchars *= codeSpace[i * 4 + 2];
+                codeSpace[i * 4 + 3] = nchars;
+            }
+
+            Object dimensionVal = args[CHARSET_ARG_DIMENSION];
+            if (!ELispSymbol.isNil(dimensionVal)) {
+                dimension = (int) asLong(dimensionVal, 1, 4);
+            }
+
+            boolean dim3Linear = dimension == 3 || codeSpace[10] == 256;
+            boolean dim2Linear = dimension == 2 || (codeSpace[6] == 256 && dim3Linear);
+            boolean codeLinearP = dimension == 1 || (codeSpace[2] == 256 && dim2Linear);
+
+            byte[] codeSpaceMask;
+            if (codeLinearP) {
+                codeSpaceMask = new byte[0];
+            } else {
+                codeSpaceMask = new byte[256];
+                for (int i = 0; i < 4; i++) {
+                    for (int j = codeSpace[i * 4]; j < codeSpace[i * 4 + 1]; j++) {
+                        codeSpaceMask[j] |= (byte) (1 << i);
+                    }
+                }
+            }
+
+            boolean isoChar96 = codeSpace[2] == 96;
+
+            long minCode = (
+                    codeSpace[0]
+                            | ((long) codeSpace[4] << 8)
+                            | ((long) codeSpace[8] << 16)
+                            | (Integer.toUnsignedLong(codeSpace[12]) << 24)
+            );
+            long maxCode = (
+                    codeSpace[1]
+                            | ((long) codeSpace[5] << 8)
+                            | ((long) codeSpace[9] << 16)
+                            | (Integer.toUnsignedLong(codeSpace[13]) << 24)
+            );
+            long charIndexOffset = 0;
+
+            Object minCodeVal = args[CHARSET_ARG_MIN_CODE];
+            if (!ELispSymbol.isNil(minCodeVal)) {
+                long code = asLong(consToUnsigned(minCodeVal, maxCode), minCode, maxCode);
+                charIndexOffset = ELispCharset.codepointToIndex(code, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
+                minCode = code;
+            }
+            Object maxCodeVal = args[CHARSET_ARG_MAX_CODE];
+            if (!ELispSymbol.isNil(maxCodeVal)) {
+                maxCode = asLong(consToUnsigned(maxCodeVal, maxCode), minCode, maxCode);
+            }
+
+            boolean compactCodesP = true;
+
+            Object invalidVal = args[CHARSET_ARG_INVALID_CODE];
+            long invalidCode;
+            if (ELispSymbol.isNil(invalidVal)) {
+                if (minCode > 0) {
+                    invalidCode = 0;
+                } else if (maxCode < Integer.toUnsignedLong(-1)) {
+                    invalidCode = maxCode + 1;
+                } else {
+                    throw ELispSignals.error("Attribute :invalid-code must be specified");
+                }
+            } else {
+                invalidCode = asLong(invalidVal, 0, Integer.MAX_VALUE);
+            }
+
+            Object isoFinalVal = args[CHARSET_ARG_ISO_FINAL];
+            int isoFinal;
+            if (ELispSymbol.isNil(isoFinalVal)) {
+                isoFinal = -1;
+            } else {
+                isoFinal = (int) asLong(isoFinalVal, '0', 127);
+            }
+
+            Object isoRevisionVal = args[CHARSET_ARG_ISO_REVISION];
+            int isoRevision = ELispSymbol.isNil(isoRevisionVal) ? -1 : (int) asLong(isoRevisionVal, -1, 63);
+
+            Object emacsMuleVal = args[CHARSET_ARG_EMACS_MULE_ID];
+            int emacsMule;
+            if (ELispSymbol.isNil(emacsMuleVal)) {
+                emacsMule = -1;
+            } else {
+                emacsMule = asInt(emacsMuleVal);
+                if ((0 < emacsMule && emacsMule <= 128) || 256 <= emacsMule) {
+                    throw ELispSignals.error("Invalid emacs-mule-id: " + emacsMule);
+                }
+            }
+
+            boolean asciiCompatibleP = !ELispSymbol.isNil(args[CHARSET_ARG_ASCII_COMPATIBLE_P]);
+            boolean supplementaryP = !ELispSymbol.isNil(args[CHARSET_ARG_SUPPLEMENTARY_P]);
+            boolean unifiedP = false;
+
+            byte[] fastMap = new byte[190];
+            CharsetMethod method;
+            long codeOffset = 0, minChar = 0, maxChar = 0;
+            if (!ELispSymbol.isNil(args[CHARSET_ARG_CODE_OFFSET])) {
+                Object val = args[CHARSET_ARG_CODE_OFFSET];
+                int c = asInt(val);
+                method = CharsetMethod.OFFSET;
+                codeOffset = c;
+
+                minChar = codeOffset + ELispCharset.codepointToIndex(minCode, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
+                maxChar = codeOffset + ELispCharset.codepointToIndex(maxCode, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
+
+                int i;
+                for (i = Math.toIntExact((minChar >> 7) << 7); i < 0x10000 && i <= maxChar; i += 128) {
+                    fastMap[i >> 10] |= (byte) (1 << ((i >> 7) & 7));
+                }
+                for (i = (i >> 12) << 12; i <= maxChar; i += 0x1000) {
+                    fastMap[(i >> 15) + 62] |= (byte) (1 << ((i >> 12) & 7));
+                }
+                if (codeOffset == 0 && maxChar >= 0x80) {
+                    asciiCompatibleP = true;
+                }
+            } else if (!ELispSymbol.isNil(args[CHARSET_ARG_MAP])) {
+                Object val = args[CHARSET_ARG_MAP];
+                attrs.set(CHARSET_ATTR_MAP, val);
+                method = CharsetMethod.MAP;
+            } else if (!ELispSymbol.isNil(args[CHARSET_ARG_SUBSET])) {
+                Object[] array = asCons(args[CHARSET_ARG_SUBSET]).toArray();
+                Object parent = array[0];
+                ELispCharset parentCharset = getCharset(parent);
+                int parentMinCode = asInt(array[1]);
+                int parentMaxCode = asInt(array[2]);
+                int parentCodeOffset = asInt(array[3]);
+                attrs.set(CHARSET_ATTR_SUBSET, new ELispVector(new Object[]{
+                        (long) parentCharset.id,
+                        (long) parentMinCode,
+                        (long) parentMaxCode,
+                        (long) parentCodeOffset
+                }));
+                method = CharsetMethod.SUBSET;
+                fastMap = Arrays.copyOf(parentCharset.fastMap, parentCharset.fastMap.length);
+                minChar = parentCharset.minChar;
+                maxChar = parentCharset.maxChar;
+            } else if (!ELispSymbol.isNil(args[CHARSET_ARG_SUPERSET])) {
+                ELispCons val = asCons(args[CHARSET_ARG_SUPERSET]);
+                method = CharsetMethod.SUPERSET;
+                minChar = Integer.MAX_VALUE;
+                ELispCons.ListBuilder list = new ELispCons.ListBuilder();
+                for (Object elt : val) {
+                    ELispCharset parentCharset;
+                    int offset;
+                    if (elt instanceof ELispCons cons) {
+                        parentCharset = getCharset(cons.car());
+                        offset = asInt(cons.cdr());
+                    } else {
+                        parentCharset = getCharset(elt);
+                        offset = 0;
+                    }
+                    list.add(new ELispCons((long) parentCharset.id, (long) offset));
+                    minChar = Math.min(minChar, parentCharset.minChar);
+                    maxChar = Math.max(maxChar, parentCharset.maxChar);
+                    for (int i = 0; i < parentCharset.fastMap.length; i++) {
+                        fastMap[i] |= parentCharset.fastMap[i];
+                    }
+                }
+                attrs.set(CHARSET_ATTR_SUPERSET, list.build());
+            } else {
+                throw ELispSignals.error("None of :code-offset, :map, :parents are specified");
+            }
+
+            Object unifyMapVal = args[CHARSET_ARG_UNIFY_MAP];
+            if (!ELispSymbol.isNil(unifyMapVal) && !(unifyMapVal instanceof ELispString)) {
+                if (!(unifyMapVal instanceof ELispVector)) {
+                    throw ELispSignals.wrongTypeArgument(VECTORP, unifyMapVal);
+                }
+            }
+            attrs.set(CHARSET_ATTR_UNIFY_MAP, unifyMapVal);
+
+            attrs.set(CHARSET_ATTR_PLIST, asCons(args[CHARSET_ARG_PLIST]));
+
+            boolean newDefinitionP = !CHARSET_HASH_TABLE.containsKey(name);
+            CHARSET_HASH_TABLE.put(name, attrs);
+            int id;
+            if (newDefinitionP) {
+                id = CHARSET_LIST.size();
+            } else {
+                id = getCharset(name).id;
+            }
+            ELispCharset charset = new ELispCharset(
+                    id,
+                    attrs,
+                    dimension,
+                    codeSpaceMask,
+                    codeSpace,
+                    codeLinearP,
+                    isoChar96,
+                    asciiCompatibleP,
+                    supplementaryP,
+                    compactCodesP,
+                    unifiedP,
+                    isoFinal,
+                    isoRevision,
+                    emacsMule,
+                    method,
+                    minCode,
+                    maxCode,
+                    charIndexOffset,
+                    minChar,
+                    maxChar,
+                    invalidCode,
+                    fastMap,
+                    codeOffset
+            );
+            if (newDefinitionP) {
+                CHARSET_LIST.add(charset);
+            } else {
+                CHARSET_LIST.set(id, charset);
+            }
+            attrs.set(CHARSET_ATTR_ID, (long) id);
+
+            if (method == CharsetMethod.MAP) {
+                // TODO
+                // load_charset (&charset, 0);
+                // charset_table[id] = charset;
+            }
+
+            if (isoFinal >= 0) {
+                // TODO
+            }
+
+            if (emacsMule >= 0) {
+                // TODO
+            }
+
+            if (newDefinitionP) {
+                ELispContext.CHARSET_LIST.setValue(new ELispCons(name, ELispContext.CHARSET_LIST.getValue()));
+                // TODO: Vcharset_ordered_list
+            }
+
+            return false;
         }
     }
 
@@ -99,8 +518,11 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefineCharsetAlias extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defineCharsetAlias(Object alias, Object charset) {
-            throw new UnsupportedOperationException();
+        public static boolean defineCharsetAlias(ELispSymbol alias, Object charset) {
+            ELispVector attr = getCharsetAttr(charset);
+            CHARSET_HASH_TABLE.put(alias, attr);
+            ELispContext.CHARSET_LIST.setValue(new ELispCons(alias, ELispContext.CHARSET_LIST.getValue()));
+            return false;
         }
     }
 
@@ -113,12 +535,9 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharsetPlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispVector charsetPlist(ELispSymbol charset) {
-            ELispVector vector = CHARSET_HASH_TABLE.get(charset);
-            if (vector == null) {
-                throw ELispSignals.wrongTypeArgument(CHARSETP, charset);
-            }
-            return vector;
+        public static ELispCons charsetPlist(Object charset) {
+            ELispVector vector = getCharsetAttr(charset);
+            return asCons(vector.get(CHARSET_ATTR_PLIST));
         }
     }
 
@@ -131,8 +550,9 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetCharsetPlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setCharsetPlist(Object charset, Object plist) {
-            throw new UnsupportedOperationException();
+        public static Object setCharsetPlist(Object charset, Object plist) {
+            getCharsetAttr(charset).set(CHARSET_ATTR_PLIST, asCons(plist));
+            return plist;
         }
     }
 
@@ -153,8 +573,9 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnifyCharset extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void unifyCharset(Object charset, Object unifyMap, Object deunify) {
-            throw new UnsupportedOperationException();
+        public static boolean unifyCharset(Object charset, Object unifyMap, Object deunify) {
+            // TODO
+            return false;
         }
     }
 

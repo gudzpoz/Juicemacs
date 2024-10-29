@@ -140,11 +140,16 @@ def exec_init_func(stem: str, contents: str):
         'ARRAYELTS': len,
         'make_nil_vector': lambda length: f'new ELispVector(Collections.nCopies({length}, false))',
         'make_vector': lambda length, fill: f'new ELispVector(Collections.nCopies({length}, {fill}))',
+        'ASET': lambda vec, idx, val: post_inits.append(f'{vec}.set({idx}, {val});'),
 
         'Fmake_symbol': lambda s: f'FMakeSymbol.makeSymbol({s})',
         'Fmake_hash_table': lambda *args: f'FMakeHashTable.makeHashTable(new Object[]{{{", ".join(args)}}})',
         'Fmake_marker': lambda: 'FMakeMarker.makeMarker()',
         'Fpurecopy': lambda x: f'FPurecopy.purecopy({x})',
+
+        'Fmake_char_table': lambda *args: f'FMakeCharTable.makeCharTable({", ".join(args)})',
+        'char_table_set_range': lambda table, start, end, val: post_inits.append(f'{table}.setRange({start}, {end}, {val});'),
+        'Fset_char_table_range': lambda table, ran, val: post_inits.append(f'FSetCharTableRange.setCharTableRange({table}, {ran}, {val});'),
 
         'Fadd_variable_watcher': Fadd_variable_watcher,
         'Fmake_var_non_special': lambda sym: post_inits.append(f'{sym}.setSpecial(false);'),
@@ -170,6 +175,15 @@ def exec_init_func(stem: str, contents: str):
                 'static union Aligned_Lisp_Subr Swatch_gc_cons_percentage =',
             ]
         },
+        'character': {
+            'globals': {
+                'MAX_CHAR': 0x3FFFFF,
+                'MAX_5_BYTE_CHAR': 0x3FFF7F,
+                'CHAR_TABLE_SET': lambda table, char, val: post_inits.append(
+                    f'{table}.setChar({ord(char)}, {val});',
+                ),
+            },
+        },
         'charset': {
             'globals': {
                 'charset_table_init': [],
@@ -182,6 +196,45 @@ def exec_init_func(stem: str, contents: str):
                 ),
                 'MAX_UNICODE_CHAR': 0x10FFFF,
                 'MAX_5_BYTE_CHAR': 0x3FFF7F,
+            },
+        },
+        'coding': {
+            'extra_replaces': {
+                r'Vcoding_category_table = make_nil_vector \(coding_category_max\);':
+                    'py_def_var("ELispVector", "codingCategoryTable", make_nil_vector (coding_category_max))',
+                r'\{\s+int i;\s+Vcoding_category_list = Qnil;[^}]+?\}':
+                    'Vcoding_category_list = py_init_coding_category_list(Vcoding_category_table);',
+                r'Lisp_Object args\[coding_arg_undecided_max\];[^}]+?\}[^}]+'
+                r'Fset \(AREF \(Vcoding_category_table, i\), Qno_conversion\);':
+                    'py_setup_coding_system("""\1""")',
+            },
+            'globals': {
+                'Vcoding_category_table': 'codingCategoryTable',
+                'coding_category_iso_7': 'CODING_CATEGORY_ISO_7',
+                'coding_category_iso_7_tight': 'CODING_CATEGORY_ISO_7_TIGHT',
+                'coding_category_iso_8_1': 'CODING_CATEGORY_ISO_8_1',
+                'coding_category_iso_8_2': 'CODING_CATEGORY_ISO_8_2',
+                'coding_category_iso_7_else': 'CODING_CATEGORY_ISO_7_ELSE',
+                'coding_category_iso_8_else': 'CODING_CATEGORY_ISO_8_ELSE',
+                'coding_category_utf_8_auto': 'CODING_CATEGORY_UTF_8_AUTO',
+                'coding_category_utf_8_nosig': 'CODING_CATEGORY_UTF_8_NOSIG',
+                'coding_category_utf_8_sig': 'CODING_CATEGORY_UTF_8_SIG',
+                'coding_category_utf_16_auto': 'CODING_CATEGORY_UTF_16_AUTO',
+                'coding_category_utf_16_be': 'CODING_CATEGORY_UTF_16_BE',
+                'coding_category_utf_16_le': 'CODING_CATEGORY_UTF_16_LE',
+                'coding_category_utf_16_be_nosig': 'CODING_CATEGORY_UTF_16_BE_NOSIG',
+                'coding_category_utf_16_le_nosig': 'CODING_CATEGORY_UTF_16_LE_NOSIG',
+                'coding_category_charset': 'CODING_CATEGORY_CHARSET',
+                'coding_category_sjis': 'CODING_CATEGORY_SJIS',
+                'coding_category_big5': 'CODING_CATEGORY_BIG5',
+                'coding_category_ccl': 'CODING_CATEGORY_CCL',
+                'coding_category_emacs_mule': 'CODING_CATEGORY_EMACS_MULE',
+                'coding_category_raw_text': 'CODING_CATEGORY_RAW_TEXT',
+                'coding_category_undecided': 'CODING_CATEGORY_UNDECIDED',
+                'coding_category_max': 'CODING_CATEGORY_MAX',
+                'py_def_var': lambda t, name, v: post_inits.append(f'{t} {name} = {v};'),
+                'py_init_coding_category_list': lambda table: f'false /* TODO */',
+                'py_setup_coding_system': lambda s: post_inits.append('// TODO: setup coding system'),
             },
         },
         'comp': {

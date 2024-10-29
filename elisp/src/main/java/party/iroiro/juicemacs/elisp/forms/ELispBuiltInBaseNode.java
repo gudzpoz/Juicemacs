@@ -29,11 +29,46 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
         throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
     }
 
+    public static long asLong(Object value, long left, long right) {
+        long i = asLong(value);
+        if (i < left || i > right) {
+            throw ELispSignals.argsOutOfRange(value, left, right);
+        }
+        return i;
+    }
+
     public static long asLong(Object value) {
         if (value instanceof Long l) {
             return l;
         }
         throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
+    }
+
+    public static long consToUnsigned(Object value, long max) {
+        long v = switch (value) {
+            case Long l -> l;
+            case Double d -> d.longValue();
+            case ELispCons cons -> {
+                long hi = asLong(cons.car());
+                Object rest = cons.cdr();
+                if (hi <= Long.MAX_VALUE >> 24 >> 16
+                        && rest instanceof ELispCons restCons
+                        && restCons.car() instanceof Long mid && mid < 1 << 24
+                        && restCons.cdr() instanceof Long lo && lo < 1 << 16) {
+                    yield (hi << 24 << 16) | (mid << 16) | lo;
+                } else {
+                    if (Long.MAX_VALUE >> 16 < hi) {
+                        throw ELispSignals.argsOutOfRange(value, 0, max);
+                    }
+                    yield hi << 16 | asLong(rest instanceof ELispCons restCons ? restCons.car() : rest);
+                }
+            }
+            default -> throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
+        };
+        if (v < 0 || max < v) {
+            throw ELispSignals.argsOutOfRange(value, 0, max);
+        }
+        return v;
     }
 
     public static double asDouble(Object value) {
