@@ -9,6 +9,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_TABLE_EXTRA_SLOTS;
 
@@ -16,6 +17,29 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCharTabFactory.getFactories();
+    }
+
+    public static void charTableMap(ELispCharTable table, BiConsumer<Object, Object> callback) {
+        table.map(new BiConsumer<>() {
+            Long prevChar = 0L;
+            Object prev = false;
+
+            @Override
+            public void accept(Long l, Object o) {
+                if (BuiltInData.FEq.eq(prev, o)) {
+                    return;
+                }
+                if (!ELispSymbol.isNil(prev)) {
+                    if (prevChar == l - 1) {
+                        callback.accept(prevChar, prev);
+                    } else {
+                        callback.accept(new ELispCons(prevChar, l - 1), prev);
+                    }
+                }
+                prevChar = l;
+                prev = o;
+            }
+        });
     }
 
     /**
@@ -197,8 +221,9 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapCharTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapCharTable(Object function, Object charTable) {
-            throw new UnsupportedOperationException();
+        public static boolean mapCharTable(Object function, ELispCharTable charTable) {
+            charTableMap(charTable, (key, value) -> BuiltInEval.FFuncall.funcall(function, new Object[]{key, value}));
+            return false;
         }
     }
 

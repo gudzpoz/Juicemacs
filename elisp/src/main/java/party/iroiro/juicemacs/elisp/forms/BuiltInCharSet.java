@@ -15,6 +15,11 @@ import java.util.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class BuiltInCharSet extends ELispBuiltIns {
+    public BuiltInCharSet() {
+        CHARSET_HASH_TABLE.clear();
+        CHARSET_LIST.clear();
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCharSetFactory.getFactories();

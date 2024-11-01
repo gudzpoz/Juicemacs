@@ -1,35 +1,5 @@
 #+title: TODO
 
-* TODO [#A] Signals
-
-A central mechanism to handle exceptions.
-
-I guess I should start implementing it before I litter
-=IllegalArgumentException= everywhere.
-
-- [ ] New exception types & utility methods
-
-- [-] =signal/error/condition-case=
-
-  - [X] Implementation
-
-  - [ ] Error groups
-
-  - [ ] Convert =ClassCastException= to errors
-
-- [X] =catch/throw=
-
-- [X] Stack traces
-
-  - [X] Store debug info into cons nodes.
-
-  - [X] So we want function names in stack traces, but all interpreted functions
-    are just lambdas in Emacs: =(defalias 'a-symbol #'(lambda () ...))=. Maybe
-    we can try to assign a lambda a name when it is first bound to a symbol? (<-
-    chose this approach)
-
-    +I will need to check out how GraalJs handles lambdas.+ Too lazy to do that.
-
 * TODO [#B] Understanding Non-Bare Symbols
 
 I hope we can make all symbols bare.
@@ -40,6 +10,10 @@ Oh no. It looks like a data structure with its internal structure /fully
 exposed/ as a vector. It probably means we will /have to/ exactly follow the GNU
 Emacs implementation.
 
+Edit: No, it is not fully exposed. (See keymaps for what is fully exposed...
+Sigh.) It is a hash-table-ish thing. And actually, I do think we can make all
+/hashes/ zeros and use our own =HashMap= instead.
+
 * TODO [#B] Autoload
 
 So basically one can have autoload functions as well as autoload strings
@@ -49,11 +23,21 @@ So basically one can have autoload functions as well as autoload strings
 
 - Limit =jdk.virtualThreadScheduler.parallelism= to =1=.
 
+* TODO [#C] Charsets & Coding
+
+Emacs MULE.
+
 * TODO [#C] Keymaps
 
 I now know there are sparse maps and dense ones, and they nest. And keymaps are
 index by character codes most of the time. However, I have seen it indexed with
 =[t]=. No idea what it is all about.
+
+Edit: See comments in =BuiltInKeymap.java= for what keymap is about.
+
+- [ ] Default values
+- [X] =map-keymap=
+  - [X] =map-char-table=
 
 * TODO [#C] Code conventions
 
@@ -190,6 +174,36 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#A] Signals
+
+A central mechanism to handle exceptions.
+
+I guess I should start implementing it before I litter
+=IllegalArgumentException= everywhere.
+
+- [X] New exception types & utility methods
+
+- [X] =signal/error/condition-case=
+
+  - [X] Implementation
+
+  - [X] Error groups
+
+  - [X] Convert =ClassCastException= to errors
+
+- [X] =catch/throw=
+
+- [X] Stack traces
+
+  - [X] Store debug info into cons nodes.
+
+  - [X] So we want function names in stack traces, but all interpreted functions
+    are just lambdas in Emacs: =(defalias 'a-symbol #'(lambda () ...))=. Maybe
+    we can try to assign a lambda a name when it is first bound to a symbol? (<-
+    chose this approach)
+
+    +I will need to check out how GraalJs handles lambdas.+ Too lazy to do that.
 
 ** DONE [#B] Replace lexical scope maps with Truffle frames
 

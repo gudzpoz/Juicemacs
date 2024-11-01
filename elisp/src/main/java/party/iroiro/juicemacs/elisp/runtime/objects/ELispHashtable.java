@@ -89,6 +89,10 @@ public final class ELispHashtable implements ELispValue {
         inner.removeKey(key);
     }
 
+    public void clear() {
+        inner.clear();
+    }
+
     public int size() {
         return inner.size();
     }

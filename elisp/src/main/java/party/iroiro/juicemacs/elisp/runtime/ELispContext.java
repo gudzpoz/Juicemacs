@@ -59,7 +59,6 @@ public final class ELispContext {
     }
 
     public void initGlobal(ELispLanguage language) {
-        // TODO: Ensure that this is only called once
         CURRENT_BUFFER.setDefaultValue(new ELispBuffer());
 
         initSymbols(allocSymbols());
@@ -96,6 +95,8 @@ public final class ELispContext {
         T.setConstant(true);
         NIL.setConstant(true);
 
+        // Built-in functions must be re-initialized every time.
+        // Otherwise, Truffle will complain that we are trying to use functions across contexts.
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
         initBuiltIns(language, new BuiltInCallInt());
@@ -138,6 +139,14 @@ public final class ELispContext {
     private void initSymbols(ELispSymbol[] symbols) {
         for (ELispSymbol symbol : symbols) {
             INTERN_MAP.put(symbol.name(), symbol);
+            // Clear any possible function values to avoid Truffle cross-context calls.
+            if (!symbol.isConstant()) {
+                if (symbol.isBound() && symbol.getValue() instanceof ELispValue) {
+                    symbol.setValue(false);
+                }
+                symbol.setFunction(false);
+            }
+            symbol.clearProperties();
             symbol.setInterned(ELispSymbol.Interned.INTERNED_IN_INITIAL_OBARRAY);
         }
     }

@@ -79,6 +79,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return iterator;
     }
 
+    public ConsIterator consIterator(int i) {
+        return listIterator(i);
+    }
+
     @Override
     public int size() {
         int i = 0;
@@ -107,7 +111,12 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         setCdr(new ELispCons(object, cdr()));
     }
 
-    public final class BrentTortoiseHareIterator implements ListIterator<Object> {
+    public interface ConsIterator {
+        boolean hasNextCons();
+        ELispCons nextCons();
+    }
+
+    public final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsIterator {
         private Object tortoise = ELispCons.this;
         private Object tail = ELispCons.this;
 
@@ -122,6 +131,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             return hasNextCdr();
         }
 
+        @Override
         public boolean hasNextCons() {
             return tail instanceof ELispCons;
         }
@@ -143,10 +153,15 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         @Override
         public Object next() {
-            Object next;
+            return nextCons().car;
+        }
+
+        @Override
+        public ELispCons nextCons() {
+            ELispCons next;
             // hasNext() should be called before next()
             if (tail instanceof ELispCons cons) {
-                next = cons.car;
+                next = cons;
                 tail = cons.cdr;
                 i++;
             } else if (ELispSymbol.isNil(tail)) {

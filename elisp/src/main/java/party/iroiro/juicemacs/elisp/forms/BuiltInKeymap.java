@@ -4,67 +4,208 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInFns.iterateSequence;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.KEYMAP;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asInt;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class BuiltInKeymap extends ELispBuiltIns {
+    public BuiltInKeymap() {
+        GLOBAL_MAP = false;
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInKeymapFactory.getFactories();
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static void keymapSet(ELispCons keymap, Iterator<?> iterator, Object value) {
-        Object next = iterator.next();
-        if (next instanceof ELispSymbol symbol) {
-            // TODO: What does this do?
-            System.out.println(symbol);
-            return;
-        }
-        long c = ELispBuiltInBaseNode.asLong(next);
-        if (keymap.cdr() instanceof ELispCons cdr && cdr.car() instanceof ELispCharTable charTable) {
-            if (iterator.hasNext()) {
-                Object nested = charTable.getChar((int) c);
-                if (nested instanceof ELispCons cons) {
-                    keymapSet(cons, iterator, value);
-                } else {
-                    ELispCons cons = new ELispCons(KEYMAP);
-                    charTable.setChar((int) c, cons);
-                    keymapSet(cons, iterator, value);
-                }
-            } else {
-                charTable.setChar((int) c, value);
+    /// Keymaps
+    ///
+    /// So, keymaps are a bit of a weird thing in Emacs Lisp.
+    /// Basically, there are two types of keymaps: dense and sparse.
+    ///
+    /// - Dense keymaps are keymaps of the form `(keymap CHARTABLE . ALIST)`.
+    /// - Sparse keymaps are keymaps of the form `(keymap . ALIST)`.
+    ///
+    /// Sparse keymaps store mappings in an assoc list. Dense keymaps similarly
+    /// store symbol mappings in their assoc lists, but store numeric mappings
+    /// in a char table to improve performance.
+    ///
+    /// ... Except that Emacs sometimes auto-converts a sparse keymap to a dense
+    /// keymap, for example, when you call `(define-key my-keymap [(1 . 10000)] 1)`.
+    ///
+    /// ... Except that there are two special symbol mappings:
+    ///
+    /// - `t`: Stores default bindings.
+    /// - `remap`: Stores another keymap, which, however, is not used as a keymap but
+    ///   only to remap the output of the keymap to another value.
+    ///
+    /// ... Except that the CDR of the last CONS of the list can be used to
+    /// store another CONS leading to several other things:
+    ///
+    /// - A string, as is passed in to [FMakeKeymap] and [FMakeSparseKeymap],
+    ///   like `(keymap (k1 . v1) (k2 . v2) ... (kN . vN) "name")`.
+    /// - A parent keymap, as is set by [FSetKeymapParent], like
+    ///   `(keymap (k1 . v1) (k2 . v2) ... (kN . vN) "name" keymap (kp1 . vp2) ...)`.
+    private sealed interface Keymap {
+        Object get(Object key, boolean parent);
+        void set(Object key, Object value, boolean remove);
+        Object map(Object function);
+
+        static Keymap wrap(Object keymap) {
+            if (!(keymap instanceof ELispCons cons) || cons.car() != KEYMAP) {
+                throw ELispSignals.wrongTypeArgument(KEYMAPP, keymap);
             }
-        } else {
-            // sparse keymap
-            Object cell = BuiltInFns.FAssq.assq(c, keymap.cdr());
-            if (cell instanceof ELispCons cons) {
-                if (iterator.hasNext()) {
-                    if (cons.cdr() instanceof ELispCons cdr) {
-                        keymapSet(cdr, iterator, value);
-                    } else {
-                        ELispCons cdr = new ELispCons(KEYMAP);
-                        cons.setCdr(cdr);
-                        keymapSet(cdr, iterator, value);
-                    }
-                } else {
-                    cons.setCdr(value);
-                }
+            Object cdr = cons.cdr();
+            if (cdr instanceof ELispCons next && next.car() instanceof ELispCharTable charTable) {
+                return new DenseKeymap(charTable, new SparseKeymap(next));
             } else {
-                if (iterator.hasNext()) {
-                    ELispCons nested = new ELispCons(KEYMAP);
-                    keymap.insertAfter(new ELispCons(c, nested));
-                    keymapSet(nested, iterator, value);
-                } else {
-                    keymap.insertAfter(new ELispCons(c, value));
+                return new SparseKeymap(cons);
+            }
+        }
+    }
+
+    /// A keymap of the form `(keymap CHARTABLE . ALIST)`, as is created by [FMakeKeymap]
+    private record DenseKeymap(ELispCharTable charTable, SparseKeymap tail) implements Keymap {
+        @Override
+        public Object get(Object key, boolean parent) {
+            Object result = false;
+            if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR) {
+                result = charTable.getChar(asInt(l));
+            }
+            if (ELispSymbol.isNil(result)) {
+                result = tail.get(key, parent);
+            }
+            return result;
+        }
+
+        @Override
+        public void set(Object key, Object value, boolean remove) {
+            if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR) {
+                charTable.setChar(asInt(l), remove ? false : value);
+            } else {
+                tail.set(key, value, remove);
+            }
+        }
+
+        @Override
+        public Object map(Object function) {
+            BuiltInCharTab.FMapCharTable.mapCharTable(function, charTable);
+            return tail.map(function);
+        }
+    }
+
+    /// A keymap of the form `(keymap . ALIST)`, as is created by [FMakeSparseKeymap]
+    private record SparseKeymap(ELispCons cons) implements Keymap {
+        @Override
+        public Object get(Object key, boolean parentLookup) {
+            ELispCons.ConsIterator i = cons.consIterator(1);
+            @Nullable ELispCons parent = null;
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (current.car() == KEYMAP) {
+                    parent = current;
+                    break;
                 }
+                if (current.car() instanceof ELispCons pair && BuiltInData.FEq.eq(pair.car(), key)) {
+                    return pair.cdr();
+                }
+            }
+            if (parentLookup && parent != null) {
+                return Keymap.wrap(parent).get(key, true);
+            }
+            return false;
+        }
+
+        private void remove(Object key) {
+            ELispCons.ConsIterator i = cons.consIterator(1);
+            ELispCons prev = cons;
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                Object car = current.car();
+                if (car == KEYMAP) {
+                    // parent
+                    break;
+                }
+                if (car instanceof ELispCons pair && BuiltInData.FEq.eq(pair.car(), key)) {
+                    prev.setCdr(current.cdr());
+                    break;
+                }
+                prev = current;
+            }
+        }
+
+        @Override
+        public void set(Object key, Object value, boolean remove) {
+            if (remove) {
+                remove(key);
+            } else {
+                Object newList;
+                ELispCons.ConsIterator i = cons.consIterator(1);
+                @Nullable ELispCons pair = null;
+                while (i.hasNextCons()) {
+                    ELispCons current = i.nextCons();
+                    Object car = current.car();
+                    if (car == KEYMAP) {
+                        // parent
+                        break;
+                    }
+                    if (car instanceof ELispCons pairCons && BuiltInData.FEq.eq(pairCons.car(), key)) {
+                        pair = pairCons;
+                    }
+                }
+                if (pair != null) {
+                    pair.setCdr(value);
+                    newList = cons.cdr();
+                } else {
+                    newList = new ELispCons(new ELispCons(key, value), cons.cdr());
+                }
+                cons.setCdr(newList);
+            }
+        }
+
+        @Override
+        public Object map(Object function) {
+            ELispCons.ConsIterator i = cons.consIterator(1);
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                Object car = current.car();
+                if (car == KEYMAP) {
+                    // parent
+                    return current;
+                }
+                if (car instanceof ELispCons pair) {
+                    BuiltInEval.FFuncall.funcall(function, new Object[]{pair.car(), pair.cdr()});
+                }
+            }
+            return false;
+        }
+    }
+
+    private static Object GLOBAL_MAP = false;
+
+    @CompilerDirectives.TruffleBoundary
+    public static void keymapSet(Object keymap, Iterator<?> iterator, Object value, boolean doRemove) {
+        while (iterator.hasNext()) {
+            Object key = iterator.next();
+            Keymap wrap = Keymap.wrap(keymap);
+            if (iterator.hasNext()) {
+                Object nested = wrap.get(key, false);
+                if (!FKeymapp.keymapp(nested)) {
+                    nested = FMakeSparseKeymap.makeSparseKeymap(false);
+                }
+                keymap = nested;
+            } else {
+                wrap.set(key, value, doRemove);
             }
         }
     }
@@ -169,9 +310,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FKeymapParent extends ELispBuiltInBaseNode {
         @Specialization
         public static Object keymapParent(ELispCons keymap) {
-            ELispCons.BrentTortoiseHareIterator i = keymap.listIterator(1);
-            while (i.hasNext()) {
-                Object next = i.next();
+            ELispCons.ConsIterator i = keymap.listIterator(1);
+            while (i.hasNextCons()) {
+                ELispCons next = i.nextCons();
                 if (FKeymapp.keymapp(next)) {
                     return next;
                 }
@@ -191,17 +332,16 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FSetKeymapParent extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setKeymapParent(ELispCons keymap, Object parent) {
-            ELispCons.BrentTortoiseHareIterator i = keymap.listIterator(1);
+            ELispCons.ConsIterator i = keymap.listIterator(1);
             ELispCons prev = keymap;
-            while (i.hasNext()) {
-                if (FKeymapp.keymapp(i.currentCons().car())) {
-                    i.currentCons().setCar(parent);
-                    return parent;
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (FKeymapp.keymapp(current)) {
+                    break;
                 }
-                prev = i.currentCons();
-                i.next();
+                prev = current;
             }
-            prev.setCdr(new ELispCons(parent));
+            prev.setCdr(parent);
             return parent;
         }
     }
@@ -218,8 +358,8 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapKeymapInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapKeymapInternal(Object function, Object keymap) {
-            throw new UnsupportedOperationException();
+        public static Object mapKeymapInternal(Object function, Object keymap) {
+            return Keymap.wrap(keymap).map(function);
         }
     }
 
@@ -242,8 +382,14 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapKeymap extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapKeymap(Object function, Object keymap, Object sortFirst) {
-            throw new UnsupportedOperationException();
+        public static boolean mapKeymap(Object function, Object keymap, Object sortFirst) {
+            while (true) {
+                keymap = FMapKeymapInternal.mapKeymapInternal(function, keymap);
+                if (ELispSymbol.isNil(keymap)) {
+                    break;
+                }
+            }
+            return false;
         }
     }
 
@@ -354,8 +500,27 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FDefineKey extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean defineKey(ELispCons keymap, Object key, Object def, Object remove) {
-            Iterator<?> i = iterateSequence(key);
-            keymapSet(keymap, i, def);
+            boolean doRemove = !ELispSymbol.isNil(remove);
+            if (key instanceof ELispVector vector && !vector.isEmpty()) {
+                if (ELispSymbol.isT(vector.getFirst())) {
+                    if (vector.size() != 1) {
+                        throw ELispSignals.error("Key sequence starts with non-prefix key <t>");
+                    }
+                } else if (vector.getFirst() == REMAP) {
+                    if (vector.size() != 2) {
+                        throw ELispSignals.error("Key sequence starts with non-prefix key <remap>");
+                    }
+                    Keymap wrap = Keymap.wrap(keymap);
+                    Object remap = wrap.get(REMAP, false);
+                    if (ELispSymbol.isNil(remap)) {
+                        remap = FMakeSparseKeymap.makeSparseKeymap(false);
+                        wrap.set(REMAP, remap, false);
+                    }
+                    Keymap.wrap(remap).set(vector.get(1), def, doRemove);
+                    return false;
+                }
+            }
+            keymapSet(keymap, iterateSequence(key), def, doRemove);
             return false;
         }
     }
@@ -413,8 +578,8 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLookupKey extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void lookupKey(Object keymap, Object key, Object acceptDefault) {
-            throw new UnsupportedOperationException();
+        public static Object lookupKey(Object keymap, Object key, Object acceptDefault) {
+            return Keymap.wrap(keymap).get(key, true);
         }
     }
 
@@ -506,7 +671,10 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FUseGlobalMap extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean useGlobalMap(Object keymap) {
-            // TODO: Set up global map reference
+            if (!FKeymapp.keymapp(keymap)) {
+                throw ELispSignals.wrongTypeArgument(KEYMAPP, keymap);
+            }
+            GLOBAL_MAP = keymap;
             return false;
         }
     }
@@ -550,8 +718,8 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentGlobalMap extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void currentGlobalMap() {
-            throw new UnsupportedOperationException();
+        public static Object currentGlobalMap() {
+            return GLOBAL_MAP;
         }
     }
 

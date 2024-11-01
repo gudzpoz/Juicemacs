@@ -3,10 +3,8 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.BiConsumer;
 
 /**
  * Char table object
@@ -95,6 +93,8 @@ public class ELispCharTable extends AbstractELispVector {
             CHARTAB_SIZE_BITS_3,
             0,
     };
+    public final static int MAX_CHAR =
+            (1 << (CHARTAB_SIZE_BITS_3 + CHARTAB_SIZE_BITS_2 + CHARTAB_SIZE_BITS_1 + CHARTAB_SIZE_BITS_0)) - 1;
     public final static int DEFAULT_VALUT_SLOT = 0;
     public final static int PARENT_SLOT = 1;
     public final static int PURPOSE_SLOT = 2;
@@ -116,35 +116,35 @@ public class ELispCharTable extends AbstractELispVector {
     }
 
     public void setDefault(Object value) {
-        set(DEFAULT_VALUT_SLOT, value);
+        super.set(DEFAULT_VALUT_SLOT, value);
     }
 
     public Object getParent() {
-        return get(PARENT_SLOT);
+        return super.get(PARENT_SLOT);
     }
 
     public void setParent(Object parent) {
-        set(PARENT_SLOT, parent);
+        super.set(PARENT_SLOT, parent);
     }
 
     public ELispSymbol getPurpose() {
-        return (ELispSymbol) get(PURPOSE_SLOT);
+        return (ELispSymbol) super.get(PURPOSE_SLOT);
     }
 
     public void setPurpose(ELispSymbol purpose) {
-        set(PURPOSE_SLOT, purpose);
+        super.set(PURPOSE_SLOT, purpose);
     }
 
     public Object getAsciiSlot() {
-        return get(ASCII_SLOT);
+        return super.get(ASCII_SLOT);
     }
 
     public void setAsciiSlot(Object ascii) {
-        set(ASCII_SLOT, ascii);
+        super.set(ASCII_SLOT, ascii);
     }
 
     private Object getAsciiValue() {
-        Object content = get(CONTENT_BASE_SLOT);
+        Object content = super.get(CONTENT_BASE_SLOT);
         if (!(content instanceof SubTable depth1)) {
             return content;
         }
@@ -156,11 +156,11 @@ public class ELispCharTable extends AbstractELispVector {
     }
 
     private Object getContentSlot(int tableIndex) {
-        return get(tableIndex + CONTENT_BASE_SLOT);
+        return super.get(tableIndex + CONTENT_BASE_SLOT);
     }
 
     private void setContentSlot(int tableIndex, Object content) {
-        set(tableIndex + CONTENT_BASE_SLOT, content);
+        super.set(tableIndex + CONTENT_BASE_SLOT, content);
     }
 
     private SubTable getSubTable(int tableIndex) {
@@ -180,6 +180,17 @@ public class ELispCharTable extends AbstractELispVector {
         }
         int i = charTableIndex(codepoint, 0, 0);
         return getSubTable(i).getChar(codepoint);
+    }
+
+    @Override
+    public Object get(int index) {
+        return getChar(index);
+    }
+
+    @Override
+    public Object set(int index, Object value) {
+        setChar(index, value);
+        return false;
     }
 
     public void setChar(int codepoint, Object value) {
@@ -214,6 +225,18 @@ public class ELispCharTable extends AbstractELispVector {
         }
     }
 
+    public void map(BiConsumer<Long, Object> callback) {
+        for (int i = 0; i < (1 << CHARTAB_SIZE_BITS_0); i++) {
+            Object slot = getContentSlot(i);
+            if (slot instanceof SubTable sub) {
+                sub.map(callback);
+            } else {
+                int c = i << CHARTAB_BITS[0];
+                callback.accept((long) c, slot);
+            }
+        }
+    }
+
     public void setAll(Object value) {
         setAsciiSlot(value);
         for (int i = 0; i < (1 << CHARTAB_SIZE_BITS_0); i++) {
@@ -232,14 +255,14 @@ public class ELispCharTable extends AbstractELispVector {
         if (n < 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        return get(n + CHARTAB_STANDARD_SLOTS);
+        return super.get(n + CHARTAB_STANDARD_SLOTS);
     }
 
     public void setExtra(int n, Object value) {
         if (n < 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        set(n + CHARTAB_STANDARD_SLOTS, value);
+        super.set(n + CHARTAB_STANDARD_SLOTS, value);
     }
 
     @Override
@@ -368,6 +391,22 @@ public class ELispCharTable extends AbstractELispVector {
                     setContentSlot(i, value);
                 } else {
                     getSubTable(i).setRange(from, to, value);
+                }
+            }
+        }
+
+        public void map(BiConsumer<Long, Object> callback) {
+            int minChar = getMinChar();
+            int depth = getDepth();
+            int limit = getSlots(depth);
+            int step = 1 << CHARTAB_BITS[depth];
+            for (int i = 0; i < limit; i++) {
+                Object slot = getContentSlot(i);
+                if (slot instanceof SubTable sub) {
+                    sub.map(callback);
+                } else {
+                    int c = minChar + i * step;
+                    callback.accept((long) c, slot);
                 }
             }
         }

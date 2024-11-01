@@ -337,6 +337,10 @@ public final class ELispSymbol implements ELispValue {
         return builder.build();
     }
 
+    public void clearProperties() {
+        properties.clear();
+    }
+
     public void setInterned(Interned interned) {
         this.interned = interned;
     }

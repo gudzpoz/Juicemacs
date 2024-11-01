@@ -18,6 +18,10 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH
 import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.isNil;
 
 public class BuiltInSearch extends ELispBuiltIns {
+    public BuiltInSearch() {
+        MATCH_DATA.setValue(false);
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInSearchFactory.getFactories();
