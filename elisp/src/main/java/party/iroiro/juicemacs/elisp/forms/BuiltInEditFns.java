@@ -1624,8 +1624,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFormatMessage extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void formatMessage(Object string, Object[] objects) {
-            throw new UnsupportedOperationException();
+        public static ELispString formatMessage(ELispString string, Object[] objects) {
+            // TODO
+            return FFormat.format(string, objects);
         }
     }
 

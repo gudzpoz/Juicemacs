@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -16,10 +17,12 @@ import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.notNilOr;
 
 public class BuiltInSearch extends ELispBuiltIns {
     public BuiltInSearch() {
         MATCH_DATA.setValue(false);
+        MATCHED_STR.setValue(false);
     }
 
     @Override
@@ -28,6 +31,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     }
 
     private static final ELispSymbol.ThreadLocalValue MATCH_DATA = new ELispSymbol.ThreadLocalValue();
+    private static final ELispSymbol.ThreadLocalValue MATCHED_STR = new ELispSymbol.ThreadLocalValue();
 
     /**
      * <pre>
@@ -103,6 +107,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                     }
                     Object data = builder.build();
                     MATCH_DATA.setValue(data);
+                    MATCHED_STR.setValue(string);
                 }
                 return (long) match.matcher().start();
             }
@@ -371,8 +376,20 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReplaceMatch extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void replaceMatch(Object newtext, Object fixedcase, Object literal, Object string, Object subexp) {
-            throw new UnsupportedOperationException();
+        public static ELispString replaceMatch(ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp) {
+            // TODO: fixedcase, literal...
+            long subexpN = notNilOr(subexp, 0);
+            ELispString s = (ELispString) (isNil(string) ? MATCHED_STR.getValue() : string);
+            ELispCons cons = asCons(MATCH_DATA.getValue()).getCons((int) (subexpN * 2));
+            int start = asInt(cons.car());
+            int end = asInt(asCons(cons.cdr()).car());
+            TruffleString before = s.toTruffleString().substringUncached(0, start, ELispString.ENCODING, false);
+            TruffleString after = s.toTruffleString().substringUncached(end, (int) s.codepointCount() - end,
+                    ELispString.ENCODING, false);
+            TruffleString result = before.
+                    concatUncached(newtext.toTruffleString(), ELispString.ENCODING, false)
+                    .concatUncached(after, ELispString.ENCODING, false);
+            return new ELispString(result);
         }
     }
 
@@ -521,8 +538,18 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchDataTranslate extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void matchDataTranslate(Object n) {
-            throw new UnsupportedOperationException();
+        public static Object matchDataTranslate(long n) {
+            Object value = MATCH_DATA.getValue();
+            if (value instanceof ELispCons cons) {
+                ELispCons.ConsIterator i = cons.consIterator(0);
+                while (i.hasNextCons()) {
+                    ELispCons current = i.nextCons();
+                    if (current.car() instanceof Long l) {
+                        current.setCar(Math.max(0, l + n));
+                    }
+                }
+            }
+            return value;
         }
     }
 

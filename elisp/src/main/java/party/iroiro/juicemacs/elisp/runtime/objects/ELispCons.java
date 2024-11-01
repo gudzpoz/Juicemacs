@@ -83,6 +83,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return listIterator(i);
     }
 
+    public ELispCons getCons(int i) {
+        return listIterator(i).nextCons();
+    }
+
     @Override
     public int size() {
         int i = 0;
@@ -301,8 +305,9 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return new ELispCons(a, new ELispCons(b));
     }
 
-    public static Object listOf(Object... elements) {
+    public static Object listOf(Object first, Object... elements) {
         ListBuilder builder = new ListBuilder();
+        builder.add(first);
         for (Object element : elements) {
             builder.add(element);
         }

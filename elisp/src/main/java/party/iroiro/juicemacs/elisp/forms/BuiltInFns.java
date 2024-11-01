@@ -6,16 +6,16 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SEQUENCEP;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SUBFEATURES;
-
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
  * Built-in functions from {@code src/comp.c}
@@ -1046,15 +1046,15 @@ public class BuiltInFns extends ELispBuiltIns {
                 }
                 cons = asCons(cdr);
             }
-            ELispCons.BrentTortoiseHareIterator i = cons.listIterator(1);
+            ELispCons.ConsIterator i = cons.consIterator(1);
             ELispCons prev = cons;
-            while (i.hasNext()) {
-                if (BuiltInData.FEq.eq(i.currentCons().car(), elt)) {
-                    prev.setCdr(i.currentCons().cdr());
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (BuiltInData.FEq.eq(current.car(), elt)) {
+                    prev.setCdr(current.cdr());
                 } else {
-                    prev = i.currentCons();
+                    prev = current;
                 }
-                i.next();
             }
             return cons;
         }
@@ -1082,8 +1082,54 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDelete extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void delete(Object elt, Object seq) {
-            throw new UnsupportedOperationException();
+        public static boolean deleteNil(Object elt, ELispSymbol seq) {
+            if (ELispSymbol.isNil(seq)) {
+                return false;
+            }
+            throw ELispSignals.wrongTypeArgument(SEQUENCEP, seq);
+        }
+        @Specialization
+        public static Object deleteList(Object elt, ELispCons seq) {
+            while (FEqual.equal(elt, seq.car())) {
+                Object cdr = seq.cdr();
+                if (ELispSymbol.isNil(cdr)) {
+                    return false;
+                }
+                seq = asCons(cdr);
+            }
+            ELispCons.ConsIterator i = seq.consIterator(1);
+            ELispCons prev = seq;
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (FEqual.equal(elt, current.car())) {
+                    prev.setCdr(current.cdr());
+                } else {
+                    prev = current;
+                }
+            }
+            return seq;
+        }
+        @Specialization
+        public static ELispString deleteStr(Object elt, ELispString seq) {
+            TruffleStringIterator i = seq.codePointIterator();
+            StringBuilder builder = new StringBuilder();
+            while (i.hasNext()) {
+                int codepoint = i.nextUncached();
+                if (!(elt instanceof Long l && l == codepoint)) {
+                    builder.appendCodePoint(codepoint);
+                }
+            }
+            return new ELispString(builder.toString());
+        }
+        @Specialization
+        public static ELispVector deleteVec(Object elt, ELispVector seq) {
+            List<Object> list = new ArrayList<>();
+            for (Object e : seq) {
+                if (!FEqual.equal(elt, e)) {
+                    list.add(e);
+                }
+            }
+            return new ELispVector(list);
         }
     }
 
@@ -1716,6 +1762,9 @@ public class BuiltInFns extends ELispBuiltIns {
             if (FFeaturep.featurep(feature, false)) {
                 return true;
             }
+            if (ELispSymbol.isNil(filename)) {
+                filename = new ELispString(feature.name());
+            }
             return BuiltInLRead.loadFile(ELispLanguage.get(this), filename);
         }
     }
@@ -2311,8 +2360,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSecureHashAlgorithms extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void secureHashAlgorithms() {
-            throw new UnsupportedOperationException();
+        public static Object secureHashAlgorithms() {
+            return ELispCons.listOf(
+                    MD5,
+                    SHA1,
+                    SHA224,
+                    SHA256,
+                    SHA384,
+                    SHA512
+            );
         }
     }
 

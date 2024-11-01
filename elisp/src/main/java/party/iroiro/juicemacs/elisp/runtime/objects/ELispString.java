@@ -3,8 +3,14 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import com.lodborg.intervaltree.IntegerInterval;
 import com.lodborg.intervaltree.IntervalTree;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.Iterator;
@@ -13,7 +19,8 @@ import java.util.function.Consumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 
-public final class ELispString implements ELispValue {
+@ExportLibrary(InteropLibrary.class)
+public final class ELispString implements TruffleObject, ELispValue {
 
     public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_16;
 
@@ -51,7 +58,7 @@ public final class ELispString implements ELispValue {
     }
 
     public Iterator<Object> iterator() {
-        TruffleStringIterator i = value.createCodePointIteratorUncached(ENCODING);
+        TruffleStringIterator i = codePointIterator();
         return new Iterator<>() {
             @Override
             public boolean hasNext() {
@@ -63,6 +70,10 @@ public final class ELispString implements ELispValue {
                 return (long) i.nextUncached();
             }
         };
+    }
+
+    public TruffleStringIterator codePointIterator() {
+        return value.createCodePointIteratorUncached(ENCODING);
     }
 
     public TruffleString toTruffleString() {
@@ -165,6 +176,33 @@ public final class ELispString implements ELispValue {
             }
         }
     }
+
+    //#region InteropLibrary exports
+    @ExportMessage
+    public boolean isString() {
+        return true;
+    }
+    @ExportMessage
+    public String asString() {
+        return toString();
+    }
+    @ExportMessage
+    public TruffleString asTruffleString() {
+        return value.asTruffleStringUncached(ENCODING);
+    }
+    @ExportMessage
+    public String toDisplayString(boolean allowSideEffects) {
+        return display();
+    }
+    @ExportMessage
+    public boolean hasLanguage() {
+        return true;
+    }
+    @ExportMessage
+    public Class<? extends TruffleLanguage<?>> getLanguage() {
+        return ELispLanguage.class;
+    }
+    //#endregion InteropLibrary exports
 
     public static final class Builder {
         private final TruffleStringBuilder builder = TruffleStringBuilder.createUTF16();

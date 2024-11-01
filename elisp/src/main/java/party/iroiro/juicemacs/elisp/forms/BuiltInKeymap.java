@@ -161,6 +161,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                     }
                     if (car instanceof ELispCons pairCons && BuiltInData.FEq.eq(pairCons.car(), key)) {
                         pair = pairCons;
+                        break;
                     }
                 }
                 if (pair != null) {
