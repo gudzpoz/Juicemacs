@@ -53,7 +53,7 @@ class Variable:
             value = v
         else:
             value = f'({t}) {v}'
-        if value == '(Object) NIL':
+        if value == '(Object) NIL' or value == '(Object) false':
             value = 'false'
         return (
             f'ELispSymbol.Value.Forwarded {self.jname()} = '
@@ -120,6 +120,8 @@ def exec_init_func(stem: str, contents: str):
         'MOST_POSITIVE_FIXNUM': 'Long.MAX_VALUE',
         'MOST_NEGATIVE_FIXNUM': 'Long.MIN_VALUE',
 
+        'CALLN': lambda f, *args: f(len(args), args),
+
         'make_float': ID,
         'make_fixnum': LONG,
         'make_int': LONG,
@@ -143,13 +145,14 @@ def exec_init_func(stem: str, contents: str):
         'ASET': lambda vec, idx, val: post_inits.append(f'{vec}.set({idx}, {val});'),
 
         'Fmake_symbol': lambda s: f'FMakeSymbol.makeSymbol({s})',
-        'Fmake_hash_table': lambda *args: f'FMakeHashTable.makeHashTable(new Object[]{{{", ".join(args)}}})',
+        'Fmake_hash_table': lambda _, args: f'FMakeHashTable.makeHashTable(new Object[]{{{", ".join(args)}}})',
         'Fmake_marker': lambda: 'FMakeMarker.makeMarker()',
         'Fpurecopy': lambda x: f'FPurecopy.purecopy({x})',
 
         'Fmake_char_table': lambda *args: f'FMakeCharTable.makeCharTable({", ".join(args)})',
         'char_table_set_range': lambda table, start, end, val: post_inits.append(f'{table}.setRange({start}, {end}, {val});'),
         'Fset_char_table_range': lambda table, ran, val: post_inits.append(f'FSetCharTableRange.setCharTableRange({table}, {ran}, {val});'),
+        'Fset_char_table_extra_slot': lambda table, idx, val: post_inits.append(f'{table}.setExtra((int) {idx}, {val});'),
 
         'Fadd_variable_watcher': Fadd_variable_watcher,
         'Fmake_var_non_special': lambda sym: post_inits.append(f'{sym}.setSpecial(false);'),
@@ -256,12 +259,75 @@ def exec_init_func(stem: str, contents: str):
                     'Vpath_separator = build_pure_c_string(":");',
             },
         },
+        'frame': {
+            'globals': {
+                'py_init_x_frame_parameter': lambda: post_inits.extend(
+                    f'FPut.put({prop.replace('-', '_').upper()}, X_FRAME_PARAMETER, (long) {i});'
+                    for i, prop in enumerate([
+                        # static const struct frame_parm_table frame_parms[] =
+                        "auto-raise",
+                        "auto-lower",
+                        "background-color",
+                        "border-color",
+                        "border-width",
+                        "cursor-color",
+                        "cursor-type",
+                        "font",
+                        "foreground-color",
+                        "icon-name",
+                        "icon-type",
+                        "child-frame-border-width",
+                        "internal-border-width",
+                        "right-divider-width",
+                        "bottom-divider-width",
+                        "menu-bar-lines",
+                        "mouse-color",
+                        "name",
+                        "scroll-bar-width",
+                        "scroll-bar-height",
+                        "title",
+                        "unsplittable",
+                        "vertical-scroll-bars",
+                        "horizontal-scroll-bars",
+                        "visibility",
+                        "tab-bar-lines",
+                        "tool-bar-lines",
+                        "scroll-bar-foreground",
+                        "scroll-bar-background",
+                        "screen-gamma",
+                        "line-spacing",
+                        "left-fringe",
+                        "right-fringe",
+                        "wait-for-wm",
+                        "fullscreen",
+                        "font-backend",
+                        "alpha",
+                        "sticky",
+                        "tool-bar-position",
+                        "inhibit-double-buffering",
+                        "undecorated",
+                        "parent-frame",
+                        "skip-taskbar",
+                        "no-focus-on-map",
+                        "no-accept-focus",
+                        "z-group",
+                        "override-redirect",
+                        "no-special-glyphs",
+                        "alpha-background",
+                        "use-frame-synchronization",
+                    ])
+                ),
+            },
+            'extra_replaces': {
+                r'\{\s*int i;[^{}]+\{[^{}]+\}\s+\}': 'py_init_x_frame_parameter()',
+            },
+        },
         'keyboard': {
             'globals': {
                 'lispy_wheel_names': ["wheel-up", "wheel-down", "wheel-left", "wheel-right"],
                 'lossage_limit': 300,
                 'ord': ord,
-                'init_while_no_input_ignore_events': lambda: None,
+                'init_while_no_input_ignore_events': lambda: 'false',
             },
             'extra_replaces': {
                 r', 033\)': ', 0o33)',
@@ -302,6 +368,22 @@ def exec_init_func(stem: str, contents: str):
                 'flt_radix_power_size': 1075,
             },
         },
+        'xdisp': {
+            'globals': {
+                'echo_buffer': [None] * 2,
+                'echo_area_buffer': [None] * 2,
+                'NULL': [],
+                'DEFAULT_TAB_BAR_BUTTON_MARGIN': 1,
+                'DEFAULT_TAB_BAR_BUTTON_RELIEF': 1,
+                'DEFAULT_TOOL_BAR_BUTTON_MARGIN': 4,
+                'DEFAULT_TOOL_BAR_BUTTON_RELIEF': 1,
+                'DEFAULT_TOOL_BAR_LABEL_SIZE': 14,
+                'DEFAULT_HOURGLASS_DELAY': 1,
+            },
+            'extra_replaces': {
+                r'Lisp_Object icon_title_name_format': 'icon_title_name_format',
+            },
+        },
         'xfaces': {
             'extra_replaces': {
                 re.escape('make_hash_table (&hashtest_eq, 33, Weak_None, false)'):
@@ -316,10 +398,39 @@ def exec_init_func(stem: str, contents: str):
     )
     extra_globals = file_specifics.get(stem, {}).get('globals', {})
     c_globals.update(extra_globals)
+    variable_map = {
+        v.c_name: v
+        for v in [
+            Variable(name, c_name, lisp_type, None)
+            for lisp_type, name, c_name in matches
+        ]
+    }
+    is_symnum = re.compile(r'^[0-9\.A-Za-z_]+$')
+    def assign(key, value):
+        nonlocal c_globals, variable_map
+        c_globals[key] = value
+        if key not in variable_map:
+            return value
+        if (
+            isinstance(value, int)
+            or isinstance(value, float)
+            or isinstance(value, bool)
+            or is_symnum.match(value)
+        ):
+            return value
+        v = variable_map[key]
+        if v.lisp_type == 'INT' or v.lisp_type == 'BOOL':
+            return value
+        jname = v.jname()
+        post_inits.append(f'var {jname}JInit = {value};')
+        post_inits.append(f'{jname}.setValue({jname}JInit);')
+        c_globals[key] = 'NIL'
+        return f'{jname}JInit'
     exec_c_as_python(
         init_section,
         c_globals,
         missing,
+        assign,
         '''
 #define DEFSYM(a, b) pass
 #define DEFVAR_INT(a, b, c) pass
@@ -334,7 +445,6 @@ def exec_init_func(stem: str, contents: str):
 #define pdumper_do_now_and_after_load(a) pass
 #define XSETFASTINT(a, b) (a) = (b)
 #define XSETINT(a,b) (a) = make_fixnum (b)
-#define CALLN(f, ...) (f)(__VA_ARGS__)
 
 // comp.c
 #define HAVE_NATIVE_COMP 1

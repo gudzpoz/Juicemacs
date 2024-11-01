@@ -22,9 +22,6 @@ from xml.sax.saxutils import escape as escape_xml
 
 from extract_emacs_utils import (
     replace_or_insert_region_general,
-    extract_syms_section,
-    remove_statements,
-    exec_c_as_python,
 )
 from extract_emacs_init import exec_init_func, Variable
 from subroutines import extract_defuns
@@ -503,7 +500,7 @@ with open(args.context, 'r') as f:
     already_defined = JAVA_SYMBOL_DETECT.findall(
         replace_or_insert_region(contents, c_file, '')
     )
-    duplicates = set(already_defined)
+    duplicates = set(already_defined).union(set(['unbound']))
     lisp_names = set()
     for symbol in symbols.values():
         assert symbol not in lisp_names, symbol

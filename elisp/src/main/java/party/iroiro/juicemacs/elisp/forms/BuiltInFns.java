@@ -802,8 +802,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNthcdr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void nthcdr(Object n, Object list) {
-            throw new UnsupportedOperationException();
+        public static Object nthcdr(long n, Object list) {
+            for (; n > 0; n--) {
+                list = asCons(list).cdr();
+            }
+            return list;
         }
     }
 
@@ -965,8 +968,22 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAssoc extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void assoc(Object key, Object alist, Object testfn) {
-            throw new UnsupportedOperationException();
+        public static Object assoc(Object key, Object alist, Object testfn) {
+            if (ELispSymbol.isNil(testfn)) {
+                return FAssq.assq(key, alist);
+            }
+            if (ELispSymbol.isNil(alist)) {
+                return false;
+            }
+            for (Object e : asCons(alist)) {
+                if (e instanceof ELispCons cons) {
+                    Object p = BuiltInEval.FFuncall.funcall(testfn, new Object[]{cons.car(), key});
+                    if (!ELispSymbol.isNil(p)) {
+                        return cons;
+                    }
+                }
+            }
+            return false;
         }
     }
 
@@ -1204,9 +1221,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPlistGet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object plistGet(ELispCons plist, Object prop, Object predicate) {
+        public static Object plistGet(Object plist, Object prop, Object predicate) {
+            if (!(plist instanceof ELispCons cons)) {
+                return false;
+            }
             ELispSymbol eq = ELispSymbol.isNil(predicate) ? ELispContext.EQ : asSym(predicate);
-            Iterator<Object> iterator = plist.iterator();
+            Iterator<Object> iterator = cons.iterator();
             try {
                 Object[] args = new Object[2];
                 args[0] = prop;
@@ -1528,8 +1548,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapc extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapc(Object function, Object sequence) {
-            throw new UnsupportedOperationException();
+        public static Object mapc(Object function, Object sequence) {
+            Iterator<?> i = iterateSequence(sequence);
+            while (i.hasNext()) {
+                BuiltInEval.FFuncall.funcall(function, new Object[]{i.next()});
+            }
+            return sequence;
         }
     }
 

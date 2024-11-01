@@ -31,8 +31,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharToString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charToString(Object char_) {
-            throw new UnsupportedOperationException();
+        public static ELispString charToString(long char_) {
+            return new ELispString(new StringBuilder().appendCodePoint(Math.toIntExact(char_)).toString());
         }
     }
 
@@ -1509,7 +1509,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             ELispString s = BuiltInFns.FCopySequence.copySequenceString(string);
             long length = s.codepointCount();
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            for (int i = 0; i < length; i += 2) {
+            for (int i = 0; i < properties.length; i += 2) {
                 builder.add(properties[i]);
                 builder.add(properties[i + 1]);
             }
@@ -1598,7 +1598,11 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public static ELispString format(ELispString string, Object[] objects) {
             // TODO
-            return new ELispString(String.format(string.toString(), objects));
+            String s = string.toString();
+            if (objects.length == 1 && objects[0] instanceof Long l && s.contains("%c")) {
+                objects = new Object[]{Math.toIntExact(l)};
+            }
+            return new ELispString(String.format(s, objects));
         }
     }
 

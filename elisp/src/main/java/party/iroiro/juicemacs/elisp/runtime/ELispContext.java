@@ -79,13 +79,18 @@ public final class ELispContext {
         initSymbols(evalSymbols());
         initSymbols(fileioSymbols());
         initSymbols(fnsSymbols());
+        initSymbols(frameSymbols());
         initSymbols(keyboardSymbols());
         initSymbols(keymapSymbols());
         initSymbols(lreadSymbols());
         initSymbols(printSymbols());
         initSymbols(processSymbols());
         initSymbols(searchSymbols());
+        initSymbols(syntaxSymbols());
+        initSymbols(textpropSymbols());
         initSymbols(timefnsSymbols());
+        initSymbols(windowSymbols());
+        initSymbols(xdispSymbols());
         initSymbols(xfacesSymbols());
 
         T.setConstant(true);
@@ -108,13 +113,18 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInEval());
         initBuiltIns(language, new BuiltInFileIO());
         initBuiltIns(language, new BuiltInFns());
+        initBuiltIns(language, new BuiltInFrame());
         initBuiltIns(language, new BuiltInKeyboard());
         initBuiltIns(language, new BuiltInKeymap());
         initBuiltIns(language, new BuiltInLRead());
         initBuiltIns(language, new BuiltInPrint());
         initBuiltIns(language, new BuiltInProcess());
         initBuiltIns(language, new BuiltInSearch());
+        initBuiltIns(language, new BuiltInSyntax());
+        initBuiltIns(language, new BuiltInTextProp());
         initBuiltIns(language, new BuiltInTimeFns());
+        initBuiltIns(language, new BuiltInWindow());
+        initBuiltIns(language, new BuiltInXDisp());
         initBuiltIns(language, new BuiltInXFaces());
 
         ELispGlobals.initGlobalVariables();
@@ -2616,4 +2626,909 @@ public final class ELispContext {
         };
     }
     /* @end region="character.c" */
+    /* @generated region="window.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol ABOVE = new ELispSymbol("above");
+    public final static ELispSymbol AUTO_WINDOW_VSCROLL = new ELispSymbol("auto-window-vscroll");
+    public final static ELispSymbol CEILING = new ELispSymbol("ceiling");
+    public final static ELispSymbol CLONE_OF = new ELispSymbol("clone-of");
+    public final static ELispSymbol CONFIGURATION = new ELispSymbol("configuration");
+    public final static ELispSymbol DEDICATED = new ELispSymbol("dedicated");
+    public final static ELispSymbol DELETE = new ELispSymbol("delete");
+    public final static ELispSymbol DELETE_WINDOW = new ELispSymbol("delete-window");
+    public final static ELispSymbol DISPLAY_BUFFER = new ELispSymbol("display-buffer");
+    public final static ELispSymbol FAST_BUT_IMPRECISE_SCROLLING = new ELispSymbol("fast-but-imprecise-scrolling");
+    public final static ELispSymbol FLOOR = new ELispSymbol("floor");
+    public final static ELispSymbol GET_MRU_WINDOW = new ELispSymbol("get-mru-window");
+    public final static ELispSymbol HEADER_LINE_FORMAT = new ELispSymbol("header-line-format");
+    public final static ELispSymbol MARK_FOR_REDISPLAY = new ELispSymbol("mark-for-redisplay");
+    public final static ELispSymbol MINIBUFFER_SCROLL_WINDOW = new ELispSymbol("minibuffer-scroll-window");
+    public final static ELispSymbol MODE_LINE_FORMAT = new ELispSymbol("mode-line-format");
+    public final static ELispSymbol MODE_LINE_IN_NON_SELECTED_WINDOWS = new ELispSymbol("mode-line-in-non-selected-windows");
+    public final static ELispSymbol NEXT_SCREEN_CONTEXT_LINES = new ELispSymbol("next-screen-context-lines");
+    public final static ELispSymbol NO_OTHER_WINDOW = new ELispSymbol("no-other-window");
+    public final static ELispSymbol OTHER_WINDOW_SCROLL_BUFFER = new ELispSymbol("other-window-scroll-buffer");
+    public final static ELispSymbol OTHER_WINDOW_SCROLL_DEFAULT = new ELispSymbol("other-window-scroll-default");
+    public final static ELispSymbol QUIT_RESTORE = new ELispSymbol("quit-restore");
+    public final static ELispSymbol QUIT_RESTORE_PREV = new ELispSymbol("quit-restore-prev");
+    public final static ELispSymbol RECENTER_REDISPLAY = new ELispSymbol("recenter-redisplay");
+    public final static ELispSymbol RECORD_WINDOW_BUFFER = new ELispSymbol("record-window-buffer");
+    public final static ELispSymbol REPLACE_BUFFER_IN_WINDOWS = new ELispSymbol("replace-buffer-in-windows");
+    public final static ELispSymbol SAFE = new ELispSymbol("safe");
+    public final static ELispSymbol SCROLL_COMMAND = new ELispSymbol("scroll-command");
+    public final static ELispSymbol SCROLL_DOWN = new ELispSymbol("scroll-down");
+    public final static ELispSymbol SCROLL_PRESERVE_SCREEN_POSITION = new ELispSymbol("scroll-preserve-screen-position");
+    public final static ELispSymbol SCROLL_UP = new ELispSymbol("scroll-up");
+    public final static ELispSymbol TAB_LINE_FORMAT = new ELispSymbol("tab-line-format");
+    public final static ELispSymbol TEMP_BUFFER_SHOW_FUNCTION = new ELispSymbol("temp-buffer-show-function");
+    public final static ELispSymbol TEMP_BUFFER_SHOW_HOOK = new ELispSymbol("temp-buffer-show-hook");
+    public final static ELispSymbol WINDOWP = new ELispSymbol("windowp");
+    public final static ELispSymbol WINDOW_BUFFER_CHANGE_FUNCTIONS = new ELispSymbol("window-buffer-change-functions");
+    public final static ELispSymbol WINDOW_COMBINATION_LIMIT = new ELispSymbol("window-combination-limit");
+    public final static ELispSymbol WINDOW_COMBINATION_RESIZE = new ELispSymbol("window-combination-resize");
+    public final static ELispSymbol WINDOW_CONFIGURATION_CHANGE_HOOK = new ELispSymbol("window-configuration-change-hook");
+    public final static ELispSymbol WINDOW_CONFIGURATION_P = new ELispSymbol("window-configuration-p");
+    public final static ELispSymbol WINDOW_DEAD_WINDOWS_TABLE = new ELispSymbol("window-dead-windows-table");
+    public final static ELispSymbol WINDOW_DELETABLE_P = new ELispSymbol("window-deletable-p");
+    public final static ELispSymbol WINDOW_LIVE_P = new ELispSymbol("window-live-p");
+    public final static ELispSymbol WINDOW_PERSISTENT_PARAMETERS = new ELispSymbol("window-persistent-parameters");
+    public final static ELispSymbol WINDOW_POINT_INSERTION_TYPE = new ELispSymbol("window-point-insertion-type");
+    public final static ELispSymbol WINDOW_RESIZE_PIXELWISE = new ELispSymbol("window-resize-pixelwise");
+    public final static ELispSymbol WINDOW_RESTORE_KILLED_BUFFER_WINDOWS = new ELispSymbol("window-restore-killed-buffer-windows");
+    public final static ELispSymbol WINDOW_SELECTION_CHANGE_FUNCTIONS = new ELispSymbol("window-selection-change-functions");
+    public final static ELispSymbol WINDOW_SIZE = new ELispSymbol("window-size");
+    public final static ELispSymbol WINDOW_SIZE_CHANGE_FUNCTIONS = new ELispSymbol("window-size-change-functions");
+    public final static ELispSymbol WINDOW_STATE_CHANGE_FUNCTIONS = new ELispSymbol("window-state-change-functions");
+    public final static ELispSymbol WINDOW_STATE_CHANGE_HOOK = new ELispSymbol("window-state-change-hook");
+    public final static ELispSymbol WINDOW_VALID_P = new ELispSymbol("window-valid-p");
+    public final static ELispSymbol WINDOW__PIXEL_TO_TOTAL = new ELispSymbol("window--pixel-to-total");
+    public final static ELispSymbol WINDOW__RESIZE_MINI_FRAME = new ELispSymbol("window--resize-mini-frame");
+    public final static ELispSymbol WINDOW__RESIZE_ROOT_WINDOW = new ELispSymbol("window--resize-root-window");
+    public final static ELispSymbol WINDOW__RESIZE_ROOT_WINDOW_VERTICALLY = new ELispSymbol("window--resize-root-window-vertically");
+    private ELispSymbol[] windowSymbols() {
+        return new ELispSymbol[]{
+                ABOVE,
+                AUTO_WINDOW_VSCROLL,
+                CEILING,
+                CLONE_OF,
+                CONFIGURATION,
+                DEDICATED,
+                DELETE,
+                DELETE_WINDOW,
+                DISPLAY_BUFFER,
+                FAST_BUT_IMPRECISE_SCROLLING,
+                FLOOR,
+                GET_MRU_WINDOW,
+                HEADER_LINE_FORMAT,
+                MARK_FOR_REDISPLAY,
+                MINIBUFFER_SCROLL_WINDOW,
+                MODE_LINE_FORMAT,
+                MODE_LINE_IN_NON_SELECTED_WINDOWS,
+                NEXT_SCREEN_CONTEXT_LINES,
+                NO_OTHER_WINDOW,
+                OTHER_WINDOW_SCROLL_BUFFER,
+                OTHER_WINDOW_SCROLL_DEFAULT,
+                QUIT_RESTORE,
+                QUIT_RESTORE_PREV,
+                RECENTER_REDISPLAY,
+                RECORD_WINDOW_BUFFER,
+                REPLACE_BUFFER_IN_WINDOWS,
+                SAFE,
+                SCROLL_COMMAND,
+                SCROLL_DOWN,
+                SCROLL_PRESERVE_SCREEN_POSITION,
+                SCROLL_UP,
+                TAB_LINE_FORMAT,
+                TEMP_BUFFER_SHOW_FUNCTION,
+                TEMP_BUFFER_SHOW_HOOK,
+                WINDOWP,
+                WINDOW_BUFFER_CHANGE_FUNCTIONS,
+                WINDOW_COMBINATION_LIMIT,
+                WINDOW_COMBINATION_RESIZE,
+                WINDOW_CONFIGURATION_CHANGE_HOOK,
+                WINDOW_CONFIGURATION_P,
+                WINDOW_DEAD_WINDOWS_TABLE,
+                WINDOW_DELETABLE_P,
+                WINDOW_LIVE_P,
+                WINDOW_PERSISTENT_PARAMETERS,
+                WINDOW_POINT_INSERTION_TYPE,
+                WINDOW_RESIZE_PIXELWISE,
+                WINDOW_RESTORE_KILLED_BUFFER_WINDOWS,
+                WINDOW_SELECTION_CHANGE_FUNCTIONS,
+                WINDOW_SIZE,
+                WINDOW_SIZE_CHANGE_FUNCTIONS,
+                WINDOW_STATE_CHANGE_FUNCTIONS,
+                WINDOW_STATE_CHANGE_HOOK,
+                WINDOW_VALID_P,
+                WINDOW__PIXEL_TO_TOTAL,
+                WINDOW__RESIZE_MINI_FRAME,
+                WINDOW__RESIZE_ROOT_WINDOW,
+                WINDOW__RESIZE_ROOT_WINDOW_VERTICALLY,
+        };
+    }
+    /* @end region="window.c" */
+    /* @generated region="frame.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol ABOVE_SUSPENDED = new ELispSymbol("above-suspended");
+    public final static ELispSymbol AFTER_DELETE_FRAME_FUNCTIONS = new ELispSymbol("after-delete-frame-functions");
+    public final static ELispSymbol ALPHA = new ELispSymbol("alpha");
+    public final static ELispSymbol ALPHA_BACKGROUND = new ELispSymbol("alpha-background");
+    public final static ELispSymbol ANDROID = new ELispSymbol("android");
+    public final static ELispSymbol AUTO_LOWER = new ELispSymbol("auto-lower");
+    public final static ELispSymbol AUTO_RAISE = new ELispSymbol("auto-raise");
+    public final static ELispSymbol BACKGROUND_MODE = new ELispSymbol("background-mode");
+    public final static ELispSymbol BELOW = new ELispSymbol("below");
+    public final static ELispSymbol BORDER_COLOR = new ELispSymbol("border-color");
+    public final static ELispSymbol BORDER_WIDTH = new ELispSymbol("border-width");
+    public final static ELispSymbol BOTTOM_DIVIDER_WIDTH = new ELispSymbol("bottom-divider-width");
+    public final static ELispSymbol BUFFER_LIST = new ELispSymbol("buffer-list");
+    public final static ELispSymbol BUFFER_PREDICATE = new ELispSymbol("buffer-predicate");
+    public final static ELispSymbol BURIED_BUFFER_LIST = new ELispSymbol("buried-buffer-list");
+    public final static ELispSymbol CHANGE_FRAME_SIZE = new ELispSymbol("change_frame_size");
+    public final static ELispSymbol CHILD_FRAME_BORDER_WIDTH = new ELispSymbol("child-frame-border-width");
+    public final static ELispSymbol CURSOR_COLOR = new ELispSymbol("cursor-color");
+    public final static ELispSymbol CURSOR_TYPE = new ELispSymbol("cursor-type");
+    public final static ELispSymbol DEFAULT_FRAME_ALIST = new ELispSymbol("default-frame-alist");
+    public final static ELispSymbol DEFAULT_FRAME_SCROLL_BARS = new ELispSymbol("default-frame-scroll-bars");
+    public final static ELispSymbol DEFAULT_MINIBUFFER_FRAME = new ELispSymbol("default-minibuffer-frame");
+    public final static ELispSymbol DELETE_BEFORE = new ELispSymbol("delete-before");
+    public final static ELispSymbol DELETE_FRAME_FUNCTIONS = new ELispSymbol("delete-frame-functions");
+    public final static ELispSymbol DISPLAY_TYPE = new ELispSymbol("display-type");
+    public final static ELispSymbol EXPLICIT_NAME = new ELispSymbol("explicit-name");
+    public final static ELispSymbol EXTERNAL_BORDER_SIZE = new ELispSymbol("external-border-size");
+    public final static ELispSymbol FACE_SET_AFTER_FRAME_DEFAULT = new ELispSymbol("face-set-after-frame-default");
+    public final static ELispSymbol FOCUS_FOLLOWS_MOUSE = new ELispSymbol("focus-follows-mouse");
+    public final static ELispSymbol FONT_BACKEND = new ELispSymbol("font-backend");
+    public final static ELispSymbol FONT_PARAMETER = new ELispSymbol("font-parameter");
+    public final static ELispSymbol FRAMEP = new ELispSymbol("framep");
+    public final static ELispSymbol FRAMES = new ELispSymbol("frames");
+    public final static ELispSymbol FRAME_ALPHA_LOWER_LIMIT = new ELispSymbol("frame-alpha-lower-limit");
+    public final static ELispSymbol FRAME_EDGES = new ELispSymbol("frame-edges");
+    public final static ELispSymbol FRAME_INHIBIT_IMPLIED_RESIZE = new ELispSymbol("frame-inhibit-implied-resize");
+    public final static ELispSymbol FRAME_INTERNAL_PARAMETERS = new ELispSymbol("frame-internal-parameters");
+    public final static ELispSymbol FRAME_LIVE_P = new ELispSymbol("frame-live-p");
+    public final static ELispSymbol FRAME_MONITOR_ATTRIBUTES = new ELispSymbol("frame-monitor-attributes");
+    public final static ELispSymbol FRAME_RESIZE_PIXELWISE = new ELispSymbol("frame-resize-pixelwise");
+    public final static ELispSymbol FRAME_SIZE_HISTORY = new ELispSymbol("frame-size-history");
+    public final static ELispSymbol FRAME_WINDOWS_MIN_SIZE = new ELispSymbol("frame-windows-min-size");
+    public final static ELispSymbol FULLBOTH = new ELispSymbol("fullboth");
+    public final static ELispSymbol FULLHEIGHT = new ELispSymbol("fullheight");
+    public final static ELispSymbol FULLSCREEN = new ELispSymbol("fullscreen");
+    public final static ELispSymbol FULLWIDTH = new ELispSymbol("fullwidth");
+    public final static ELispSymbol GEOMETRY = new ELispSymbol("geometry");
+    public final static ELispSymbol GUI_FIGURE_WINDOW_SIZE = new ELispSymbol("gui_figure_window_size");
+    public final static ELispSymbol HAIKU = new ELispSymbol("haiku");
+    public final static ELispSymbol HEIGHT = new ELispSymbol("height");
+    public final static ELispSymbol HEIGHT_ONLY = new ELispSymbol("height-only");
+    public final static ELispSymbol HORIZONTAL_SCROLL_BARS = new ELispSymbol("horizontal-scroll-bars");
+    public final static ELispSymbol ICON = new ELispSymbol("icon");
+    public final static ELispSymbol ICONIFY_CHILD_FRAME = new ELispSymbol("iconify-child-frame");
+    public final static ELispSymbol ICONIFY_TOP_LEVEL = new ELispSymbol("iconify-top-level");
+    public final static ELispSymbol ICON_LEFT = new ELispSymbol("icon-left");
+    public final static ELispSymbol ICON_NAME = new ELispSymbol("icon-name");
+    public final static ELispSymbol ICON_TOP = new ELispSymbol("icon-top");
+    public final static ELispSymbol ICON_TYPE = new ELispSymbol("icon-type");
+    public final static ELispSymbol INHIBIT_DOUBLE_BUFFERING = new ELispSymbol("inhibit-double-buffering");
+    public final static ELispSymbol INNER_EDGES = new ELispSymbol("inner-edges");
+    public final static ELispSymbol INTERNAL_BORDER_WIDTH = new ELispSymbol("internal-border-width");
+    public final static ELispSymbol KEEP_RATIO = new ELispSymbol("keep-ratio");
+    public final static ELispSymbol LEFT_FRINGE = new ELispSymbol("left-fringe");
+    public final static ELispSymbol LEFT_FRINGE_HELP = new ELispSymbol("left-fringe-help");
+    public final static ELispSymbol LEFT_ONLY = new ELispSymbol("left-only");
+    public final static ELispSymbol LINE_SPACING = new ELispSymbol("line-spacing");
+    public final static ELispSymbol MAKE_INITIAL_MINIBUFFER_FRAME = new ELispSymbol("make-initial-minibuffer-frame");
+    public final static ELispSymbol MAKE_INVISIBLE = new ELispSymbol("make-invisible");
+    public final static ELispSymbol MAKE_POINTER_INVISIBLE = new ELispSymbol("make-pointer-invisible");
+    public final static ELispSymbol MAXIMIZED = new ELispSymbol("maximized");
+    public final static ELispSymbol MENU_BAR_EXTERNAL = new ELispSymbol("menu-bar-external");
+    public final static ELispSymbol MENU_BAR_LINES = new ELispSymbol("menu-bar-lines");
+    public final static ELispSymbol MENU_BAR_MODE = new ELispSymbol("menu-bar-mode");
+    public final static ELispSymbol MENU_BAR_SIZE = new ELispSymbol("menu-bar-size");
+    public final static ELispSymbol MINIBUFFER = new ELispSymbol("minibuffer");
+    public final static ELispSymbol MIN_HEIGHT = new ELispSymbol("min-height");
+    public final static ELispSymbol MIN_WIDTH = new ELispSymbol("min-width");
+    public final static ELispSymbol MM_SIZE = new ELispSymbol("mm-size");
+    public final static ELispSymbol MODELINE = new ELispSymbol("modeline");
+    public final static ELispSymbol MOUSE_COLOR = new ELispSymbol("mouse-color");
+    public final static ELispSymbol MOUSE_HIGHLIGHT = new ELispSymbol("mouse-highlight");
+    public final static ELispSymbol MOUSE_POSITION_FUNCTION = new ELispSymbol("mouse-position-function");
+    public final static ELispSymbol MOUSE_WHEEL_FRAME = new ELispSymbol("mouse-wheel-frame");
+    public final static ELispSymbol MOVE_FRAME_FUNCTIONS = new ELispSymbol("move-frame-functions");
+    public final static ELispSymbol MOVE_TOOLBAR = new ELispSymbol("move-toolbar");
+    public final static ELispSymbol NAME = new ELispSymbol("name");
+    public final static ELispSymbol NATIVE_EDGES = new ELispSymbol("native-edges");
+    public final static ELispSymbol NOELISP = new ELispSymbol("noelisp");
+    public final static ELispSymbol NONE = new ELispSymbol("none");
+    public final static ELispSymbol NO_ACCEPT_FOCUS = new ELispSymbol("no-accept-focus");
+    public final static ELispSymbol NO_FOCUS_ON_MAP = new ELispSymbol("no-focus-on-map");
+    public final static ELispSymbol NO_OTHER_FRAME = new ELispSymbol("no-other-frame");
+    public final static ELispSymbol NO_SPECIAL_GLYPHS = new ELispSymbol("no-special-glyphs");
+    public final static ELispSymbol NS = new ELispSymbol("ns");
+    public final static ELispSymbol NS_APPEARANCE = new ELispSymbol("ns-appearance");
+    public final static ELispSymbol NS_PARSE_GEOMETRY = new ELispSymbol("ns-parse-geometry");
+    public final static ELispSymbol NS_TRANSPARENT_TITLEBAR = new ELispSymbol("ns-transparent-titlebar");
+    public final static ELispSymbol ONLY = new ELispSymbol("only");
+    public final static ELispSymbol OUTER_BORDER_WIDTH = new ELispSymbol("outer-border-width");
+    public final static ELispSymbol OUTER_EDGES = new ELispSymbol("outer-edges");
+    public final static ELispSymbol OUTER_POSITION = new ELispSymbol("outer-position");
+    public final static ELispSymbol OUTER_SIZE = new ELispSymbol("outer-size");
+    public final static ELispSymbol OUTER_WINDOW_ID = new ELispSymbol("outer-window-id");
+    public final static ELispSymbol OVERRIDE_REDIRECT = new ELispSymbol("override-redirect");
+    public final static ELispSymbol PARENT_FRAME = new ELispSymbol("parent-frame");
+    public final static ELispSymbol PARENT_ID = new ELispSymbol("parent-id");
+    public final static ELispSymbol PC = new ELispSymbol("pc");
+    public final static ELispSymbol PGTK = new ELispSymbol("pgtk");
+    public final static ELispSymbol RESIZE_MINI_FRAMES = new ELispSymbol("resize-mini-frames");
+    public final static ELispSymbol RIGHT_DIVIDER_WIDTH = new ELispSymbol("right-divider-width");
+    public final static ELispSymbol RIGHT_FRINGE = new ELispSymbol("right-fringe");
+    public final static ELispSymbol RIGHT_FRINGE_HELP = new ELispSymbol("right-fringe-help");
+    public final static ELispSymbol SCALE_FACTOR = new ELispSymbol("scale-factor");
+    public final static ELispSymbol SCREEN_GAMMA = new ELispSymbol("screen-gamma");
+    public final static ELispSymbol SCROLL_BAR_ADJUST_THUMB_PORTION = new ELispSymbol("scroll-bar-adjust-thumb-portion");
+    public final static ELispSymbol SCROLL_BAR_BACKGROUND = new ELispSymbol("scroll-bar-background");
+    public final static ELispSymbol SCROLL_BAR_FOREGROUND = new ELispSymbol("scroll-bar-foreground");
+    public final static ELispSymbol SCROLL_BAR_HEIGHT = new ELispSymbol("scroll-bar-height");
+    public final static ELispSymbol SCROLL_BAR_WIDTH = new ELispSymbol("scroll-bar-width");
+    public final static ELispSymbol SET_WINDOW_CONFIGURATION = new ELispSymbol("set_window_configuration");
+    public final static ELispSymbol SHADED = new ELispSymbol("shaded");
+    public final static ELispSymbol SKIP_TASKBAR = new ELispSymbol("skip-taskbar");
+    public final static ELispSymbol SOURCE = new ELispSymbol("source");
+    public final static ELispSymbol STICKY = new ELispSymbol("sticky");
+    public final static ELispSymbol TAB_BAR_LINES = new ELispSymbol("tab-bar-lines");
+    public final static ELispSymbol TAB_BAR_MODE = new ELispSymbol("tab-bar-mode");
+    public final static ELispSymbol TAB_BAR_SIZE = new ELispSymbol("tab-bar-size");
+    public final static ELispSymbol TERMINAL_FRAME = new ELispSymbol("terminal_frame");
+    public final static ELispSymbol TEXT_PIXELS = new ELispSymbol("text-pixels");
+    public final static ELispSymbol TIP_FRAME = new ELispSymbol("tip_frame");
+    public final static ELispSymbol TITLE = new ELispSymbol("title");
+    public final static ELispSymbol TITLE_BAR_SIZE = new ELispSymbol("title-bar-size");
+    public final static ELispSymbol TOOLTIP = new ELispSymbol("tooltip");
+    public final static ELispSymbol TOOLTIP_REUSE_HIDDEN_FRAME = new ELispSymbol("tooltip-reuse-hidden-frame");
+    public final static ELispSymbol TOOL_BAR_EXTERNAL = new ELispSymbol("tool-bar-external");
+    public final static ELispSymbol TOOL_BAR_LINES = new ELispSymbol("tool-bar-lines");
+    public final static ELispSymbol TOOL_BAR_MODE = new ELispSymbol("tool-bar-mode");
+    public final static ELispSymbol TOOL_BAR_POSITION = new ELispSymbol("tool-bar-position");
+    public final static ELispSymbol TOOL_BAR_SIZE = new ELispSymbol("tool-bar-size");
+    public final static ELispSymbol TOP_ONLY = new ELispSymbol("top-only");
+    public final static ELispSymbol TTY = new ELispSymbol("tty");
+    public final static ELispSymbol TTY_COLOR_MODE = new ELispSymbol("tty-color-mode");
+    public final static ELispSymbol TTY_TYPE = new ELispSymbol("tty-type");
+    public final static ELispSymbol UNDECORATED = new ELispSymbol("undecorated");
+    public final static ELispSymbol UNSPLITTABLE = new ELispSymbol("unsplittable");
+    public final static ELispSymbol USER_POSITION = new ELispSymbol("user-position");
+    public final static ELispSymbol USER_SIZE = new ELispSymbol("user-size");
+    public final static ELispSymbol USE_FRAME_SYNCHRONIZATION = new ELispSymbol("use-frame-synchronization");
+    public final static ELispSymbol USE_SYSTEM_TOOLTIPS = new ELispSymbol("use-system-tooltips");
+    public final static ELispSymbol VERTICAL_SCROLL_BARS = new ELispSymbol("vertical-scroll-bars");
+    public final static ELispSymbol VISIBILITY = new ELispSymbol("visibility");
+    public final static ELispSymbol VISIBLE = new ELispSymbol("visible");
+    public final static ELispSymbol W32 = new ELispSymbol("w32");
+    public final static ELispSymbol WAIT_FOR_WM = new ELispSymbol("wait-for-wm");
+    public final static ELispSymbol WIDTH = new ELispSymbol("width");
+    public final static ELispSymbol WIDTH_ONLY = new ELispSymbol("width-only");
+    public final static ELispSymbol WINDOW_ID = new ELispSymbol("window-id");
+    public final static ELispSymbol WORKAREA = new ELispSymbol("workarea");
+    public final static ELispSymbol X = new ELispSymbol("x");
+    public final static ELispSymbol XG_FRAME_SET_CHAR_SIZE = new ELispSymbol("xg_frame_set_char_size");
+    public final static ELispSymbol X_CREATE_FRAME_1 = new ELispSymbol("x_create_frame_1");
+    public final static ELispSymbol X_CREATE_FRAME_2 = new ELispSymbol("x_create_frame_2");
+    public final static ELispSymbol X_FRAME_PARAMETER = new ELispSymbol("x-frame-parameter");
+    public final static ELispSymbol X_RESOURCE_CLASS = new ELispSymbol("x-resource-class");
+    public final static ELispSymbol X_RESOURCE_NAME = new ELispSymbol("x-resource-name");
+    public final static ELispSymbol X_SET_MENU_BAR_LINES = new ELispSymbol("x_set_menu_bar_lines");
+    public final static ELispSymbol X_SET_WINDOW_SIZE_1 = new ELispSymbol("x_set_window_size_1");
+    public final static ELispSymbol Z_GROUP = new ELispSymbol("z-group");
+    private ELispSymbol[] frameSymbols() {
+        return new ELispSymbol[]{
+                ABOVE_SUSPENDED,
+                AFTER_DELETE_FRAME_FUNCTIONS,
+                ALPHA,
+                ALPHA_BACKGROUND,
+                ANDROID,
+                AUTO_LOWER,
+                AUTO_RAISE,
+                BACKGROUND_MODE,
+                BELOW,
+                BORDER_COLOR,
+                BORDER_WIDTH,
+                BOTTOM_DIVIDER_WIDTH,
+                BUFFER_LIST,
+                BUFFER_PREDICATE,
+                BURIED_BUFFER_LIST,
+                CHANGE_FRAME_SIZE,
+                CHILD_FRAME_BORDER_WIDTH,
+                CURSOR_COLOR,
+                CURSOR_TYPE,
+                DEFAULT_FRAME_ALIST,
+                DEFAULT_FRAME_SCROLL_BARS,
+                DEFAULT_MINIBUFFER_FRAME,
+                DELETE_BEFORE,
+                DELETE_FRAME_FUNCTIONS,
+                DISPLAY_TYPE,
+                EXPLICIT_NAME,
+                EXTERNAL_BORDER_SIZE,
+                FACE_SET_AFTER_FRAME_DEFAULT,
+                FOCUS_FOLLOWS_MOUSE,
+                FONT_BACKEND,
+                FONT_PARAMETER,
+                FRAMEP,
+                FRAMES,
+                FRAME_ALPHA_LOWER_LIMIT,
+                FRAME_EDGES,
+                FRAME_INHIBIT_IMPLIED_RESIZE,
+                FRAME_INTERNAL_PARAMETERS,
+                FRAME_LIVE_P,
+                FRAME_MONITOR_ATTRIBUTES,
+                FRAME_RESIZE_PIXELWISE,
+                FRAME_SIZE_HISTORY,
+                FRAME_WINDOWS_MIN_SIZE,
+                FULLBOTH,
+                FULLHEIGHT,
+                FULLSCREEN,
+                FULLWIDTH,
+                GEOMETRY,
+                GUI_FIGURE_WINDOW_SIZE,
+                HAIKU,
+                HEIGHT,
+                HEIGHT_ONLY,
+                HORIZONTAL_SCROLL_BARS,
+                ICON,
+                ICONIFY_CHILD_FRAME,
+                ICONIFY_TOP_LEVEL,
+                ICON_LEFT,
+                ICON_NAME,
+                ICON_TOP,
+                ICON_TYPE,
+                INHIBIT_DOUBLE_BUFFERING,
+                INNER_EDGES,
+                INTERNAL_BORDER_WIDTH,
+                KEEP_RATIO,
+                LEFT_FRINGE,
+                LEFT_FRINGE_HELP,
+                LEFT_ONLY,
+                LINE_SPACING,
+                MAKE_INITIAL_MINIBUFFER_FRAME,
+                MAKE_INVISIBLE,
+                MAKE_POINTER_INVISIBLE,
+                MAXIMIZED,
+                MENU_BAR_EXTERNAL,
+                MENU_BAR_LINES,
+                MENU_BAR_MODE,
+                MENU_BAR_SIZE,
+                MINIBUFFER,
+                MIN_HEIGHT,
+                MIN_WIDTH,
+                MM_SIZE,
+                MODELINE,
+                MOUSE_COLOR,
+                MOUSE_HIGHLIGHT,
+                MOUSE_POSITION_FUNCTION,
+                MOUSE_WHEEL_FRAME,
+                MOVE_FRAME_FUNCTIONS,
+                MOVE_TOOLBAR,
+                NAME,
+                NATIVE_EDGES,
+                NOELISP,
+                NONE,
+                NO_ACCEPT_FOCUS,
+                NO_FOCUS_ON_MAP,
+                NO_OTHER_FRAME,
+                NO_SPECIAL_GLYPHS,
+                NS,
+                NS_APPEARANCE,
+                NS_PARSE_GEOMETRY,
+                NS_TRANSPARENT_TITLEBAR,
+                ONLY,
+                OUTER_BORDER_WIDTH,
+                OUTER_EDGES,
+                OUTER_POSITION,
+                OUTER_SIZE,
+                OUTER_WINDOW_ID,
+                OVERRIDE_REDIRECT,
+                PARENT_FRAME,
+                PARENT_ID,
+                PC,
+                PGTK,
+                RESIZE_MINI_FRAMES,
+                RIGHT_DIVIDER_WIDTH,
+                RIGHT_FRINGE,
+                RIGHT_FRINGE_HELP,
+                SCALE_FACTOR,
+                SCREEN_GAMMA,
+                SCROLL_BAR_ADJUST_THUMB_PORTION,
+                SCROLL_BAR_BACKGROUND,
+                SCROLL_BAR_FOREGROUND,
+                SCROLL_BAR_HEIGHT,
+                SCROLL_BAR_WIDTH,
+                SET_WINDOW_CONFIGURATION,
+                SHADED,
+                SKIP_TASKBAR,
+                SOURCE,
+                STICKY,
+                TAB_BAR_LINES,
+                TAB_BAR_MODE,
+                TAB_BAR_SIZE,
+                TERMINAL_FRAME,
+                TEXT_PIXELS,
+                TIP_FRAME,
+                TITLE,
+                TITLE_BAR_SIZE,
+                TOOLTIP,
+                TOOLTIP_REUSE_HIDDEN_FRAME,
+                TOOL_BAR_EXTERNAL,
+                TOOL_BAR_LINES,
+                TOOL_BAR_MODE,
+                TOOL_BAR_POSITION,
+                TOOL_BAR_SIZE,
+                TOP_ONLY,
+                TTY,
+                TTY_COLOR_MODE,
+                TTY_TYPE,
+                UNDECORATED,
+                UNSPLITTABLE,
+                USER_POSITION,
+                USER_SIZE,
+                USE_FRAME_SYNCHRONIZATION,
+                USE_SYSTEM_TOOLTIPS,
+                VERTICAL_SCROLL_BARS,
+                VISIBILITY,
+                VISIBLE,
+                W32,
+                WAIT_FOR_WM,
+                WIDTH,
+                WIDTH_ONLY,
+                WINDOW_ID,
+                WINDOW__PIXEL_TO_TOTAL,
+                WORKAREA,
+                X,
+                XG_FRAME_SET_CHAR_SIZE,
+                X_CREATE_FRAME_1,
+                X_CREATE_FRAME_2,
+                X_FRAME_PARAMETER,
+                X_RESOURCE_CLASS,
+                X_RESOURCE_NAME,
+                X_SET_MENU_BAR_LINES,
+                X_SET_WINDOW_SIZE_1,
+                Z_GROUP,
+        };
+    }
+    /* @end region="frame.c" */
+    /* @generated region="textprop.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol CATEGORY = new ELispSymbol("category");
+    public final static ELispSymbol CHAR_PROPERTY_ALIAS_ALIST = new ELispSymbol("char-property-alias-alist");
+    public final static ELispSymbol DEFAULT_TEXT_PROPERTIES = new ELispSymbol("default-text-properties");
+    public final static ELispSymbol FONT = new ELispSymbol("font");
+    public final static ELispSymbol FRONT_STICKY = new ELispSymbol("front-sticky");
+    public final static ELispSymbol INHIBIT_POINT_MOTION_HOOKS = new ELispSymbol("inhibit-point-motion-hooks");
+    public final static ELispSymbol INTANGIBLE = new ELispSymbol("intangible");
+    public final static ELispSymbol INVISIBLE = new ELispSymbol("invisible");
+    public final static ELispSymbol LOCAL_MAP = new ELispSymbol("local-map");
+    public final static ELispSymbol MINIBUFFER_PROMPT = new ELispSymbol("minibuffer-prompt");
+    public final static ELispSymbol MOUSE_FACE = new ELispSymbol("mouse-face");
+    public final static ELispSymbol POINT_ENTERED = new ELispSymbol("point-entered");
+    public final static ELispSymbol POINT_LEFT = new ELispSymbol("point-left");
+    public final static ELispSymbol READ_ONLY = new ELispSymbol("read-only");
+    public final static ELispSymbol REAR_NONSTICKY = new ELispSymbol("rear-nonsticky");
+    public final static ELispSymbol TEXT_PROPERTY_DEFAULT_NONSTICKY = new ELispSymbol("text-property-default-nonsticky");
+    private ELispSymbol[] textpropSymbols() {
+        return new ELispSymbol[]{
+                CATEGORY,
+                CHAR_PROPERTY_ALIAS_ALIST,
+                DEFAULT_TEXT_PROPERTIES,
+                FACE,
+                FONT,
+                FRONT_STICKY,
+                INHIBIT_POINT_MOTION_HOOKS,
+                INTANGIBLE,
+                INVISIBLE,
+                LOCAL_MAP,
+                MINIBUFFER_PROMPT,
+                MOUSE_FACE,
+                POINT_ENTERED,
+                POINT_LEFT,
+                READ_ONLY,
+                REAR_NONSTICKY,
+                TEXT_PROPERTY_DEFAULT_NONSTICKY,
+        };
+    }
+    /* @end region="textprop.c" */
+    /* @generated region="syntax.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol COMMENT_END_CAN_BE_ESCAPED = new ELispSymbol("comment-end-can-be-escaped");
+    public final static ELispSymbol COMMENT_USE_SYNTAX_PPSS = new ELispSymbol("comment-use-syntax-ppss");
+    public final static ELispSymbol FIND_WORD_BOUNDARY_FUNCTION_TABLE = new ELispSymbol("find-word-boundary-function-table");
+    public final static ELispSymbol INTERNAL__SYNTAX_PROPERTIZE = new ELispSymbol("internal--syntax-propertize");
+    public final static ELispSymbol MULTIBYTE_SYNTAX_AS_SYMBOL = new ELispSymbol("multibyte-syntax-as-symbol");
+    public final static ELispSymbol OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START = new ELispSymbol("open-paren-in-column-0-is-defun-start");
+    public final static ELispSymbol PARSE_SEXP_IGNORE_COMMENTS = new ELispSymbol("parse-sexp-ignore-comments");
+    public final static ELispSymbol PARSE_SEXP_LOOKUP_PROPERTIES = new ELispSymbol("parse-sexp-lookup-properties");
+    public final static ELispSymbol SCAN_ERROR = new ELispSymbol("scan-error");
+    public final static ELispSymbol SYNTAX_PPSS = new ELispSymbol("syntax-ppss");
+    public final static ELispSymbol SYNTAX_PROPERTIZE__DONE = new ELispSymbol("syntax-propertize--done");
+    public final static ELispSymbol SYNTAX_TABLE = new ELispSymbol("syntax-table");
+    public final static ELispSymbol SYNTAX_TABLE_P = new ELispSymbol("syntax-table-p");
+    public final static ELispSymbol WORDS_INCLUDE_ESCAPES = new ELispSymbol("words-include-escapes");
+    private ELispSymbol[] syntaxSymbols() {
+        return new ELispSymbol[]{
+                COMMENT_END_CAN_BE_ESCAPED,
+                COMMENT_USE_SYNTAX_PPSS,
+                FIND_WORD_BOUNDARY_FUNCTION_TABLE,
+                INTERNAL__SYNTAX_PROPERTIZE,
+                MULTIBYTE_SYNTAX_AS_SYMBOL,
+                OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START,
+                PARSE_SEXP_IGNORE_COMMENTS,
+                PARSE_SEXP_LOOKUP_PROPERTIES,
+                SCAN_ERROR,
+                SYNTAX_PPSS,
+                SYNTAX_PROPERTIZE__DONE,
+                SYNTAX_TABLE,
+                SYNTAX_TABLE_P,
+                WORDS_INCLUDE_ESCAPES,
+        };
+    }
+    /* @end region="syntax.c" */
+    /* @generated region="xdisp.c" by="extract-emacs-src.py" */
+    public final static ELispSymbol ARROW = new ELispSymbol("arrow");
+    public final static ELispSymbol AUTO_HSCROLL_MODE = new ELispSymbol("auto-hscroll-mode");
+    public final static ELispSymbol AUTO_RAISE_TAB_BAR_BUTTONS = new ELispSymbol("auto-raise-tab-bar-buttons");
+    public final static ELispSymbol AUTO_RAISE_TOOL_BAR_BUTTONS = new ELispSymbol("auto-raise-tool-bar-buttons");
+    public final static ELispSymbol AUTO_RESIZE_TAB_BARS = new ELispSymbol("auto-resize-tab-bars");
+    public final static ELispSymbol AUTO_RESIZE_TOOL_BARS = new ELispSymbol("auto-resize-tool-bars");
+    public final static ELispSymbol BAR = new ELispSymbol("bar");
+    public final static ELispSymbol BIDI_INHIBIT_BPA = new ELispSymbol("bidi-inhibit-bpa");
+    public final static ELispSymbol BLINK_CURSOR_ALIST = new ELispSymbol("blink-cursor-alist");
+    public final static ELispSymbol BOTH = new ELispSymbol("both");
+    public final static ELispSymbol BOTH_HORIZ = new ELispSymbol("both-horiz");
+    public final static ELispSymbol BOX = new ELispSymbol("box");
+    public final static ELispSymbol BUFFER_POSITION = new ELispSymbol("buffer-position");
+    public final static ELispSymbol CALIGN_TO = new ELispSymbol(":align-to");
+    public final static ELispSymbol CDATA = new ELispSymbol(":data");
+    public final static ELispSymbol CENTER = new ELispSymbol("center");
+    public final static ELispSymbol CEVAL = new ELispSymbol(":eval");
+    public final static ELispSymbol CFILE = new ELispSymbol(":file");
+    public final static ELispSymbol CIRCLE = new ELispSymbol("circle");
+    public final static ELispSymbol CLEAR_MESSAGE_FUNCTION = new ELispSymbol("clear-message-function");
+    public final static ELispSymbol CLOSE_TAB = new ELispSymbol("close-tab");
+    public final static ELispSymbol CMAP = new ELispSymbol(":map");
+    public final static ELispSymbol COMPOSITION_BREAK_AT_POINT = new ELispSymbol("composition-break-at-point");
+    public final static ELispSymbol CPOINTER = new ELispSymbol(":pointer");
+    public final static ELispSymbol CPROPERTIZE = new ELispSymbol(":propertize");
+    public final static ELispSymbol CRELATIVE_HEIGHT = new ELispSymbol(":relative-height");
+    public final static ELispSymbol CRELATIVE_WIDTH = new ELispSymbol(":relative-width");
+    public final static ELispSymbol CURRENT_LINE = new ELispSymbol("current-line");
+    public final static ELispSymbol DEBUG_EARLY__MUTED = new ELispSymbol("debug-early--muted");
+    public final static ELispSymbol DEBUG_END_POS = new ELispSymbol("debug-end-pos");
+    public final static ELispSymbol DEBUG_ON_MESSAGE = new ELispSymbol("debug-on-message");
+    public final static ELispSymbol DISABLE_EVAL = new ELispSymbol("disable-eval");
+    public final static ELispSymbol DISPLAY = new ELispSymbol("display");
+    public final static ELispSymbol DISPLAY_FILL_COLUMN_INDICATOR = new ELispSymbol("display-fill-column-indicator");
+    public final static ELispSymbol DISPLAY_FILL_COLUMN_INDICATOR_CHARACTER = new ELispSymbol("display-fill-column-indicator-character");
+    public final static ELispSymbol DISPLAY_FILL_COLUMN_INDICATOR_COLUMN = new ELispSymbol("display-fill-column-indicator-column");
+    public final static ELispSymbol DISPLAY_HOURGLASS = new ELispSymbol("display-hourglass");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS = new ELispSymbol("display-line-numbers");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_CURRENT_ABSOLUTE = new ELispSymbol("display-line-numbers-current-absolute");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_DISABLE = new ELispSymbol("display-line-numbers-disable");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_MAJOR_TICK = new ELispSymbol("display-line-numbers-major-tick");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_MINOR_TICK = new ELispSymbol("display-line-numbers-minor-tick");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_OFFSET = new ELispSymbol("display-line-numbers-offset");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_WIDEN = new ELispSymbol("display-line-numbers-widen");
+    public final static ELispSymbol DISPLAY_LINE_NUMBERS_WIDTH = new ELispSymbol("display-line-numbers-width");
+    public final static ELispSymbol DISPLAY_PIXELS_PER_INCH = new ELispSymbol("display-pixels-per-inch");
+    public final static ELispSymbol DISPLAY_RAW_BYTES_AS_HEX = new ELispSymbol("display-raw-bytes-as-hex");
+    public final static ELispSymbol DONT_CLEAR_MESSAGE = new ELispSymbol("dont-clear-message");
+    public final static ELispSymbol DRAGGING = new ELispSymbol("dragging");
+    public final static ELispSymbol DRAG_SOURCE = new ELispSymbol("drag-source");
+    public final static ELispSymbol DRAG_WITH_HEADER_LINE = new ELispSymbol("drag-with-header-line");
+    public final static ELispSymbol DRAG_WITH_MODE_LINE = new ELispSymbol("drag-with-mode-line");
+    public final static ELispSymbol DRAG_WITH_TAB_LINE = new ELispSymbol("drag-with-tab-line");
+    public final static ELispSymbol DROPPING = new ELispSymbol("dropping");
+    public final static ELispSymbol EMPTY_BOX = new ELispSymbol("empty-box");
+    public final static ELispSymbol ESCAPE_GLYPH = new ELispSymbol("escape-glyph");
+    public final static ELispSymbol EVAL = new ELispSymbol("eval");
+    public final static ELispSymbol FILE_REMOTE_P = new ELispSymbol("file-remote-p");
+    public final static ELispSymbol FILL_COLUMN_INDICATOR = new ELispSymbol("fill-column-indicator");
+    public final static ELispSymbol FONTIFICATION_FUNCTIONS = new ELispSymbol("fontification-functions");
+    public final static ELispSymbol FONTIFIED = new ELispSymbol("fontified");
+    public final static ELispSymbol FRAME_TITLE_FORMAT = new ELispSymbol("frame-title-format");
+    public final static ELispSymbol GLOBAL_MODE_STRING = new ELispSymbol("global-mode-string");
+    public final static ELispSymbol GLYPHLESS_CHAR = new ELispSymbol("glyphless-char");
+    public final static ELispSymbol GLYPHLESS_CHAR_DISPLAY = new ELispSymbol("glyphless-char-display");
+    public final static ELispSymbol GROW_ONLY = new ELispSymbol("grow-only");
+    public final static ELispSymbol HAND = new ELispSymbol("hand");
+    public final static ELispSymbol HBAR = new ELispSymbol("hbar");
+    public final static ELispSymbol HDRAG = new ELispSymbol("hdrag");
+    public final static ELispSymbol HEX_CODE = new ELispSymbol("hex-code");
+    public final static ELispSymbol HIGHLIGHT_NONSELECTED_WINDOWS = new ELispSymbol("highlight-nonselected-windows");
+    public final static ELispSymbol HOLLOW = new ELispSymbol("hollow");
+    public final static ELispSymbol HOURGLASS = new ELispSymbol("hourglass");
+    public final static ELispSymbol HOURGLASS_DELAY = new ELispSymbol("hourglass-delay");
+    public final static ELispSymbol HSCROLL_MARGIN = new ELispSymbol("hscroll-margin");
+    public final static ELispSymbol HSCROLL_STEP = new ELispSymbol("hscroll-step");
+    public final static ELispSymbol ICON_TITLE_FORMAT = new ELispSymbol("icon-title-format");
+    public final static ELispSymbol IMAGE = new ELispSymbol("image");
+    public final static ELispSymbol INHIBIT_BIDI_MIRRORING = new ELispSymbol("inhibit-bidi-mirroring");
+    public final static ELispSymbol INHIBIT_EVAL_DURING_REDISPLAY = new ELispSymbol("inhibit-eval-during-redisplay");
+    public final static ELispSymbol INHIBIT_FREE_REALIZED_FACES = new ELispSymbol("inhibit-free-realized-faces");
+    public final static ELispSymbol INHIBIT_MENUBAR_UPDATE = new ELispSymbol("inhibit-menubar-update");
+    public final static ELispSymbol INHIBIT_MESSAGE = new ELispSymbol("inhibit-message");
+    public final static ELispSymbol INHIBIT_REDISPLAY = new ELispSymbol("inhibit-redisplay");
+    public final static ELispSymbol INHIBIT_TRY_CURSOR_MOVEMENT = new ELispSymbol("inhibit-try-cursor-movement");
+    public final static ELispSymbol INHIBIT_TRY_WINDOW_ID = new ELispSymbol("inhibit-try-window-id");
+    public final static ELispSymbol INHIBIT_TRY_WINDOW_REUSING = new ELispSymbol("inhibit-try-window-reusing");
+    public final static ELispSymbol LAST_ARROW_POSITION = new ELispSymbol("last-arrow-position");
+    public final static ELispSymbol LAST_ARROW_STRING = new ELispSymbol("last-arrow-string");
+    public final static ELispSymbol LEFT_MARGIN = new ELispSymbol("left-margin");
+    public final static ELispSymbol LEFT_TO_RIGHT = new ELispSymbol("left-to-right");
+    public final static ELispSymbol LINE_HEIGHT = new ELispSymbol("line-height");
+    public final static ELispSymbol LINE_NUMBER = new ELispSymbol("line-number");
+    public final static ELispSymbol LINE_NUMBER_CURRENT_LINE = new ELispSymbol("line-number-current-line");
+    public final static ELispSymbol LINE_NUMBER_DISPLAY_LIMIT = new ELispSymbol("line-number-display-limit");
+    public final static ELispSymbol LINE_NUMBER_DISPLAY_LIMIT_WIDTH = new ELispSymbol("line-number-display-limit-width");
+    public final static ELispSymbol LINE_NUMBER_MAJOR_TICK = new ELispSymbol("line-number-major-tick");
+    public final static ELispSymbol LINE_NUMBER_MINOR_TICK = new ELispSymbol("line-number-minor-tick");
+    public final static ELispSymbol LINE_PREFIX = new ELispSymbol("line-prefix");
+    public final static ELispSymbol LONG = new ELispSymbol("long");
+    public final static ELispSymbol LONG_LINE_OPTIMIZATIONS_IN_FONTIFICATION_FUNCTIONS = new ELispSymbol("long-line-optimizations-in-fontification-functions");
+    public final static ELispSymbol MAKE_CURSOR_LINE_FULLY_VISIBLE = new ELispSymbol("make-cursor-line-fully-visible");
+    public final static ELispSymbol MAKE_WINDOW_START_VISIBLE = new ELispSymbol("make-window-start-visible");
+    public final static ELispSymbol MARGIN = new ELispSymbol("margin");
+    public final static ELispSymbol MAXIMUM_SCROLL_MARGIN = new ELispSymbol("maximum-scroll-margin");
+    public final static ELispSymbol MAX_MINI_WINDOW_HEIGHT = new ELispSymbol("max-mini-window-height");
+    public final static ELispSymbol MAX_REDISPLAY_TICKS = new ELispSymbol("max-redisplay-ticks");
+    public final static ELispSymbol MENU_BAR_UPDATE_HOOK = new ELispSymbol("menu-bar-update-hook");
+    public final static ELispSymbol MENU_UPDATING_FRAME = new ELispSymbol("menu-updating-frame");
+    public final static ELispSymbol MESSAGES_BUFFER_MODE = new ELispSymbol("messages-buffer-mode");
+    public final static ELispSymbol MESSAGES_BUFFER_NAME = new ELispSymbol("messages-buffer-name");
+    public final static ELispSymbol MESSAGE_LOG_MAX = new ELispSymbol("message-log-max");
+    public final static ELispSymbol MESSAGE_TRUNCATE_LINES = new ELispSymbol("message-truncate-lines");
+    public final static ELispSymbol MODE_LINE_COMPACT = new ELispSymbol("mode-line-compact");
+    public final static ELispSymbol MODE_LINE_DEFAULT_HELP_ECHO = new ELispSymbol("mode-line-default-help-echo");
+    public final static ELispSymbol MOUSE_AUTOSELECT_WINDOW = new ELispSymbol("mouse-autoselect-window");
+    public final static ELispSymbol MOUSE_FINE_GRAINED_TRACKING = new ELispSymbol("mouse-fine-grained-tracking");
+    public final static ELispSymbol MULTIPLE_FRAMES = new ELispSymbol("multiple-frames");
+    public final static ELispSymbol NHDRAG = new ELispSymbol("nhdrag");
+    public final static ELispSymbol NOBREAK_CHAR_ASCII_DISPLAY = new ELispSymbol("nobreak-char-ascii-display");
+    public final static ELispSymbol NOBREAK_CHAR_DISPLAY = new ELispSymbol("nobreak-char-display");
+    public final static ELispSymbol NOBREAK_HYPHEN = new ELispSymbol("nobreak-hyphen");
+    public final static ELispSymbol NOBREAK_SPACE = new ELispSymbol("nobreak-space");
+    public final static ELispSymbol OBJECT = new ELispSymbol("object");
+    public final static ELispSymbol OVERLAY_ARROW_BITMAP = new ELispSymbol("overlay-arrow-bitmap");
+    public final static ELispSymbol OVERLAY_ARROW_POSITION = new ELispSymbol("overlay-arrow-position");
+    public final static ELispSymbol OVERLAY_ARROW_STRING = new ELispSymbol("overlay-arrow-string");
+    public final static ELispSymbol OVERLAY_ARROW_VARIABLE_LIST = new ELispSymbol("overlay-arrow-variable-list");
+    public final static ELispSymbol OVERLINE_MARGIN = new ELispSymbol("overline-margin");
+    public final static ELispSymbol POINTER = new ELispSymbol("pointer");
+    public final static ELispSymbol POLY = new ELispSymbol("poly");
+    public final static ELispSymbol POSITION = new ELispSymbol("position");
+    public final static ELispSymbol PRE_REDISPLAY_FUNCTION = new ELispSymbol("pre-redisplay-function");
+    public final static ELispSymbol RAISE = new ELispSymbol("raise");
+    public final static ELispSymbol RECT = new ELispSymbol("rect");
+    public final static ELispSymbol REDISPLAY_ADHOC_SCROLL_IN_RESIZE_MINI_WINDOWS = new ELispSymbol("redisplay-adhoc-scroll-in-resize-mini-windows");
+    public final static ELispSymbol REDISPLAY_INTERNAL_XC_FUNCTIONX = new ELispSymbol("redisplay_internal (C function)");
+    public final static ELispSymbol REDISPLAY_SKIP_FONTIFICATION_ON_INPUT = new ELispSymbol("redisplay-skip-fontification-on-input");
+    public final static ELispSymbol REDISPLAY_SKIP_INITIAL_FRAME = new ELispSymbol("redisplay-skip-initial-frame");
+    public final static ELispSymbol REDISPLAY__ALL_WINDOWS_CAUSE = new ELispSymbol("redisplay--all-windows-cause");
+    public final static ELispSymbol REDISPLAY__INHIBIT_BIDI = new ELispSymbol("redisplay--inhibit-bidi");
+    public final static ELispSymbol REDISPLAY__MODE_LINES_CAUSE = new ELispSymbol("redisplay--mode-lines-cause");
+    public final static ELispSymbol RELATIVE = new ELispSymbol("relative");
+    public final static ELispSymbol RESIZE_MINI_WINDOWS = new ELispSymbol("resize-mini-windows");
+    public final static ELispSymbol RIGHT_MARGIN = new ELispSymbol("right-margin");
+    public final static ELispSymbol RIGHT_TO_LEFT = new ELispSymbol("right-to-left");
+    public final static ELispSymbol SCROLL_CONSERVATIVELY = new ELispSymbol("scroll-conservatively");
+    public final static ELispSymbol SCROLL_MARGIN = new ELispSymbol("scroll-margin");
+    public final static ELispSymbol SCROLL_MINIBUFFER_CONSERVATIVELY = new ELispSymbol("scroll-minibuffer-conservatively");
+    public final static ELispSymbol SCROLL_STEP = new ELispSymbol("scroll-step");
+    public final static ELispSymbol SET_MESSAGE_FUNCTION = new ELispSymbol("set-message-function");
+    public final static ELispSymbol SHOW_TRAILING_WHITESPACE = new ELispSymbol("show-trailing-whitespace");
+    public final static ELispSymbol SLICE = new ELispSymbol("slice");
+    public final static ELispSymbol SPACE = new ELispSymbol("space");
+    public final static ELispSymbol SPACE_WIDTH = new ELispSymbol("space-width");
+    public final static ELispSymbol TAB_BAR_BORDER = new ELispSymbol("tab-bar-border");
+    public final static ELispSymbol TAB_BAR_BUTTON_MARGIN = new ELispSymbol("tab-bar-button-margin");
+    public final static ELispSymbol TAB_BAR_BUTTON_RELIEF = new ELispSymbol("tab-bar-button-relief");
+    public final static ELispSymbol TAB_BAR__DRAGGING_IN_PROGRESS = new ELispSymbol("tab-bar--dragging-in-progress");
+    public final static ELispSymbol TEXT = new ELispSymbol("text");
+    public final static ELispSymbol TEXT_IMAGE_HORIZ = new ELispSymbol("text-image-horiz");
+    public final static ELispSymbol THIN_SPACE = new ELispSymbol("thin-space");
+    public final static ELispSymbol TOOL_BAR_BORDER = new ELispSymbol("tool-bar-border");
+    public final static ELispSymbol TOOL_BAR_BUTTON_MARGIN = new ELispSymbol("tool-bar-button-margin");
+    public final static ELispSymbol TOOL_BAR_BUTTON_RELIEF = new ELispSymbol("tool-bar-button-relief");
+    public final static ELispSymbol TOOL_BAR_MAX_LABEL_SIZE = new ELispSymbol("tool-bar-max-label-size");
+    public final static ELispSymbol TOOL_BAR_STYLE = new ELispSymbol("tool-bar-style");
+    public final static ELispSymbol TRAILING_WHITESPACE = new ELispSymbol("trailing-whitespace");
+    public final static ELispSymbol TRUNCATE_PARTIAL_WIDTH_WINDOWS = new ELispSymbol("truncate-partial-width-windows");
+    public final static ELispSymbol UNDERLINE_MINIMUM_OFFSET = new ELispSymbol("underline-minimum-offset");
+    public final static ELispSymbol UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT = new ELispSymbol("unibyte-display-via-language-environment");
+    public final static ELispSymbol VDRAG = new ELispSymbol("vdrag");
+    public final static ELispSymbol VISUAL = new ELispSymbol("visual");
+    public final static ELispSymbol VOID_TEXT_AREA_POINTER = new ELispSymbol("void-text-area-pointer");
+    public final static ELispSymbol WINDOW_SCROLL_FUNCTIONS = new ELispSymbol("window-scroll-functions");
+    public final static ELispSymbol WORD_WRAP_BY_CATEGORY = new ELispSymbol("word-wrap-by-category");
+    public final static ELispSymbol WRAP_PREFIX = new ELispSymbol("wrap-prefix");
+    public final static ELispSymbol X_STRETCH_CURSOR = new ELispSymbol("x-stretch-cursor");
+    public final static ELispSymbol ZERO_WIDTH = new ELispSymbol("zero-width");
+    private ELispSymbol[] xdispSymbols() {
+        return new ELispSymbol[]{
+                ARROW,
+                AUTO_HSCROLL_MODE,
+                AUTO_RAISE_TAB_BAR_BUTTONS,
+                AUTO_RAISE_TOOL_BAR_BUTTONS,
+                AUTO_RESIZE_TAB_BARS,
+                AUTO_RESIZE_TOOL_BARS,
+                BAR,
+                BIDI_INHIBIT_BPA,
+                BLINK_CURSOR_ALIST,
+                BOTH,
+                BOTH_HORIZ,
+                BOX,
+                BUFFER_POSITION,
+                CALIGN_TO,
+                CDATA,
+                CENTER,
+                CEVAL,
+                CFILE,
+                CIRCLE,
+                CLEAR_MESSAGE_FUNCTION,
+                CLOSE_TAB,
+                CMAP,
+                COMPOSITION_BREAK_AT_POINT,
+                CPOINTER,
+                CPROPERTIZE,
+                CRELATIVE_HEIGHT,
+                CRELATIVE_WIDTH,
+                CURRENT_LINE,
+                DEBUG_EARLY__MUTED,
+                DEBUG_END_POS,
+                DEBUG_ON_MESSAGE,
+                DISABLE_EVAL,
+                DISPLAY,
+                DISPLAY_FILL_COLUMN_INDICATOR,
+                DISPLAY_FILL_COLUMN_INDICATOR_CHARACTER,
+                DISPLAY_FILL_COLUMN_INDICATOR_COLUMN,
+                DISPLAY_HOURGLASS,
+                DISPLAY_LINE_NUMBERS,
+                DISPLAY_LINE_NUMBERS_CURRENT_ABSOLUTE,
+                DISPLAY_LINE_NUMBERS_DISABLE,
+                DISPLAY_LINE_NUMBERS_MAJOR_TICK,
+                DISPLAY_LINE_NUMBERS_MINOR_TICK,
+                DISPLAY_LINE_NUMBERS_OFFSET,
+                DISPLAY_LINE_NUMBERS_WIDEN,
+                DISPLAY_LINE_NUMBERS_WIDTH,
+                DISPLAY_PIXELS_PER_INCH,
+                DISPLAY_RAW_BYTES_AS_HEX,
+                DONT_CLEAR_MESSAGE,
+                DRAGGING,
+                DRAG_SOURCE,
+                DRAG_WITH_HEADER_LINE,
+                DRAG_WITH_MODE_LINE,
+                DRAG_WITH_TAB_LINE,
+                DROPPING,
+                EMPTY_BOX,
+                ESCAPE_GLYPH,
+                EVAL,
+                FILE_REMOTE_P,
+                FILL_COLUMN_INDICATOR,
+                FONTIFICATION_FUNCTIONS,
+                FONTIFIED,
+                FRAME_TITLE_FORMAT,
+                GLOBAL_MODE_STRING,
+                GLYPHLESS_CHAR,
+                GLYPHLESS_CHAR_DISPLAY,
+                GROW_ONLY,
+                HAND,
+                HBAR,
+                HDRAG,
+                HEX_CODE,
+                HIGHLIGHT_NONSELECTED_WINDOWS,
+                HOLLOW,
+                HOURGLASS,
+                HOURGLASS_DELAY,
+                HSCROLL_MARGIN,
+                HSCROLL_STEP,
+                ICON_TITLE_FORMAT,
+                IMAGE,
+                INHIBIT_BIDI_MIRRORING,
+                INHIBIT_EVAL_DURING_REDISPLAY,
+                INHIBIT_FREE_REALIZED_FACES,
+                INHIBIT_MENUBAR_UPDATE,
+                INHIBIT_MESSAGE,
+                INHIBIT_POINT_MOTION_HOOKS,
+                INHIBIT_REDISPLAY,
+                INHIBIT_TRY_CURSOR_MOVEMENT,
+                INHIBIT_TRY_WINDOW_ID,
+                INHIBIT_TRY_WINDOW_REUSING,
+                LAST_ARROW_POSITION,
+                LAST_ARROW_STRING,
+                LEFT_MARGIN,
+                LEFT_TO_RIGHT,
+                LINE_HEIGHT,
+                LINE_NUMBER,
+                LINE_NUMBER_CURRENT_LINE,
+                LINE_NUMBER_DISPLAY_LIMIT,
+                LINE_NUMBER_DISPLAY_LIMIT_WIDTH,
+                LINE_NUMBER_MAJOR_TICK,
+                LINE_NUMBER_MINOR_TICK,
+                LINE_PREFIX,
+                LONG,
+                LONG_LINE_OPTIMIZATIONS_IN_FONTIFICATION_FUNCTIONS,
+                MAKE_CURSOR_LINE_FULLY_VISIBLE,
+                MAKE_WINDOW_START_VISIBLE,
+                MARGIN,
+                MAXIMUM_SCROLL_MARGIN,
+                MAX_MINI_WINDOW_HEIGHT,
+                MAX_REDISPLAY_TICKS,
+                MENU_BAR_UPDATE_HOOK,
+                MENU_UPDATING_FRAME,
+                MESSAGES_BUFFER_MODE,
+                MESSAGES_BUFFER_NAME,
+                MESSAGE_LOG_MAX,
+                MESSAGE_TRUNCATE_LINES,
+                MODE_LINE_COMPACT,
+                MODE_LINE_DEFAULT_HELP_ECHO,
+                MOUSE_AUTOSELECT_WINDOW,
+                MOUSE_FINE_GRAINED_TRACKING,
+                MULTIPLE_FRAMES,
+                NHDRAG,
+                NOBREAK_CHAR_ASCII_DISPLAY,
+                NOBREAK_CHAR_DISPLAY,
+                NOBREAK_HYPHEN,
+                NOBREAK_SPACE,
+                OBJECT,
+                OVERLAY_ARROW_BITMAP,
+                OVERLAY_ARROW_POSITION,
+                OVERLAY_ARROW_STRING,
+                OVERLAY_ARROW_VARIABLE_LIST,
+                OVERLINE_MARGIN,
+                OVERRIDING_LOCAL_MAP,
+                OVERRIDING_TERMINAL_LOCAL_MAP,
+                POINTER,
+                POLY,
+                POSITION,
+                PRE_REDISPLAY_FUNCTION,
+                RAISE,
+                RECT,
+                REDISPLAY_ADHOC_SCROLL_IN_RESIZE_MINI_WINDOWS,
+                REDISPLAY_INTERNAL_XC_FUNCTIONX,
+                REDISPLAY_SKIP_FONTIFICATION_ON_INPUT,
+                REDISPLAY_SKIP_INITIAL_FRAME,
+                REDISPLAY__ALL_WINDOWS_CAUSE,
+                REDISPLAY__INHIBIT_BIDI,
+                REDISPLAY__MODE_LINES_CAUSE,
+                RELATIVE,
+                RESIZE_MINI_WINDOWS,
+                RIGHT_MARGIN,
+                RIGHT_TO_LEFT,
+                SCROLL_CONSERVATIVELY,
+                SCROLL_MARGIN,
+                SCROLL_MINIBUFFER_CONSERVATIVELY,
+                SCROLL_STEP,
+                SET_MESSAGE_FUNCTION,
+                SHOW_TRAILING_WHITESPACE,
+                SLICE,
+                SPACE,
+                SPACE_WIDTH,
+                TAB_BAR_BORDER,
+                TAB_BAR_BUTTON_MARGIN,
+                TAB_BAR_BUTTON_RELIEF,
+                TAB_BAR__DRAGGING_IN_PROGRESS,
+                TEXT,
+                TEXT_IMAGE_HORIZ,
+                THIN_SPACE,
+                TOOL_BAR_BORDER,
+                TOOL_BAR_BUTTON_MARGIN,
+                TOOL_BAR_BUTTON_RELIEF,
+                TOOL_BAR_MAX_LABEL_SIZE,
+                TOOL_BAR_STYLE,
+                TRAILING_WHITESPACE,
+                TRUNCATE_PARTIAL_WIDTH_WINDOWS,
+                UNDERLINE_MINIMUM_OFFSET,
+                UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT,
+                VDRAG,
+                VISUAL,
+                VOID_TEXT_AREA_POINTER,
+                WINDOW_SCROLL_FUNCTIONS,
+                WORD_WRAP_BY_CATEGORY,
+                WRAP_PREFIX,
+                X_STRETCH_CURSOR,
+                ZERO_WIDTH,
+        };
+    }
+    /* @end region="xdisp.c" */
 }

@@ -67,6 +67,9 @@ def extract_syms_section(
         syms_body = prune_func('keys_of_keyboard', syms_body)
     if fname == 'syms_of_coding':
         syms_body = prune_func('reset_coding_after_pdumper_load', syms_body)
+    if fname == 'syms_of_xdisp':
+        end = syms_body.find('\n}\n')
+        syms_body = syms_body[:end + 3]
     if f'{fname}_for_pdumper (void)' in syms_body:
         syms_body = prune_func(f'{fname}_for_pdumper', syms_body)
 
@@ -107,6 +110,7 @@ def exec_c_as_python(
         src: str,
         c_globals: typing.Dict[str, typing.Any],
         missing: typing.Callable[[str], typing.Any],
+        assign: typing.Callable[[typing.Any, typing.Any], typing.Any],
         prepocessors: typing.Optional[str] = None,
 ):
     if prepocessors is not None:
@@ -133,8 +137,8 @@ def exec_c_as_python(
             return missing(key)
         def __setitem__(self, k: typing.Any, v: typing.Any):
             nonlocal c_globals
-            c_globals[k] = v
-            return super(LazyDict, self).__setitem__(k, v)
+            alt = assign(k, v)
+            return super(LazyDict, self).__setitem__(k, alt)
 
     try:
         exec(src, LazyDict(c_globals))

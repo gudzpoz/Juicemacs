@@ -74,13 +74,18 @@ var ArrayList<List<String>> templateTasks = [
         ['Eval', 'eval.c'],
         ['FileIO', 'fileio.c'],
         ['Fns', 'fns.c'],
+        ['Frame', 'frame.c'],
         ['Keyboard', 'keyboard.c'],
         ['Keymap', 'keymap.c'],
         ['LRead', 'lread.c'],
         ['Print', 'print.c'],
         ['Process', 'process.c'],
         ['Search', 'search.c'],
+        ['Syntax', 'syntax.c'],
+        ['TextProp', 'textprop.c'],
         ['TimeFns', 'timefns.c'],
+        ['Window', 'window.c'],
+        ['XDisp', 'xdisp.c'],
         ['XFaces', 'xfaces.c'],
 ]
 var base = "src/main/java/party/iroiro/juicemacs/elisp"

@@ -1730,8 +1730,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void symbolValue(Object symbol) {
-            throw new UnsupportedOperationException();
+        public static Object symbolValue(ELispSymbol symbol) {
+            return symbol.getValue();
         }
     }
 
