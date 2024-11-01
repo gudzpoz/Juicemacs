@@ -566,12 +566,12 @@ class ELispLexer {
         }
         // Meta-prefix: ?\s-a => Bit annotated character
         int meta = mapMetaMask(escaped, inString);
-        if (inString && meta > 0x80) {
-            throw ELispSignals.invalidReadSyntax("Invalid modifier in string");
-        }
         if (meta != -1) {
             if (peekCodepoint() == '-') {
                 readCodepoint();
+                if (inString && meta > 0x80) {
+                    throw ELispSignals.invalidReadSyntax("Invalid modifier in string");
+                }
                 return meta | readChar(inString);
             } else if (escaped != 's') {
                 throw ELispSignals.invalidReadSyntax("Invalid modifier");

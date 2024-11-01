@@ -441,6 +441,10 @@ public class ELispLexerTest {
                 new Str(ELispString.from("\u001b")),
                 new EOF()
         ), lex("\"\\C-[\""));
+        assertEquals(Arrays.asList(
+                new Str(ELispString.from(" ")),
+                new EOF()
+        ), lex("\"\\s\""));
     }
 
     private static final String[] SYMBOL_TESTS = new String[]{
