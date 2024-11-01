@@ -135,7 +135,7 @@ public class ELispParser {
                     if (peek() instanceof Dot) {
                         // (a b . c)
                         read();
-                        object.setCdr(nextObject());
+                        tail.setCdr(nextObject());
                         if (!(read() instanceof ParenClose)) {
                             throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
@@ -198,10 +198,7 @@ public class ELispParser {
     }
 
     private ELispCons quote(ELispSymbol quote) throws IOException {
-        ELispCons cons = new ELispCons(quote);
-        ELispCons cdr = new ELispCons(nextObject());
-        cons.setCdr(cdr);
-        return cons;
+        return ELispCons.listOf(quote, nextObject());
     }
 
     private List<Object> readVector() throws IOException {

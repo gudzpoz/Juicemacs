@@ -25,7 +25,6 @@ public class ELispParserTest {
     }
 
     private Object read(String content) throws IOException {
-        context.initGlobal(null);
         return ELispParser.read(
                 Source.newBuilder("elisp", content, null).build()
         );
@@ -92,6 +91,8 @@ public class ELispParserTest {
         assertCons("`backquoted-expr", new String[]{"`", "backquoted-expr"});
         assertCons(",unquoted-symbol", new String[]{",", "unquoted-symbol"});
         assertCons(",@unquoted-symbol", new String[]{",@", "unquoted-symbol"});
+
+        assertEquals("(` (match (, val) , upat))", read("`(match ,val . ,upat)").toString());
     }
 
     @Test
