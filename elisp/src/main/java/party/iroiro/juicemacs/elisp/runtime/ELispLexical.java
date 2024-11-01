@@ -184,6 +184,9 @@ public final class ELispLexical {
                 spills = new ArrayList<>();
                 frame.setObject(SPILL_LIST_SLOT, spills);
             }
+            if (spills.size() > index - MAX_SLOTS) {
+                spills.subList(index - MAX_SLOTS, spills.size()).clear();
+            }
             spills.add(value);
             assert spills.size() + MAX_SLOTS == index + 1;
         }
