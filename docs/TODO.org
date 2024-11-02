@@ -1,5 +1,39 @@
 #+title: TODO
 
+* TODO [#B] Make functions mutable
+
+Currently in GNU Emacs 29, a function may be a =lambda/closure= cons:
+
+#+begin_src elisp :results value code
+  ;;; -*- lexical-binding: t -*-
+  (defalias 'my-func #'(lambda () 42))
+  (symbol-function 'my-func)
+#+end_src
+
+#+RESULTS:
+#+begin_src elisp
+(lambda nil 42)
+#+end_src
+
+With lexical binding, you will get =(closure (t) nil 42)= instead of =(lambda
+nil 42)=.
+
+Since it is a cons, you may modify it to change the function definition on the
+fly. For the GNU Emacs interpreter, since it literally evaluates the cons, it is
+fine. But for Truffle interpreters, which usually wants a static AST for better
+JIT performance, this is bad news.
+
+Currently, we don't bother checking whether each AST node needs update and the
+function may be considered immutable once the whole AST is constructed. (One
+exception is that we check at each cons node =(maybe-function arg1 ...)= whether
+the target function is changed so as to handle subroutines, functions as well as
+macros.) Also, with our interpreter, =(function (lambda ()))= produces =<a
+closure object>= instead of a cons, which is another behavioral difference.
+
+The current performance is pretty good and we might consider adding more checks
+to ensure a consistent behavior. But we will need some benchmark to ensure it
+does not slow down too much.
+
 * TODO [#B] Understanding Non-Bare Symbols
 
 I hope we can make all symbols bare.
@@ -38,6 +72,11 @@ Edit: See comments in =BuiltInKeymap.java= for what keymap is about.
 - [ ] Default values
 - [X] =map-keymap=
   - [X] =map-char-table=
+
+* TODO [#C] =module-info.java=
+
+IntelliJ always complains about =org.graalvm.truffle= not being read by
+=module-info.java=, despite the fact that the =require= line the line is there.
 
 * TODO [#C] Code conventions
 

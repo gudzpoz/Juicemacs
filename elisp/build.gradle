@@ -8,7 +8,7 @@ plugins {
 }
 
 ext {
-    truffleVersion = '24.1.0'
+    truffleVersion = '24.1.1'
 }
 
 dependencies {
@@ -103,7 +103,7 @@ templateTasks.each {
     tasks.register(templateTaskName) {
         description = "${input}"
         inputs.files input, templateScript, utilsScript, initExtractionScript
-        outputs.files target, context
+        outputs.files target, context, globals
         doLast {
            exec {
                 commandLine 'python', templateScript, input,
@@ -119,7 +119,7 @@ templateTasks.each {
     var firstTaskName = extractEmacsTasks[i]
     var secondTaskName = extractEmacsTasks[i + 1]
     tasks.named(secondTaskName) {
-        dependsOn tasks.named(firstTaskName)
+        mustRunAfter tasks.named(firstTaskName)
     }
 }
 
