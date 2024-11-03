@@ -12,29 +12,6 @@ public class BuiltInCoding extends ELispBuiltIns {
         return BuiltInCodingFactory.getFactories();
     }
 
-    public final static int CODING_CATEGORY_ISO_7 = 0;
-    public final static int CODING_CATEGORY_ISO_7_TIGHT = 1;
-    public final static int CODING_CATEGORY_ISO_8_1 = 2;
-    public final static int CODING_CATEGORY_ISO_8_2 = 3;
-    public final static int CODING_CATEGORY_ISO_7_ELSE = 4;
-    public final static int CODING_CATEGORY_ISO_8_ELSE = 5;
-    public final static int CODING_CATEGORY_UTF_8_AUTO = 6;
-    public final static int CODING_CATEGORY_UTF_8_NOSIG = 7;
-    public final static int CODING_CATEGORY_UTF_8_SIG = 8;
-    public final static int CODING_CATEGORY_UTF_16_AUTO = 9;
-    public final static int CODING_CATEGORY_UTF_16_BE = 10;
-    public final static int CODING_CATEGORY_UTF_16_LE = 11;
-    public final static int CODING_CATEGORY_UTF_16_BE_NOSIG = 12;
-    public final static int CODING_CATEGORY_UTF_16_LE_NOSIG = 13;
-    public final static int CODING_CATEGORY_CHARSET = 14;
-    public final static int CODING_CATEGORY_SJIS = 15;
-    public final static int CODING_CATEGORY_BIG5 = 16;
-    public final static int CODING_CATEGORY_CCL = 17;
-    public final static int CODING_CATEGORY_EMACS_MULE = 18;
-    public final static int CODING_CATEGORY_RAW_TEXT = 19;
-    public final static int CODING_CATEGORY_UNDECIDED = 20;
-    public final static int CODING_CATEGORY_MAX = 21;
-
     /**
      * <pre>
      * Return t if OBJECT is nil or a coding-system.

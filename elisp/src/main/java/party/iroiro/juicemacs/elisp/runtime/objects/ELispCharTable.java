@@ -6,6 +6,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import java.util.*;
 import java.util.function.BiConsumer;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asSym;
+
 /**
  * Char table object
  *
@@ -82,7 +84,8 @@ import java.util.function.BiConsumer;
  * See there instead.
  * </p>
  */
-public class ELispCharTable extends AbstractELispVector {
+public sealed class ELispCharTable extends ELispVectorLike<Object>
+        permits ELispSyntaxTable {
     public final static int CHARTAB_SIZE_BITS_0 = 6;
     public final static int CHARTAB_SIZE_BITS_1 = 4;
     public final static int CHARTAB_SIZE_BITS_2 = 5;
@@ -103,8 +106,10 @@ public class ELispCharTable extends AbstractELispVector {
     public final static int CHARTAB_STANDARD_SLOTS = CONTENT_BASE_SLOT + (1 << CHARTAB_SIZE_BITS_0);
     public final static int SUB_CONTENT_BASE_SLOT = 2;
 
+    private final Object[] inner;
+
     private ELispCharTable(List<Object> inner) {
-        super(inner.toArray());
+        this.inner = inner instanceof ELispCharTable charTable ? charTable.inner.clone() : inner.toArray();
     }
 
     public ELispCharTable(Object init, int extraSlots) {
@@ -116,35 +121,35 @@ public class ELispCharTable extends AbstractELispVector {
     }
 
     public void setDefault(Object value) {
-        super.set(DEFAULT_VALUT_SLOT, value);
+        inner[DEFAULT_VALUT_SLOT] = value;
     }
 
     public Object getParent() {
-        return super.get(PARENT_SLOT);
+        return inner[PARENT_SLOT];
     }
 
     public void setParent(Object parent) {
-        super.set(PARENT_SLOT, parent);
+        inner[PARENT_SLOT] = parent;
     }
 
     public ELispSymbol getPurpose() {
-        return (ELispSymbol) super.get(PURPOSE_SLOT);
+        return asSym(inner[PURPOSE_SLOT]);
     }
 
     public void setPurpose(ELispSymbol purpose) {
-        super.set(PURPOSE_SLOT, purpose);
+        inner[PURPOSE_SLOT] = purpose;
     }
 
     public Object getAsciiSlot() {
-        return super.get(ASCII_SLOT);
+        return inner[ASCII_SLOT];
     }
 
     public void setAsciiSlot(Object ascii) {
-        super.set(ASCII_SLOT, ascii);
+        inner[ASCII_SLOT] = ascii;
     }
 
     private Object getAsciiValue() {
-        Object content = super.get(CONTENT_BASE_SLOT);
+        Object content = inner[CONTENT_BASE_SLOT];
         if (!(content instanceof SubTable depth1)) {
             return content;
         }
@@ -156,11 +161,11 @@ public class ELispCharTable extends AbstractELispVector {
     }
 
     private Object getContentSlot(int tableIndex) {
-        return super.get(tableIndex + CONTENT_BASE_SLOT);
+        return inner[tableIndex + CONTENT_BASE_SLOT];
     }
 
     private void setContentSlot(int tableIndex, Object content) {
-        super.set(tableIndex + CONTENT_BASE_SLOT, content);
+        inner[tableIndex + CONTENT_BASE_SLOT] = content;
     }
 
     private SubTable getSubTable(int tableIndex) {
@@ -188,9 +193,22 @@ public class ELispCharTable extends AbstractELispVector {
     }
 
     @Override
-    public Object set(int index, Object value) {
-        setChar(index, value);
-        return false;
+    public void setUntyped(int i, Object object) {
+        setChar(i, object);
+    }
+
+    @Override
+    public int size() {
+        return MAX_CHAR + 1;
+    }
+
+    public int slots() {
+        return inner.length;
+    }
+
+    @Override
+    public boolean lispEquals(Object other) {
+        return equals(other);
     }
 
     public void setChar(int codepoint, Object value) {
@@ -255,19 +273,19 @@ public class ELispCharTable extends AbstractELispVector {
         if (n < 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        return super.get(n + CHARTAB_STANDARD_SLOTS);
+        return inner[n + CHARTAB_STANDARD_SLOTS];
     }
 
     public void setExtra(int n, Object value) {
         if (n < 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        super.set(n + CHARTAB_STANDARD_SLOTS, value);
+        inner[n + CHARTAB_STANDARD_SLOTS] = value;
     }
 
     @Override
     public String toString() {
-        return toStringHelper("#^[", "]");
+        return vectorToStringHelper("#^[", "]", Arrays.asList(inner).iterator());
     }
 
     public static ELispCharTable create(List<Object> objects) {

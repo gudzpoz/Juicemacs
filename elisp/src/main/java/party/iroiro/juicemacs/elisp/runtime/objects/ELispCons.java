@@ -271,9 +271,18 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     public static class ListBuilder {
         @Nullable
-        private ELispCons cons = null;
+        private ELispCons cons;
         @Nullable
-        private ELispCons tail = null;
+        private ELispCons tail;
+
+        public ListBuilder() {
+            this(null);
+        }
+
+        public ListBuilder(@Nullable ELispCons object) {
+            cons = object;
+            tail = object;
+        }
 
         public ListBuilder add(Object obj) {
             if (tail == null) {
@@ -291,7 +300,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             return cons == null ? false : cons;
         }
 
-        public Object build(Object tailCdr) {
+        public Object buildWithCdr(Object tailCdr) {
             if (tail != null) {
                 this.tail.setCdr(tailCdr);
                 //noinspection DataFlowIssue: tail != null => cons != null

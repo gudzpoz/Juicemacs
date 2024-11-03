@@ -436,7 +436,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     builder.add(iterator.next());
                 }
             }
-            return builder.build(sequences[sequences.length - 1]);
+            return builder.buildWithCdr(sequences[sequences.length - 1]);
         }
     }
 
@@ -1328,12 +1328,12 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static ELispCons plistPut(Object plist, Object prop, Object val, Object predicate) {
             if (ELispSymbol.isNil(predicate)) {
-                return plistPut(plist, prop, val);
+                return plistPutEq(plist, prop, val);
             }
             throw new UnsupportedOperationException();
         }
 
-        private static ELispCons plistPut(Object plist, Object prop, Object val) {
+        private static ELispCons plistPutEq(Object plist, Object prop, Object val) {
             if (ELispSymbol.isNil(plist)) {
                 return ELispCons.listOf(prop, val);
             }

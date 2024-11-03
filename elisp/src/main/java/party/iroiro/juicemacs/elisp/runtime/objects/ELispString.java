@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.lodborg.intervaltree.IntegerInterval;
+import com.lodborg.intervaltree.Interval;
 import com.lodborg.intervaltree.IntervalTree;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -15,6 +16,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
@@ -84,7 +86,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         Object propertyList;
 
         Properties(int start, int end, Object propertyList) {
-            super(start, end, Bounded.CLOSED_LEFT);
+            super(start, end, Bounded.CLOSED_LEFT); // NOPMD
             this.propertyList = propertyList;
         }
 
@@ -153,7 +155,8 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
 
     public void forRangeProperties(int i, Consumer<Object> propertiesConsumer) {
-        intervals.query(i).forEach((props) ->
+        Set<Interval<Integer>> query = intervals.query(i); // NOPMD
+        query.forEach((props) ->
                 propertiesConsumer.accept(((Properties) props).propertyList));
     }
 
@@ -191,7 +194,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         return value.asTruffleStringUncached(ENCODING);
     }
     @ExportMessage
-    public String toDisplayString(boolean allowSideEffects) {
+    public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return display();
     }
     @ExportMessage

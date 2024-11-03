@@ -2,9 +2,7 @@
 
 import argparse
 import dataclasses
-import json
 import re
-import typing
 
 
 from pathlib import Path
@@ -33,7 +31,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument('filename')
 parser.add_argument('-j', '--java', required=True)
 parser.add_argument('-c', '--context', required=True)
-parser.add_argument('-b', '--buffer', required=True)
 parser.add_argument('-g', '--globals', required=True)
 args = parser.parse_args()
 
@@ -483,7 +480,6 @@ def replace_or_insert_region(contents: str, marker: str, update: str):
         contents,
         marker,
         update,
-        'extract-emacs-src.py',
     )
 
 
@@ -536,10 +532,15 @@ with open(args.globals, 'r') as f:
         c_file,
         ''.join(
             f'    public static {v.format()};\n'
-            for v in variables
+            for v in variables if v.lisp_type != 'BVAR'
         ) + f'''
     private static void {stem}Vars() {{
-{'\n'.join(f'        {v.init()};' for v in variables)}
+{'\n'.join(f'        {v.init()};'
+           for v in variables if v.lisp_type != 'BVAR')
+           }{
+               '\n        ELispBuffer.initBufferLocalVars();'
+               if stem == 'buffer' else ''
+            }
     }}
     private static void {stem}PostInitVars() {{
 {'\n'.join(f'        {line}' for line in var_post_inits)}

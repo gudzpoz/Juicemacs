@@ -1,11 +1,16 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
 import java.util.AbstractList;
+import java.util.Iterator;
 import java.util.List;
 
-public abstract class ELispVectorLike<T> extends AbstractList<T> implements List<T>, ELispValue {
+@ExportLibrary(InteropLibrary.class)
+public abstract class ELispVectorLike<T> extends AbstractList<T> implements List<T>, ELispValue, TruffleObject {
     public abstract void setUntyped(int i, Object object);
 
     @Override
@@ -30,14 +35,21 @@ public abstract class ELispVectorLike<T> extends AbstractList<T> implements List
         return this == o;
     }
 
-    protected String toStringHelper(String prefix, String suffix) {
+    protected static String vectorToStringHelper(String prefix, String suffix, Iterator<?> iterator) {
         StringBuilder builder = new StringBuilder(prefix);
-        for (int i = 0; i < size(); i++) {
-            builder.append(ELispValue.display(get(i)));
-            if (i < size() - 1) {
-                builder.append(" ");
-            }
+        if (iterator.hasNext()) {
+            builder.append(ELispValue.display(iterator.next()));
+        }
+        while (iterator.hasNext()) {
+            builder.append(" ");
+            builder.append(ELispValue.display(iterator.next()));
         }
         return builder.append(suffix).toString();
     }
+
+    protected String toStringHelper(String prefix, String suffix) {
+        return vectorToStringHelper(prefix, suffix, iterator());
+    }
+
+    //#region
 }

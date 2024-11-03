@@ -8,13 +8,14 @@ plugins {
 }
 
 ext {
+    pmdVersion = '7.7.0'
     truffleVersion = '24.1.1'
 }
 
 dependencies {
     pmd project(':commons:pmd-no-int')
-    pmd 'net.sourceforge.pmd:pmd-ant:7.6.0'
-    pmd 'net.sourceforge.pmd:pmd-java:7.6.0'
+    pmd "net.sourceforge.pmd:pmd-ant:${pmdVersion}"
+    pmd "net.sourceforge.pmd:pmd-java:${pmdVersion}"
 
     implementation 'org.apache.commons:commons-text:1.12.0'
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
@@ -32,7 +33,7 @@ dependencies {
 }
 
 pmd {
-    toolVersion = '7.6.0'
+    toolVersion = pmdVersion
     incrementalAnalysis = true
     ruleSetFiles = files(
             'scripts/pmd-truffle-practices.xml',
@@ -97,7 +98,6 @@ templateTasks.each {
     var input = file("emacs/src/${it[1]}")
     var clazz = "BuiltIn${it[0]}"
     var target = file("${base}/forms/${clazz}.java")
-    var buffer = file("${base}/runtime/ELispBuffer.java")
     var globals = file("${base}/runtime/ELispGlobals.java")
     var templateTaskName = "emacsGen${it[0]}"
     tasks.register(templateTaskName) {
@@ -107,12 +107,28 @@ templateTasks.each {
         doLast {
            exec {
                 commandLine 'python', templateScript, input,
-                        '-j', target, '-c', context, '-g', globals, '-b', buffer
+                        '-j', target, '-c', context, '-g', globals
             }
         }
     }
     extractEmacsTasks.add(templateTaskName)
 }
+
+var fieldExtractionScript = file("scripts/extract_emacs_fields.py")
+var constants = file("${base}/forms/ELispBuiltInConstants.java")
+var buffer = file("${base}/runtime/objects/ELispBuffer.java")
+tasks.register('emacsGenStruct') {
+    description = 'Constants from enums and buffer-local vars'
+    inputs.files initExtractionScript, utilsScript, fieldExtractionScript
+    outputs.files constants, buffer
+    doLast {
+        exec {
+            commandLine 'python', fieldExtractionScript,  file("emacs/src/"),
+                    constants, '-b', buffer
+        }
+    }
+}
+extractEmacsTasks.add('emacsGenStruct')
 
 // Force sequential evaluation
 (0..<extractEmacsTasks.size() - 1).each { i ->

@@ -118,7 +118,7 @@ public class ELispParserTest {
                 ).build()
         );
         assertSame(NIL, parser.nextLisp());
-        assertTrue(parser.getLexicalBinding());
+        assertTrue(parser.isLexicallyBound());
     }
 
     @Test
@@ -180,7 +180,8 @@ public class ELispParserTest {
     public void testCharTables() throws IOException {
         String charTableString = "#^[" + "t ".repeat(ELispCharTable.CHARTAB_STANDARD_SLOTS) + "]";
         ELispCharTable table = assertInstanceOf(ELispCharTable.class, read(charTableString));
-        assertEquals(ELispCharTable.CHARTAB_STANDARD_SLOTS, table.size());
+        assertEquals(ELispCharTable.CHARTAB_STANDARD_SLOTS, table.slots());
+        assertEquals(ELispCharTable.MAX_CHAR + 1, table.size());
         table.forEach((ele) -> assertSame(T, ele));
         String subTableString = "#^^[1 1024 " + "t ".repeat(1 << ELispCharTable.CHARTAB_SIZE_BITS_1) + "]";
         ELispCharTable.SubTable sub = assertInstanceOf(ELispCharTable.SubTable.class, read(subTableString));

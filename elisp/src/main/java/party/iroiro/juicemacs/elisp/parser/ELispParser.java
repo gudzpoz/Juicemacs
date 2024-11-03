@@ -68,7 +68,7 @@ public class ELispParser {
         return token;
     }
 
-    public boolean getLexicalBinding() {
+    public boolean isLexicallyBound() {
         return lexicalBinding;
     }
 
@@ -130,12 +130,18 @@ public class ELispParser {
                     yield false;
                 }
                 ELispCons object = new ELispCons(nextObject());
-                ELispCons tail = object;
+                ELispCons.ListBuilder builder = new ELispCons.ListBuilder(object);
                 while (!(peek() instanceof ParenClose)) {
                     if (peek() instanceof Dot) {
-                        // (a b . c)
+                        // (a b . ???
                         read();
-                        tail.setCdr(nextObject());
+                        if (peek() instanceof ParenClose) {
+                            // (a b .) -> (a b \.)
+                            builder.add(ELispContext.intern("."));
+                            break;
+                        }
+                        // (a b . c)
+                        builder.buildWithCdr(nextObject());
                         if (!(read() instanceof ParenClose)) {
                             throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
@@ -143,8 +149,7 @@ public class ELispParser {
                         object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
                         yield object;
                     }
-                    tail.setCdr(new ELispCons(nextObject()));
-                    tail = (ELispCons) tail.cdr();
+                    builder.add(nextObject());
                 }
                 read();
                 object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
@@ -242,7 +247,7 @@ public class ELispParser {
             expressions.add(parser.nextLisp());
         }
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
-        ELispExpressionNode expr = valueToExpression(expressions.toArray(), parser.getLexicalBinding());
+        ELispExpressionNode expr = valueToExpression(expressions.toArray(), parser.isLexicallyBound());
         source = Source.newBuilder(source)
                 .content(Source.CONTENT_NONE)
                 .build();

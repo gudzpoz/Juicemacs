@@ -29,7 +29,7 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
         throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
     }
 
-    public static long asLong(Object value, long left, long right) {
+    public static long asRanged(Object value, long left, long right) {
         long i = asLong(value);
         if (i < left || i > right) {
             throw ELispSignals.argsOutOfRange(value, left, right);

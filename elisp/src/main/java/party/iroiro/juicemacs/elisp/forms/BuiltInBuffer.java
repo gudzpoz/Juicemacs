@@ -3,6 +3,8 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import java.util.List;
 
@@ -134,8 +136,13 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetBufferCreate extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getBufferCreate(Object bufferOrName, Object inhibitBufferHooks) {
-            throw new UnsupportedOperationException();
+        public static ELispBuffer getBufferCreate(Object bufferOrName, Object inhibitBufferHooks) {
+            // TODO:
+            ELispBuffer buffer = new ELispBuffer();
+            if (bufferOrName instanceof ELispString s) {
+                buffer.setName(s);
+            }
+            return buffer;
         }
     }
 
@@ -576,6 +583,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @Specialization
         public static Object setBuffer(Object bufferOrName) {
             // TODO: Real buffers
+            if (bufferOrName instanceof ELispBuffer buffer) {
+                CURRENT_BUFFER.setValue(buffer);
+            }
             return CURRENT_BUFFER.getValue();
         }
     }

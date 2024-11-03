@@ -59,8 +59,6 @@ public final class ELispContext {
     }
 
     public void initGlobal(ELispLanguage language) {
-        CURRENT_BUFFER.setDefaultValue(new ELispBuffer());
-
         initSymbols(allocSymbols());
         initSymbols(bufferSymbols());
         initSymbols(callintSymbols());
@@ -151,7 +149,7 @@ public final class ELispContext {
         }
     }
 
-    /* @generated region="data.c" by="extract-emacs-src.py" */
+    //#region data.c
     public final static ELispSymbol AREF = new ELispSymbol("aref");
     public final static ELispSymbol ARGS_OUT_OF_RANGE = new ELispSymbol("args-out-of-range");
     public final static ELispSymbol ARITH_ERROR = new ELispSymbol("arith-error");
@@ -435,8 +433,8 @@ public final class ELispContext {
                 XWIDGET_VIEW,
         };
     }
-    /* @end region="data.c" */
-    /* @generated region="lread.c" by="extract-emacs-src.py" */
+    //#endregion data.c
+    //#region lread.c
     public final static ELispSymbol AFTER_LOAD_ALIST = new ELispSymbol("after-load-alist");
     public final static ELispSymbol ASCII_CHARACTER = new ELispSymbol("ascii-character");
     public final static ELispSymbol BACKQUOTE = new ELispSymbol("`");
@@ -564,8 +562,8 @@ public final class ELispContext {
                 WEAKNESS,
         };
     }
-    /* @end region="lread.c" */
-    /* @generated region="comp.c" by="extract-emacs-src.py" */
+    //#endregion lread.c
+    //#region comp.c
     public final static ELispSymbol ADD1 = new ELispSymbol("1+");
     public final static ELispSymbol ASSUME = new ELispSymbol("assume");
     public final static ELispSymbol CALL = new ELispSymbol("call");
@@ -726,8 +724,8 @@ public final class ELispContext {
                 WRONG_REGISTER_SUBR_CALL,
         };
     }
-    /* @end region="comp.c" */
-    /* @generated region="process.c" by="extract-emacs-src.py" */
+    //#endregion comp.c
+    //#region process.c
     public final static ELispSymbol ALL = new ELispSymbol("all");
     public final static ELispSymbol ARGS = new ELispSymbol("args");
     public final static ELispSymbol CBUFFER = new ELispSymbol(":buffer");
@@ -948,8 +946,8 @@ public final class ELispContext {
                 VSIZE,
         };
     }
-    /* @end region="process.c" */
-    /* @generated region="eval.c" by="extract-emacs-src.py" */
+    //#endregion process.c
+    //#region eval.c
     public final static ELispSymbol AND_OPTIONAL = new ELispSymbol("&optional");
     public final static ELispSymbol AND_REST = new ELispSymbol("&rest");
     public final static ELispSymbol AUTOLOAD = new ELispSymbol("autoload");
@@ -1028,8 +1026,8 @@ public final class ELispContext {
                 SIGNAL_HOOK_FUNCTION,
         };
     }
-    /* @end region="eval.c" */
-    /* @generated region="fns.c" by="extract-emacs-src.py" */
+    //#endregion eval.c
+    //#region fns.c
     public final static ELispSymbol CIN_PLACE = new ELispSymbol(":in-place");
     public final static ELispSymbol CKEY = new ELispSymbol(":key");
     public final static ELispSymbol CLESSP = new ELispSymbol(":lessp");
@@ -1136,8 +1134,8 @@ public final class ELispContext {
                 Y_OR_N_P,
         };
     }
-    /* @end region="fns.c" */
-    /* @generated region="chartab.c" by="extract-emacs-src.py" */
+    //#endregion fns.c
+    //#region chartab.c
     public final static ELispSymbol CHAR_CODE_PROPERTY_ALIST = new ELispSymbol("char-code-property-alist");
     public final static ELispSymbol CHAR_CODE_PROPERTY_TABLE = new ELispSymbol("char-code-property-table");
     private ELispSymbol[] chartabSymbols() {
@@ -1146,8 +1144,8 @@ public final class ELispContext {
                 CHAR_CODE_PROPERTY_TABLE,
         };
     }
-    /* @end region="chartab.c" */
-    /* @generated region="alloc.c" by="extract-emacs-src.py" */
+    //#endregion chartab.c
+    //#region alloc.c
     public final static ELispSymbol ALLOC = new ELispSymbol("alloc");
     public final static ELispSymbol AUTOMATIC_GC = new ELispSymbol("Automatic GC");
     public final static ELispSymbol BUFFERS = new ELispSymbol("buffers");
@@ -1218,8 +1216,8 @@ public final class ELispContext {
                 VECTOR_SLOTS,
         };
     }
-    /* @end region="alloc.c" */
-    /* @generated region="charset.c" by="extract-emacs-src.py" */
+    //#endregion alloc.c
+    //#region charset.c
     public final static ELispSymbol ASCII = new ELispSymbol("ascii");
     public final static ELispSymbol CHARSETP = new ELispSymbol("charsetp");
     public final static ELispSymbol CHARSET_LIST = new ELispSymbol("charset-list");
@@ -1246,8 +1244,8 @@ public final class ELispContext {
                 UNICODE,
         };
     }
-    /* @end region="charset.c" */
-    /* @generated region="fileio.c" by="extract-emacs-src.py" */
+    //#endregion charset.c
+    //#region fileio.c
     public final static ELispSymbol ACCESS_FILE = new ELispSymbol("access-file");
     public final static ELispSymbol ADD_NAME_TO_FILE = new ELispSymbol("add-name-to-file");
     public final static ELispSymbol AFTER_INSERT_FILE_FUNCTIONS = new ELispSymbol("after-insert-file-functions");
@@ -1415,8 +1413,8 @@ public final class ELispContext {
                 WRITE_REGION_POST_ANNOTATION_FUNCTION,
         };
     }
-    /* @end region="fileio.c" */
-    /* @generated region="editfns.c" by="extract-emacs-src.py" */
+    //#endregion fileio.c
+    //#region editfns.c
     public final static ELispSymbol BINARY_AS_UNSIGNED = new ELispSymbol("binary-as-unsigned");
     public final static ELispSymbol BOUNDARY = new ELispSymbol("boundary");
     public final static ELispSymbol BUFFER_ACCESS_FONTIFIED_PROPERTY = new ELispSymbol("buffer-access-fontified-property");
@@ -1449,8 +1447,8 @@ public final class ELispContext {
                 WALL,
         };
     }
-    /* @end region="editfns.c" */
-    /* @generated region="emacs.c" by="extract-emacs-src.py" */
+    //#endregion editfns.c
+    //#region emacs.c
     public final static ELispSymbol AFTER_INIT_TIME = new ELispSymbol("after-init-time");
     public final static ELispSymbol BEFORE_INIT_TIME = new ELispSymbol("before-init-time");
     public final static ELispSymbol COMMAND_LINE_ARGS = new ELispSymbol("command-line-args");
@@ -1510,8 +1508,8 @@ public final class ELispContext {
                 SYSTEM_TYPE,
         };
     }
-    /* @end region="emacs.c" */
-    /* @generated region="search.c" by="extract-emacs-src.py" */
+    //#endregion emacs.c
+    //#region search.c
     public final static ELispSymbol INHIBIT_CHANGING_MATCH_DATA = new ELispSymbol("inhibit-changing-match-data");
     public final static ELispSymbol INVALID_REGEXP = new ELispSymbol("invalid-regexp");
     public final static ELispSymbol SEARCH_FAILED = new ELispSymbol("search-failed");
@@ -1526,31 +1524,58 @@ public final class ELispContext {
                 USER_SEARCH_FAILED,
         };
     }
-    /* @end region="search.c" */
-    /* @generated region="buffer.c" by="extract-emacs-src.py" */
+    //#endregion search.c
+    //#region buffer.c
+    public final static ELispSymbol ABBREV_MODE = new ELispSymbol("abbrev-mode");
     public final static ELispSymbol AFTER_CHANGE_FUNCTIONS = new ELispSymbol("after-change-functions");
     public final static ELispSymbol AFTER_STRING = new ELispSymbol("after-string");
     public final static ELispSymbol AUTOSAVED = new ELispSymbol("autosaved");
+    public final static ELispSymbol AUTO_FILL_FUNCTION = new ELispSymbol("auto-fill-function");
     public final static ELispSymbol BEFORE_CHANGE_FUNCTIONS = new ELispSymbol("before-change-functions");
     public final static ELispSymbol BEFORE_STRING = new ELispSymbol("before-string");
+    public final static ELispSymbol BIDI_DISPLAY_REORDERING = new ELispSymbol("bidi-display-reordering");
+    public final static ELispSymbol BIDI_PARAGRAPH_DIRECTION = new ELispSymbol("bidi-paragraph-direction");
+    public final static ELispSymbol BIDI_PARAGRAPH_SEPARATE_RE = new ELispSymbol("bidi-paragraph-separate-re");
+    public final static ELispSymbol BIDI_PARAGRAPH_START_RE = new ELispSymbol("bidi-paragraph-start-re");
+    public final static ELispSymbol BUFFER_AUTO_SAVE_FILE_FORMAT = new ELispSymbol("buffer-auto-save-file-format");
+    public final static ELispSymbol BUFFER_AUTO_SAVE_FILE_NAME = new ELispSymbol("buffer-auto-save-file-name");
+    public final static ELispSymbol BUFFER_BACKED_UP = new ELispSymbol("buffer-backed-up");
+    public final static ELispSymbol BUFFER_DISPLAY_COUNT = new ELispSymbol("buffer-display-count");
+    public final static ELispSymbol BUFFER_DISPLAY_TABLE = new ELispSymbol("buffer-display-table");
+    public final static ELispSymbol BUFFER_DISPLAY_TIME = new ELispSymbol("buffer-display-time");
+    public final static ELispSymbol BUFFER_FILE_FORMAT = new ELispSymbol("buffer-file-format");
     public final static ELispSymbol BUFFER_FILE_NUMBER = new ELispSymbol("buffer-file-number");
+    public final static ELispSymbol BUFFER_FILE_TRUENAME = new ELispSymbol("buffer-file-truename");
+    public final static ELispSymbol BUFFER_INVISIBILITY_SPEC = new ELispSymbol("buffer-invisibility-spec");
     public final static ELispSymbol BUFFER_LIST_UPDATE_HOOK = new ELispSymbol("buffer-list-update-hook");
+    public final static ELispSymbol BUFFER_SAVED_SIZE = new ELispSymbol("buffer-saved-size");
     public final static ELispSymbol BUFFER_SAVE_WITHOUT_QUERY = new ELispSymbol("buffer-save-without-query");
     public final static ELispSymbol BUFFER_STALE_FUNCTION = new ELispSymbol("buffer-stale-function");
     public final static ELispSymbol BUFFER_UNDO_LIST = new ELispSymbol("buffer-undo-list");
+    public final static ELispSymbol CACHE_LONG_SCANS = new ELispSymbol("cache-long-scans");
     public final static ELispSymbol CASE_FOLD_SEARCH = new ELispSymbol("case-fold-search");
     public final static ELispSymbol CHANGE_MAJOR_MODE_HOOK = new ELispSymbol("change-major-mode-hook");
     public final static ELispSymbol CHOICE = new ELispSymbol("choice");
     public final static ELispSymbol CLONE_INDIRECT_BUFFER_HOOK = new ELispSymbol("clone-indirect-buffer-hook");
+    public final static ELispSymbol CTL_ARROW = new ELispSymbol("ctl-arrow");
+    public final static ELispSymbol CURSOR_IN_NON_SELECTED_WINDOWS = new ELispSymbol("cursor-in-non-selected-windows");
+    public final static ELispSymbol DEFAULT_DIRECTORY = new ELispSymbol("default-directory");
     public final static ELispSymbol DELETE_AUTO_SAVE_FILES = new ELispSymbol("delete-auto-save-files");
     public final static ELispSymbol DELETE_AUTO_SAVE_FILE_IF_NECESSARY = new ELispSymbol("delete-auto-save-file-if-necessary");
+    public final static ELispSymbol ENABLE_MULTIBYTE_CHARACTERS = new ELispSymbol("enable-multibyte-characters");
     public final static ELispSymbol EVAPORATE = new ELispSymbol("evaporate");
+    public final static ELispSymbol FILL_COLUMN = new ELispSymbol("fill-column");
     public final static ELispSymbol FIRST_CHANGE_HOOK = new ELispSymbol("first-change-hook");
     public final static ELispSymbol FRACTION = new ELispSymbol("fraction");
+    public final static ELispSymbol FRINGES_OUTSIDE_MARGINS = new ELispSymbol("fringes-outside-margins");
+    public final static ELispSymbol FRINGE_CURSOR_ALIST = new ELispSymbol("fringe-cursor-alist");
+    public final static ELispSymbol FRINGE_INDICATOR_ALIST = new ELispSymbol("fringe-indicator-alist");
     public final static ELispSymbol FUNDAMENTAL_MODE = new ELispSymbol("fundamental-mode");
     public final static ELispSymbol GET_FILE_BUFFER = new ELispSymbol("get-file-buffer");
     public final static ELispSymbol GET_SCRATCH_BUFFER_CREATE = new ELispSymbol("get-scratch-buffer-create");
     public final static ELispSymbol HORIZONTAL_SCROLL_BAR = new ELispSymbol("horizontal-scroll-bar");
+    public final static ELispSymbol INDICATE_BUFFER_BOUNDARIES = new ELispSymbol("indicate-buffer-boundaries");
+    public final static ELispSymbol INDICATE_EMPTY_LINES = new ELispSymbol("indicate-empty-lines");
     public final static ELispSymbol INHIBIT_READ_ONLY = new ELispSymbol("inhibit-read-only");
     public final static ELispSymbol INITIAL_MAJOR_MODE = new ELispSymbol("initial-major-mode");
     public final static ELispSymbol INSERT_BEHIND_HOOKS = new ELispSymbol("insert-behind-hooks");
@@ -1561,49 +1586,99 @@ public final class ELispContext {
     public final static ELispSymbol KILL_BUFFER__POSSIBLY_SAVE = new ELispSymbol("kill-buffer--possibly-save");
     public final static ELispSymbol LARGE_HSCROLL_THRESHOLD = new ELispSymbol("large-hscroll-threshold");
     public final static ELispSymbol LEFT = new ELispSymbol("left");
+    public final static ELispSymbol LEFT_FRINGE_WIDTH = new ELispSymbol("left-fringe-width");
+    public final static ELispSymbol LEFT_MARGIN_WIDTH = new ELispSymbol("left-margin-width");
+    public final static ELispSymbol LOCAL_ABBREV_TABLE = new ELispSymbol("local-abbrev-table");
+    public final static ELispSymbol LOCAL_MINOR_MODES = new ELispSymbol("local-minor-modes");
     public final static ELispSymbol LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT = new ELispSymbol("long-line-optimizations-bol-search-limit");
     public final static ELispSymbol LONG_LINE_OPTIMIZATIONS_REGION_SIZE = new ELispSymbol("long-line-optimizations-region-size");
     public final static ELispSymbol LONG_LINE_THRESHOLD = new ELispSymbol("long-line-threshold");
+    public final static ELispSymbol MAJOR_MODE = new ELispSymbol("major-mode");
+    public final static ELispSymbol MARK_ACTIVE = new ELispSymbol("mark-active");
     public final static ELispSymbol MODE_CLASS = new ELispSymbol("mode-class");
+    public final static ELispSymbol MODE_NAME = new ELispSymbol("mode-name");
     public final static ELispSymbol MODIFICATION_HOOKS = new ELispSymbol("modification-hooks");
     public final static ELispSymbol OVERLAYP = new ELispSymbol("overlayp");
     public final static ELispSymbol OVERWRITE_MODE = new ELispSymbol("overwrite-mode");
     public final static ELispSymbol PERMANENT_LOCAL = new ELispSymbol("permanent-local");
     public final static ELispSymbol PERMANENT_LOCAL_HOOK = new ELispSymbol("permanent-local-hook");
+    public final static ELispSymbol POINT_BEFORE_SCROLL = new ELispSymbol("point-before-scroll");
     public final static ELispSymbol PRIORITY = new ELispSymbol("priority");
     public final static ELispSymbol PROTECTED_FIELD = new ELispSymbol("protected-field");
     public final static ELispSymbol RANGE = new ELispSymbol("range");
     public final static ELispSymbol RENAME_AUTO_SAVE_FILE = new ELispSymbol("rename-auto-save-file");
     public final static ELispSymbol RIGHT = new ELispSymbol("right");
+    public final static ELispSymbol RIGHT_FRINGE_WIDTH = new ELispSymbol("right-fringe-width");
+    public final static ELispSymbol RIGHT_MARGIN_WIDTH = new ELispSymbol("right-margin-width");
+    public final static ELispSymbol SCROLL_DOWN_AGGRESSIVELY = new ELispSymbol("scroll-down-aggressively");
+    public final static ELispSymbol SCROLL_UP_AGGRESSIVELY = new ELispSymbol("scroll-up-aggressively");
+    public final static ELispSymbol SELECTIVE_DISPLAY = new ELispSymbol("selective-display");
+    public final static ELispSymbol SELECTIVE_DISPLAY_ELLIPSES = new ELispSymbol("selective-display-ellipses");
     public final static ELispSymbol SET_BUFFER_MULTIBYTE = new ELispSymbol("set-buffer-multibyte");
+    public final static ELispSymbol TAB_WIDTH = new ELispSymbol("tab-width");
+    public final static ELispSymbol TEXT_CONVERSION_STYLE = new ELispSymbol("text-conversion-style");
     public final static ELispSymbol TRANSIENT_MARK_MODE = new ELispSymbol("transient-mark-mode");
+    public final static ELispSymbol TRUNCATE_LINES = new ELispSymbol("truncate-lines");
     public final static ELispSymbol UNIQUIFY__RENAME_BUFFER_ADVICE = new ELispSymbol("uniquify--rename-buffer-advice");
     public final static ELispSymbol VERTICAL_SCROLL_BAR = new ELispSymbol("vertical-scroll-bar");
+    public final static ELispSymbol WORD_WRAP = new ELispSymbol("word-wrap");
     private ELispSymbol[] bufferSymbols() {
         return new ELispSymbol[]{
+                ABBREV_MODE,
                 AFTER_CHANGE_FUNCTIONS,
                 AFTER_STRING,
                 AUTOSAVED,
+                AUTO_FILL_FUNCTION,
                 BEFORE_CHANGE_FUNCTIONS,
                 BEFORE_STRING,
+                BIDI_DISPLAY_REORDERING,
+                BIDI_PARAGRAPH_DIRECTION,
+                BIDI_PARAGRAPH_SEPARATE_RE,
+                BIDI_PARAGRAPH_START_RE,
+                BUFFER_AUTO_SAVE_FILE_FORMAT,
+                BUFFER_AUTO_SAVE_FILE_NAME,
+                BUFFER_BACKED_UP,
+                BUFFER_DISPLAY_COUNT,
+                BUFFER_DISPLAY_TABLE,
+                BUFFER_DISPLAY_TIME,
+                BUFFER_FILE_CODING_SYSTEM,
+                BUFFER_FILE_FORMAT,
+                BUFFER_FILE_NAME,
                 BUFFER_FILE_NUMBER,
+                BUFFER_FILE_TRUENAME,
+                BUFFER_INVISIBILITY_SPEC,
                 BUFFER_LIST_UPDATE_HOOK,
+                BUFFER_READ_ONLY,
+                BUFFER_SAVED_SIZE,
                 BUFFER_SAVE_WITHOUT_QUERY,
                 BUFFER_STALE_FUNCTION,
                 BUFFER_UNDO_LIST,
+                CACHE_LONG_SCANS,
                 CASE_FOLD_SEARCH,
                 CHANGE_MAJOR_MODE_HOOK,
                 CHOICE,
                 CLONE_INDIRECT_BUFFER_HOOK,
+                CTL_ARROW,
+                CURSOR_IN_NON_SELECTED_WINDOWS,
+                CURSOR_TYPE,
+                DEFAULT_DIRECTORY,
                 DELETE_AUTO_SAVE_FILES,
                 DELETE_AUTO_SAVE_FILE_IF_NECESSARY,
+                ENABLE_MULTIBYTE_CHARACTERS,
                 EVAPORATE,
+                FILL_COLUMN,
                 FIRST_CHANGE_HOOK,
                 FRACTION,
+                FRINGES_OUTSIDE_MARGINS,
+                FRINGE_CURSOR_ALIST,
+                FRINGE_INDICATOR_ALIST,
                 FUNDAMENTAL_MODE,
                 GET_FILE_BUFFER,
                 GET_SCRATCH_BUFFER_CREATE,
+                HEADER_LINE_FORMAT,
                 HORIZONTAL_SCROLL_BAR,
+                INDICATE_BUFFER_BOUNDARIES,
+                INDICATE_EMPTY_LINES,
                 INHIBIT_READ_ONLY,
                 INITIAL_MAJOR_MODE,
                 INSERT_BEHIND_HOOKS,
@@ -1614,28 +1689,52 @@ public final class ELispContext {
                 KILL_BUFFER__POSSIBLY_SAVE,
                 LARGE_HSCROLL_THRESHOLD,
                 LEFT,
+                LEFT_FRINGE_WIDTH,
+                LEFT_MARGIN,
+                LEFT_MARGIN_WIDTH,
+                LINE_SPACING,
+                LOCAL_ABBREV_TABLE,
+                LOCAL_MINOR_MODES,
                 LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT,
                 LONG_LINE_OPTIMIZATIONS_REGION_SIZE,
                 LONG_LINE_THRESHOLD,
+                MAJOR_MODE,
+                MARK_ACTIVE,
                 MODE_CLASS,
+                MODE_LINE_FORMAT,
+                MODE_NAME,
                 MODIFICATION_HOOKS,
                 OVERLAYP,
                 OVERWRITE_MODE,
                 PERMANENT_LOCAL,
                 PERMANENT_LOCAL_HOOK,
+                POINT_BEFORE_SCROLL,
                 PRIORITY,
                 PROTECTED_FIELD,
                 RANGE,
                 RENAME_AUTO_SAVE_FILE,
                 RIGHT,
+                RIGHT_FRINGE_WIDTH,
+                RIGHT_MARGIN_WIDTH,
+                SCROLL_BAR_HEIGHT,
+                SCROLL_BAR_WIDTH,
+                SCROLL_DOWN_AGGRESSIVELY,
+                SCROLL_UP_AGGRESSIVELY,
+                SELECTIVE_DISPLAY,
+                SELECTIVE_DISPLAY_ELLIPSES,
                 SET_BUFFER_MULTIBYTE,
+                TAB_LINE_FORMAT,
+                TAB_WIDTH,
+                TEXT_CONVERSION_STYLE,
                 TRANSIENT_MARK_MODE,
+                TRUNCATE_LINES,
                 UNIQUIFY__RENAME_BUFFER_ADVICE,
                 VERTICAL_SCROLL_BAR,
+                WORD_WRAP,
         };
     }
-    /* @end region="buffer.c" */
-    /* @generated region="keymap.c" by="extract-emacs-src.py" */
+    //#endregion buffer.c
+    //#region keymap.c
     public final static ELispSymbol CADVERTISED_BINDING = new ELispSymbol(":advertised-binding");
     public final static ELispSymbol DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES = new ELispSymbol("describe-bindings-check-shadowing-in-ranges");
     public final static ELispSymbol EMULATION_MODE_MAP_ALISTS = new ELispSymbol("emulation-mode-map-alists");
@@ -1692,8 +1791,8 @@ public final class ELispContext {
                 WHERE_IS_PREFERRED_MODIFIER,
         };
     }
-    /* @end region="keymap.c" */
-    /* @generated region="print.c" by="extract-emacs-src.py" */
+    //#endregion keymap.c
+    //#region print.c
     public final static ELispSymbol EXTERNAL_DEBUGGING_OUTPUT = new ELispSymbol("external-debugging-output");
     public final static ELispSymbol FLOAT_OUTPUT_FORMAT = new ELispSymbol("float-output-format");
     public final static ELispSymbol PRINT_CHARSET_TEXT_PROPERTY = new ELispSymbol("print-charset-text-property");
@@ -1738,8 +1837,8 @@ public final class ELispContext {
                 TEMP_BUFFER_SETUP_HOOK,
         };
     }
-    /* @end region="print.c" */
-    /* @generated region="xfaces.c" by="extract-emacs-src.py" */
+    //#endregion print.c
+    //#region xfaces.c
     public final static ELispSymbol BACKGROUND_COLOR = new ELispSymbol("background-color");
     public final static ELispSymbol BITMAP_SPEC_P = new ELispSymbol("bitmap-spec-p");
     public final static ELispSymbol BLACK = new ELispSymbol("black");
@@ -1932,8 +2031,8 @@ public final class ELispContext {
                 WINDOW_DIVIDER_LAST_PIXEL,
         };
     }
-    /* @end region="xfaces.c" */
-    /* @generated region="timefns.c" by="extract-emacs-src.py" */
+    //#endregion xfaces.c
+    //#region timefns.c
     public final static ELispSymbol CURRENT_TIME_LIST = new ELispSymbol("current-time-list");
     public final static ELispSymbol ENCODE_TIME = new ELispSymbol("encode-time");
     private ELispSymbol[] timefnsSymbols() {
@@ -1942,8 +2041,8 @@ public final class ELispContext {
                 ENCODE_TIME,
         };
     }
-    /* @end region="timefns.c" */
-    /* @generated region="casetab.c" by="extract-emacs-src.py" */
+    //#endregion timefns.c
+    //#region casetab.c
     public final static ELispSymbol CASE_TABLE = new ELispSymbol("case-table");
     public final static ELispSymbol CASE_TABLE_P = new ELispSymbol("case-table-p");
     private ELispSymbol[] casetabSymbols() {
@@ -1952,8 +2051,8 @@ public final class ELispContext {
                 CASE_TABLE_P,
         };
     }
-    /* @end region="casetab.c" */
-    /* @generated region="cmds.c" by="extract-emacs-src.py" */
+    //#endregion casetab.c
+    //#region cmds.c
     public final static ELispSymbol EXPAND_ABBREV = new ELispSymbol("expand-abbrev");
     public final static ELispSymbol INTERNAL_AUTO_FILL = new ELispSymbol("internal-auto-fill");
     public final static ELispSymbol KILL_FORWARD_CHARS = new ELispSymbol("kill-forward-chars");
@@ -1974,8 +2073,8 @@ public final class ELispContext {
                 UNDO_AUTO__THIS_COMMAND_AMALGAMATING,
         };
     }
-    /* @end region="cmds.c" */
-    /* @generated region="keyboard.c" by="extract-emacs-src.py" */
+    //#endregion cmds.c
+    //#region keyboard.c
     public final static ELispSymbol ABOVE_HANDLE = new ELispSymbol("above-handle");
     public final static ELispSymbol ACTIVATE_MARK_HOOK = new ELispSymbol("activate-mark-hook");
     public final static ELispSymbol ACTIVATE_MENUBAR_HOOK = new ELispSymbol("activate-menubar-hook");
@@ -2372,8 +2471,8 @@ public final class ELispContext {
                 XWIDGET_EVENT,
         };
     }
-    /* @end region="keyboard.c" */
-    /* @generated region="callint.c" by="extract-emacs-src.py" */
+    //#endregion keyboard.c
+    //#region callint.c
     public final static ELispSymbol COMMAND_DEBUG_STATUS = new ELispSymbol("command-debug-status");
     public final static ELispSymbol COMMAND_HISTORY = new ELispSymbol("command-history");
     public final static ELispSymbol CURRENT_PREFIX_ARG = new ELispSymbol("current-prefix-arg");
@@ -2426,8 +2525,8 @@ public final class ELispContext {
                 WHEN,
         };
     }
-    /* @end region="callint.c" */
-    /* @generated region="casefiddle.c" by="extract-emacs-src.py" */
+    //#endregion callint.c
+    //#region casefiddle.c
     public final static ELispSymbol BOUNDS = new ELispSymbol("bounds");
     public final static ELispSymbol CASE_SYMBOLS_AS_WORDS = new ELispSymbol("case-symbols-as-words");
     public final static ELispSymbol IDENTITY = new ELispSymbol("identity");
@@ -2452,8 +2551,8 @@ public final class ELispContext {
                 UPPERCASE,
         };
     }
-    /* @end region="casefiddle.c" */
-    /* @generated region="coding.c" by="extract-emacs-src.py" */
+    //#endregion casefiddle.c
+    //#region coding.c
     public final static ELispSymbol BIG = new ELispSymbol("big");
     public final static ELispSymbol BIG5 = new ELispSymbol("big5");
     public final static ELispSymbol BUFFER_FILE_CODING_SYSTEM = new ELispSymbol("buffer-file-coding-system");
@@ -2610,8 +2709,8 @@ public final class ELispContext {
                 UTF_8_UNIX,
         };
     }
-    /* @end region="coding.c" */
-    /* @generated region="character.c" by="extract-emacs-src.py" */
+    //#endregion coding.c
+    //#region character.c
     public final static ELispSymbol AMBIGUOUS_WIDTH_CHARS = new ELispSymbol("ambiguous-width-chars");
     public final static ELispSymbol AUTO_FILL_CHARS = new ELispSymbol("auto-fill-chars");
     public final static ELispSymbol CHARACTERP = new ELispSymbol("characterp");
@@ -2634,8 +2733,8 @@ public final class ELispContext {
                 UNICODE_CATEGORY_TABLE,
         };
     }
-    /* @end region="character.c" */
-    /* @generated region="window.c" by="extract-emacs-src.py" */
+    //#endregion character.c
+    //#region window.c
     public final static ELispSymbol ABOVE = new ELispSymbol("above");
     public final static ELispSymbol AUTO_WINDOW_VSCROLL = new ELispSymbol("auto-window-vscroll");
     public final static ELispSymbol CEILING = new ELispSymbol("ceiling");
@@ -2754,8 +2853,8 @@ public final class ELispContext {
                 WINDOW__RESIZE_ROOT_WINDOW_VERTICALLY,
         };
     }
-    /* @end region="window.c" */
-    /* @generated region="frame.c" by="extract-emacs-src.py" */
+    //#endregion window.c
+    //#region frame.c
     public final static ELispSymbol ABOVE_SUSPENDED = new ELispSymbol("above-suspended");
     public final static ELispSymbol AFTER_DELETE_FRAME_FUNCTIONS = new ELispSymbol("after-delete-frame-functions");
     public final static ELispSymbol ALPHA = new ELispSymbol("alpha");
@@ -3099,8 +3198,8 @@ public final class ELispContext {
                 Z_GROUP,
         };
     }
-    /* @end region="frame.c" */
-    /* @generated region="textprop.c" by="extract-emacs-src.py" */
+    //#endregion frame.c
+    //#region textprop.c
     public final static ELispSymbol CATEGORY = new ELispSymbol("category");
     public final static ELispSymbol CHAR_PROPERTY_ALIAS_ALIST = new ELispSymbol("char-property-alias-alist");
     public final static ELispSymbol DEFAULT_TEXT_PROPERTIES = new ELispSymbol("default-text-properties");
@@ -3138,8 +3237,8 @@ public final class ELispContext {
                 TEXT_PROPERTY_DEFAULT_NONSTICKY,
         };
     }
-    /* @end region="textprop.c" */
-    /* @generated region="syntax.c" by="extract-emacs-src.py" */
+    //#endregion textprop.c
+    //#region syntax.c
     public final static ELispSymbol COMMENT_END_CAN_BE_ESCAPED = new ELispSymbol("comment-end-can-be-escaped");
     public final static ELispSymbol COMMENT_USE_SYNTAX_PPSS = new ELispSymbol("comment-use-syntax-ppss");
     public final static ELispSymbol FIND_WORD_BOUNDARY_FUNCTION_TABLE = new ELispSymbol("find-word-boundary-function-table");
@@ -3172,8 +3271,8 @@ public final class ELispContext {
                 WORDS_INCLUDE_ESCAPES,
         };
     }
-    /* @end region="syntax.c" */
-    /* @generated region="xdisp.c" by="extract-emacs-src.py" */
+    //#endregion syntax.c
+    //#region xdisp.c
     public final static ELispSymbol ARROW = new ELispSymbol("arrow");
     public final static ELispSymbol AUTO_HSCROLL_MODE = new ELispSymbol("auto-hscroll-mode");
     public final static ELispSymbol AUTO_RAISE_TAB_BAR_BUTTONS = new ELispSymbol("auto-raise-tab-bar-buttons");
@@ -3539,5 +3638,5 @@ public final class ELispContext {
                 ZERO_WIDTH,
         };
     }
-    /* @end region="xdisp.c" */
+    //#endregion xdisp.c
 }

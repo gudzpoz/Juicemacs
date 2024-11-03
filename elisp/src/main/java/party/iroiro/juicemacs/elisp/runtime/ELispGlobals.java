@@ -9,11 +9,12 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import java.util.Collections;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.defineCharsetInternal;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.*;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 @SuppressWarnings({
         "PMD.UnnecessaryCast",
+        "PMD.UseExplicitTypes",
         "PMD.UseUnderscoresInNumericLiterals",
         "RedundantCast",
         "UnnecessaryUnicodeEscape"
@@ -85,63 +86,63 @@ public class ELispGlobals {
         xfacesPostInitVars();
     }
 
-    /* @generated region="alloc.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded gcConsThreshold = new ELispSymbol.Value.Forwarded((long) 0);
+    //#region alloc.c
+    public static ELispSymbol.Value.ForwardedLong gcConsThreshold = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded gcConsPercentage = new ELispSymbol.Value.Forwarded((Object) 0.1);
-    public static ELispSymbol.Value.Forwarded pureBytesUsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded consCellsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded floatsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded vectorCellsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded symbolsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded stringCharsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded intervalsConsed = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded stringsConsed = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedLong pureBytesUsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong consCellsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong floatsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong vectorCellsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong symbolsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong stringCharsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong intervalsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong stringsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded purifyFlag = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded garbageCollectionMessages = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool garbageCollectionMessages = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded postGcHook = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded memorySignalData = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded memoryFull = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded gcElapsed = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded gcsDone = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded integerWidth = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedLong gcsDone = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong integerWidth = new ELispSymbol.Value.ForwardedLong((long) 0);
 
     private static void allocVars() {
-        GC_CONS_THRESHOLD.forwardTo(gcConsThreshold);
-        GC_CONS_PERCENTAGE.forwardTo(gcConsPercentage);
-        PURE_BYTES_USED.forwardTo(pureBytesUsed);
-        CONS_CELLS_CONSED.forwardTo(consCellsConsed);
-        FLOATS_CONSED.forwardTo(floatsConsed);
-        VECTOR_CELLS_CONSED.forwardTo(vectorCellsConsed);
-        SYMBOLS_CONSED.forwardTo(symbolsConsed);
-        STRING_CHARS_CONSED.forwardTo(stringCharsConsed);
-        INTERVALS_CONSED.forwardTo(intervalsConsed);
-        STRINGS_CONSED.forwardTo(stringsConsed);
-        PURIFY_FLAG.forwardTo(purifyFlag);
-        GARBAGE_COLLECTION_MESSAGES.forwardTo(garbageCollectionMessages);
-        POST_GC_HOOK.forwardTo(postGcHook);
-        MEMORY_SIGNAL_DATA.forwardTo(memorySignalData);
-        MEMORY_FULL.forwardTo(memoryFull);
-        GC_ELAPSED.forwardTo(gcElapsed);
-        GCS_DONE.forwardTo(gcsDone);
-        INTEGER_WIDTH.forwardTo(integerWidth);
+        GC_CONS_THRESHOLD.initForwardTo(gcConsThreshold);
+        GC_CONS_PERCENTAGE.initForwardTo(gcConsPercentage);
+        PURE_BYTES_USED.initForwardTo(pureBytesUsed);
+        CONS_CELLS_CONSED.initForwardTo(consCellsConsed);
+        FLOATS_CONSED.initForwardTo(floatsConsed);
+        VECTOR_CELLS_CONSED.initForwardTo(vectorCellsConsed);
+        SYMBOLS_CONSED.initForwardTo(symbolsConsed);
+        STRING_CHARS_CONSED.initForwardTo(stringCharsConsed);
+        INTERVALS_CONSED.initForwardTo(intervalsConsed);
+        STRINGS_CONSED.initForwardTo(stringsConsed);
+        PURIFY_FLAG.initForwardTo(purifyFlag);
+        GARBAGE_COLLECTION_MESSAGES.initForwardTo(garbageCollectionMessages);
+        POST_GC_HOOK.initForwardTo(postGcHook);
+        MEMORY_SIGNAL_DATA.initForwardTo(memorySignalData);
+        MEMORY_FULL.initForwardTo(memoryFull);
+        GC_ELAPSED.initForwardTo(gcElapsed);
+        GCS_DONE.initForwardTo(gcsDone);
+        INTEGER_WIDTH.initForwardTo(integerWidth);
     }
     private static void allocPostInitVars() {
         var memorySignalDataJInit = ELispCons.listOf(ERROR, new ELispString("Memory exhausted--use M-x save-some-buffers then exit and restart Emacs"));
         memorySignalData.setValue(memorySignalDataJInit);
     }
-    /* @end region="alloc.c" */
-    /* @generated region="chartab.c" by="extract-emacs-src.py" */
+    //#endregion alloc.c
+    //#region chartab.c
     public static ELispSymbol.Value.Forwarded charCodePropertyAlist = new ELispSymbol.Value.Forwarded(false);
 
     private static void chartabVars() {
-        CHAR_CODE_PROPERTY_ALIST.forwardTo(charCodePropertyAlist);
+        CHAR_CODE_PROPERTY_ALIST.initForwardTo(charCodePropertyAlist);
     }
     private static void chartabPostInitVars() {
 
     }
-    /* @end region="chartab.c" */
-    /* @generated region="comp.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded nativeCompJitCompilation = new ELispSymbol.Value.Forwarded(true);
+    //#endregion chartab.c
+    //#region comp.c
+    public static ELispSymbol.Value.ForwardedBool nativeCompJitCompilation = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded compCtxt = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded compSubrList = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded compAbiHash = new ELispSymbol.Value.Forwarded(false);
@@ -152,27 +153,27 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded nativeCompEnableSubrTrampolines = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded compInstalledTrampolinesH = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded compNoNativeFileH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compFilePreloadedP = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool compFilePreloadedP = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded compLoadedCompUnitsH = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded compSubrAritiesH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compSanitizerActive = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool compSanitizerActive = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void compVars() {
-        NATIVE_COMP_JIT_COMPILATION.forwardTo(nativeCompJitCompilation);
-        COMP_CTXT.forwardTo(compCtxt);
-        COMP_SUBR_LIST.forwardTo(compSubrList);
-        COMP_ABI_HASH.forwardTo(compAbiHash);
-        COMP_NATIVE_VERSION_DIR.forwardTo(compNativeVersionDir);
-        COMP_DEFERRED_PENDING_H.forwardTo(compDeferredPendingH);
-        COMP_ELN_TO_EL_H.forwardTo(compElnToElH);
-        NATIVE_COMP_ELN_LOAD_PATH.forwardTo(nativeCompElnLoadPath);
-        NATIVE_COMP_ENABLE_SUBR_TRAMPOLINES.forwardTo(nativeCompEnableSubrTrampolines);
-        COMP_INSTALLED_TRAMPOLINES_H.forwardTo(compInstalledTrampolinesH);
-        COMP_NO_NATIVE_FILE_H.forwardTo(compNoNativeFileH);
-        COMP_FILE_PRELOADED_P.forwardTo(compFilePreloadedP);
-        COMP_LOADED_COMP_UNITS_H.forwardTo(compLoadedCompUnitsH);
-        COMP_SUBR_ARITIES_H.forwardTo(compSubrAritiesH);
-        COMP_SANITIZER_ACTIVE.forwardTo(compSanitizerActive);
+        NATIVE_COMP_JIT_COMPILATION.initForwardTo(nativeCompJitCompilation);
+        COMP_CTXT.initForwardTo(compCtxt);
+        COMP_SUBR_LIST.initForwardTo(compSubrList);
+        COMP_ABI_HASH.initForwardTo(compAbiHash);
+        COMP_NATIVE_VERSION_DIR.initForwardTo(compNativeVersionDir);
+        COMP_DEFERRED_PENDING_H.initForwardTo(compDeferredPendingH);
+        COMP_ELN_TO_EL_H.initForwardTo(compElnToElH);
+        NATIVE_COMP_ELN_LOAD_PATH.initForwardTo(nativeCompElnLoadPath);
+        NATIVE_COMP_ENABLE_SUBR_TRAMPOLINES.initForwardTo(nativeCompEnableSubrTrampolines);
+        COMP_INSTALLED_TRAMPOLINES_H.initForwardTo(compInstalledTrampolinesH);
+        COMP_NO_NATIVE_FILE_H.initForwardTo(compNoNativeFileH);
+        COMP_FILE_PRELOADED_P.initForwardTo(compFilePreloadedP);
+        COMP_LOADED_COMP_UNITS_H.initForwardTo(compLoadedCompUnitsH);
+        COMP_SUBR_ARITIES_H.initForwardTo(compSubrAritiesH);
+        COMP_SANITIZER_ACTIVE.initForwardTo(compSanitizerActive);
     }
     private static void compPostInitVars() {
         NATIVE_COMPILER_ERROR.putProperty(ERROR_CONDITIONS, ELispCons.listOf(NATIVE_COMPILER_ERROR, ERROR));
@@ -205,16 +206,16 @@ public class ELispGlobals {
         compSubrAritiesH.setValue(compSubrAritiesHJInit);
         FProvide.provide(ELispContext.intern("native-compile"), NIL);
     }
-    /* @end region="comp.c" */
-    /* @generated region="data.c" by="extract-emacs-src.py" */
+    //#endregion comp.c
+    //#region data.c
     public static ELispSymbol.Value.Forwarded mostPositiveFixnum = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded mostNegativeFixnum = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded symbolsWithPosEnabled = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool symbolsWithPosEnabled = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void dataVars() {
-        MOST_POSITIVE_FIXNUM.forwardTo(mostPositiveFixnum);
-        MOST_NEGATIVE_FIXNUM.forwardTo(mostNegativeFixnum);
-        SYMBOLS_WITH_POS_ENABLED.forwardTo(symbolsWithPosEnabled);
+        MOST_POSITIVE_FIXNUM.initForwardTo(mostPositiveFixnum);
+        MOST_NEGATIVE_FIXNUM.initForwardTo(mostNegativeFixnum);
+        SYMBOLS_WITH_POS_ENABLED.initForwardTo(symbolsWithPosEnabled);
     }
     private static void dataPostInitVars() {
         ERROR.putProperty(ERROR_CONDITIONS, new ELispCons(ERROR, NIL));
@@ -292,68 +293,68 @@ public class ELispGlobals {
         mostNegativeFixnum.setValue(mostNegativeFixnumJInit);
         ELispContext.intern("most-negative-fixnum").setConstant(true);
     }
-    /* @end region="data.c" */
-    /* @generated region="eval.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded maxLispEvalDepth = new ELispSymbol.Value.Forwarded((long) 1_600);
-    public static ELispSymbol.Value.Forwarded lispEvalDepthReserve = new ELispSymbol.Value.Forwarded((long) 200);
+    //#endregion data.c
+    //#region eval.c
+    public static ELispSymbol.Value.ForwardedLong maxLispEvalDepth = new ELispSymbol.Value.ForwardedLong((long) 1_600);
+    public static ELispSymbol.Value.ForwardedLong lispEvalDepthReserve = new ELispSymbol.Value.ForwardedLong((long) 200);
     public static ELispSymbol.Value.Forwarded quitFlag = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded inhibitQuit = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded inhibitDebugger = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded debugOnError = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded debugIgnoredErrors = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugOnQuit = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugOnNextCall = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded backtraceOnRedisplayError = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debuggerMayContinue = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded debuggerStackFrameAsList = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool debugOnQuit = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool debugOnNextCall = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool backtraceOnRedisplayError = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool debuggerMayContinue = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool debuggerStackFrameAsList = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded debugger = new ELispSymbol.Value.Forwarded((Object) DEBUG_EARLY);
     public static ELispSymbol.Value.Forwarded signalHookFunction = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded debugOnSignal = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded backtraceOnErrorNoninteractive = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded whenEnteredDebugger = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedBool backtraceOnErrorNoninteractive = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedLong whenEnteredDebugger = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded internalInterpreterEnvironment = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded internalMakeInterpretedClosureFunction = new ELispSymbol.Value.Forwarded(false);
 
     private static void evalVars() {
-        MAX_LISP_EVAL_DEPTH.forwardTo(maxLispEvalDepth);
-        LISP_EVAL_DEPTH_RESERVE.forwardTo(lispEvalDepthReserve);
-        QUIT_FLAG.forwardTo(quitFlag);
-        INHIBIT_QUIT.forwardTo(inhibitQuit);
-        INHIBIT_DEBUGGER.forwardTo(inhibitDebugger);
-        DEBUG_ON_ERROR.forwardTo(debugOnError);
-        DEBUG_IGNORED_ERRORS.forwardTo(debugIgnoredErrors);
-        DEBUG_ON_QUIT.forwardTo(debugOnQuit);
-        DEBUG_ON_NEXT_CALL.forwardTo(debugOnNextCall);
-        BACKTRACE_ON_REDISPLAY_ERROR.forwardTo(backtraceOnRedisplayError);
-        DEBUGGER_MAY_CONTINUE.forwardTo(debuggerMayContinue);
-        DEBUGGER_STACK_FRAME_AS_LIST.forwardTo(debuggerStackFrameAsList);
-        DEBUGGER.forwardTo(debugger);
-        SIGNAL_HOOK_FUNCTION.forwardTo(signalHookFunction);
-        DEBUG_ON_SIGNAL.forwardTo(debugOnSignal);
-        BACKTRACE_ON_ERROR_NONINTERACTIVE.forwardTo(backtraceOnErrorNoninteractive);
-        INTERNAL_WHEN_ENTERED_DEBUGGER.forwardTo(whenEnteredDebugger);
-        INTERNAL_INTERPRETER_ENVIRONMENT.forwardTo(internalInterpreterEnvironment);
-        INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.forwardTo(internalMakeInterpretedClosureFunction);
+        MAX_LISP_EVAL_DEPTH.initForwardTo(maxLispEvalDepth);
+        LISP_EVAL_DEPTH_RESERVE.initForwardTo(lispEvalDepthReserve);
+        QUIT_FLAG.initForwardTo(quitFlag);
+        INHIBIT_QUIT.initForwardTo(inhibitQuit);
+        INHIBIT_DEBUGGER.initForwardTo(inhibitDebugger);
+        DEBUG_ON_ERROR.initForwardTo(debugOnError);
+        DEBUG_IGNORED_ERRORS.initForwardTo(debugIgnoredErrors);
+        DEBUG_ON_QUIT.initForwardTo(debugOnQuit);
+        DEBUG_ON_NEXT_CALL.initForwardTo(debugOnNextCall);
+        BACKTRACE_ON_REDISPLAY_ERROR.initForwardTo(backtraceOnRedisplayError);
+        DEBUGGER_MAY_CONTINUE.initForwardTo(debuggerMayContinue);
+        DEBUGGER_STACK_FRAME_AS_LIST.initForwardTo(debuggerStackFrameAsList);
+        DEBUGGER.initForwardTo(debugger);
+        SIGNAL_HOOK_FUNCTION.initForwardTo(signalHookFunction);
+        DEBUG_ON_SIGNAL.initForwardTo(debugOnSignal);
+        BACKTRACE_ON_ERROR_NONINTERACTIVE.initForwardTo(backtraceOnErrorNoninteractive);
+        INTERNAL_WHEN_ENTERED_DEBUGGER.initForwardTo(whenEnteredDebugger);
+        INTERNAL_INTERPRETER_ENVIRONMENT.initForwardTo(internalInterpreterEnvironment);
+        INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.initForwardTo(internalMakeInterpretedClosureFunction);
     }
     private static void evalPostInitVars() {
         ELispContext.unintern(INTERNAL_INTERPRETER_ENVIRONMENT);
     }
-    /* @end region="eval.c" */
-    /* @generated region="fns.c" by="extract-emacs-src.py" */
+    //#endregion eval.c
+    //#region fns.c
     public static ELispSymbol.Value.Forwarded overridingPlistEnvironment = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded features = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded useDialogBox = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded useFileDialog = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded useShortAnswers = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool useDialogBox = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool useFileDialog = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool useShortAnswers = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded yesOrNoPrompt = new ELispSymbol.Value.Forwarded(false);
 
     private static void fnsVars() {
-        OVERRIDING_PLIST_ENVIRONMENT.forwardTo(overridingPlistEnvironment);
-        FEATURES.forwardTo(features);
-        USE_DIALOG_BOX.forwardTo(useDialogBox);
-        USE_FILE_DIALOG.forwardTo(useFileDialog);
-        USE_SHORT_ANSWERS.forwardTo(useShortAnswers);
-        YES_OR_NO_PROMPT.forwardTo(yesOrNoPrompt);
+        OVERRIDING_PLIST_ENVIRONMENT.initForwardTo(overridingPlistEnvironment);
+        FEATURES.initForwardTo(features);
+        USE_DIALOG_BOX.initForwardTo(useDialogBox);
+        USE_FILE_DIALOG.initForwardTo(useFileDialog);
+        USE_SHORT_ANSWERS.initForwardTo(useShortAnswers);
+        YES_OR_NO_PROMPT.initForwardTo(yesOrNoPrompt);
     }
     private static void fnsPostInitVars() {
         YES_OR_NO_P_HISTORY.setValue(NIL);
@@ -363,8 +364,8 @@ public class ELispGlobals {
         var yesOrNoPromptJInit = new ELispString("(yes or no) ");
         yesOrNoPrompt.setValue(yesOrNoPromptJInit);
     }
-    /* @end region="fns.c" */
-    /* @generated region="lread.c" by="extract-emacs-src.py" */
+    //#endregion fns.c
+    //#region lread.c
     public static ELispSymbol.Value.Forwarded obarray = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded values = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded standardInput = new ELispSymbol.Value.Forwarded((Object) T);
@@ -374,7 +375,7 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded moduleFileSuffix = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded dynamicLibrarySuffixes = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded loadFileRepSuffixes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadInProgress = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool loadInProgress = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded afterLoadAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded loadHistory = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded loadFileName = new ELispSymbol.Value.Forwarded(false);
@@ -383,56 +384,56 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded currentLoadList = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded loadReadFunction = new ELispSymbol.Value.Forwarded((Object) READ);
     public static ELispSymbol.Value.Forwarded loadSourceFileFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadForceDocStrings = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadConvertToUnibyte = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool loadForceDocStrings = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool loadConvertToUnibyte = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded sourceDirectory = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded preloadedFileList = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded byteBooleanVars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadDangerousLibraries = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded forceLoadMessages = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool loadDangerousLibraries = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool forceLoadMessages = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded bytecompVersionRegexp = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded lexicalBinding = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded evalBufferList = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded lreadUnescapedCharacterLiterals = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadPreferNewer = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadNoNative = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool loadPreferNewer = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool loadNoNative = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded readSymbolShorthands = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded macroexpDynvars = new ELispSymbol.Value.Forwarded(false);
 
     private static void lreadVars() {
-        OBARRAY.forwardTo(obarray);
-        VALUES.forwardTo(values);
-        STANDARD_INPUT.forwardTo(standardInput);
-        READ_CIRCLE.forwardTo(readCircle);
-        LOAD_PATH.forwardTo(loadPath);
-        LOAD_SUFFIXES.forwardTo(loadSuffixes);
-        MODULE_FILE_SUFFIX.forwardTo(moduleFileSuffix);
-        DYNAMIC_LIBRARY_SUFFIXES.forwardTo(dynamicLibrarySuffixes);
-        LOAD_FILE_REP_SUFFIXES.forwardTo(loadFileRepSuffixes);
-        LOAD_IN_PROGRESS.forwardTo(loadInProgress);
-        AFTER_LOAD_ALIST.forwardTo(afterLoadAlist);
-        LOAD_HISTORY.forwardTo(loadHistory);
-        LOAD_FILE_NAME.forwardTo(loadFileName);
-        LOAD_TRUE_FILE_NAME.forwardTo(loadTrueFileName);
-        USER_INIT_FILE.forwardTo(userInitFile);
-        CURRENT_LOAD_LIST.forwardTo(currentLoadList);
-        LOAD_READ_FUNCTION.forwardTo(loadReadFunction);
-        LOAD_SOURCE_FILE_FUNCTION.forwardTo(loadSourceFileFunction);
-        LOAD_FORCE_DOC_STRINGS.forwardTo(loadForceDocStrings);
-        LOAD_CONVERT_TO_UNIBYTE.forwardTo(loadConvertToUnibyte);
-        SOURCE_DIRECTORY.forwardTo(sourceDirectory);
-        PRELOADED_FILE_LIST.forwardTo(preloadedFileList);
-        BYTE_BOOLEAN_VARS.forwardTo(byteBooleanVars);
-        LOAD_DANGEROUS_LIBRARIES.forwardTo(loadDangerousLibraries);
-        FORCE_LOAD_MESSAGES.forwardTo(forceLoadMessages);
-        BYTECOMP_VERSION_REGEXP.forwardTo(bytecompVersionRegexp);
-        LEXICAL_BINDING.forwardTo(lexicalBinding);
-        EVAL_BUFFER_LIST.forwardTo(evalBufferList);
-        LREAD__UNESCAPED_CHARACTER_LITERALS.forwardTo(lreadUnescapedCharacterLiterals);
-        LOAD_PREFER_NEWER.forwardTo(loadPreferNewer);
-        LOAD_NO_NATIVE.forwardTo(loadNoNative);
-        READ_SYMBOL_SHORTHANDS.forwardTo(readSymbolShorthands);
-        MACROEXP__DYNVARS.forwardTo(macroexpDynvars);
+        OBARRAY.initForwardTo(obarray);
+        VALUES.initForwardTo(values);
+        STANDARD_INPUT.initForwardTo(standardInput);
+        READ_CIRCLE.initForwardTo(readCircle);
+        LOAD_PATH.initForwardTo(loadPath);
+        LOAD_SUFFIXES.initForwardTo(loadSuffixes);
+        MODULE_FILE_SUFFIX.initForwardTo(moduleFileSuffix);
+        DYNAMIC_LIBRARY_SUFFIXES.initForwardTo(dynamicLibrarySuffixes);
+        LOAD_FILE_REP_SUFFIXES.initForwardTo(loadFileRepSuffixes);
+        LOAD_IN_PROGRESS.initForwardTo(loadInProgress);
+        AFTER_LOAD_ALIST.initForwardTo(afterLoadAlist);
+        LOAD_HISTORY.initForwardTo(loadHistory);
+        LOAD_FILE_NAME.initForwardTo(loadFileName);
+        LOAD_TRUE_FILE_NAME.initForwardTo(loadTrueFileName);
+        USER_INIT_FILE.initForwardTo(userInitFile);
+        CURRENT_LOAD_LIST.initForwardTo(currentLoadList);
+        LOAD_READ_FUNCTION.initForwardTo(loadReadFunction);
+        LOAD_SOURCE_FILE_FUNCTION.initForwardTo(loadSourceFileFunction);
+        LOAD_FORCE_DOC_STRINGS.initForwardTo(loadForceDocStrings);
+        LOAD_CONVERT_TO_UNIBYTE.initForwardTo(loadConvertToUnibyte);
+        SOURCE_DIRECTORY.initForwardTo(sourceDirectory);
+        PRELOADED_FILE_LIST.initForwardTo(preloadedFileList);
+        BYTE_BOOLEAN_VARS.initForwardTo(byteBooleanVars);
+        LOAD_DANGEROUS_LIBRARIES.initForwardTo(loadDangerousLibraries);
+        FORCE_LOAD_MESSAGES.initForwardTo(forceLoadMessages);
+        BYTECOMP_VERSION_REGEXP.initForwardTo(bytecompVersionRegexp);
+        LEXICAL_BINDING.initForwardTo(lexicalBinding);
+        EVAL_BUFFER_LIST.initForwardTo(evalBufferList);
+        LREAD__UNESCAPED_CHARACTER_LITERALS.initForwardTo(lreadUnescapedCharacterLiterals);
+        LOAD_PREFER_NEWER.initForwardTo(loadPreferNewer);
+        LOAD_NO_NATIVE.initForwardTo(loadNoNative);
+        READ_SYMBOL_SHORTHANDS.initForwardTo(readSymbolShorthands);
+        MACROEXP__DYNVARS.initForwardTo(macroexpDynvars);
     }
     private static void lreadPostInitVars() {
         ELispContext.intern("values").setSpecial(false);
@@ -446,30 +447,30 @@ public class ELispGlobals {
         bytecompVersionRegexp.setValue(bytecompVersionRegexpJInit);
         LEXICAL_BINDING.setBufferLocal(true);
     }
-    /* @end region="lread.c" */
-    /* @generated region="process.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded deleteExitedProcesses = new ELispSymbol.Value.Forwarded(true);
+    //#endregion lread.c
+    //#region process.c
+    public static ELispSymbol.Value.ForwardedBool deleteExitedProcesses = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded processConnectionType = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded processAdaptiveReadBuffering = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded processPrioritizeLowerFds = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool processPrioritizeLowerFds = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded interruptProcessFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded signalProcessFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded internalDaemonSockname = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded readProcessOutputMax = new ELispSymbol.Value.Forwarded((long) 65_536);
-    public static ELispSymbol.Value.Forwarded fastReadProcessOutput = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded processErrorPauseTime = new ELispSymbol.Value.Forwarded((long) 1);
+    public static ELispSymbol.Value.ForwardedLong readProcessOutputMax = new ELispSymbol.Value.ForwardedLong((long) 65_536);
+    public static ELispSymbol.Value.ForwardedBool fastReadProcessOutput = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedLong processErrorPauseTime = new ELispSymbol.Value.ForwardedLong((long) 1);
 
     private static void processVars() {
-        DELETE_EXITED_PROCESSES.forwardTo(deleteExitedProcesses);
-        PROCESS_CONNECTION_TYPE.forwardTo(processConnectionType);
-        PROCESS_ADAPTIVE_READ_BUFFERING.forwardTo(processAdaptiveReadBuffering);
-        PROCESS_PRIORITIZE_LOWER_FDS.forwardTo(processPrioritizeLowerFds);
-        INTERRUPT_PROCESS_FUNCTIONS.forwardTo(interruptProcessFunctions);
-        SIGNAL_PROCESS_FUNCTIONS.forwardTo(signalProcessFunctions);
-        INTERNAL__DAEMON_SOCKNAME.forwardTo(internalDaemonSockname);
-        READ_PROCESS_OUTPUT_MAX.forwardTo(readProcessOutputMax);
-        FAST_READ_PROCESS_OUTPUT.forwardTo(fastReadProcessOutput);
-        PROCESS_ERROR_PAUSE_TIME.forwardTo(processErrorPauseTime);
+        DELETE_EXITED_PROCESSES.initForwardTo(deleteExitedProcesses);
+        PROCESS_CONNECTION_TYPE.initForwardTo(processConnectionType);
+        PROCESS_ADAPTIVE_READ_BUFFERING.initForwardTo(processAdaptiveReadBuffering);
+        PROCESS_PRIORITIZE_LOWER_FDS.initForwardTo(processPrioritizeLowerFds);
+        INTERRUPT_PROCESS_FUNCTIONS.initForwardTo(interruptProcessFunctions);
+        SIGNAL_PROCESS_FUNCTIONS.initForwardTo(signalProcessFunctions);
+        INTERNAL__DAEMON_SOCKNAME.initForwardTo(internalDaemonSockname);
+        READ_PROCESS_OUTPUT_MAX.initForwardTo(readProcessOutputMax);
+        FAST_READ_PROCESS_OUTPUT.initForwardTo(fastReadProcessOutput);
+        PROCESS_ERROR_PAUSE_TIME.initForwardTo(processErrorPauseTime);
     }
     private static void processPostInitVars() {
         var interruptProcessFunctionsJInit = new ELispCons(INTERNAL_DEFAULT_INTERRUPT_PROCESS);
@@ -478,18 +479,18 @@ public class ELispGlobals {
         signalProcessFunctions.setValue(signalProcessFunctionsJInit);
         FProvide.provide(ELispContext.intern("make-network-process"), new ELispCons(new ELispCons(CSERVER, new ELispCons(T, NIL)), new ELispCons(new ELispCons(CFAMILY, new ELispCons(IPV4, NIL)), new ELispCons(new ELispCons(CNOWAIT, new ELispCons(T, NIL)), NIL))));
     }
-    /* @end region="process.c" */
-    /* @generated region="charset.c" by="extract-emacs-src.py" */
+    //#endregion process.c
+    //#region charset.c
     public static ELispSymbol.Value.Forwarded charsetMapPath = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitLoadCharsetMap = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitLoadCharsetMap = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded charsetList = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded currentIso639Language = new ELispSymbol.Value.Forwarded(false);
 
     private static void charsetVars() {
-        CHARSET_MAP_PATH.forwardTo(charsetMapPath);
-        INHIBIT_LOAD_CHARSET_MAP.forwardTo(inhibitLoadCharsetMap);
-        CHARSET_LIST.forwardTo(charsetList);
-        CURRENT_ISO639_LANGUAGE.forwardTo(currentIso639Language);
+        CHARSET_MAP_PATH.initForwardTo(charsetMapPath);
+        INHIBIT_LOAD_CHARSET_MAP.initForwardTo(inhibitLoadCharsetMap);
+        CHARSET_LIST.initForwardTo(charsetList);
+        CURRENT_ISO639_LANGUAGE.initForwardTo(currentIso639Language);
     }
     private static void charsetPostInitVars() {
         defineCharsetInternal(ASCII, 1, "\u0000\u007f\u0000\u0000\u0000\u0000\u0000", 0, 127, 66, -1, 0, 1, 0, 0);
@@ -498,8 +499,8 @@ public class ELispGlobals {
         defineCharsetInternal(EMACS, 3, "\u0000\u00ff\u0000\u00ff\u0000?\u0000", 0, 4194175, -1, 0, -1, 1, 1, 0);
         defineCharsetInternal(EIGHT_BIT, 1, "\u0080\u00ff\u0000\u0000\u0000\u0000\u0000", 128, 255, -1, 0, -1, 0, 1, 4194176);
     }
-    /* @end region="charset.c" */
-    /* @generated region="fileio.c" by="extract-emacs-src.py" */
+    //#endregion charset.c
+    //#region fileio.c
     public static ELispSymbol.Value.Forwarded fileNameCodingSystem = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded defaultFileNameCodingSystem = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded fileNameHandlerAlist = new ELispSymbol.Value.Forwarded(false);
@@ -513,25 +514,25 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded autoSaveListFileName = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded autoSaveVisitedFileName = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded autoSaveIncludeBigDeletions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded writeRegionInhibitFsync = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded deleteByMovingToTrash = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool writeRegionInhibitFsync = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool deleteByMovingToTrash = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void fileioVars() {
-        FILE_NAME_CODING_SYSTEM.forwardTo(fileNameCodingSystem);
-        DEFAULT_FILE_NAME_CODING_SYSTEM.forwardTo(defaultFileNameCodingSystem);
-        FILE_NAME_HANDLER_ALIST.forwardTo(fileNameHandlerAlist);
-        SET_AUTO_CODING_FUNCTION.forwardTo(setAutoCodingFunction);
-        AFTER_INSERT_FILE_FUNCTIONS.forwardTo(afterInsertFileFunctions);
-        WRITE_REGION_ANNOTATE_FUNCTIONS.forwardTo(writeRegionAnnotateFunctions);
-        WRITE_REGION_POST_ANNOTATION_FUNCTION.forwardTo(writeRegionPostAnnotationFunction);
-        WRITE_REGION_ANNOTATIONS_SO_FAR.forwardTo(writeRegionAnnotationsSoFar);
-        INHIBIT_FILE_NAME_HANDLERS.forwardTo(inhibitFileNameHandlers);
-        INHIBIT_FILE_NAME_OPERATION.forwardTo(inhibitFileNameOperation);
-        AUTO_SAVE_LIST_FILE_NAME.forwardTo(autoSaveListFileName);
-        AUTO_SAVE_VISITED_FILE_NAME.forwardTo(autoSaveVisitedFileName);
-        AUTO_SAVE_INCLUDE_BIG_DELETIONS.forwardTo(autoSaveIncludeBigDeletions);
-        WRITE_REGION_INHIBIT_FSYNC.forwardTo(writeRegionInhibitFsync);
-        DELETE_BY_MOVING_TO_TRASH.forwardTo(deleteByMovingToTrash);
+        FILE_NAME_CODING_SYSTEM.initForwardTo(fileNameCodingSystem);
+        DEFAULT_FILE_NAME_CODING_SYSTEM.initForwardTo(defaultFileNameCodingSystem);
+        FILE_NAME_HANDLER_ALIST.initForwardTo(fileNameHandlerAlist);
+        SET_AUTO_CODING_FUNCTION.initForwardTo(setAutoCodingFunction);
+        AFTER_INSERT_FILE_FUNCTIONS.initForwardTo(afterInsertFileFunctions);
+        WRITE_REGION_ANNOTATE_FUNCTIONS.initForwardTo(writeRegionAnnotateFunctions);
+        WRITE_REGION_POST_ANNOTATION_FUNCTION.initForwardTo(writeRegionPostAnnotationFunction);
+        WRITE_REGION_ANNOTATIONS_SO_FAR.initForwardTo(writeRegionAnnotationsSoFar);
+        INHIBIT_FILE_NAME_HANDLERS.initForwardTo(inhibitFileNameHandlers);
+        INHIBIT_FILE_NAME_OPERATION.initForwardTo(inhibitFileNameOperation);
+        AUTO_SAVE_LIST_FILE_NAME.initForwardTo(autoSaveListFileName);
+        AUTO_SAVE_VISITED_FILE_NAME.initForwardTo(autoSaveVisitedFileName);
+        AUTO_SAVE_INCLUDE_BIG_DELETIONS.initForwardTo(autoSaveIncludeBigDeletions);
+        WRITE_REGION_INHIBIT_FSYNC.initForwardTo(writeRegionInhibitFsync);
+        DELETE_BY_MOVING_TO_TRASH.initForwardTo(deleteByMovingToTrash);
     }
     private static void fileioPostInitVars() {
         FILE_NAME_HISTORY.setValue(NIL);
@@ -550,8 +551,8 @@ public class ELispGlobals {
         REMOTE_FILE_ERROR.putProperty(ERROR_CONDITIONS, FPurecopy.purecopy(ELispCons.listOf(REMOTE_FILE_ERROR, FILE_ERROR, ERROR)));
         REMOTE_FILE_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Remote file error"));
     }
-    /* @end region="fileio.c" */
-    /* @generated region="editfns.c" by="extract-emacs-src.py" */
+    //#endregion fileio.c
+    //#region editfns.c
     public static ELispSymbol.Value.Forwarded inhibitFieldTextMotion = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded bufferAccessFontifyFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded bufferAccessFontifiedProperty = new ELispSymbol.Value.Forwarded(false);
@@ -560,30 +561,30 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded userLoginName = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded userRealLoginName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded operatingSystemRelease = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded binaryAsUnsigned = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool binaryAsUnsigned = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void editfnsVars() {
-        INHIBIT_FIELD_TEXT_MOTION.forwardTo(inhibitFieldTextMotion);
-        BUFFER_ACCESS_FONTIFY_FUNCTIONS.forwardTo(bufferAccessFontifyFunctions);
-        BUFFER_ACCESS_FONTIFIED_PROPERTY.forwardTo(bufferAccessFontifiedProperty);
-        SYSTEM_NAME.forwardTo(systemName);
-        USER_FULL_NAME.forwardTo(userFullName);
-        USER_LOGIN_NAME.forwardTo(userLoginName);
-        USER_REAL_LOGIN_NAME.forwardTo(userRealLoginName);
-        OPERATING_SYSTEM_RELEASE.forwardTo(operatingSystemRelease);
-        BINARY_AS_UNSIGNED.forwardTo(binaryAsUnsigned);
+        INHIBIT_FIELD_TEXT_MOTION.initForwardTo(inhibitFieldTextMotion);
+        BUFFER_ACCESS_FONTIFY_FUNCTIONS.initForwardTo(bufferAccessFontifyFunctions);
+        BUFFER_ACCESS_FONTIFIED_PROPERTY.initForwardTo(bufferAccessFontifiedProperty);
+        SYSTEM_NAME.initForwardTo(systemName);
+        USER_FULL_NAME.initForwardTo(userFullName);
+        USER_LOGIN_NAME.initForwardTo(userLoginName);
+        USER_REAL_LOGIN_NAME.initForwardTo(userRealLoginName);
+        OPERATING_SYSTEM_RELEASE.initForwardTo(operatingSystemRelease);
+        BINARY_AS_UNSIGNED.initForwardTo(binaryAsUnsigned);
     }
     private static void editfnsPostInitVars() {
         ELispContext.unintern(OUTERMOST_RESTRICTION);
     }
-    /* @end region="editfns.c" */
-    /* @generated region="emacs.c" by="extract-emacs-src.py" */
+    //#endregion editfns.c
+    //#region emacs.c
     public static ELispSymbol.Value.Forwarded commandLineArgs = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded systemType = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded systemConfiguration = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded systemConfigurationOptions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded systemConfigurationFeatures = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded noninteractive1 = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool noninteractive1 = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded killEmacsHook = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded pathSeparator = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded invocationName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
@@ -593,7 +594,7 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded systemTimeLocale = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded beforeInitTime = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded afterInitTime = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitXResources = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitXResources = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded emacsCopyright = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded emacsVersion = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded reportEmacsBugAddress = new ELispSymbol.Value.Forwarded(false);
@@ -601,27 +602,27 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded dynamicLibraryAlist = new ELispSymbol.Value.Forwarded(false);
 
     private static void emacsVars() {
-        COMMAND_LINE_ARGS.forwardTo(commandLineArgs);
-        SYSTEM_TYPE.forwardTo(systemType);
-        SYSTEM_CONFIGURATION.forwardTo(systemConfiguration);
-        SYSTEM_CONFIGURATION_OPTIONS.forwardTo(systemConfigurationOptions);
-        SYSTEM_CONFIGURATION_FEATURES.forwardTo(systemConfigurationFeatures);
-        NONINTERACTIVE.forwardTo(noninteractive1);
-        KILL_EMACS_HOOK.forwardTo(killEmacsHook);
-        PATH_SEPARATOR.forwardTo(pathSeparator);
-        INVOCATION_NAME.forwardTo(invocationName);
-        INVOCATION_DIRECTORY.forwardTo(invocationDirectory);
-        INSTALLATION_DIRECTORY.forwardTo(installationDirectory);
-        SYSTEM_MESSAGES_LOCALE.forwardTo(systemMessagesLocale);
-        SYSTEM_TIME_LOCALE.forwardTo(systemTimeLocale);
-        BEFORE_INIT_TIME.forwardTo(beforeInitTime);
-        AFTER_INIT_TIME.forwardTo(afterInitTime);
-        INHIBIT_X_RESOURCES.forwardTo(inhibitXResources);
-        EMACS_COPYRIGHT.forwardTo(emacsCopyright);
-        EMACS_VERSION.forwardTo(emacsVersion);
-        REPORT_EMACS_BUG_ADDRESS.forwardTo(reportEmacsBugAddress);
-        DUMP_MODE.forwardTo(dumpMode);
-        DYNAMIC_LIBRARY_ALIST.forwardTo(dynamicLibraryAlist);
+        COMMAND_LINE_ARGS.initForwardTo(commandLineArgs);
+        SYSTEM_TYPE.initForwardTo(systemType);
+        SYSTEM_CONFIGURATION.initForwardTo(systemConfiguration);
+        SYSTEM_CONFIGURATION_OPTIONS.initForwardTo(systemConfigurationOptions);
+        SYSTEM_CONFIGURATION_FEATURES.initForwardTo(systemConfigurationFeatures);
+        NONINTERACTIVE.initForwardTo(noninteractive1);
+        KILL_EMACS_HOOK.initForwardTo(killEmacsHook);
+        PATH_SEPARATOR.initForwardTo(pathSeparator);
+        INVOCATION_NAME.initForwardTo(invocationName);
+        INVOCATION_DIRECTORY.initForwardTo(invocationDirectory);
+        INSTALLATION_DIRECTORY.initForwardTo(installationDirectory);
+        SYSTEM_MESSAGES_LOCALE.initForwardTo(systemMessagesLocale);
+        SYSTEM_TIME_LOCALE.initForwardTo(systemTimeLocale);
+        BEFORE_INIT_TIME.initForwardTo(beforeInitTime);
+        AFTER_INIT_TIME.initForwardTo(afterInitTime);
+        INHIBIT_X_RESOURCES.initForwardTo(inhibitXResources);
+        EMACS_COPYRIGHT.initForwardTo(emacsCopyright);
+        EMACS_VERSION.initForwardTo(emacsVersion);
+        REPORT_EMACS_BUG_ADDRESS.initForwardTo(reportEmacsBugAddress);
+        DUMP_MODE.initForwardTo(dumpMode);
+        DYNAMIC_LIBRARY_ALIST.initForwardTo(dynamicLibraryAlist);
     }
     private static void emacsPostInitVars() {
         var systemTypeJInit = ELispContext.intern("jvm");
@@ -642,14 +643,14 @@ public class ELispGlobals {
         reportEmacsBugAddress.setValue(reportEmacsBugAddressJInit);
         ELispContext.intern("dynamic-library-alist").putProperty(RISKY_LOCAL_VARIABLE, T);
     }
-    /* @end region="emacs.c" */
-    /* @generated region="search.c" by="extract-emacs-src.py" */
+    //#endregion emacs.c
+    //#region search.c
     public static ELispSymbol.Value.Forwarded searchSpacesRegexp = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded inhibitChangingMatchData = new ELispSymbol.Value.Forwarded(false);
 
     private static void searchVars() {
-        SEARCH_SPACES_REGEXP.forwardTo(searchSpacesRegexp);
-        INHIBIT_CHANGING_MATCH_DATA.forwardTo(inhibitChangingMatchData);
+        SEARCH_SPACES_REGEXP.initForwardTo(searchSpacesRegexp);
+        INHIBIT_CHANGING_MATCH_DATA.initForwardTo(inhibitChangingMatchData);
     }
     private static void searchPostInitVars() {
         SEARCH_FAILED.putProperty(ERROR_CONDITIONS, ELispCons.listOf(SEARCH_FAILED, ERROR));
@@ -659,8 +660,8 @@ public class ELispGlobals {
         INVALID_REGEXP.putProperty(ERROR_CONDITIONS, ELispCons.listOf(INVALID_REGEXP, ERROR));
         INVALID_REGEXP.putProperty(ERROR_MESSAGE, new ELispString("Invalid regexp"));
     }
-    /* @end region="search.c" */
-    /* @generated region="buffer.c" by="extract-emacs-src.py" */
+    //#endregion search.c
+    //#region buffer.c
     public static ELispSymbol.Value.Forwarded beforeChangeFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded afterChangeFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded firstChangeHook = new ELispSymbol.Value.Forwarded(false);
@@ -669,32 +670,33 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded killBufferQueryFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded changeMajorModeHook = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded bufferListUpdateHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded killBufferDeleteAutoSaveFiles = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded deleteAutoSaveFiles = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool killBufferDeleteAutoSaveFiles = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool deleteAutoSaveFiles = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded caseFoldSearch = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded cloneIndirectBufferHook = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded longLineThreshold = new ELispSymbol.Value.Forwarded((Object) 50000);
-    public static ELispSymbol.Value.Forwarded longLineOptimizationsRegionSize = new ELispSymbol.Value.Forwarded((long) 500_000);
-    public static ELispSymbol.Value.Forwarded longLineOptimizationsBolSearchLimit = new ELispSymbol.Value.Forwarded((long) 128);
-    public static ELispSymbol.Value.Forwarded largeHscrollThreshold = new ELispSymbol.Value.Forwarded((long) 10_000);
+    public static ELispSymbol.Value.ForwardedLong longLineOptimizationsRegionSize = new ELispSymbol.Value.ForwardedLong((long) 500_000);
+    public static ELispSymbol.Value.ForwardedLong longLineOptimizationsBolSearchLimit = new ELispSymbol.Value.ForwardedLong((long) 128);
+    public static ELispSymbol.Value.ForwardedLong largeHscrollThreshold = new ELispSymbol.Value.ForwardedLong((long) 10_000);
 
     private static void bufferVars() {
-        BEFORE_CHANGE_FUNCTIONS.forwardTo(beforeChangeFunctions);
-        AFTER_CHANGE_FUNCTIONS.forwardTo(afterChangeFunctions);
-        FIRST_CHANGE_HOOK.forwardTo(firstChangeHook);
-        TRANSIENT_MARK_MODE.forwardTo(transientMarkMode);
-        INHIBIT_READ_ONLY.forwardTo(inhibitReadOnly);
-        KILL_BUFFER_QUERY_FUNCTIONS.forwardTo(killBufferQueryFunctions);
-        CHANGE_MAJOR_MODE_HOOK.forwardTo(changeMajorModeHook);
-        BUFFER_LIST_UPDATE_HOOK.forwardTo(bufferListUpdateHook);
-        KILL_BUFFER_DELETE_AUTO_SAVE_FILES.forwardTo(killBufferDeleteAutoSaveFiles);
-        DELETE_AUTO_SAVE_FILES.forwardTo(deleteAutoSaveFiles);
-        CASE_FOLD_SEARCH.forwardTo(caseFoldSearch);
-        CLONE_INDIRECT_BUFFER_HOOK.forwardTo(cloneIndirectBufferHook);
-        LONG_LINE_THRESHOLD.forwardTo(longLineThreshold);
-        LONG_LINE_OPTIMIZATIONS_REGION_SIZE.forwardTo(longLineOptimizationsRegionSize);
-        LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT.forwardTo(longLineOptimizationsBolSearchLimit);
-        LARGE_HSCROLL_THRESHOLD.forwardTo(largeHscrollThreshold);
+        BEFORE_CHANGE_FUNCTIONS.initForwardTo(beforeChangeFunctions);
+        AFTER_CHANGE_FUNCTIONS.initForwardTo(afterChangeFunctions);
+        FIRST_CHANGE_HOOK.initForwardTo(firstChangeHook);
+        TRANSIENT_MARK_MODE.initForwardTo(transientMarkMode);
+        INHIBIT_READ_ONLY.initForwardTo(inhibitReadOnly);
+        KILL_BUFFER_QUERY_FUNCTIONS.initForwardTo(killBufferQueryFunctions);
+        CHANGE_MAJOR_MODE_HOOK.initForwardTo(changeMajorModeHook);
+        BUFFER_LIST_UPDATE_HOOK.initForwardTo(bufferListUpdateHook);
+        KILL_BUFFER_DELETE_AUTO_SAVE_FILES.initForwardTo(killBufferDeleteAutoSaveFiles);
+        DELETE_AUTO_SAVE_FILES.initForwardTo(deleteAutoSaveFiles);
+        CASE_FOLD_SEARCH.initForwardTo(caseFoldSearch);
+        CLONE_INDIRECT_BUFFER_HOOK.initForwardTo(cloneIndirectBufferHook);
+        LONG_LINE_THRESHOLD.initForwardTo(longLineThreshold);
+        LONG_LINE_OPTIMIZATIONS_REGION_SIZE.initForwardTo(longLineOptimizationsRegionSize);
+        LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT.initForwardTo(longLineOptimizationsBolSearchLimit);
+        LARGE_HSCROLL_THRESHOLD.initForwardTo(largeHscrollThreshold);
+        ELispBuffer.initBufferLocalVars();
     }
     private static void bufferPostInitVars() {
         VERTICAL_SCROLL_BAR.putProperty(CHOICE, ELispCons.listOf(NIL, T, LEFT, RIGHT));
@@ -706,8 +708,8 @@ public class ELispGlobals {
         CASE_FOLD_SEARCH.setBufferLocal(true);
         ELispContext.intern("erase-buffer").putProperty(DISABLED, T);
     }
-    /* @end region="buffer.c" */
-    /* @generated region="keymap.c" by="extract-emacs-src.py" */
+    //#endregion buffer.c
+    //#region keymap.c
     public static ELispSymbol.Value.Forwarded minibufferLocalMap = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded minorModeMapAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded minorModeOverridingMapAlist = new ELispSymbol.Value.Forwarded(false);
@@ -716,65 +718,65 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded describeBindingsCheckShadowingInRanges = new ELispSymbol.Value.Forwarded(false);
 
     private static void keymapVars() {
-        MINIBUFFER_LOCAL_MAP.forwardTo(minibufferLocalMap);
-        MINOR_MODE_MAP_ALIST.forwardTo(minorModeMapAlist);
-        MINOR_MODE_OVERRIDING_MAP_ALIST.forwardTo(minorModeOverridingMapAlist);
-        EMULATION_MODE_MAP_ALISTS.forwardTo(emulationModeMapAlists);
-        WHERE_IS_PREFERRED_MODIFIER.forwardTo(whereIsPreferredModifier);
-        DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES.forwardTo(describeBindingsCheckShadowingInRanges);
+        MINIBUFFER_LOCAL_MAP.initForwardTo(minibufferLocalMap);
+        MINOR_MODE_MAP_ALIST.initForwardTo(minorModeMapAlist);
+        MINOR_MODE_OVERRIDING_MAP_ALIST.initForwardTo(minorModeOverridingMapAlist);
+        EMULATION_MODE_MAP_ALISTS.initForwardTo(emulationModeMapAlists);
+        WHERE_IS_PREFERRED_MODIFIER.initForwardTo(whereIsPreferredModifier);
+        DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES.initForwardTo(describeBindingsCheckShadowingInRanges);
     }
     private static void keymapPostInitVars() {
         KEYMAP.putProperty(CHAR_TABLE_EXTRA_SLOTS, (long) (0));
         var minibufferLocalMapJInit = FMakeSparseKeymap.makeSparseKeymap(NIL);
         minibufferLocalMap.setValue(minibufferLocalMapJInit);
     }
-    /* @end region="keymap.c" */
-    /* @generated region="print.c" by="extract-emacs-src.py" */
+    //#endregion keymap.c
+    //#region print.c
     public static ELispSymbol.Value.Forwarded standardOutput = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded floatOutputFormat = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printIntegersAsCharacters = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool printIntegersAsCharacters = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded printLength = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded printLevel = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printEscapeNewlines = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printEscapeControlCharacters = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printEscapeNonascii = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printEscapeMultibyte = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printQuoted = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool printEscapeNewlines = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool printEscapeControlCharacters = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool printEscapeNonascii = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool printEscapeMultibyte = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool printQuoted = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded printGensym = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded printCircle = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded printContinuousNumbering = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded printNumberTable = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded printCharsetTextProperty = new ELispSymbol.Value.Forwarded((Object) DEFAULT);
-    public static ELispSymbol.Value.Forwarded printSymbolsBare = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool printSymbolsBare = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded printUnreadableFunction = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded printUnreadableCallbackBuffer = new ELispSymbol.Value.Forwarded(false);
 
     private static void printVars() {
-        STANDARD_OUTPUT.forwardTo(standardOutput);
-        FLOAT_OUTPUT_FORMAT.forwardTo(floatOutputFormat);
-        PRINT_INTEGERS_AS_CHARACTERS.forwardTo(printIntegersAsCharacters);
-        PRINT_LENGTH.forwardTo(printLength);
-        PRINT_LEVEL.forwardTo(printLevel);
-        PRINT_ESCAPE_NEWLINES.forwardTo(printEscapeNewlines);
-        PRINT_ESCAPE_CONTROL_CHARACTERS.forwardTo(printEscapeControlCharacters);
-        PRINT_ESCAPE_NONASCII.forwardTo(printEscapeNonascii);
-        PRINT_ESCAPE_MULTIBYTE.forwardTo(printEscapeMultibyte);
-        PRINT_QUOTED.forwardTo(printQuoted);
-        PRINT_GENSYM.forwardTo(printGensym);
-        PRINT_CIRCLE.forwardTo(printCircle);
-        PRINT_CONTINUOUS_NUMBERING.forwardTo(printContinuousNumbering);
-        PRINT_NUMBER_TABLE.forwardTo(printNumberTable);
-        PRINT_CHARSET_TEXT_PROPERTY.forwardTo(printCharsetTextProperty);
-        PRINT_SYMBOLS_BARE.forwardTo(printSymbolsBare);
-        PRINT_UNREADABLE_FUNCTION.forwardTo(printUnreadableFunction);
-        PRINT__UNREADABLE_CALLBACK_BUFFER.forwardTo(printUnreadableCallbackBuffer);
+        STANDARD_OUTPUT.initForwardTo(standardOutput);
+        FLOAT_OUTPUT_FORMAT.initForwardTo(floatOutputFormat);
+        PRINT_INTEGERS_AS_CHARACTERS.initForwardTo(printIntegersAsCharacters);
+        PRINT_LENGTH.initForwardTo(printLength);
+        PRINT_LEVEL.initForwardTo(printLevel);
+        PRINT_ESCAPE_NEWLINES.initForwardTo(printEscapeNewlines);
+        PRINT_ESCAPE_CONTROL_CHARACTERS.initForwardTo(printEscapeControlCharacters);
+        PRINT_ESCAPE_NONASCII.initForwardTo(printEscapeNonascii);
+        PRINT_ESCAPE_MULTIBYTE.initForwardTo(printEscapeMultibyte);
+        PRINT_QUOTED.initForwardTo(printQuoted);
+        PRINT_GENSYM.initForwardTo(printGensym);
+        PRINT_CIRCLE.initForwardTo(printCircle);
+        PRINT_CONTINUOUS_NUMBERING.initForwardTo(printContinuousNumbering);
+        PRINT_NUMBER_TABLE.initForwardTo(printNumberTable);
+        PRINT_CHARSET_TEXT_PROPERTY.initForwardTo(printCharsetTextProperty);
+        PRINT_SYMBOLS_BARE.initForwardTo(printSymbolsBare);
+        PRINT_UNREADABLE_FUNCTION.initForwardTo(printUnreadableFunction);
+        PRINT__UNREADABLE_CALLBACK_BUFFER.initForwardTo(printUnreadableCallbackBuffer);
     }
     private static void printPostInitVars() {
         ELispContext.unintern(PRINT__UNREADABLE_CALLBACK_BUFFER);
     }
-    /* @end region="print.c" */
-    /* @generated region="xfaces.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded faceFiltersAlwaysMatch = new ELispSymbol.Value.Forwarded(false);
+    //#endregion print.c
+    //#region xfaces.c
+    public static ELispSymbol.Value.ForwardedBool faceFiltersAlwaysMatch = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded faceNewFrameDefaults = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded faceDefaultStipple = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded ttyDefinedColorAlist = new ELispSymbol.Value.Forwarded(false);
@@ -782,20 +784,20 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded faceIgnoredFonts = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded faceRemappingAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded faceFontRescaleAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded faceNearSameColorThreshold = new ELispSymbol.Value.Forwarded((long) 30_000);
+    public static ELispSymbol.Value.ForwardedLong faceNearSameColorThreshold = new ELispSymbol.Value.ForwardedLong((long) 30_000);
     public static ELispSymbol.Value.Forwarded faceFontLaxMatchedAttributes = new ELispSymbol.Value.Forwarded((Object) T);
 
     private static void xfacesVars() {
-        FACE_FILTERS_ALWAYS_MATCH.forwardTo(faceFiltersAlwaysMatch);
-        FACE__NEW_FRAME_DEFAULTS.forwardTo(faceNewFrameDefaults);
-        FACE_DEFAULT_STIPPLE.forwardTo(faceDefaultStipple);
-        TTY_DEFINED_COLOR_ALIST.forwardTo(ttyDefinedColorAlist);
-        SCALABLE_FONTS_ALLOWED.forwardTo(scalableFontsAllowed);
-        FACE_IGNORED_FONTS.forwardTo(faceIgnoredFonts);
-        FACE_REMAPPING_ALIST.forwardTo(faceRemappingAlist);
-        FACE_FONT_RESCALE_ALIST.forwardTo(faceFontRescaleAlist);
-        FACE_NEAR_SAME_COLOR_THRESHOLD.forwardTo(faceNearSameColorThreshold);
-        FACE_FONT_LAX_MATCHED_ATTRIBUTES.forwardTo(faceFontLaxMatchedAttributes);
+        FACE_FILTERS_ALWAYS_MATCH.initForwardTo(faceFiltersAlwaysMatch);
+        FACE__NEW_FRAME_DEFAULTS.initForwardTo(faceNewFrameDefaults);
+        FACE_DEFAULT_STIPPLE.initForwardTo(faceDefaultStipple);
+        TTY_DEFINED_COLOR_ALIST.initForwardTo(ttyDefinedColorAlist);
+        SCALABLE_FONTS_ALLOWED.initForwardTo(scalableFontsAllowed);
+        FACE_IGNORED_FONTS.initForwardTo(faceIgnoredFonts);
+        FACE_REMAPPING_ALIST.initForwardTo(faceRemappingAlist);
+        FACE_FONT_RESCALE_ALIST.initForwardTo(faceFontRescaleAlist);
+        FACE_NEAR_SAME_COLOR_THRESHOLD.initForwardTo(faceNearSameColorThreshold);
+        FACE_FONT_LAX_MATCHED_ATTRIBUTES.initForwardTo(faceFontLaxMatchedAttributes);
     }
     private static void xfacesPostInitVars() {
         var faceNewFrameDefaultsJInit = new ELispHashtable();
@@ -803,18 +805,18 @@ public class ELispGlobals {
         var faceDefaultStippleJInit = new ELispString("gray3");
         faceDefaultStipple.setValue(faceDefaultStippleJInit);
     }
-    /* @end region="xfaces.c" */
-    /* @generated region="timefns.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded currentTimeList = new ELispSymbol.Value.Forwarded(true);
+    //#endregion xfaces.c
+    //#region timefns.c
+    public static ELispSymbol.Value.ForwardedBool currentTimeList = new ELispSymbol.Value.ForwardedBool(true);
 
     private static void timefnsVars() {
-        CURRENT_TIME_LIST.forwardTo(currentTimeList);
+        CURRENT_TIME_LIST.initForwardTo(currentTimeList);
     }
     private static void timefnsPostInitVars() {
 
     }
-    /* @end region="timefns.c" */
-    /* @generated region="casetab.c" by="extract-emacs-src.py" */
+    //#endregion timefns.c
+    //#region casetab.c
 
     private static void casetabVars() {
 
@@ -822,18 +824,18 @@ public class ELispGlobals {
     private static void casetabPostInitVars() {
 
     }
-    /* @end region="casetab.c" */
-    /* @generated region="cmds.c" by="extract-emacs-src.py" */
+    //#endregion casetab.c
+    //#region cmds.c
     public static ELispSymbol.Value.Forwarded postSelfInsertHook = new ELispSymbol.Value.Forwarded(false);
 
     private static void cmdsVars() {
-        POST_SELF_INSERT_HOOK.forwardTo(postSelfInsertHook);
+        POST_SELF_INSERT_HOOK.initForwardTo(postSelfInsertHook);
     }
     private static void cmdsPostInitVars() {
 
     }
-    /* @end region="cmds.c" */
-    /* @generated region="keyboard.c" by="extract-emacs-src.py" */
+    //#endregion cmds.c
+    //#region keyboard.c
     public static ELispSymbol.Value.Forwarded internalTopLevelMessage = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded lastCommandEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded lastNonmenuEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
@@ -850,16 +852,16 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded currentMinibufferCommand = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded thisCommandKeysShiftTranslated = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded thisOriginalCommand = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoSaveInterval = new ELispSymbol.Value.Forwarded((long) 300);
-    public static ELispSymbol.Value.Forwarded autoSaveNoMessage = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedLong autoSaveInterval = new ELispSymbol.Value.ForwardedLong((long) 300);
+    public static ELispSymbol.Value.ForwardedBool autoSaveNoMessage = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded autoSaveTimeout = new ELispSymbol.Value.Forwarded((Object) 30);
     public static ELispSymbol.Value.Forwarded echoKeystrokes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded echoKeystrokesHelp = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool echoKeystrokesHelp = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded pollingPeriod = new ELispSymbol.Value.Forwarded((Object) 2.0);
     public static ELispSymbol.Value.Forwarded doubleClickTime = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded doubleClickFuzz = new ELispSymbol.Value.Forwarded((long) 3);
-    public static ELispSymbol.Value.Forwarded numInputKeys = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded numNonmacroInputEvents = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedLong doubleClickFuzz = new ELispSymbol.Value.ForwardedLong((long) 3);
+    public static ELispSymbol.Value.ForwardedLong numInputKeys = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong numNonmacroInputEvents = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded lastEventFrame = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded lastEventDevice = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded ttyEraseChar = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
@@ -869,14 +871,14 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded prefixHelpCommand = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded topLevel = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded keyboardTranslateTable = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded cannotSuspend = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded menuPrompting = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool cannotSuspend = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool menuPrompting = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded menuPromptMoreChar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded extraKeyboardModifiers = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedLong extraKeyboardModifiers = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded deactivateMark = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded preCommandHook = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded postCommandHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lucidMenuGrabKeyboard = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool lucidMenuGrabKeyboard = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded menuBarFinalItems = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded tabBarSeparatorImageExpression = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded toolBarSeparatorImageExpression = new ELispSymbol.Value.Forwarded(false);
@@ -906,104 +908,104 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded savedRegionSelection = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded selectionInhibitUpdateCommands = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded debugOnEvent = new ELispSymbol.Value.Forwarded((Object) SIGUSR2);
-    public static ELispSymbol.Value.Forwarded attemptStackOverflowRecovery = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded attemptOrderlyShutdownOnFatalSignal = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool attemptStackOverflowRecovery = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool attemptOrderlyShutdownOnFatalSignal = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded whileNoInputIgnoreEvents = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded translateUpperCaseKeyBindings = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded inputPendingPFilterEvents = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded mwheelCoalesceScrollEvents = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool translateUpperCaseKeyBindings = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool inputPendingPFilterEvents = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool mwheelCoalesceScrollEvents = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded displayMonitorsChangedFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitRecordChar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded recordAllKeys = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitRecordChar = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool recordAllKeys = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded postSelectRegionHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded disableInhibitTextConversion = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool disableInhibitTextConversion = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded currentKeyRemapSequence = new ELispSymbol.Value.Forwarded(false);
 
     private static void keyboardVars() {
-        INTERNAL__TOP_LEVEL_MESSAGE.forwardTo(internalTopLevelMessage);
-        LAST_COMMAND_EVENT.forwardTo(lastCommandEvent);
-        LAST_NONMENU_EVENT.forwardTo(lastNonmenuEvent);
-        LAST_INPUT_EVENT.forwardTo(lastInputEvent);
-        UNREAD_COMMAND_EVENTS.forwardTo(unreadCommandEvents);
-        UNREAD_POST_INPUT_METHOD_EVENTS.forwardTo(unreadPostInputMethodEvents);
-        UNREAD_INPUT_METHOD_EVENTS.forwardTo(unreadInputMethodEvents);
-        META_PREFIX_CHAR.forwardTo(metaPrefixChar);
-        LAST_COMMAND.forwardTo(lastCommand);
-        REAL_LAST_COMMAND.forwardTo(realLastCommand);
-        LAST_REPEATABLE_COMMAND.forwardTo(lastRepeatableCommand);
-        THIS_COMMAND.forwardTo(thisCommand);
-        REAL_THIS_COMMAND.forwardTo(realThisCommand);
-        CURRENT_MINIBUFFER_COMMAND.forwardTo(currentMinibufferCommand);
-        THIS_COMMAND_KEYS_SHIFT_TRANSLATED.forwardTo(thisCommandKeysShiftTranslated);
-        THIS_ORIGINAL_COMMAND.forwardTo(thisOriginalCommand);
-        AUTO_SAVE_INTERVAL.forwardTo(autoSaveInterval);
-        AUTO_SAVE_NO_MESSAGE.forwardTo(autoSaveNoMessage);
-        AUTO_SAVE_TIMEOUT.forwardTo(autoSaveTimeout);
-        ECHO_KEYSTROKES.forwardTo(echoKeystrokes);
-        ECHO_KEYSTROKES_HELP.forwardTo(echoKeystrokesHelp);
-        POLLING_PERIOD.forwardTo(pollingPeriod);
-        DOUBLE_CLICK_TIME.forwardTo(doubleClickTime);
-        DOUBLE_CLICK_FUZZ.forwardTo(doubleClickFuzz);
-        NUM_INPUT_KEYS.forwardTo(numInputKeys);
-        NUM_NONMACRO_INPUT_EVENTS.forwardTo(numNonmacroInputEvents);
-        LAST_EVENT_FRAME.forwardTo(lastEventFrame);
-        LAST_EVENT_DEVICE.forwardTo(lastEventDevice);
-        TTY_ERASE_CHAR.forwardTo(ttyEraseChar);
-        HELP_CHAR.forwardTo(helpChar);
-        HELP_EVENT_LIST.forwardTo(helpEventList);
-        HELP_FORM.forwardTo(helpForm);
-        PREFIX_HELP_COMMAND.forwardTo(prefixHelpCommand);
-        TOP_LEVEL.forwardTo(topLevel);
-        KEYBOARD_TRANSLATE_TABLE.forwardTo(keyboardTranslateTable);
-        CANNOT_SUSPEND.forwardTo(cannotSuspend);
-        MENU_PROMPTING.forwardTo(menuPrompting);
-        MENU_PROMPT_MORE_CHAR.forwardTo(menuPromptMoreChar);
-        EXTRA_KEYBOARD_MODIFIERS.forwardTo(extraKeyboardModifiers);
-        DEACTIVATE_MARK.forwardTo(deactivateMark);
-        PRE_COMMAND_HOOK.forwardTo(preCommandHook);
-        POST_COMMAND_HOOK.forwardTo(postCommandHook);
-        LUCID__MENU_GRAB_KEYBOARD.forwardTo(lucidMenuGrabKeyboard);
-        MENU_BAR_FINAL_ITEMS.forwardTo(menuBarFinalItems);
-        TAB_BAR_SEPARATOR_IMAGE_EXPRESSION.forwardTo(tabBarSeparatorImageExpression);
-        TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION.forwardTo(toolBarSeparatorImageExpression);
-        OVERRIDING_TERMINAL_LOCAL_MAP.forwardTo(overridingTerminalLocalMap);
-        OVERRIDING_LOCAL_MAP.forwardTo(overridingLocalMap);
-        OVERRIDING_LOCAL_MAP_MENU_FLAG.forwardTo(overridingLocalMapMenuFlag);
-        SPECIAL_EVENT_MAP.forwardTo(specialEventMap);
-        TRACK_MOUSE.forwardTo(trackMouse);
-        SYSTEM_KEY_ALIST.forwardTo(systemKeyAlist);
-        LOCAL_FUNCTION_KEY_MAP.forwardTo(localFunctionKeyMap);
-        INPUT_DECODE_MAP.forwardTo(inputDecodeMap);
-        FUNCTION_KEY_MAP.forwardTo(functionKeyMap);
-        KEY_TRANSLATION_MAP.forwardTo(keyTranslationMap);
-        DELAYED_WARNINGS_LIST.forwardTo(delayedWarningsList);
-        TIMER_LIST.forwardTo(timerList);
-        TIMER_IDLE_LIST.forwardTo(timerIdleList);
-        INPUT_METHOD_FUNCTION.forwardTo(inputMethodFunction);
-        INPUT_METHOD_PREVIOUS_MESSAGE.forwardTo(inputMethodPreviousMessage);
-        SHOW_HELP_FUNCTION.forwardTo(showHelpFunction);
-        DISABLE_POINT_ADJUSTMENT.forwardTo(disablePointAdjustment);
-        GLOBAL_DISABLE_POINT_ADJUSTMENT.forwardTo(globalDisablePointAdjustment);
-        MINIBUFFER_MESSAGE_TIMEOUT.forwardTo(minibufferMessageTimeout);
-        THROW_ON_INPUT.forwardTo(throwOnInput);
-        COMMAND_ERROR_FUNCTION.forwardTo(commandErrorFunction);
-        ENABLE_DISABLED_MENUS_AND_BUTTONS.forwardTo(enableDisabledMenusAndButtons);
-        SELECT_ACTIVE_REGIONS.forwardTo(selectActiveRegions);
-        SAVED_REGION_SELECTION.forwardTo(savedRegionSelection);
-        SELECTION_INHIBIT_UPDATE_COMMANDS.forwardTo(selectionInhibitUpdateCommands);
-        DEBUG_ON_EVENT.forwardTo(debugOnEvent);
-        ATTEMPT_STACK_OVERFLOW_RECOVERY.forwardTo(attemptStackOverflowRecovery);
-        ATTEMPT_ORDERLY_SHUTDOWN_ON_FATAL_SIGNAL.forwardTo(attemptOrderlyShutdownOnFatalSignal);
-        WHILE_NO_INPUT_IGNORE_EVENTS.forwardTo(whileNoInputIgnoreEvents);
-        TRANSLATE_UPPER_CASE_KEY_BINDINGS.forwardTo(translateUpperCaseKeyBindings);
-        INPUT_PENDING_P_FILTER_EVENTS.forwardTo(inputPendingPFilterEvents);
-        MWHEEL_COALESCE_SCROLL_EVENTS.forwardTo(mwheelCoalesceScrollEvents);
-        DISPLAY_MONITORS_CHANGED_FUNCTIONS.forwardTo(displayMonitorsChangedFunctions);
-        INHIBIT__RECORD_CHAR.forwardTo(inhibitRecordChar);
-        RECORD_ALL_KEYS.forwardTo(recordAllKeys);
-        POST_SELECT_REGION_HOOK.forwardTo(postSelectRegionHook);
-        DISABLE_INHIBIT_TEXT_CONVERSION.forwardTo(disableInhibitTextConversion);
-        CURRENT_KEY_REMAP_SEQUENCE.forwardTo(currentKeyRemapSequence);
+        INTERNAL__TOP_LEVEL_MESSAGE.initForwardTo(internalTopLevelMessage);
+        LAST_COMMAND_EVENT.initForwardTo(lastCommandEvent);
+        LAST_NONMENU_EVENT.initForwardTo(lastNonmenuEvent);
+        LAST_INPUT_EVENT.initForwardTo(lastInputEvent);
+        UNREAD_COMMAND_EVENTS.initForwardTo(unreadCommandEvents);
+        UNREAD_POST_INPUT_METHOD_EVENTS.initForwardTo(unreadPostInputMethodEvents);
+        UNREAD_INPUT_METHOD_EVENTS.initForwardTo(unreadInputMethodEvents);
+        META_PREFIX_CHAR.initForwardTo(metaPrefixChar);
+        LAST_COMMAND.initForwardTo(lastCommand);
+        REAL_LAST_COMMAND.initForwardTo(realLastCommand);
+        LAST_REPEATABLE_COMMAND.initForwardTo(lastRepeatableCommand);
+        THIS_COMMAND.initForwardTo(thisCommand);
+        REAL_THIS_COMMAND.initForwardTo(realThisCommand);
+        CURRENT_MINIBUFFER_COMMAND.initForwardTo(currentMinibufferCommand);
+        THIS_COMMAND_KEYS_SHIFT_TRANSLATED.initForwardTo(thisCommandKeysShiftTranslated);
+        THIS_ORIGINAL_COMMAND.initForwardTo(thisOriginalCommand);
+        AUTO_SAVE_INTERVAL.initForwardTo(autoSaveInterval);
+        AUTO_SAVE_NO_MESSAGE.initForwardTo(autoSaveNoMessage);
+        AUTO_SAVE_TIMEOUT.initForwardTo(autoSaveTimeout);
+        ECHO_KEYSTROKES.initForwardTo(echoKeystrokes);
+        ECHO_KEYSTROKES_HELP.initForwardTo(echoKeystrokesHelp);
+        POLLING_PERIOD.initForwardTo(pollingPeriod);
+        DOUBLE_CLICK_TIME.initForwardTo(doubleClickTime);
+        DOUBLE_CLICK_FUZZ.initForwardTo(doubleClickFuzz);
+        NUM_INPUT_KEYS.initForwardTo(numInputKeys);
+        NUM_NONMACRO_INPUT_EVENTS.initForwardTo(numNonmacroInputEvents);
+        LAST_EVENT_FRAME.initForwardTo(lastEventFrame);
+        LAST_EVENT_DEVICE.initForwardTo(lastEventDevice);
+        TTY_ERASE_CHAR.initForwardTo(ttyEraseChar);
+        HELP_CHAR.initForwardTo(helpChar);
+        HELP_EVENT_LIST.initForwardTo(helpEventList);
+        HELP_FORM.initForwardTo(helpForm);
+        PREFIX_HELP_COMMAND.initForwardTo(prefixHelpCommand);
+        TOP_LEVEL.initForwardTo(topLevel);
+        KEYBOARD_TRANSLATE_TABLE.initForwardTo(keyboardTranslateTable);
+        CANNOT_SUSPEND.initForwardTo(cannotSuspend);
+        MENU_PROMPTING.initForwardTo(menuPrompting);
+        MENU_PROMPT_MORE_CHAR.initForwardTo(menuPromptMoreChar);
+        EXTRA_KEYBOARD_MODIFIERS.initForwardTo(extraKeyboardModifiers);
+        DEACTIVATE_MARK.initForwardTo(deactivateMark);
+        PRE_COMMAND_HOOK.initForwardTo(preCommandHook);
+        POST_COMMAND_HOOK.initForwardTo(postCommandHook);
+        LUCID__MENU_GRAB_KEYBOARD.initForwardTo(lucidMenuGrabKeyboard);
+        MENU_BAR_FINAL_ITEMS.initForwardTo(menuBarFinalItems);
+        TAB_BAR_SEPARATOR_IMAGE_EXPRESSION.initForwardTo(tabBarSeparatorImageExpression);
+        TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION.initForwardTo(toolBarSeparatorImageExpression);
+        OVERRIDING_TERMINAL_LOCAL_MAP.initForwardTo(overridingTerminalLocalMap);
+        OVERRIDING_LOCAL_MAP.initForwardTo(overridingLocalMap);
+        OVERRIDING_LOCAL_MAP_MENU_FLAG.initForwardTo(overridingLocalMapMenuFlag);
+        SPECIAL_EVENT_MAP.initForwardTo(specialEventMap);
+        TRACK_MOUSE.initForwardTo(trackMouse);
+        SYSTEM_KEY_ALIST.initForwardTo(systemKeyAlist);
+        LOCAL_FUNCTION_KEY_MAP.initForwardTo(localFunctionKeyMap);
+        INPUT_DECODE_MAP.initForwardTo(inputDecodeMap);
+        FUNCTION_KEY_MAP.initForwardTo(functionKeyMap);
+        KEY_TRANSLATION_MAP.initForwardTo(keyTranslationMap);
+        DELAYED_WARNINGS_LIST.initForwardTo(delayedWarningsList);
+        TIMER_LIST.initForwardTo(timerList);
+        TIMER_IDLE_LIST.initForwardTo(timerIdleList);
+        INPUT_METHOD_FUNCTION.initForwardTo(inputMethodFunction);
+        INPUT_METHOD_PREVIOUS_MESSAGE.initForwardTo(inputMethodPreviousMessage);
+        SHOW_HELP_FUNCTION.initForwardTo(showHelpFunction);
+        DISABLE_POINT_ADJUSTMENT.initForwardTo(disablePointAdjustment);
+        GLOBAL_DISABLE_POINT_ADJUSTMENT.initForwardTo(globalDisablePointAdjustment);
+        MINIBUFFER_MESSAGE_TIMEOUT.initForwardTo(minibufferMessageTimeout);
+        THROW_ON_INPUT.initForwardTo(throwOnInput);
+        COMMAND_ERROR_FUNCTION.initForwardTo(commandErrorFunction);
+        ENABLE_DISABLED_MENUS_AND_BUTTONS.initForwardTo(enableDisabledMenusAndButtons);
+        SELECT_ACTIVE_REGIONS.initForwardTo(selectActiveRegions);
+        SAVED_REGION_SELECTION.initForwardTo(savedRegionSelection);
+        SELECTION_INHIBIT_UPDATE_COMMANDS.initForwardTo(selectionInhibitUpdateCommands);
+        DEBUG_ON_EVENT.initForwardTo(debugOnEvent);
+        ATTEMPT_STACK_OVERFLOW_RECOVERY.initForwardTo(attemptStackOverflowRecovery);
+        ATTEMPT_ORDERLY_SHUTDOWN_ON_FATAL_SIGNAL.initForwardTo(attemptOrderlyShutdownOnFatalSignal);
+        WHILE_NO_INPUT_IGNORE_EVENTS.initForwardTo(whileNoInputIgnoreEvents);
+        TRANSLATE_UPPER_CASE_KEY_BINDINGS.initForwardTo(translateUpperCaseKeyBindings);
+        INPUT_PENDING_P_FILTER_EVENTS.initForwardTo(inputPendingPFilterEvents);
+        MWHEEL_COALESCE_SCROLL_EVENTS.initForwardTo(mwheelCoalesceScrollEvents);
+        DISPLAY_MONITORS_CHANGED_FUNCTIONS.initForwardTo(displayMonitorsChangedFunctions);
+        INHIBIT__RECORD_CHAR.initForwardTo(inhibitRecordChar);
+        RECORD_ALL_KEYS.initForwardTo(recordAllKeys);
+        POST_SELECT_REGION_HOOK.initForwardTo(postSelectRegionHook);
+        DISABLE_INHIBIT_TEXT_CONVERSION.initForwardTo(disableInhibitTextConversion);
+        CURRENT_KEY_REMAP_SEQUENCE.initForwardTo(currentKeyRemapSequence);
     }
     private static void keyboardPostInitVars() {
         var internalTopLevelMessageJInit = new ELispString("Back to top level");
@@ -1034,8 +1036,8 @@ public class ELispGlobals {
         var selectionInhibitUpdateCommandsJInit = ELispCons.listOf(HANDLE_SWITCH_FRAME, HANDLE_SELECT_WINDOW);
         selectionInhibitUpdateCommands.setValue(selectionInhibitUpdateCommandsJInit);
     }
-    /* @end region="keyboard.c" */
-    /* @generated region="callint.c" by="extract-emacs-src.py" */
+    //#endregion keyboard.c
+    //#region callint.c
     public static ELispSymbol.Value.Forwarded prefixArg = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
     public static ELispSymbol.Value.Forwarded lastPrefixArg = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
     public static ELispSymbol.Value.Forwarded currentPrefixArg = new ELispSymbol.Value.Forwarded(false);
@@ -1043,35 +1045,35 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded commandDebugStatus = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded markEvenIfInactive = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded mouseLeaveBufferHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitMouseEventCheck = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitMouseEventCheck = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void callintVars() {
-        PREFIX_ARG.forwardTo(prefixArg);
-        LAST_PREFIX_ARG.forwardTo(lastPrefixArg);
-        CURRENT_PREFIX_ARG.forwardTo(currentPrefixArg);
-        COMMAND_HISTORY.forwardTo(commandHistory);
-        COMMAND_DEBUG_STATUS.forwardTo(commandDebugStatus);
-        MARK_EVEN_IF_INACTIVE.forwardTo(markEvenIfInactive);
-        MOUSE_LEAVE_BUFFER_HOOK.forwardTo(mouseLeaveBufferHook);
-        INHIBIT_MOUSE_EVENT_CHECK.forwardTo(inhibitMouseEventCheck);
+        PREFIX_ARG.initForwardTo(prefixArg);
+        LAST_PREFIX_ARG.initForwardTo(lastPrefixArg);
+        CURRENT_PREFIX_ARG.initForwardTo(currentPrefixArg);
+        COMMAND_HISTORY.initForwardTo(commandHistory);
+        COMMAND_DEBUG_STATUS.initForwardTo(commandDebugStatus);
+        MARK_EVEN_IF_INACTIVE.initForwardTo(markEvenIfInactive);
+        MOUSE_LEAVE_BUFFER_HOOK.initForwardTo(mouseLeaveBufferHook);
+        INHIBIT_MOUSE_EVENT_CHECK.initForwardTo(inhibitMouseEventCheck);
     }
     private static void callintPostInitVars() {
 
     }
-    /* @end region="callint.c" */
-    /* @generated region="casefiddle.c" by="extract-emacs-src.py" */
+    //#endregion callint.c
+    //#region casefiddle.c
     public static ELispSymbol.Value.Forwarded regionExtractFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded caseSymbolsAsWords = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool caseSymbolsAsWords = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void casefiddleVars() {
-        REGION_EXTRACT_FUNCTION.forwardTo(regionExtractFunction);
-        CASE_SYMBOLS_AS_WORDS.forwardTo(caseSymbolsAsWords);
+        REGION_EXTRACT_FUNCTION.initForwardTo(regionExtractFunction);
+        CASE_SYMBOLS_AS_WORDS.initForwardTo(caseSymbolsAsWords);
     }
     private static void casefiddlePostInitVars() {
         CASE_SYMBOLS_AS_WORDS.setBufferLocal(true);
     }
-    /* @end region="casefiddle.c" */
-    /* @generated region="coding.c" by="extract-emacs-src.py" */
+    //#endregion casefiddle.c
+    //#region coding.c
     public static ELispSymbol.Value.Forwarded codingSystemList = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded codingSystemAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded codingCategoryList = new ELispSymbol.Value.Forwarded(false);
@@ -1079,8 +1081,8 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded codingSystemForWrite = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded lastCodingSystemUsed = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded lastCodeConversionError = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitEolConversion = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inheritProcessCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitEolConversion = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inheritProcessCodingSystem = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded fileCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded processCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded networkCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
@@ -1096,42 +1098,42 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded defaultProcessCodingSystem = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded latinExtraCodeTable = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded selectSafeCodingSystemFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded codingSystemRequireWarning = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitIsoEscapeDetection = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitNullByteDetection = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded disableAsciiOptimization = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool codingSystemRequireWarning = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitIsoEscapeDetection = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitNullByteDetection = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool disableAsciiOptimization = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded translationTableForInput = new ELispSymbol.Value.Forwarded(false);
 
     private static void codingVars() {
-        CODING_SYSTEM_LIST.forwardTo(codingSystemList);
-        CODING_SYSTEM_ALIST.forwardTo(codingSystemAlist);
-        CODING_CATEGORY_LIST.forwardTo(codingCategoryList);
-        CODING_SYSTEM_FOR_READ.forwardTo(codingSystemForRead);
-        CODING_SYSTEM_FOR_WRITE.forwardTo(codingSystemForWrite);
-        LAST_CODING_SYSTEM_USED.forwardTo(lastCodingSystemUsed);
-        LAST_CODE_CONVERSION_ERROR.forwardTo(lastCodeConversionError);
-        INHIBIT_EOL_CONVERSION.forwardTo(inhibitEolConversion);
-        INHERIT_PROCESS_CODING_SYSTEM.forwardTo(inheritProcessCodingSystem);
-        FILE_CODING_SYSTEM_ALIST.forwardTo(fileCodingSystemAlist);
-        PROCESS_CODING_SYSTEM_ALIST.forwardTo(processCodingSystemAlist);
-        NETWORK_CODING_SYSTEM_ALIST.forwardTo(networkCodingSystemAlist);
-        LOCALE_CODING_SYSTEM.forwardTo(localeCodingSystem);
-        EOL_MNEMONIC_UNIX.forwardTo(eolMnemonicUnix);
-        EOL_MNEMONIC_DOS.forwardTo(eolMnemonicDos);
-        EOL_MNEMONIC_MAC.forwardTo(eolMnemonicMac);
-        EOL_MNEMONIC_UNDECIDED.forwardTo(eolMnemonicUndecided);
-        ENABLE_CHARACTER_TRANSLATION.forwardTo(enableCharacterTranslation);
-        STANDARD_TRANSLATION_TABLE_FOR_DECODE.forwardTo(standardTranslationTableForDecode);
-        STANDARD_TRANSLATION_TABLE_FOR_ENCODE.forwardTo(standardTranslationTableForEncode);
-        CHARSET_REVISION_TABLE.forwardTo(charsetRevisionTable);
-        DEFAULT_PROCESS_CODING_SYSTEM.forwardTo(defaultProcessCodingSystem);
-        LATIN_EXTRA_CODE_TABLE.forwardTo(latinExtraCodeTable);
-        SELECT_SAFE_CODING_SYSTEM_FUNCTION.forwardTo(selectSafeCodingSystemFunction);
-        CODING_SYSTEM_REQUIRE_WARNING.forwardTo(codingSystemRequireWarning);
-        INHIBIT_ISO_ESCAPE_DETECTION.forwardTo(inhibitIsoEscapeDetection);
-        INHIBIT_NULL_BYTE_DETECTION.forwardTo(inhibitNullByteDetection);
-        DISABLE_ASCII_OPTIMIZATION.forwardTo(disableAsciiOptimization);
-        TRANSLATION_TABLE_FOR_INPUT.forwardTo(translationTableForInput);
+        CODING_SYSTEM_LIST.initForwardTo(codingSystemList);
+        CODING_SYSTEM_ALIST.initForwardTo(codingSystemAlist);
+        CODING_CATEGORY_LIST.initForwardTo(codingCategoryList);
+        CODING_SYSTEM_FOR_READ.initForwardTo(codingSystemForRead);
+        CODING_SYSTEM_FOR_WRITE.initForwardTo(codingSystemForWrite);
+        LAST_CODING_SYSTEM_USED.initForwardTo(lastCodingSystemUsed);
+        LAST_CODE_CONVERSION_ERROR.initForwardTo(lastCodeConversionError);
+        INHIBIT_EOL_CONVERSION.initForwardTo(inhibitEolConversion);
+        INHERIT_PROCESS_CODING_SYSTEM.initForwardTo(inheritProcessCodingSystem);
+        FILE_CODING_SYSTEM_ALIST.initForwardTo(fileCodingSystemAlist);
+        PROCESS_CODING_SYSTEM_ALIST.initForwardTo(processCodingSystemAlist);
+        NETWORK_CODING_SYSTEM_ALIST.initForwardTo(networkCodingSystemAlist);
+        LOCALE_CODING_SYSTEM.initForwardTo(localeCodingSystem);
+        EOL_MNEMONIC_UNIX.initForwardTo(eolMnemonicUnix);
+        EOL_MNEMONIC_DOS.initForwardTo(eolMnemonicDos);
+        EOL_MNEMONIC_MAC.initForwardTo(eolMnemonicMac);
+        EOL_MNEMONIC_UNDECIDED.initForwardTo(eolMnemonicUndecided);
+        ENABLE_CHARACTER_TRANSLATION.initForwardTo(enableCharacterTranslation);
+        STANDARD_TRANSLATION_TABLE_FOR_DECODE.initForwardTo(standardTranslationTableForDecode);
+        STANDARD_TRANSLATION_TABLE_FOR_ENCODE.initForwardTo(standardTranslationTableForEncode);
+        CHARSET_REVISION_TABLE.initForwardTo(charsetRevisionTable);
+        DEFAULT_PROCESS_CODING_SYSTEM.initForwardTo(defaultProcessCodingSystem);
+        LATIN_EXTRA_CODE_TABLE.initForwardTo(latinExtraCodeTable);
+        SELECT_SAFE_CODING_SYSTEM_FUNCTION.initForwardTo(selectSafeCodingSystemFunction);
+        CODING_SYSTEM_REQUIRE_WARNING.initForwardTo(codingSystemRequireWarning);
+        INHIBIT_ISO_ESCAPE_DETECTION.initForwardTo(inhibitIsoEscapeDetection);
+        INHIBIT_NULL_BYTE_DETECTION.initForwardTo(inhibitNullByteDetection);
+        DISABLE_ASCII_OPTIMIZATION.initForwardTo(disableAsciiOptimization);
+        TRANSLATION_TABLE_FOR_INPUT.initForwardTo(translationTableForInput);
     }
     private static void codingPostInitVars() {
         CODING_SYSTEM_HISTORY.setValue(NIL);
@@ -1180,8 +1182,8 @@ public class ELispGlobals {
         latinExtraCodeTable.setValue(latinExtraCodeTableJInit);
         // TODO: setup coding system
     }
-    /* @end region="coding.c" */
-    /* @generated region="character.c" by="extract-emacs-src.py" */
+    //#endregion coding.c
+    //#region character.c
     public static ELispSymbol.Value.Forwarded translationTableVector = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded autoFillChars = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded charWidthTable = new ELispSymbol.Value.Forwarded(false);
@@ -1192,14 +1194,14 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded unicodeCategoryTable = new ELispSymbol.Value.Forwarded(false);
 
     private static void characterVars() {
-        TRANSLATION_TABLE_VECTOR.forwardTo(translationTableVector);
-        AUTO_FILL_CHARS.forwardTo(autoFillChars);
-        CHAR_WIDTH_TABLE.forwardTo(charWidthTable);
-        AMBIGUOUS_WIDTH_CHARS.forwardTo(ambiguousWidthChars);
-        PRINTABLE_CHARS.forwardTo(printableChars);
-        CHAR_SCRIPT_TABLE.forwardTo(charScriptTable);
-        SCRIPT_REPRESENTATIVE_CHARS.forwardTo(scriptRepresentativeChars);
-        UNICODE_CATEGORY_TABLE.forwardTo(unicodeCategoryTable);
+        TRANSLATION_TABLE_VECTOR.initForwardTo(translationTableVector);
+        AUTO_FILL_CHARS.initForwardTo(autoFillChars);
+        CHAR_WIDTH_TABLE.initForwardTo(charWidthTable);
+        AMBIGUOUS_WIDTH_CHARS.initForwardTo(ambiguousWidthChars);
+        PRINTABLE_CHARS.initForwardTo(printableChars);
+        CHAR_SCRIPT_TABLE.initForwardTo(charScriptTable);
+        SCRIPT_REPRESENTATIVE_CHARS.initForwardTo(scriptRepresentativeChars);
+        UNICODE_CATEGORY_TABLE.initForwardTo(unicodeCategoryTable);
     }
     private static void characterPostInitVars() {
         var translationTableVectorJInit = new ELispVector(Collections.nCopies(16, false));
@@ -1222,15 +1224,15 @@ public class ELispGlobals {
         var charScriptTableJInit = FMakeCharTable.makeCharTable(CHAR_SCRIPT_TABLE, NIL);
         charScriptTable.setValue(charScriptTableJInit);
     }
-    /* @end region="character.c" */
-    /* @generated region="window.c" by="extract-emacs-src.py" */
+    //#endregion character.c
+    //#region window.c
     public static ELispSymbol.Value.Forwarded tempBufferShowFunction = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded minibufScrollWindow = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded modeLineInNonSelectedWindows = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool modeLineInNonSelectedWindows = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded otherWindowScrollBuffer = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded otherWindowScrollDefault = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoWindowVscrollP = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded nextScreenContextLines = new ELispSymbol.Value.Forwarded((long) 2);
+    public static ELispSymbol.Value.ForwardedBool autoWindowVscrollP = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedLong nextScreenContextLines = new ELispSymbol.Value.ForwardedLong((long) 2);
     public static ELispSymbol.Value.Forwarded scrollPreserveScreenPosition = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded windowPointInsertionType = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded windowBufferChangeFunctions = new ELispSymbol.Value.Forwarded(false);
@@ -1244,34 +1246,34 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded windowCombinationResize = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded windowCombinationLimit = new ELispSymbol.Value.Forwarded((Object) WINDOW_SIZE);
     public static ELispSymbol.Value.Forwarded windowPersistentParameters = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowResizePixelwise = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded fastButImpreciseScrolling = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool windowResizePixelwise = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool fastButImpreciseScrolling = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded windowDeadWindowsTable = new ELispSymbol.Value.Forwarded(false);
 
     private static void windowVars() {
-        TEMP_BUFFER_SHOW_FUNCTION.forwardTo(tempBufferShowFunction);
-        MINIBUFFER_SCROLL_WINDOW.forwardTo(minibufScrollWindow);
-        MODE_LINE_IN_NON_SELECTED_WINDOWS.forwardTo(modeLineInNonSelectedWindows);
-        OTHER_WINDOW_SCROLL_BUFFER.forwardTo(otherWindowScrollBuffer);
-        OTHER_WINDOW_SCROLL_DEFAULT.forwardTo(otherWindowScrollDefault);
-        AUTO_WINDOW_VSCROLL.forwardTo(autoWindowVscrollP);
-        NEXT_SCREEN_CONTEXT_LINES.forwardTo(nextScreenContextLines);
-        SCROLL_PRESERVE_SCREEN_POSITION.forwardTo(scrollPreserveScreenPosition);
-        WINDOW_POINT_INSERTION_TYPE.forwardTo(windowPointInsertionType);
-        WINDOW_BUFFER_CHANGE_FUNCTIONS.forwardTo(windowBufferChangeFunctions);
-        WINDOW_SIZE_CHANGE_FUNCTIONS.forwardTo(windowSizeChangeFunctions);
-        WINDOW_SELECTION_CHANGE_FUNCTIONS.forwardTo(windowSelectionChangeFunctions);
-        WINDOW_STATE_CHANGE_FUNCTIONS.forwardTo(windowStateChangeFunctions);
-        WINDOW_STATE_CHANGE_HOOK.forwardTo(windowStateChangeHook);
-        WINDOW_CONFIGURATION_CHANGE_HOOK.forwardTo(windowConfigurationChangeHook);
-        WINDOW_RESTORE_KILLED_BUFFER_WINDOWS.forwardTo(windowRestoreKilledBufferWindows);
-        RECENTER_REDISPLAY.forwardTo(recenterRedisplay);
-        WINDOW_COMBINATION_RESIZE.forwardTo(windowCombinationResize);
-        WINDOW_COMBINATION_LIMIT.forwardTo(windowCombinationLimit);
-        WINDOW_PERSISTENT_PARAMETERS.forwardTo(windowPersistentParameters);
-        WINDOW_RESIZE_PIXELWISE.forwardTo(windowResizePixelwise);
-        FAST_BUT_IMPRECISE_SCROLLING.forwardTo(fastButImpreciseScrolling);
-        WINDOW_DEAD_WINDOWS_TABLE.forwardTo(windowDeadWindowsTable);
+        TEMP_BUFFER_SHOW_FUNCTION.initForwardTo(tempBufferShowFunction);
+        MINIBUFFER_SCROLL_WINDOW.initForwardTo(minibufScrollWindow);
+        MODE_LINE_IN_NON_SELECTED_WINDOWS.initForwardTo(modeLineInNonSelectedWindows);
+        OTHER_WINDOW_SCROLL_BUFFER.initForwardTo(otherWindowScrollBuffer);
+        OTHER_WINDOW_SCROLL_DEFAULT.initForwardTo(otherWindowScrollDefault);
+        AUTO_WINDOW_VSCROLL.initForwardTo(autoWindowVscrollP);
+        NEXT_SCREEN_CONTEXT_LINES.initForwardTo(nextScreenContextLines);
+        SCROLL_PRESERVE_SCREEN_POSITION.initForwardTo(scrollPreserveScreenPosition);
+        WINDOW_POINT_INSERTION_TYPE.initForwardTo(windowPointInsertionType);
+        WINDOW_BUFFER_CHANGE_FUNCTIONS.initForwardTo(windowBufferChangeFunctions);
+        WINDOW_SIZE_CHANGE_FUNCTIONS.initForwardTo(windowSizeChangeFunctions);
+        WINDOW_SELECTION_CHANGE_FUNCTIONS.initForwardTo(windowSelectionChangeFunctions);
+        WINDOW_STATE_CHANGE_FUNCTIONS.initForwardTo(windowStateChangeFunctions);
+        WINDOW_STATE_CHANGE_HOOK.initForwardTo(windowStateChangeHook);
+        WINDOW_CONFIGURATION_CHANGE_HOOK.initForwardTo(windowConfigurationChangeHook);
+        WINDOW_RESTORE_KILLED_BUFFER_WINDOWS.initForwardTo(windowRestoreKilledBufferWindows);
+        RECENTER_REDISPLAY.initForwardTo(recenterRedisplay);
+        WINDOW_COMBINATION_RESIZE.initForwardTo(windowCombinationResize);
+        WINDOW_COMBINATION_LIMIT.initForwardTo(windowCombinationLimit);
+        WINDOW_PERSISTENT_PARAMETERS.initForwardTo(windowPersistentParameters);
+        WINDOW_RESIZE_PIXELWISE.initForwardTo(windowResizePixelwise);
+        FAST_BUT_IMPRECISE_SCROLLING.initForwardTo(fastButImpreciseScrolling);
+        WINDOW_DEAD_WINDOWS_TABLE.initForwardTo(windowDeadWindowsTable);
     }
     private static void windowPostInitVars() {
         SCROLL_UP.putProperty(SCROLL_COMMAND, T);
@@ -1281,14 +1283,14 @@ public class ELispGlobals {
         var windowDeadWindowsTableJInit = FMakeHashTable.makeHashTable(new Object[]{CWEAKNESS, T});
         windowDeadWindowsTable.setValue(windowDeadWindowsTableJInit);
     }
-    /* @end region="window.c" */
-    /* @generated region="frame.c" by="extract-emacs-src.py" */
+    //#endregion window.c
+    //#region frame.c
     public static ELispSymbol.Value.Forwarded xResourceName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded xResourceClass = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded frameAlphaLowerLimit = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded defaultFrameAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded defaultFrameScrollBars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded scrollBarAdjustThumbPortionP = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool scrollBarAdjustThumbPortionP = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded terminalFrame = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
     public static ELispSymbol.Value.Forwarded mousePositionFunction = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded mouseHighlight = new ELispSymbol.Value.Forwarded((Object) T);
@@ -1302,41 +1304,41 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded defaultMinibufferFrame = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
     public static ELispSymbol.Value.Forwarded resizeMiniFrames = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded focusFollowsMouse = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded frameResizePixelwise = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool frameResizePixelwise = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded frameInhibitImpliedResize = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded frameSizeHistory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded tooltipReuseHiddenFrame = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded useSystemTooltips = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool tooltipReuseHiddenFrame = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool useSystemTooltips = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded iconifyChildFrame = new ELispSymbol.Value.Forwarded((Object) ICONIFY_TOP_LEVEL);
     public static ELispSymbol.Value.Forwarded frameInternalParameters = new ELispSymbol.Value.Forwarded(false);
 
     private static void frameVars() {
-        X_RESOURCE_NAME.forwardTo(xResourceName);
-        X_RESOURCE_CLASS.forwardTo(xResourceClass);
-        FRAME_ALPHA_LOWER_LIMIT.forwardTo(frameAlphaLowerLimit);
-        DEFAULT_FRAME_ALIST.forwardTo(defaultFrameAlist);
-        DEFAULT_FRAME_SCROLL_BARS.forwardTo(defaultFrameScrollBars);
-        SCROLL_BAR_ADJUST_THUMB_PORTION.forwardTo(scrollBarAdjustThumbPortionP);
-        TERMINAL_FRAME.forwardTo(terminalFrame);
-        MOUSE_POSITION_FUNCTION.forwardTo(mousePositionFunction);
-        MOUSE_HIGHLIGHT.forwardTo(mouseHighlight);
-        MAKE_POINTER_INVISIBLE.forwardTo(makePointerInvisible);
-        MOVE_FRAME_FUNCTIONS.forwardTo(moveFrameFunctions);
-        DELETE_FRAME_FUNCTIONS.forwardTo(deleteFrameFunctions);
-        AFTER_DELETE_FRAME_FUNCTIONS.forwardTo(afterDeleteFrameFunctions);
-        MENU_BAR_MODE.forwardTo(menuBarMode);
-        TAB_BAR_MODE.forwardTo(tabBarMode);
-        TOOL_BAR_MODE.forwardTo(toolBarMode);
-        DEFAULT_MINIBUFFER_FRAME.forwardTo(defaultMinibufferFrame);
-        RESIZE_MINI_FRAMES.forwardTo(resizeMiniFrames);
-        FOCUS_FOLLOWS_MOUSE.forwardTo(focusFollowsMouse);
-        FRAME_RESIZE_PIXELWISE.forwardTo(frameResizePixelwise);
-        FRAME_INHIBIT_IMPLIED_RESIZE.forwardTo(frameInhibitImpliedResize);
-        FRAME_SIZE_HISTORY.forwardTo(frameSizeHistory);
-        TOOLTIP_REUSE_HIDDEN_FRAME.forwardTo(tooltipReuseHiddenFrame);
-        USE_SYSTEM_TOOLTIPS.forwardTo(useSystemTooltips);
-        ICONIFY_CHILD_FRAME.forwardTo(iconifyChildFrame);
-        FRAME_INTERNAL_PARAMETERS.forwardTo(frameInternalParameters);
+        X_RESOURCE_NAME.initForwardTo(xResourceName);
+        X_RESOURCE_CLASS.initForwardTo(xResourceClass);
+        FRAME_ALPHA_LOWER_LIMIT.initForwardTo(frameAlphaLowerLimit);
+        DEFAULT_FRAME_ALIST.initForwardTo(defaultFrameAlist);
+        DEFAULT_FRAME_SCROLL_BARS.initForwardTo(defaultFrameScrollBars);
+        SCROLL_BAR_ADJUST_THUMB_PORTION.initForwardTo(scrollBarAdjustThumbPortionP);
+        TERMINAL_FRAME.initForwardTo(terminalFrame);
+        MOUSE_POSITION_FUNCTION.initForwardTo(mousePositionFunction);
+        MOUSE_HIGHLIGHT.initForwardTo(mouseHighlight);
+        MAKE_POINTER_INVISIBLE.initForwardTo(makePointerInvisible);
+        MOVE_FRAME_FUNCTIONS.initForwardTo(moveFrameFunctions);
+        DELETE_FRAME_FUNCTIONS.initForwardTo(deleteFrameFunctions);
+        AFTER_DELETE_FRAME_FUNCTIONS.initForwardTo(afterDeleteFrameFunctions);
+        MENU_BAR_MODE.initForwardTo(menuBarMode);
+        TAB_BAR_MODE.initForwardTo(tabBarMode);
+        TOOL_BAR_MODE.initForwardTo(toolBarMode);
+        DEFAULT_MINIBUFFER_FRAME.initForwardTo(defaultMinibufferFrame);
+        RESIZE_MINI_FRAMES.initForwardTo(resizeMiniFrames);
+        FOCUS_FOLLOWS_MOUSE.initForwardTo(focusFollowsMouse);
+        FRAME_RESIZE_PIXELWISE.initForwardTo(frameResizePixelwise);
+        FRAME_INHIBIT_IMPLIED_RESIZE.initForwardTo(frameInhibitImpliedResize);
+        FRAME_SIZE_HISTORY.initForwardTo(frameSizeHistory);
+        TOOLTIP_REUSE_HIDDEN_FRAME.initForwardTo(tooltipReuseHiddenFrame);
+        USE_SYSTEM_TOOLTIPS.initForwardTo(useSystemTooltips);
+        ICONIFY_CHILD_FRAME.initForwardTo(iconifyChildFrame);
+        FRAME_INTERNAL_PARAMETERS.initForwardTo(frameInternalParameters);
     }
     private static void framePostInitVars() {
         FPut.put(AUTO_RAISE, X_FRAME_PARAMETER, (long) 0);
@@ -1392,45 +1394,45 @@ public class ELispGlobals {
         var frameInternalParametersJInit = ELispCons.listOf(NAME, PARENT_ID, WINDOW_ID);
         frameInternalParameters.setValue(frameInternalParametersJInit);
     }
-    /* @end region="frame.c" */
-    /* @generated region="textprop.c" by="extract-emacs-src.py" */
+    //#endregion frame.c
+    //#region textprop.c
     public static ELispSymbol.Value.Forwarded defaultTextProperties = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded charPropertyAliasAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded inhibitPointMotionHooks = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded textPropertyDefaultNonsticky = new ELispSymbol.Value.Forwarded(false);
 
     private static void textpropVars() {
-        DEFAULT_TEXT_PROPERTIES.forwardTo(defaultTextProperties);
-        CHAR_PROPERTY_ALIAS_ALIST.forwardTo(charPropertyAliasAlist);
-        INHIBIT_POINT_MOTION_HOOKS.forwardTo(inhibitPointMotionHooks);
-        TEXT_PROPERTY_DEFAULT_NONSTICKY.forwardTo(textPropertyDefaultNonsticky);
+        DEFAULT_TEXT_PROPERTIES.initForwardTo(defaultTextProperties);
+        CHAR_PROPERTY_ALIAS_ALIST.initForwardTo(charPropertyAliasAlist);
+        INHIBIT_POINT_MOTION_HOOKS.initForwardTo(inhibitPointMotionHooks);
+        TEXT_PROPERTY_DEFAULT_NONSTICKY.initForwardTo(textPropertyDefaultNonsticky);
     }
     private static void textpropPostInitVars() {
         var textPropertyDefaultNonstickyJInit = ELispCons.listOf(new ELispCons(SYNTAX_TABLE, T), new ELispCons(DISPLAY, T));
         textPropertyDefaultNonsticky.setValue(textPropertyDefaultNonstickyJInit);
     }
-    /* @end region="textprop.c" */
-    /* @generated region="syntax.c" by="extract-emacs-src.py" */
+    //#endregion textprop.c
+    //#region syntax.c
     public static ELispSymbol.Value.Forwarded commentUseSyntaxPpss = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded parseSexpIgnoreComments = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded parseSexpLookupProperties = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded syntaxPropertizeDone = new ELispSymbol.Value.Forwarded((long) -1);
-    public static ELispSymbol.Value.Forwarded wordsIncludeEscapes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded multibyteSyntaxAsSymbol = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded openParenInColumn0IsDefunStart = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool parseSexpIgnoreComments = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool parseSexpLookupProperties = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedLong syntaxPropertizeDone = new ELispSymbol.Value.ForwardedLong((long) -1);
+    public static ELispSymbol.Value.ForwardedBool wordsIncludeEscapes = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool multibyteSyntaxAsSymbol = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool openParenInColumn0IsDefunStart = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded findWordBoundaryFunctionTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded commentEndCanBeEscaped = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool commentEndCanBeEscaped = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void syntaxVars() {
-        COMMENT_USE_SYNTAX_PPSS.forwardTo(commentUseSyntaxPpss);
-        PARSE_SEXP_IGNORE_COMMENTS.forwardTo(parseSexpIgnoreComments);
-        PARSE_SEXP_LOOKUP_PROPERTIES.forwardTo(parseSexpLookupProperties);
-        SYNTAX_PROPERTIZE__DONE.forwardTo(syntaxPropertizeDone);
-        WORDS_INCLUDE_ESCAPES.forwardTo(wordsIncludeEscapes);
-        MULTIBYTE_SYNTAX_AS_SYMBOL.forwardTo(multibyteSyntaxAsSymbol);
-        OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START.forwardTo(openParenInColumn0IsDefunStart);
-        FIND_WORD_BOUNDARY_FUNCTION_TABLE.forwardTo(findWordBoundaryFunctionTable);
-        COMMENT_END_CAN_BE_ESCAPED.forwardTo(commentEndCanBeEscaped);
+        COMMENT_USE_SYNTAX_PPSS.initForwardTo(commentUseSyntaxPpss);
+        PARSE_SEXP_IGNORE_COMMENTS.initForwardTo(parseSexpIgnoreComments);
+        PARSE_SEXP_LOOKUP_PROPERTIES.initForwardTo(parseSexpLookupProperties);
+        SYNTAX_PROPERTIZE__DONE.initForwardTo(syntaxPropertizeDone);
+        WORDS_INCLUDE_ESCAPES.initForwardTo(wordsIncludeEscapes);
+        MULTIBYTE_SYNTAX_AS_SYMBOL.initForwardTo(multibyteSyntaxAsSymbol);
+        OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START.initForwardTo(openParenInColumn0IsDefunStart);
+        FIND_WORD_BOUNDARY_FUNCTION_TABLE.initForwardTo(findWordBoundaryFunctionTable);
+        COMMENT_END_CAN_BE_ESCAPED.initForwardTo(commentEndCanBeEscaped);
     }
     private static void syntaxPostInitVars() {
         SCAN_ERROR.putProperty(ERROR_CONDITIONS, ELispCons.listOf(SCAN_ERROR, ERROR));
@@ -1440,87 +1442,87 @@ public class ELispGlobals {
         findWordBoundaryFunctionTable.setValue(findWordBoundaryFunctionTableJInit);
         COMMENT_END_CAN_BE_ESCAPED.setBufferLocal(true);
     }
-    /* @end region="syntax.c" */
-    /* @generated region="xdisp.c" by="extract-emacs-src.py" */
-    public static ELispSymbol.Value.Forwarded scrollMinibufferConservatively = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded inhibitMessage = new ELispSymbol.Value.Forwarded(false);
+    //#endregion syntax.c
+    //#region xdisp.c
+    public static ELispSymbol.Value.ForwardedBool scrollMinibufferConservatively = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool inhibitMessage = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded messagesBufferName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded xStretchCursorP = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool xStretchCursorP = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded showTrailingWhitespace = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded modeLineCompact = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded nobreakCharDisplay = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded nobreakCharAsciiDisplay = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool nobreakCharAsciiDisplay = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded voidTextAreaPointer = new ELispSymbol.Value.Forwarded((Object) ARROW);
     public static ELispSymbol.Value.Forwarded inhibitRedisplay = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded globalModeString = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded overlayArrowPosition = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded overlayArrowString = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded overlayArrowVariableList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded emacsScrollStep = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded scrollConservatively = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded scrollMargin = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedLong emacsScrollStep = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong scrollConservatively = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong scrollMargin = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded maximumScrollMargin = new ELispSymbol.Value.Forwarded((Object) 0.25);
     public static ELispSymbol.Value.Forwarded displayPixelsPerInch = new ELispSymbol.Value.Forwarded((Object) 72.0);
-    public static ELispSymbol.Value.Forwarded debugEndPos = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedLong debugEndPos = new ELispSymbol.Value.ForwardedLong((long) 0);
     public static ELispSymbol.Value.Forwarded truncatePartialWidthWindows = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded wordWrapByCategory = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool wordWrapByCategory = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded lineNumberDisplayLimit = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lineNumberDisplayLimitWidth = new ELispSymbol.Value.Forwarded((long) 200);
-    public static ELispSymbol.Value.Forwarded highlightNonselectedWindows = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded multipleFrames = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedLong lineNumberDisplayLimitWidth = new ELispSymbol.Value.ForwardedLong((long) 200);
+    public static ELispSymbol.Value.ForwardedBool highlightNonselectedWindows = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool multipleFrames = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded frameTitleFormat = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded iconTitleFormat = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded messageLogMax = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded windowScrollFunctions = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded mouseAutoselectWindow = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded autoResizeTabBars = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded autoRaiseTabBarButtonsP = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool autoRaiseTabBarButtonsP = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded autoResizeToolBars = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded autoRaiseToolBarButtonsP = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedBool autoRaiseToolBarButtonsP = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded makeCursorLineFullyVisible = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded makeWindowStartVisible = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool makeWindowStartVisible = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded tabBarBorder = new ELispSymbol.Value.Forwarded((Object) INTERNAL_BORDER_WIDTH);
     public static ELispSymbol.Value.Forwarded tabBarButtonMargin = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded tabBarButtonRelief = new ELispSymbol.Value.Forwarded((long) 1);
+    public static ELispSymbol.Value.ForwardedLong tabBarButtonRelief = new ELispSymbol.Value.ForwardedLong((long) 1);
     public static ELispSymbol.Value.Forwarded toolBarBorder = new ELispSymbol.Value.Forwarded((Object) INTERNAL_BORDER_WIDTH);
     public static ELispSymbol.Value.Forwarded toolBarButtonMargin = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded toolBarButtonRelief = new ELispSymbol.Value.Forwarded((long) 1);
+    public static ELispSymbol.Value.ForwardedLong toolBarButtonRelief = new ELispSymbol.Value.ForwardedLong((long) 1);
     public static ELispSymbol.Value.Forwarded toolBarStyle = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded toolBarMaxLabelSize = new ELispSymbol.Value.Forwarded((long) 14);
+    public static ELispSymbol.Value.ForwardedLong toolBarMaxLabelSize = new ELispSymbol.Value.ForwardedLong((long) 14);
     public static ELispSymbol.Value.Forwarded fontificationFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded unibyteDisplayViaLanguageEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool unibyteDisplayViaLanguageEnvironment = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded maxMiniWindowHeight = new ELispSymbol.Value.Forwarded((Object) 0.25);
     public static ELispSymbol.Value.Forwarded resizeMiniWindows = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded blinkCursorAlist = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded automaticHscrolling = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded hscrollMargin = new ELispSymbol.Value.Forwarded((long) 5);
+    public static ELispSymbol.Value.ForwardedLong hscrollMargin = new ELispSymbol.Value.ForwardedLong((long) 5);
     public static ELispSymbol.Value.Forwarded hscrollStep = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded messageTruncateLines = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool messageTruncateLines = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded menuBarUpdateHook = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded menuUpdatingFrame = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitMenubarUpdate = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitMenubarUpdate = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded wrapPrefix = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded linePrefix = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded displayLineNumbers = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded displayLineNumbersWidth = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded displayLineNumbersCurrentAbsolute = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded displayLineNumbersWiden = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded displayLineNumbersOffset = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded displayFillColumnIndicator = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool displayLineNumbersWiden = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedLong displayLineNumbersOffset = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedBool displayFillColumnIndicator = new ELispSymbol.Value.ForwardedBool(false);
     public static ELispSymbol.Value.Forwarded displayFillColumnIndicatorColumn = new ELispSymbol.Value.Forwarded((Object) T);
     public static ELispSymbol.Value.Forwarded displayFillColumnIndicatorCharacter = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded displayLineNumbersMajorTick = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded displayLineNumbersMinorTick = new ELispSymbol.Value.Forwarded((long) 0);
-    public static ELispSymbol.Value.Forwarded inhibitEvalDuringRedisplay = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitFreeRealizedFaces = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitBidiMirroring = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded bidiInhibitBpa = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitTryWindowId = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitTryWindowReusing = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitTryCursorMovement = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded overlineMargin = new ELispSymbol.Value.Forwarded((long) 2);
-    public static ELispSymbol.Value.Forwarded underlineMinimumOffset = new ELispSymbol.Value.Forwarded((long) 1);
-    public static ELispSymbol.Value.Forwarded displayHourglassP = new ELispSymbol.Value.Forwarded(true);
+    public static ELispSymbol.Value.ForwardedLong displayLineNumbersMajorTick = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedLong displayLineNumbersMinorTick = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.ForwardedBool inhibitEvalDuringRedisplay = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitFreeRealizedFaces = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitBidiMirroring = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool bidiInhibitBpa = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitTryWindowId = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitTryWindowReusing = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitTryCursorMovement = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedLong overlineMargin = new ELispSymbol.Value.ForwardedLong((long) 2);
+    public static ELispSymbol.Value.ForwardedLong underlineMinimumOffset = new ELispSymbol.Value.ForwardedLong((long) 1);
+    public static ELispSymbol.Value.ForwardedBool displayHourglassP = new ELispSymbol.Value.ForwardedBool(true);
     public static ELispSymbol.Value.Forwarded hourglassDelay = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded preRedisplayFunction = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded glyphlessCharDisplay = new ELispSymbol.Value.Forwarded(false);
@@ -1529,113 +1531,113 @@ public class ELispGlobals {
     public static ELispSymbol.Value.Forwarded clearMessageFunction = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded redisplayAllWindowsCause = new ELispSymbol.Value.Forwarded(false);
     public static ELispSymbol.Value.Forwarded redisplayModeLinesCause = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded redisplayInhibitBidi = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded displayRawBytesAsHex = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded mouseFineGrainedTracking = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded tabBarDraggingInProgress = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded redisplaySkipInitialFrame = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded redisplaySkipFontificationOnInput = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded redisplayAdhocScrollInResizeMiniWindows = new ELispSymbol.Value.Forwarded(true);
-    public static ELispSymbol.Value.Forwarded compositionBreakAtPoint = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded maxRedisplayTicks = new ELispSymbol.Value.Forwarded((long) 0);
+    public static ELispSymbol.Value.ForwardedBool redisplayInhibitBidi = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool displayRawBytesAsHex = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool mouseFineGrainedTracking = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool tabBarDraggingInProgress = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool redisplaySkipInitialFrame = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool redisplaySkipFontificationOnInput = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool redisplayAdhocScrollInResizeMiniWindows = new ELispSymbol.Value.ForwardedBool(true);
+    public static ELispSymbol.Value.ForwardedBool compositionBreakAtPoint = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedLong maxRedisplayTicks = new ELispSymbol.Value.ForwardedLong((long) 0);
 
     private static void xdispVars() {
-        SCROLL_MINIBUFFER_CONSERVATIVELY.forwardTo(scrollMinibufferConservatively);
-        INHIBIT_MESSAGE.forwardTo(inhibitMessage);
-        MESSAGES_BUFFER_NAME.forwardTo(messagesBufferName);
-        X_STRETCH_CURSOR.forwardTo(xStretchCursorP);
-        SHOW_TRAILING_WHITESPACE.forwardTo(showTrailingWhitespace);
-        MODE_LINE_COMPACT.forwardTo(modeLineCompact);
-        NOBREAK_CHAR_DISPLAY.forwardTo(nobreakCharDisplay);
-        NOBREAK_CHAR_ASCII_DISPLAY.forwardTo(nobreakCharAsciiDisplay);
-        VOID_TEXT_AREA_POINTER.forwardTo(voidTextAreaPointer);
-        INHIBIT_REDISPLAY.forwardTo(inhibitRedisplay);
-        GLOBAL_MODE_STRING.forwardTo(globalModeString);
-        OVERLAY_ARROW_POSITION.forwardTo(overlayArrowPosition);
-        OVERLAY_ARROW_STRING.forwardTo(overlayArrowString);
-        OVERLAY_ARROW_VARIABLE_LIST.forwardTo(overlayArrowVariableList);
-        SCROLL_STEP.forwardTo(emacsScrollStep);
-        SCROLL_CONSERVATIVELY.forwardTo(scrollConservatively);
-        SCROLL_MARGIN.forwardTo(scrollMargin);
-        MAXIMUM_SCROLL_MARGIN.forwardTo(maximumScrollMargin);
-        DISPLAY_PIXELS_PER_INCH.forwardTo(displayPixelsPerInch);
-        DEBUG_END_POS.forwardTo(debugEndPos);
-        TRUNCATE_PARTIAL_WIDTH_WINDOWS.forwardTo(truncatePartialWidthWindows);
-        WORD_WRAP_BY_CATEGORY.forwardTo(wordWrapByCategory);
-        LINE_NUMBER_DISPLAY_LIMIT.forwardTo(lineNumberDisplayLimit);
-        LINE_NUMBER_DISPLAY_LIMIT_WIDTH.forwardTo(lineNumberDisplayLimitWidth);
-        HIGHLIGHT_NONSELECTED_WINDOWS.forwardTo(highlightNonselectedWindows);
-        MULTIPLE_FRAMES.forwardTo(multipleFrames);
-        FRAME_TITLE_FORMAT.forwardTo(frameTitleFormat);
-        ICON_TITLE_FORMAT.forwardTo(iconTitleFormat);
-        MESSAGE_LOG_MAX.forwardTo(messageLogMax);
-        WINDOW_SCROLL_FUNCTIONS.forwardTo(windowScrollFunctions);
-        MOUSE_AUTOSELECT_WINDOW.forwardTo(mouseAutoselectWindow);
-        AUTO_RESIZE_TAB_BARS.forwardTo(autoResizeTabBars);
-        AUTO_RAISE_TAB_BAR_BUTTONS.forwardTo(autoRaiseTabBarButtonsP);
-        AUTO_RESIZE_TOOL_BARS.forwardTo(autoResizeToolBars);
-        AUTO_RAISE_TOOL_BAR_BUTTONS.forwardTo(autoRaiseToolBarButtonsP);
-        MAKE_CURSOR_LINE_FULLY_VISIBLE.forwardTo(makeCursorLineFullyVisible);
-        MAKE_WINDOW_START_VISIBLE.forwardTo(makeWindowStartVisible);
-        TAB_BAR_BORDER.forwardTo(tabBarBorder);
-        TAB_BAR_BUTTON_MARGIN.forwardTo(tabBarButtonMargin);
-        TAB_BAR_BUTTON_RELIEF.forwardTo(tabBarButtonRelief);
-        TOOL_BAR_BORDER.forwardTo(toolBarBorder);
-        TOOL_BAR_BUTTON_MARGIN.forwardTo(toolBarButtonMargin);
-        TOOL_BAR_BUTTON_RELIEF.forwardTo(toolBarButtonRelief);
-        TOOL_BAR_STYLE.forwardTo(toolBarStyle);
-        TOOL_BAR_MAX_LABEL_SIZE.forwardTo(toolBarMaxLabelSize);
-        FONTIFICATION_FUNCTIONS.forwardTo(fontificationFunctions);
-        UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT.forwardTo(unibyteDisplayViaLanguageEnvironment);
-        MAX_MINI_WINDOW_HEIGHT.forwardTo(maxMiniWindowHeight);
-        RESIZE_MINI_WINDOWS.forwardTo(resizeMiniWindows);
-        BLINK_CURSOR_ALIST.forwardTo(blinkCursorAlist);
-        AUTO_HSCROLL_MODE.forwardTo(automaticHscrolling);
-        HSCROLL_MARGIN.forwardTo(hscrollMargin);
-        HSCROLL_STEP.forwardTo(hscrollStep);
-        MESSAGE_TRUNCATE_LINES.forwardTo(messageTruncateLines);
-        MENU_BAR_UPDATE_HOOK.forwardTo(menuBarUpdateHook);
-        MENU_UPDATING_FRAME.forwardTo(menuUpdatingFrame);
-        INHIBIT_MENUBAR_UPDATE.forwardTo(inhibitMenubarUpdate);
-        WRAP_PREFIX.forwardTo(wrapPrefix);
-        LINE_PREFIX.forwardTo(linePrefix);
-        DISPLAY_LINE_NUMBERS.forwardTo(displayLineNumbers);
-        DISPLAY_LINE_NUMBERS_WIDTH.forwardTo(displayLineNumbersWidth);
-        DISPLAY_LINE_NUMBERS_CURRENT_ABSOLUTE.forwardTo(displayLineNumbersCurrentAbsolute);
-        DISPLAY_LINE_NUMBERS_WIDEN.forwardTo(displayLineNumbersWiden);
-        DISPLAY_LINE_NUMBERS_OFFSET.forwardTo(displayLineNumbersOffset);
-        DISPLAY_FILL_COLUMN_INDICATOR.forwardTo(displayFillColumnIndicator);
-        DISPLAY_FILL_COLUMN_INDICATOR_COLUMN.forwardTo(displayFillColumnIndicatorColumn);
-        DISPLAY_FILL_COLUMN_INDICATOR_CHARACTER.forwardTo(displayFillColumnIndicatorCharacter);
-        DISPLAY_LINE_NUMBERS_MAJOR_TICK.forwardTo(displayLineNumbersMajorTick);
-        DISPLAY_LINE_NUMBERS_MINOR_TICK.forwardTo(displayLineNumbersMinorTick);
-        INHIBIT_EVAL_DURING_REDISPLAY.forwardTo(inhibitEvalDuringRedisplay);
-        INHIBIT_FREE_REALIZED_FACES.forwardTo(inhibitFreeRealizedFaces);
-        INHIBIT_BIDI_MIRRORING.forwardTo(inhibitBidiMirroring);
-        BIDI_INHIBIT_BPA.forwardTo(bidiInhibitBpa);
-        INHIBIT_TRY_WINDOW_ID.forwardTo(inhibitTryWindowId);
-        INHIBIT_TRY_WINDOW_REUSING.forwardTo(inhibitTryWindowReusing);
-        INHIBIT_TRY_CURSOR_MOVEMENT.forwardTo(inhibitTryCursorMovement);
-        OVERLINE_MARGIN.forwardTo(overlineMargin);
-        UNDERLINE_MINIMUM_OFFSET.forwardTo(underlineMinimumOffset);
-        DISPLAY_HOURGLASS.forwardTo(displayHourglassP);
-        HOURGLASS_DELAY.forwardTo(hourglassDelay);
-        PRE_REDISPLAY_FUNCTION.forwardTo(preRedisplayFunction);
-        GLYPHLESS_CHAR_DISPLAY.forwardTo(glyphlessCharDisplay);
-        DEBUG_ON_MESSAGE.forwardTo(debugOnMessage);
-        SET_MESSAGE_FUNCTION.forwardTo(setMessageFunction);
-        CLEAR_MESSAGE_FUNCTION.forwardTo(clearMessageFunction);
-        REDISPLAY__ALL_WINDOWS_CAUSE.forwardTo(redisplayAllWindowsCause);
-        REDISPLAY__MODE_LINES_CAUSE.forwardTo(redisplayModeLinesCause);
-        REDISPLAY__INHIBIT_BIDI.forwardTo(redisplayInhibitBidi);
-        DISPLAY_RAW_BYTES_AS_HEX.forwardTo(displayRawBytesAsHex);
-        MOUSE_FINE_GRAINED_TRACKING.forwardTo(mouseFineGrainedTracking);
-        TAB_BAR__DRAGGING_IN_PROGRESS.forwardTo(tabBarDraggingInProgress);
-        REDISPLAY_SKIP_INITIAL_FRAME.forwardTo(redisplaySkipInitialFrame);
-        REDISPLAY_SKIP_FONTIFICATION_ON_INPUT.forwardTo(redisplaySkipFontificationOnInput);
-        REDISPLAY_ADHOC_SCROLL_IN_RESIZE_MINI_WINDOWS.forwardTo(redisplayAdhocScrollInResizeMiniWindows);
-        COMPOSITION_BREAK_AT_POINT.forwardTo(compositionBreakAtPoint);
-        MAX_REDISPLAY_TICKS.forwardTo(maxRedisplayTicks);
+        SCROLL_MINIBUFFER_CONSERVATIVELY.initForwardTo(scrollMinibufferConservatively);
+        INHIBIT_MESSAGE.initForwardTo(inhibitMessage);
+        MESSAGES_BUFFER_NAME.initForwardTo(messagesBufferName);
+        X_STRETCH_CURSOR.initForwardTo(xStretchCursorP);
+        SHOW_TRAILING_WHITESPACE.initForwardTo(showTrailingWhitespace);
+        MODE_LINE_COMPACT.initForwardTo(modeLineCompact);
+        NOBREAK_CHAR_DISPLAY.initForwardTo(nobreakCharDisplay);
+        NOBREAK_CHAR_ASCII_DISPLAY.initForwardTo(nobreakCharAsciiDisplay);
+        VOID_TEXT_AREA_POINTER.initForwardTo(voidTextAreaPointer);
+        INHIBIT_REDISPLAY.initForwardTo(inhibitRedisplay);
+        GLOBAL_MODE_STRING.initForwardTo(globalModeString);
+        OVERLAY_ARROW_POSITION.initForwardTo(overlayArrowPosition);
+        OVERLAY_ARROW_STRING.initForwardTo(overlayArrowString);
+        OVERLAY_ARROW_VARIABLE_LIST.initForwardTo(overlayArrowVariableList);
+        SCROLL_STEP.initForwardTo(emacsScrollStep);
+        SCROLL_CONSERVATIVELY.initForwardTo(scrollConservatively);
+        SCROLL_MARGIN.initForwardTo(scrollMargin);
+        MAXIMUM_SCROLL_MARGIN.initForwardTo(maximumScrollMargin);
+        DISPLAY_PIXELS_PER_INCH.initForwardTo(displayPixelsPerInch);
+        DEBUG_END_POS.initForwardTo(debugEndPos);
+        TRUNCATE_PARTIAL_WIDTH_WINDOWS.initForwardTo(truncatePartialWidthWindows);
+        WORD_WRAP_BY_CATEGORY.initForwardTo(wordWrapByCategory);
+        LINE_NUMBER_DISPLAY_LIMIT.initForwardTo(lineNumberDisplayLimit);
+        LINE_NUMBER_DISPLAY_LIMIT_WIDTH.initForwardTo(lineNumberDisplayLimitWidth);
+        HIGHLIGHT_NONSELECTED_WINDOWS.initForwardTo(highlightNonselectedWindows);
+        MULTIPLE_FRAMES.initForwardTo(multipleFrames);
+        FRAME_TITLE_FORMAT.initForwardTo(frameTitleFormat);
+        ICON_TITLE_FORMAT.initForwardTo(iconTitleFormat);
+        MESSAGE_LOG_MAX.initForwardTo(messageLogMax);
+        WINDOW_SCROLL_FUNCTIONS.initForwardTo(windowScrollFunctions);
+        MOUSE_AUTOSELECT_WINDOW.initForwardTo(mouseAutoselectWindow);
+        AUTO_RESIZE_TAB_BARS.initForwardTo(autoResizeTabBars);
+        AUTO_RAISE_TAB_BAR_BUTTONS.initForwardTo(autoRaiseTabBarButtonsP);
+        AUTO_RESIZE_TOOL_BARS.initForwardTo(autoResizeToolBars);
+        AUTO_RAISE_TOOL_BAR_BUTTONS.initForwardTo(autoRaiseToolBarButtonsP);
+        MAKE_CURSOR_LINE_FULLY_VISIBLE.initForwardTo(makeCursorLineFullyVisible);
+        MAKE_WINDOW_START_VISIBLE.initForwardTo(makeWindowStartVisible);
+        TAB_BAR_BORDER.initForwardTo(tabBarBorder);
+        TAB_BAR_BUTTON_MARGIN.initForwardTo(tabBarButtonMargin);
+        TAB_BAR_BUTTON_RELIEF.initForwardTo(tabBarButtonRelief);
+        TOOL_BAR_BORDER.initForwardTo(toolBarBorder);
+        TOOL_BAR_BUTTON_MARGIN.initForwardTo(toolBarButtonMargin);
+        TOOL_BAR_BUTTON_RELIEF.initForwardTo(toolBarButtonRelief);
+        TOOL_BAR_STYLE.initForwardTo(toolBarStyle);
+        TOOL_BAR_MAX_LABEL_SIZE.initForwardTo(toolBarMaxLabelSize);
+        FONTIFICATION_FUNCTIONS.initForwardTo(fontificationFunctions);
+        UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT.initForwardTo(unibyteDisplayViaLanguageEnvironment);
+        MAX_MINI_WINDOW_HEIGHT.initForwardTo(maxMiniWindowHeight);
+        RESIZE_MINI_WINDOWS.initForwardTo(resizeMiniWindows);
+        BLINK_CURSOR_ALIST.initForwardTo(blinkCursorAlist);
+        AUTO_HSCROLL_MODE.initForwardTo(automaticHscrolling);
+        HSCROLL_MARGIN.initForwardTo(hscrollMargin);
+        HSCROLL_STEP.initForwardTo(hscrollStep);
+        MESSAGE_TRUNCATE_LINES.initForwardTo(messageTruncateLines);
+        MENU_BAR_UPDATE_HOOK.initForwardTo(menuBarUpdateHook);
+        MENU_UPDATING_FRAME.initForwardTo(menuUpdatingFrame);
+        INHIBIT_MENUBAR_UPDATE.initForwardTo(inhibitMenubarUpdate);
+        WRAP_PREFIX.initForwardTo(wrapPrefix);
+        LINE_PREFIX.initForwardTo(linePrefix);
+        DISPLAY_LINE_NUMBERS.initForwardTo(displayLineNumbers);
+        DISPLAY_LINE_NUMBERS_WIDTH.initForwardTo(displayLineNumbersWidth);
+        DISPLAY_LINE_NUMBERS_CURRENT_ABSOLUTE.initForwardTo(displayLineNumbersCurrentAbsolute);
+        DISPLAY_LINE_NUMBERS_WIDEN.initForwardTo(displayLineNumbersWiden);
+        DISPLAY_LINE_NUMBERS_OFFSET.initForwardTo(displayLineNumbersOffset);
+        DISPLAY_FILL_COLUMN_INDICATOR.initForwardTo(displayFillColumnIndicator);
+        DISPLAY_FILL_COLUMN_INDICATOR_COLUMN.initForwardTo(displayFillColumnIndicatorColumn);
+        DISPLAY_FILL_COLUMN_INDICATOR_CHARACTER.initForwardTo(displayFillColumnIndicatorCharacter);
+        DISPLAY_LINE_NUMBERS_MAJOR_TICK.initForwardTo(displayLineNumbersMajorTick);
+        DISPLAY_LINE_NUMBERS_MINOR_TICK.initForwardTo(displayLineNumbersMinorTick);
+        INHIBIT_EVAL_DURING_REDISPLAY.initForwardTo(inhibitEvalDuringRedisplay);
+        INHIBIT_FREE_REALIZED_FACES.initForwardTo(inhibitFreeRealizedFaces);
+        INHIBIT_BIDI_MIRRORING.initForwardTo(inhibitBidiMirroring);
+        BIDI_INHIBIT_BPA.initForwardTo(bidiInhibitBpa);
+        INHIBIT_TRY_WINDOW_ID.initForwardTo(inhibitTryWindowId);
+        INHIBIT_TRY_WINDOW_REUSING.initForwardTo(inhibitTryWindowReusing);
+        INHIBIT_TRY_CURSOR_MOVEMENT.initForwardTo(inhibitTryCursorMovement);
+        OVERLINE_MARGIN.initForwardTo(overlineMargin);
+        UNDERLINE_MINIMUM_OFFSET.initForwardTo(underlineMinimumOffset);
+        DISPLAY_HOURGLASS.initForwardTo(displayHourglassP);
+        HOURGLASS_DELAY.initForwardTo(hourglassDelay);
+        PRE_REDISPLAY_FUNCTION.initForwardTo(preRedisplayFunction);
+        GLYPHLESS_CHAR_DISPLAY.initForwardTo(glyphlessCharDisplay);
+        DEBUG_ON_MESSAGE.initForwardTo(debugOnMessage);
+        SET_MESSAGE_FUNCTION.initForwardTo(setMessageFunction);
+        CLEAR_MESSAGE_FUNCTION.initForwardTo(clearMessageFunction);
+        REDISPLAY__ALL_WINDOWS_CAUSE.initForwardTo(redisplayAllWindowsCause);
+        REDISPLAY__MODE_LINES_CAUSE.initForwardTo(redisplayModeLinesCause);
+        REDISPLAY__INHIBIT_BIDI.initForwardTo(redisplayInhibitBidi);
+        DISPLAY_RAW_BYTES_AS_HEX.initForwardTo(displayRawBytesAsHex);
+        MOUSE_FINE_GRAINED_TRACKING.initForwardTo(mouseFineGrainedTracking);
+        TAB_BAR__DRAGGING_IN_PROGRESS.initForwardTo(tabBarDraggingInProgress);
+        REDISPLAY_SKIP_INITIAL_FRAME.initForwardTo(redisplaySkipInitialFrame);
+        REDISPLAY_SKIP_FONTIFICATION_ON_INPUT.initForwardTo(redisplaySkipFontificationOnInput);
+        REDISPLAY_ADHOC_SCROLL_IN_RESIZE_MINI_WINDOWS.initForwardTo(redisplayAdhocScrollInResizeMiniWindows);
+        COMPOSITION_BREAK_AT_POINT.initForwardTo(compositionBreakAtPoint);
+        MAX_REDISPLAY_TICKS.initForwardTo(maxRedisplayTicks);
     }
     private static void xdispPostInitVars() {
         var messagesBufferNameJInit = new ELispString("*Messages*");
@@ -1682,5 +1684,5 @@ public class ELispGlobals {
         var redisplayModeLinesCauseJInit = FMakeHashTable.makeHashTable(new Object[]{});
         redisplayModeLinesCause.setValue(redisplayModeLinesCauseJInit);
     }
-    /* @end region="xdisp.c" */
+    //#endregion xdisp.c
 }

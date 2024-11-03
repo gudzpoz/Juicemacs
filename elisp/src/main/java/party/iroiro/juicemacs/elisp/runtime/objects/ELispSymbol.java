@@ -3,11 +3,15 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.HashSet;
 import java.util.Objects;
+
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asSym;
 
 
 /**
@@ -248,7 +252,7 @@ public final class ELispSymbol implements ELispValue {
                 (local.getBufferLocalValue() != UNBOUND || local.localIfSet);
     }
 
-    public void forwardTo(Value.Forwarded forwarded) {
+    public void initForwardTo(Value.AbstractForwarded<?> forwarded) {
         this.special = true;
         this.value = forwarded;
     }
@@ -493,14 +497,14 @@ public final class ELispSymbol implements ELispValue {
             }
         }
 
-        final class Forwarded implements Value {
-            private Object value;
+        sealed abstract class AbstractForwarded<T> implements Value {
+            protected T value;
 
-            public Forwarded() {
-                this.value = ELispContext.NIL;
+            public AbstractForwarded() {
+                this.value = defaultValue();
             }
 
-            public Forwarded(Object o) {
+            public AbstractForwarded(T o) {
                 this.value = o;
             }
 
@@ -511,7 +515,109 @@ public final class ELispSymbol implements ELispValue {
 
             @Override
             public void setValue(Object value) {
-                this.value = value;
+                this.value = typeCheck(value);
+            }
+
+            abstract T defaultValue();
+            abstract T typeCheck(Object o);
+        }
+
+        final class Forwarded extends AbstractForwarded<Object> {
+            public Forwarded() {
+                super();
+            }
+            public Forwarded(Object o) {
+                super(o);
+            }
+            @Override
+            Object defaultValue() {
+                return ELispContext.NIL;
+            }
+            @Override
+            Object typeCheck(Object o) {
+                return o;
+            }
+        }
+
+        final class ForwardedLong extends AbstractForwarded<Long> {
+            public ForwardedLong(Long o) {
+                super(o);
+            }
+            @Override
+            Long defaultValue() {
+                return 0L;
+            }
+            @Override
+            Long typeCheck(Object o) {
+                if (o instanceof Long l) {
+                    return l;
+                }
+                throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, o);
+            }
+        }
+
+        final class ForwardedBool extends AbstractForwarded<Boolean> {
+            public ForwardedBool(Boolean o) {
+                super(o);
+            }
+            @Override
+            Boolean defaultValue() {
+                return Boolean.FALSE;
+            }
+            @Override
+            Boolean typeCheck(Object o) {
+                return isNil(o) ? Boolean.FALSE : Boolean.TRUE;
+            }
+        }
+
+        final class ForwardedPerBuffer extends AbstractForwarded<Object> {
+            private final int index;
+            public ForwardedPerBuffer(int index, ELispSymbol predicate) {
+                super(predicate);
+                this.index = index;
+            }
+            @Override
+            public Object getValue() {
+                return ((ELispBuffer) ELispContext.CURRENT_BUFFER.getValue()).getSlot(index);
+            }
+            @Override
+            public void setValue(Object value) {
+                setBufferValue(value, (ELispBuffer) ELispContext.CURRENT_BUFFER.getValue());
+            }
+            public void setBufferValue(Object value, ELispBuffer buffer) {
+                ELispSymbol predicate = asSym(this.value);
+                if (isInvalid(predicate, value)) {
+                    throw ELispSignals.wrongTypeArgument(predicate, value);
+                }
+                buffer.setSlot(index, value);
+            }
+            private static boolean isInvalid(ELispSymbol predicate, Object value) {
+                if (!isNil(value) && predicate != ELispContext.NIL) {
+                    Object choices = BuiltInFns.FGet.get(predicate, ELispContext.CHOICE);
+                    if (!isNil(choices)) {
+                        return isNil(BuiltInFns.FMemq.memq(value, choices));
+                    }
+                    Object range = BuiltInFns.FGet.get(predicate, ELispContext.RANGE);
+                    if (range instanceof ELispCons cons) {
+                        return (!BuiltInData.FNumberp.numberp(value)
+                                || !(
+                                BuiltInData.compareTo(cons.car(), value) <= 0
+                                        && BuiltInData.compareTo(value, cons.cdr()) <= 0
+                        ));
+                    }
+                    if (BuiltInEval.FFunctionp.functionp(predicate)) {
+                        return isNil(BuiltInEval.FFuncall.funcall(predicate, new Object[]{value}));
+                    }
+                }
+                return false;
+            }
+            @Override
+            Object defaultValue() {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            @Override
+            Object typeCheck(Object o) {
+                return o;
             }
         }
     }

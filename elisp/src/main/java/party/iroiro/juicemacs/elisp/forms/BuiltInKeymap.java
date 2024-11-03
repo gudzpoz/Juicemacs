@@ -20,7 +20,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class BuiltInKeymap extends ELispBuiltIns {
     public BuiltInKeymap() {
-        GLOBAL_MAP = false;
+        globalMap = false;
     }
 
     @Override
@@ -192,7 +192,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         }
     }
 
-    private static Object GLOBAL_MAP = false;
+    private static Object globalMap = false;
 
     @CompilerDirectives.TruffleBoundary
     public static void keymapSet(Object keymap, Iterator<?> iterator, Object value, boolean doRemove) {
@@ -675,7 +675,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
             if (!FKeymapp.keymapp(keymap)) {
                 throw ELispSignals.wrongTypeArgument(KEYMAPP, keymap);
             }
-            GLOBAL_MAP = keymap;
+            globalMap = keymap;
             return false;
         }
     }
@@ -720,7 +720,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FCurrentGlobalMap extends ELispBuiltInBaseNode {
         @Specialization
         public static Object currentGlobalMap() {
-            return GLOBAL_MAP;
+            return globalMap;
         }
     }
 

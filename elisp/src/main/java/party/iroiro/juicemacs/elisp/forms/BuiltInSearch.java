@@ -379,7 +379,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public static ELispString replaceMatch(ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp) {
             // TODO: fixedcase, literal...
             long subexpN = notNilOr(subexp, 0);
-            ELispString s = (ELispString) (isNil(string) ? MATCHED_STR.getValue() : string);
+            ELispString s = asStr(isNil(string) ? MATCHED_STR.getValue() : string);
             ELispCons cons = asCons(MATCH_DATA.getValue()).getCons((int) (subexpN * 2));
             int start = asInt(cons.car());
             int end = asInt(asCons(cons.cdr()).car());

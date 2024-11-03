@@ -15,6 +15,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.function.BiFunction;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asLong;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
@@ -398,7 +399,7 @@ public class BuiltInData extends ELispBuiltIns {
         if (b instanceof ELispBigNum n) {
             return -n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(a));
         }
-        return Long.compare(ELispTypeSystemGen.asLong(a), ELispTypeSystemGen.asLong(b));
+        return Long.compare(asLong(a), asLong(b));
     }
 
     public abstract static class BinaryCompareNode extends ELispExpressionNode {
@@ -1328,7 +1329,7 @@ public class BuiltInData extends ELispBuiltIns {
 
     /**
      * <pre>
-     * Return t if SYMBOL's function definition is not void.
+     * Return t if SYMBOL's function definition is neither void nor nil.
      * </pre>
      */
     @ELispBuiltIn(name = "fboundp", minArgs = 1, maxArgs = 1)
@@ -1364,12 +1365,12 @@ public class BuiltInData extends ELispBuiltIns {
 
     /**
      * <pre>
-     * Make SYMBOL's function definition be void.
+     * Make SYMBOL's function definition be nil.
      * Return SYMBOL.
      *
-     * If a function definition is void, trying to call a function by that
-     * name will cause a `void-function' error.  For more details, see Info
-     * node `(elisp) Function Cells'.
+     * If a function definition is nil or void, trying to call a function by
+     * that name will cause a `void-function' error.  For more details, see
+     * Info node `(elisp) Function Cells'.
      *
      * See also `makunbound'.
      * </pre>
@@ -1386,7 +1387,7 @@ public class BuiltInData extends ELispBuiltIns {
 
     /**
      * <pre>
-     * Return SYMBOL's function definition, or nil if that is void.
+     * Return SYMBOL's function definition, or nil if that is void or nil.
      * </pre>
      */
     @ELispBuiltIn(name = "symbol-function", minArgs = 1, maxArgs = 1)

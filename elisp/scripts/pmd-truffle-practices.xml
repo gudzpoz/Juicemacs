@@ -9,9 +9,6 @@
         PMD ruleset for avoiding common mistakes using Truffle
     </description>
 
-    <!-- This file causes NPE for PMD before https://github.com/pmd/pmd/issues/5261 is fixed. -->
-    <exclude-pattern>.*/party/iroiro/juicemacs/elisp/parser/ELispParser.java</exclude-pattern>
-
     <rule
             name="TruffleNodeShouldAdoptChildren"
             language="java"

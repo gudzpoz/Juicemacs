@@ -1600,7 +1600,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             // TODO
             String s = string.toString();
             if (objects.length == 1 && objects[0] instanceof Long l && s.contains("%c")) {
-                objects = new Object[]{Math.toIntExact(l)};
+                objects = new Object[]{Math.toIntExact(l)}; // NOPMD
             }
             return new ELispString(String.format(s, objects));
         }

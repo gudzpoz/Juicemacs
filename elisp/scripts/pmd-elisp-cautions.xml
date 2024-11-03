@@ -9,9 +9,6 @@
         Things to avoid in this subproject
     </description>
 
-    <!-- This file causes NPE for PMD before https://github.com/pmd/pmd/issues/5261 is fixed. -->
-    <exclude-pattern>.*/party/iroiro/juicemacs/elisp/parser/ELispParser.java</exclude-pattern>
-
     <rule
             name="ELispAlwaysInterpretSpecialForms"
             language="java"
@@ -77,7 +74,7 @@
                 //ClassDeclaration
                 [./ExtendsList/ClassType[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltIns")]]
                 //CastExpression
-                [not (./PrimitiveType[@Kind="int" or @Kind="long"])]
+                [not (./PrimitiveType[@Kind="int" or @Kind="long" or @Kind="byte"])]
                 ]]></value>
             </property>
         </properties>
@@ -132,6 +129,10 @@
 
     <rule ref="party/iroiro/juicemacs/pmd/NoBoxedPrimitivesRule.xml"/>
 
+    <!-- Best Practices -->
+
+    <rule ref="category/java/bestpractices.xml/MissingOverride" />
+
     <!-- Some code styles -->
 
     <rule ref="category/java/codestyle.xml/AvoidDollarSigns"/>
@@ -139,7 +140,11 @@
     <rule ref="category/java/codestyle.xml/AvoidProtectedMethodInFinalClassNotExtending"/>
     <rule ref="category/java/codestyle.xml/AvoidUsingNativeCode"/>
     <rule ref="category/java/codestyle.xml/BooleanGetMethodName"/>
-    <rule ref="category/java/codestyle.xml/ConfusingTernary"/>
+    <rule ref="category/java/codestyle.xml/ConfusingTernary">
+        <properties>
+            <property name="ignoreElseIf" value="true" />
+        </properties>
+    </rule>
     <rule ref="category/java/codestyle.xml/ControlStatementBraces"/>
     <rule ref="category/java/codestyle.xml/FieldNamingConventions"/>
     <rule ref="category/java/codestyle.xml/IdenticalCatchBranches"/>

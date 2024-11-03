@@ -4,9 +4,9 @@ import re
 import typing
 
 from extract_emacs_utils import (
+    exec_c_as_python,
     extract_syms_section,
     remove_statements,
-    exec_c_as_python,
 )
 
 
@@ -30,7 +30,9 @@ class Variable:
 
     def jtype(self):
         t = self.lisp_type
-        if t == 'INT':
+        if t == 'BVAR':
+            return 'Object', 'false'
+        elif t == 'INT':
             return 'long', '0'
         elif t == 'BOOL':
             return 'boolean', 'false'
@@ -55,13 +57,22 @@ class Variable:
             value = f'({t}) {v}'
         if value == '(Object) NIL' or value == '(Object) false':
             value = 'false'
+        if t == 'long':
+            jclass = 'ELispSymbol.Value.ForwardedLong'
+        elif t == 'boolean':
+            jclass = 'ELispSymbol.Value.ForwardedBool'
+        else:
+            jclass = 'ELispSymbol.Value.Forwarded'
         return (
-            f'ELispSymbol.Value.Forwarded {self.jname()} = '
-            f'new ELispSymbol.Value.Forwarded({value})'
+            f'{jclass} {self.jname()} = '
+            f'new {jclass}({value})'
         )
 
     def init(self):
-        return f'{self.symbol_jname()}.forwardTo({self.jname()})'
+        if self.lisp_type == 'BVAR':
+            return f'{self.symbol_jname()}.initBufferLocal({self.init_value})'
+        else:
+            return f'{self.symbol_jname()}.initForwardTo({self.jname()})'
 
 
 DEFVAR_REGEX = re.compile(
@@ -466,4 +477,7 @@ def exec_init_func(stem: str, contents: str):
             variables.append(Variable(name, c_name, lisp_type, c_globals[c_name]))
         else:
             variables.append(Variable(name, c_name, lisp_type, None))
+    for name, c_name, predicate in buffer_local:
+        assert predicate.startswith('Q')
+        variables.append(Variable(name, c_name, 'BVAR', predicate[1:].upper()))
     return variables, post_inits

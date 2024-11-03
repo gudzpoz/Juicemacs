@@ -158,7 +158,11 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
 
     @Override
     public Object visit(ASTLocalVariableDeclaration node, Object data) {
-        visitDeclarators(node.getTypeNode().getTypeMirror(), node, data);
+        ASTType typeNode = node.getTypeNode();
+        // In case of `var a` declaration
+        if (typeNode != null) {
+            visitDeclarators(typeNode.getTypeMirror(), node, data);
+        }
         return super.visit(node, data);
     }
 

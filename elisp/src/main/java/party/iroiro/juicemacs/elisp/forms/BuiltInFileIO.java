@@ -839,8 +839,9 @@ public class BuiltInFileIO extends ELispBuiltIns {
     /**
      * <pre>
      * Return t if file FILE1 is newer than file FILE2.
-     * If FILE1 does not exist, the answer is nil;
-     * otherwise, if FILE2 does not exist, the answer is t.
+     * If FILE1 does not exist, the return value is nil;
+     * if FILE2 does not exist, the return value is t.
+     * For existing files, this compares their last-modified times.
      * </pre>
      */
     @ELispBuiltIn(name = "file-newer-than-file-p", minArgs = 2, maxArgs = 2)

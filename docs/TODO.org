@@ -61,6 +61,20 @@ So basically one can have autoload functions as well as autoload strings
 
 Emacs MULE.
 
+The most significant properties of charsets seem to be:
+
+- Mapping between byte-sequence and character code
+- Mapping between character code and Unicode codepoint
+
+The mappings are stored in files generated from glibc charset data files.
+
+See also:
+
+- [[file:~/Workspaces/Java/JVMacs/elisp/emacs/etc/charsets/README][../elisp/emacs/etc/charsets/README]]
+- [[file:~/Workspaces/Java/JVMacs/elisp/emacs/admin/charsets/][../elisp/emacs/admin/charsets]]
+- [[https://man7.org/linux/man-pages/man5/charmap.5.html][=man 5 charmap=]]
+- [[https://man7.org/linux/man-pages/man7/charsets.7.html][=man 7 charsets=]]
+
 * TODO [#C] Keymaps
 
 I now know there are sparse maps and dense ones, and they nest. And keymaps are
@@ -77,6 +91,7 @@ Edit: See comments in =BuiltInKeymap.java= for what keymap is about.
 
 IntelliJ always complains about =org.graalvm.truffle= not being read by
 =module-info.java=, despite the fact that the =require= line the line is there.
+([[https://youtrack.jetbrains.com/issue/IDEA-362046/Multi-release-module-info.class-causes-false-positive-errors][IDEA-362046]])
 
 * TODO [#C] Code conventions
 

@@ -7,24 +7,30 @@ def replace_or_insert_region_general(
         contents: str,
         marker: str,
         update: str,
-        generator: str,
         indents: int = 4,
         insertion: bool = True
 ):
     section_start = (
-        f'{' ' * indents}/* @generated region="{marker}" by="{generator}" */\n'
+        f'{' ' * indents}//#region {marker}\n'
     )
     section_end = (
-        f'{' ' * indents}/* @end region="{marker}" */\n'
+        f'{' ' * indents}//#endregion {marker}\n'
     )
     if not insertion or section_start in contents:
         start = contents.index(section_start)
         end = contents.index(section_end)
         assert start < end
-        return (
-            f'{contents[:start]}{section_start}'
-            f'{update}{contents[end:]}'
-        )
+        original = contents[start:end]
+        original = re.sub(r'^\s*//.*$', '', original, flags=re.MULTILINE)
+        original = re.sub(r'\s+', '', original, flags=re.MULTILINE)
+        sub = re.sub(r'\s+', '', update, flags=re.MULTILINE)
+        if original == sub:
+            return contents
+        else:
+            return (
+                f'{contents[:start]}{section_start}'
+                f'{update}{contents[end:]}'
+            )
     else:
         last = contents.rfind('}')
         return (
@@ -37,11 +43,10 @@ def replace_region_general(
         contents: str,
         marker: str,
         update: str,
-        generator: str,
         indents: int = 4
 ):
     return replace_or_insert_region_general(
-        contents, marker, update, generator, indents, insertion=False
+        contents, marker, update, indents, insertion=False
     )
 
 
@@ -106,6 +111,17 @@ VAR_DECLARATION = re.compile(
 )
 
 
+def preprocess_c(src: str, preprocessors: typing.Optional[str] = None):
+    p = subprocess.Popen(
+        ['gcc', '-E', '-'],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE
+    )
+    stdout, stderr = p.communicate(f'{preprocessors or ''}\n{src}'.encode('utf-8'))
+    assert stderr is None, stderr
+    return stdout.decode('utf-8')
+
+
 def exec_c_as_python(
         src: str,
         c_globals: typing.Dict[str, typing.Any],
@@ -114,14 +130,7 @@ def exec_c_as_python(
         prepocessors: typing.Optional[str] = None,
 ):
     if prepocessors is not None:
-        p = subprocess.Popen(
-            ['gcc', '-E', '-'],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE
-        )
-        stdout, stderr = p.communicate(f'{prepocessors}\n{src}'.encode('utf-8'))
-        assert stderr is None, stderr
-        src = stdout.decode('utf-8')
+        src = preprocess_c(src, prepocessors)
         src = re.sub(r'^\s+', '', src, flags=re.MULTILINE)
         src = re.sub(r'\s+$', '', src, flags=re.MULTILINE)
         src = re.sub(r'^;$', '', src, flags=re.MULTILINE)
