@@ -6,3 +6,8 @@ plugins {
     id 'buildlogic.java-common-conventions'
     id 'java-library'
 }
+
+ext {
+    pmdVersion = '7.7.0'
+    truffleVersion = '24.1.1'
+}

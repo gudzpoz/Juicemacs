@@ -1,5 +1,60 @@
 #+title: TODO
 
+* TODO [#A] Strings & Buffers
+
+For string processing in any language, I suppose there are always at least two
+kinds of offsets: char offsets & code point offsets. Emacs basically uses byte
+offsets and codepoint offsets, but Java uses UTF-16 char offsets and codepoint
+offsets. So to correctly handle strings in Juicemacs, we need to incorporate all
+these three kinds of offsets.
+
+It could be easier if we could just follow Emacs. (And Truffle actually provides
+a byte-offset based =TruffleString= to free us of the trouble!) But,
+unfortunately, we can't. There is one indispensible Java API we need to use:
+Java =Pattern= regex, which, of course, is based on UTF-16 char offsets.
+
+** TODO [#A] RegExp
+
+Well, the conclusion is that we need to implement a new RegExp runtime. :)
+
+*** Thoughts
+
+Truffle also provides a JIT-compiling RegExp runtime (TRegex). But we still need
+to experiment whether it is compatible with Emacs Lisp RegExps.
+
+| RegExp Features   | ELisp               | Java        | TRegex |
+|-------------------+---------------------+-------------+--------|
+| Named capture     | No                  | Yes         |        |
+| =.=               | Codepoint           | Codepoint   |        |
+| =*=, =*?=         | /well-known/        | ✅          |        |
+| =+=, =+?=         | /well-known/        | ✅          |        |
+| =?=, =??=         | /well-known/        | ✅          |        |
+| =[...]=, =[^...]= | Char classes        | ✅          |        |
+| =[:char-class:]=  | Named char classes  | =\p{class}= |        |
+| =^=               | Start of line       | ✅          |        |
+| =$=               | End of line         | ✅          |        |
+| =\\vert=          | Alternation         | ✅          |        |
+| =\{m,n\}=         | Postfix operator    | ✅          |        |
+| =\(...\)=         | Capturing group     | ✅          |        |
+| =\(?:...\)=       | Non-capturing       | ✅          |        |
+| =\(?num:...\)=    | Explicitly numbered | ❌          |        |
+| =\digit=          | Back-reference      | ✅          |        |
+| =\w=              | Word constituent    | ✅          |        |
+| =\W=              | Non word            | ✅          |        |
+| =\scode=          | Char syntax         | ❌          |        |
+| =\Scode=          | Not char syntax     | ❌          |        |
+| =\ccode=          | Char category       | ❌          |        |
+| =\Ccode=          | Not char category   | ❌          |        |
+| =\`=              | Start of string     | =\A=        |        |
+| =\'=              | End of string       | =\z=        |        |
+| =\==              | Buffer point        | ❌          |        |
+| =\b=              | Word boundary       | ✅          |        |
+| =\B=              | Not word boundary   | ✅          |        |
+| =\<=              | Start of word       | ❌          |        |
+| =\>=              | End of word         | ❌          |        |
+| =\_<=             | Start of symbol     | ❌          |        |
+| =\_>=             | End of symbol       | ❌          |        |
+
 * TODO [#B] Make functions mutable
 
 Currently in GNU Emacs 29, a function may be a =lambda/closure= cons:

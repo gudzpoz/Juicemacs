@@ -24,7 +24,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
 
-    public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_16;
+    public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_32;
 
     public static MutableTruffleString from(String str) {
         Builder builder = new Builder();
@@ -208,14 +208,14 @@ public final class ELispString implements TruffleObject, ELispValue {
     //#endregion InteropLibrary exports
 
     public static final class Builder {
-        private final TruffleStringBuilder builder = TruffleStringBuilder.createUTF16();
+        private final TruffleStringBuilder builder = TruffleStringBuilder.createUTF32();
 
         public void appendCodePoint(int codepoint) {
             builder.appendCodePointUncached(codepoint);
         }
 
         public void appendString(String s) {
-            builder.appendJavaStringUTF16Uncached(s);
+            builder.appendStringUncached(TruffleString.fromJavaStringUncached(s, ENCODING));
         }
 
         public MutableTruffleString toTruffleString() {

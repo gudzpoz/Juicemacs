@@ -1,21 +1,22 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
-import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSyntaxTable;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
 import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.notNilOr;
 
@@ -90,26 +91,23 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FStringMatch extends ELispBuiltInBaseNode {
         @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
+        public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
+            // TODO: Support case-fold-search
             boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
-            ELispRegExp pattern = ELispRegExp.compile(regexp.toTruffleString(), !caseSensitive);
+            RootCallTarget pattern = ELispRegExp.compile(
+                    ELispLanguage.get(this),
+                    regexp.value(),
+                    ELispString.ENCODING
+            );
             int from = isNil(start) ? 0 : asInt(start);
-            @Nullable ELispSyntaxTable syntaxTable = null; // TODO: syntax table
-            ELispRegExp.MatcherResult match = pattern.matcher(string.toString(), syntaxTable);
-            if (match.matcher().find(from)) {
+            Object buffer = CURRENT_BUFFER.getValue();
+            Object result = pattern.call(string.value(), true, from, -1, buffer);
+            if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
-                    ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-                    for (int i = 0; i <= match.groupCount(); i++) {
-                        int group = match.normalizeGroup(i);
-                        long groupStart = match.matcher().start(group);
-                        builder.add(groupStart == -1 ? false : groupStart);
-                        builder.add(groupStart == -1 ? false : (long) match.matcher().end(group));
-                    }
-                    Object data = builder.build();
-                    MATCH_DATA.setValue(data);
+                    MATCH_DATA.setValue(result);
                     MATCHED_STR.setValue(string);
                 }
-                return (long) match.matcher().start();
+                return cons.car();
             }
             return false;
         }

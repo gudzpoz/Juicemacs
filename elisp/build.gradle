@@ -7,18 +7,12 @@ plugins {
     id 'me.champeau.jmh' version '0.7.2'
 }
 
-ext {
-    pmdVersion = '7.7.0'
-    truffleVersion = '24.1.1'
-}
-
 dependencies {
     pmd project(':commons:pmd-no-int')
     pmd "net.sourceforge.pmd:pmd-ant:${pmdVersion}"
     pmd "net.sourceforge.pmd:pmd-java:${pmdVersion}"
 
     implementation 'org.apache.commons:commons-text:1.12.0'
-    implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
     implementation 'org.eclipse.collections:eclipse-collections-api:11.1.0'
     implementation 'org.eclipse.collections:eclipse-collections:11.1.0'
     implementation 'com.lodborg:interval-tree:1.0.0'

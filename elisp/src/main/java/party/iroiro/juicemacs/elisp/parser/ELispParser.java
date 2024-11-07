@@ -100,7 +100,7 @@ public class ELispParser {
             case BoolVec(long length, MutableTruffleString value) -> {
                 byte[] bytes = new byte[(int) Math.ceilDiv(length, 8)];
                 TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.getUncached()
-                        .execute(value, TruffleString.Encoding.UTF_16);
+                        .execute(value, ELispString.ENCODING);
                 for (int i = 0; i < length; i += 8) {
                     if (!iterator.hasNext()) {
                         throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");

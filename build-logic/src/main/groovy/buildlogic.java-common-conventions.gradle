@@ -14,6 +14,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
 }
 
 testing {

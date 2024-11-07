@@ -44,6 +44,7 @@ EMACS_ENUMS = [
     ('charset.h', 'define_charset_arg_index'),
     ('charset.h', 'charset_attr_index'),
     ('coding.c', 'coding_category'),
+    ('syntax.h', 'syntaxcode'),
 ]
 
 
@@ -64,6 +65,11 @@ def extract_enums(original: str):
                 ),
             )
     return original
+
+
+######################
+### Enum Constants ###
+######################
 
 
 with open(output_file, 'r') as f:
@@ -254,6 +260,11 @@ def extract_defvar_per_buffer(fields: list[str]):
     return ''.join(inits)
 
 
+#########################
+### Buffer-Local Vars ###
+#########################
+
+
 with open(output_buffer_file, 'r') as f:
     original = f.read()
 
@@ -283,4 +294,3 @@ original = replace_or_insert_region_general(
 
 with open(output_buffer_file, 'w') as f:
     f.write(original)
-

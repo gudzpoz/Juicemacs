@@ -26,7 +26,7 @@ public final class ELispContext {
         return ELISP_CONTEXT_INSTANCE;
     }
 
-    public final static ELispSymbol CURRENT_BUFFER = new ELispSymbol("current-buffer");
+    public final static ELispSymbol.ThreadLocalValue CURRENT_BUFFER = new ELispSymbol.ThreadLocalValue();
 
     // TODO: Replace this with obarray
     private final static HashMap<String, ELispSymbol> INTERN_MAP = new HashMap<>();

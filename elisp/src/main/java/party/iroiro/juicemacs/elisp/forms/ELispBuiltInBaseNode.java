@@ -6,9 +6,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 @NodeChild(value = "arguments", type = ELispExpressionNode[].class)
 public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
@@ -108,6 +106,20 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
             return str;
         }
         throw ELispSignals.wrongTypeArgument(ELispContext.STRINGP, s);
+    }
+
+    public static ELispBuffer asBuffer(Object buffer) {
+        if (buffer instanceof ELispBuffer b) {
+            return b;
+        }
+        throw ELispSignals.wrongTypeArgument(ELispContext.BUFFERP, buffer);
+    }
+
+    public static ELispCharTable asCharTable(Object table) {
+        if (table instanceof ELispCharTable t) {
+            return t;
+        }
+        throw ELispSignals.wrongTypeArgument(ELispContext.CHAR_TABLE_P, table);
     }
 
     /// A factory interface for hand-rolled built-in function inlining

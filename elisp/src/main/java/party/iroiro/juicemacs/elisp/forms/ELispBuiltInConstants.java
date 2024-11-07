@@ -6,7 +6,6 @@ import java.util.Collections;
 
 /// Emacs C constants extracted by `extract_emacs_fields.py`
 public abstract class ELispBuiltInConstants {
-    Object[] a = Collections.nCopies(0, false).toArray();
     //#region enum define_charset_arg_index
     // The following documentation is partly copied from `define-charset` (defined in `mule.el`) in GNU Emacs
     /// the name of the charset (e.g., [ELispContext#ASCII] or [ELispContext#UNICODE])
@@ -83,4 +82,23 @@ public abstract class ELispBuiltInConstants {
     public final static int CODING_CATEGORY_UNDECIDED = 20;
     public final static int CODING_CATEGORY_MAX = 21;
     //#endregion enum coding_category
+    //#region enum syntaxcode
+    public final static int SWHITESPACE = 0;
+    public final static int SPUNCT = 1;
+    public final static int SWORD = 2;
+    public final static int SSYMBOL = 3;
+    public final static int SOPEN = 4;
+    public final static int SCLOSE = 5;
+    public final static int SQUOTE = 6;
+    public final static int SSTRING = 7;
+    public final static int SMATH = 8;
+    public final static int SESCAPE = 9;
+    public final static int SCHARQUOTE = 10;
+    public final static int SCOMMENT = 11;
+    public final static int SENDCOMMENT = 12;
+    public final static int SINHERIT = 13;
+    public final static int SCOMMENT_FENCE = 14;
+    public final static int SSTRING_FENCE = 15;
+    public final static int SMAX = 16;
+    //#endregion enum syntaxcode
 }
