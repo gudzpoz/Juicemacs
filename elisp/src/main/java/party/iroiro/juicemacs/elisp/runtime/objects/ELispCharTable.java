@@ -178,6 +178,7 @@ public sealed class ELispCharTable extends ELispVectorLike<Object>
         return table;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object getChar(int codepoint) {
         // TODO: When does Emacs fetch from parent tables?
         if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
@@ -211,6 +212,7 @@ public sealed class ELispCharTable extends ELispVectorLike<Object>
         return equals(other);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setChar(int codepoint, Object value) {
         if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
             ascii.setChar(codepoint, value);

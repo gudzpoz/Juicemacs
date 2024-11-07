@@ -102,7 +102,7 @@ class ELispRegExpOpcode {
 
     private static int packJmp(int cond, int rel) {
         int opcode = (cond << OP_FLAG_JMP_COND_SHIFT)
-                | (ELispRegExpOpcode.OP_FLAG_JMP_JMP << OP_FLAG_JMP_KIND_SHIFT)
+                | (OP_FLAG_JMP_JMP << OP_FLAG_JMP_KIND_SHIFT)
                 | OP_FLAG_JMP;
         return packSingleArgOpcode(
                 opcode,

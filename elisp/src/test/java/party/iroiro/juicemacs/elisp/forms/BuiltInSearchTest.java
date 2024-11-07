@@ -1,5 +1,8 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import org.graalvm.polyglot.Context;
+import org.junit.jupiter.api.Test;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -56,5 +59,16 @@ class BuiltInSearchTest extends BaseFormTest {
     @Override
     protected Object[] entries() {
         return TESTS;
+    }
+
+    @Test
+    void testOsrShouldNotBailout() {
+        try (Context context = Context.newBuilder("elisp")
+                .build()
+        ) {
+            String source = "(string-match \"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaa\"" +
+                    " \"aaaaaaaaaaaaaaaaaaaaaaaa\")";
+            context.eval("elisp", source);
+        }
     }
 }

@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -14,6 +15,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
@@ -33,6 +35,11 @@ public class BuiltInSearch extends ELispBuiltIns {
 
     private static final ELispSymbol.ThreadLocalValue MATCH_DATA = new ELispSymbol.ThreadLocalValue();
     private static final ELispSymbol.ThreadLocalValue MATCHED_STR = new ELispSymbol.ThreadLocalValue();
+
+    private record RegExpKey(TruffleString regExp, @Nullable TruffleString whitespaceRegExp, boolean caseFold) {
+    }
+
+    private static final ConcurrentHashMap<RegExpKey, RootCallTarget> COMPILED_REGEXPS = new ConcurrentHashMap<>();
 
     /**
      * <pre>
@@ -92,13 +99,22 @@ public class BuiltInSearch extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
-            // TODO: Support case-fold-search
             boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
-            RootCallTarget pattern = ELispRegExp.compile(
-                    ELispLanguage.get(this),
-                    regexp.value(),
-                    ELispString.ENCODING
+            RegExpKey key = new RegExpKey(
+                    regexp.asTruffleString(),
+                    null,
+                    caseSensitive
             );
+            RootCallTarget pattern = COMPILED_REGEXPS.get(key);
+            if (pattern == null) {
+                // TODO: Support case-fold-search
+                pattern = ELispRegExp.compile(
+                        ELispLanguage.get(this),
+                        regexp.value(),
+                        ELispString.ENCODING
+                );
+                COMPILED_REGEXPS.put(key, pattern);
+            }
             int from = isNil(start) ? 0 : asInt(start);
             Object buffer = CURRENT_BUFFER.getValue();
             Object result = pattern.call(string.value(), true, from, -1, buffer);

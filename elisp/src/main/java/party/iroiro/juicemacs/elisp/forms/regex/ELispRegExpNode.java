@@ -70,7 +70,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         int[] initStack = initStack(start, search);
         ArrayList<int[]> stacks = new ArrayList<>();
         stacks.add(initStack);
-        return dispatcher(frame, input, start, end, stacks);
+        return dispatcher(frame, 0, input, start, end, stacks, frame.getArguments()[ARG_OBJ_BUFFER]);
     }
 
     private int[] initStack(int start, boolean search) {
@@ -98,12 +98,22 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         BacktrackingState state = (BacktrackingState) interpreterState;
-        return dispatcher(osrFrame, state.input, state.start, state.length, state.stacks);
+        return dispatcher(osrFrame, target,
+                state.input, state.start, state.length, state.stacks, state.buffer
+        );
     }
 
-    private Object dispatcher(VirtualFrame frame, Object input, int start, int end, ArrayList<int[]> stacks) {
+    private Object dispatcher(VirtualFrame frame,
+                              int bci,
+                              Object input,
+                              int start, int end,
+                              ArrayList<int[]> stacks,
+                              Object buffer) {
+        // The outer backtracking loop.
+        // This loop must be separated from the inner loop to allow MERGE_EXPLODE,
+        // since we do not know how many backtracking states we will need.
         while (true) {
-            Object lastRun = dispatchFromBCI(frame, input, start, end, stacks);
+            Object lastRun = dispatchFromBCI(frame, bci, input, start, end, stacks, buffer);
             if (lastRun != Boolean.FALSE) {
                 return lastRun;
             }
@@ -112,8 +122,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
             }
             // back-edge
             if (BytecodeOSRNode.pollOSRBackEdge(this)) {
-                BacktrackingState state = new BacktrackingState(stacks, input, start, end);
-                Object result = BytecodeOSRNode.tryOSR(this, 0, state, null, frame);
+                BacktrackingState state = new BacktrackingState(stacks, input, start, end, buffer);
+                Object result = BytecodeOSRNode.tryOSR(this, bci, state, null, frame);
                 if (result != null) {
                     return result;
                 }
@@ -124,11 +134,12 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @HostCompilerDirectives.BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     private Object dispatchFromBCI(VirtualFrame frame,
-                                   Object input, int start, int end, ArrayList<int[]> stacks) {
+                                   int bci,
+                                   Object input, int start, int end,
+                                   ArrayList<int[]> stacks,
+                                   Object buffer) {
         int[] stack = stacks.removeLast();
         int cmpFlags = 0;
-
-        int bci = 0;
 
         loop:
         while (true) {
@@ -151,6 +162,10 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     case OP_FLAG_JMP_NE -> cmpFlags != 0;
                     default -> throw CompilerDirectives.shouldNotReachHere();
                 };
+                // ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE merges
+                // "copies of the loop body that have the exact same state (all local variables have the same value)".
+                // So we need to reset cmpFlags to 0 after each jump.
+                cmpFlags = 0;
                 int kind = (opcode >> OP_FLAG_JMP_KIND_SHIFT) & OP_FLAG_JMP_KIND_MASK;
                 if (!success) {
                     if (kind == OP_FLAG_JMP_SPLIT) {
@@ -158,15 +173,28 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     }
                     continue;
                 }
+                int nextBci;
                 if (kind == OP_FLAG_JMP_JMP) {
-                    bci = bci + arg;
+                    nextBci = bci + arg;
                 } else {
                     int[] newThread = stack.clone();
                     int jumpTableIndex = code[bci];
                     newThread[PC_SLOT] = jumpTableIndex;
                     stacks.add(newThread);
-                    bci += arg + 1;
+                    nextBci = bci + arg + 1;
                 }
+                if (nextBci < bci) { // back-edge
+                    if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        stacks.add(stack);
+                        BacktrackingState state = new BacktrackingState(stacks, input, start, end, buffer);
+                        Object result = BytecodeOSRNode.tryOSR(this, nextBci, state, null, frame);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                }
+                bci = nextBci;
+                CompilerAsserts.partialEvaluationConstant(bci);
                 continue;
             }
             final int sp = stack[SP_SLOT];
@@ -202,8 +230,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                         || (sp < end && getChar(frame, input, sp) == '\n');
                 case OP$BUFFER_POINT -> throw new UnsupportedOperationException();
                 case OP$WORD_START, OP$WORD_END, OP$WORD_BOUND -> {
-                    boolean hasWordBefore = sp != start && isWord(frame, getChar(frame, input, sp - 1));
-                    boolean hasWordAfter = sp != end && isWord(frame, getChar(frame, input, sp));
+                    boolean hasWordBefore = sp != start && isWord(buffer, getChar(frame, input, sp - 1));
+                    boolean hasWordAfter = sp != end && isWord(buffer, getChar(frame, input, sp));
                     success = switch (opcode) {
                         case OP$WORD_START -> !hasWordBefore && hasWordAfter;
                         case OP$WORD_END -> hasWordBefore && !hasWordAfter;
@@ -211,8 +239,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     };
                 }
                 case OP$SYMBOL_START, OP$SYMBOL_END -> {
-                    boolean hasSymbolBefore = sp != start || isSymbol(frame, getChar(frame, input, sp - 1));
-                    boolean hasSymbolAfter = sp != end || isSymbol(frame, getChar(frame, input, sp));
+                    boolean hasSymbolBefore = sp != start || isSymbol(buffer, getChar(frame, input, sp - 1));
+                    boolean hasSymbolAfter = sp != end || isSymbol(buffer, getChar(frame, input, sp));
                     success = opcode == OP$SYMBOL_START
                             ? !hasSymbolBefore && hasSymbolAfter
                             : hasSymbolBefore && !hasSymbolAfter;
@@ -223,8 +251,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     if (sp < end) {
                         int c = getChar(frame, input, sp);
                         success = (opcode == OP$SYNTAX_CHAR
-                                ? isSyntaxClass(frame, c, arg)
-                                : isCategoryClass(frame, c, arg)) != invert; // xor
+                                ? isSyntaxClass(buffer, c, arg)
+                                : isCategoryClass(buffer, c, arg)) != invert; // xor
                     } else {
                         success = false;
                     }
@@ -250,7 +278,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                         int c = getChar(frame, input, sp);
                         stack[SP_SLOT] = sp + 1;
                         boolean invert = code[bci] < 0;
-                        success = matchCharClassBitMap(frame, c, code[bci]);
+                        success = matchCharClassBitMap(buffer, c, code[bci]);
                         if (!success) {
                             for (int i = 1; i < arg; ++i) {
                                 int from, to;
@@ -283,6 +311,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     success = sp < end;
                     stack[SP_SLOT] = sp + 1;
                 }
+                default -> throw CompilerDirectives.shouldNotReachHere();
             }
             if (!success) {
                 return false;
@@ -290,7 +319,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static boolean matchCharClassBitMap(VirtualFrame frame, int c, int bits) {
+    private static boolean matchCharClassBitMap(Object buffer, int c, int bits) {
         return (alnum.match(bits) && (Character.isAlphabetic(c) || Character.isDigit(c)))
                 || (alpha.match(bits) && Character.isAlphabetic(c))
                 || (ascii.match(bits) && c < 0x80)
@@ -299,40 +328,40 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 || (digit.match(bits) && '0' <= c && c <= '9')
                 || (graph.match(bits) && Character.isValidCodePoint(c)
                 && !(Character.isWhitespace(c) || Character.getType(c) == Character.CONTROL))
-                || (lower.match(bits) && isLowerCase(frame, c))
+                || (lower.match(bits) && isLowerCase(buffer, c))
                 || (multibyte.match(bits) && c >= 0x100)
                 || (nonascii.match(bits) && c >= 0x80)
                 || (print.match(bits) && Character.isValidCodePoint(c) && Character.getType(c) != Character.CONTROL)
-                || (punct.match(bits) && isPunct(frame, c))
-                || (space.match(bits) && isSpace(frame, c))
+                || (punct.match(bits) && isPunct(buffer, c))
+                || (space.match(bits) && isSpace(buffer, c))
                 || (unibyte.match(bits) && c < 0x100)
-                || (upper.match(bits) && isUpperCase(frame, c))
-                || (word.match(bits) && isWord(frame, c))
+                || (upper.match(bits) && isUpperCase(buffer, c))
+                || (word.match(bits) && isWord(buffer, c))
                 || (xdigit.match(bits) && (Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')));
     }
 
     //#region Syntax Table
-    private static boolean isPunct(VirtualFrame frame, int c) {
-        return isSyntaxClass(frame, c, SPUNCT);
+    private static boolean isPunct(Object buffer, int c) {
+        return isSyntaxClass(buffer, c, SPUNCT);
     }
-    private static boolean isSpace(VirtualFrame frame, int c) {
-        return isSyntaxClass(frame, c, SWHITESPACE);
+    private static boolean isSpace(Object buffer, int c) {
+        return isSyntaxClass(buffer, c, SWHITESPACE);
     }
-    private static boolean isWord(VirtualFrame frame, int c) {
-        return isSyntaxClass(frame, c, SWORD);
+    private static boolean isWord(Object buffer, int c) {
+        return isSyntaxClass(buffer, c, SWORD);
     }
-    private static boolean isSymbol(VirtualFrame frame, int c) {
-        return isSyntaxClass(frame, c, SSYMBOL);
+    private static boolean isSymbol(Object buffer, int c) {
+        return isSyntaxClass(buffer, c, SSYMBOL);
     }
-    private static boolean isSyntaxClass(VirtualFrame frame, int c, int clazz) {
-        ELispBuffer buffer = asBuffer(frame.getArguments()[ARG_OBJ_BUFFER]);
+    private static boolean isSyntaxClass(Object buf, int c, int clazz) {
+        ELispBuffer buffer = asBuffer(buf);
         ELispCharTable table = asCharTable(buffer.getSyntaxTable());
         return table.getChar(c) instanceof ELispCons cons
                 && cons.car() instanceof Long l
                 && (l & 0xFFFF) == clazz;
     }
-    private static boolean isCategoryClass(VirtualFrame frame, int c, int clazz) {
-        ELispBuffer buffer = asBuffer(frame.getArguments()[ARG_OBJ_BUFFER]);
+    private static boolean isCategoryClass(Object buf, int c, int clazz) {
+        ELispBuffer buffer = asBuffer(buf);
         ELispCharTable table = asCharTable(buffer.getSyntaxTable());
         return table.getChar(c) instanceof ELispBoolVector boolVector
                 && boolVector.get(clazz);
@@ -340,11 +369,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     //#endregion Syntax Table
 
     //#region Case Table
-    private static boolean isUpperCase(VirtualFrame frame, int c) {
+    private static boolean isUpperCase(Object buffer, int c) {
         // TODO
         return Character.isUpperCase(c);
     }
-    private static boolean isLowerCase(VirtualFrame frame, int c) {
+    private static boolean isLowerCase(Object buffer, int c) {
         // TODO
         return Character.isLowerCase(c);
     }
@@ -367,10 +396,10 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
     private Object packMatchResult(int[] stack) {
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-        for (int j : groupSlotMap) {
-            int start = stack[j];
+        for (int i : groupSlotMap) {
+            int start = stack[i];
             builder.add(start == -1 ? false : (long) start);
-            int end = stack[j + 1];
+            int end = stack[i + 1];
             builder.add(start == -1 ? false : (long) end);
         }
         return builder.build();
@@ -382,7 +411,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     }
 
     private record BacktrackingState(ArrayList<int[]> stacks, Object input,
-                                     int start, int length) {
+                                     int start, int length, Object buffer) {
     }
 
 }
