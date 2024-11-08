@@ -19,7 +19,8 @@ final class ELispRegExpCompiler {
         ELispRegExpCompiler compiler = new ELispRegExpCompiler();
         HalfCompiled searcher = compiler.compileAst(new ELispRegExpParser.REAst.Quantified(
                 new ELispRegExpParser.REAst.Atom(new REToken.AnyChar()),
-                new REToken.Quantifier(0, Integer.MAX_VALUE, false)
+                new REToken.Quantifier(0, Integer.MAX_VALUE, false),
+                -1
         ));
         HalfCompiled body = HalfCompiled.of(
                 searcher,
@@ -48,16 +49,17 @@ final class ELispRegExpCompiler {
         jumpTable.add(searcherLength); // entry point after the .*? search prefix
         visitAssemblyInstructions(codes, new AssemblyVisitor() {
             @Override
-            public void visit(int i, HalfCompiled.Dual dualIntInstruction) {
-                int code = dualIntInstruction.code;
-                if (code >= 0 || !isSplitInstruction(code)) {
+            public void visit(int i, HalfCompiled.Single single) {
+                int code = single.code;
+                int opcode = code >>> 24;
+                if (opcode != OP_SPLIT) {
                     return;
                 }
-                int splitRelTarget = dualIntInstruction.arg;
-                int splitAbsTarget = i + 2 + splitRelTarget;
+                int splitRelTarget = (code << 8) >> 8;
+                int splitAbsTarget = i + 1 + splitRelTarget;
                 int jumpTableIndex = jumpTable.size() - 1;
                 jumpTable.add(splitAbsTarget);
-                codes.set(i + 1, jumpTableIndex);
+                codes.set(i, packSingleArgOpcode(OP_SPLIT, jumpTableIndex));
             }
         });
         int jumpTableEntries = jumpTable.size() - 1;
@@ -107,11 +109,8 @@ final class ELispRegExpCompiler {
             case ELispRegExpParser.REAst.Literal(int[] chars) -> literal(chars);
             case ELispRegExpParser.REAst.Quantified(
                     ELispRegExpParser.REAst child,
-                    REToken.Quantifier(int min, int max, boolean greedy)
-            ) -> {
-                HalfCompiled inner = compileAst(child);
-                yield quantified(inner, min, max, greedy);
-            }
+                    REToken.Quantifier quantifier, int lookahead
+            ) -> quantified(child, quantifier, lookahead);
         };
     }
 
@@ -204,36 +203,81 @@ final class ELispRegExpCompiler {
     private static HalfCompiled union(HalfCompiled a, HalfCompiled b) {
         HalfCompiled jump = HalfCompiled.of(uncondJmp(b.length()));
         return concat(
-                packSplitDual(OP_FLAG_JMP_UNCOND, 0, a.length() + jump.length()),
+                HalfCompiled.of(splitSingle(a.length() + jump.length())),
                 a,
                 jump,
                 b
         );
     }
 
+    private static int splitSingle(int rel) {
+        return packSingleArgOpcode(OP_SPLIT, rel);
+    }
+
     private static HalfCompiled cmpOpcodeDual(int counter, int constant) {
         return HalfCompiled.of(packSingleArgOpcode(OP_COUNTER_CMP, counter), constant);
     }
 
-    private HalfCompiled quantified(HalfCompiled inner, int min, int max, boolean greedy) {
+    /// The `?` operator
+    private static HalfCompiled optional(HalfCompiled inner, boolean greedy, int lookahead) {
+        HalfCompiled body = greedy ? HalfCompiled.of(
+                splitSingle(inner.length()),
+                inner
+        ) : HalfCompiled.of(
+                splitSingle(1),
+                uncondJmp(inner.length()),
+                inner
+        );
+        if (lookahead != -1) {
+            return HalfCompiled.of(
+                    packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead),
+                    condJumpSingle(OP_FLAG_JMP_NE, greedy ? 1 : 2),
+                    body
+            );
+        }
+        return body;
+    }
+
+    private HalfCompiled quantified(ELispRegExpParser.REAst innerAst, REToken.Quantifier quantifier, int lookahead) {
+        int min = quantifier.min();
+        int max = quantifier.max();
+        boolean greedy = quantifier.greedy();
+        HalfCompiled inner = compileAst(innerAst);
+        if (min == 0 && max == 1) {
+            return optional(inner, greedy, lookahead);
+        }
+        if (innerAst.minLength() > 0) {
+            // We do not need progress checking.
+            return quantifiedNoProgress(inner, min, max, greedy, lookahead);
+        }
         int counterSlot = allocateStackSlot();
         int progressSlot = allocateStackSlot();
-        int headLength = 5;
         int innerLength = inner.length();
         int tailLength = 6;
+        HalfCompiled head = greedy
+                ? HalfCompiled.of(
+                // ~ int progress = sp;
+                packSingleArgOpcode(OP_PROGRESS_REC, progressSlot),
+                // ~ if (i >= min) { first try body, then try loop_tail_end } (greedy)
+                cmpOpcodeDual(counterSlot, min),
+                condJumpSingle(OP_FLAG_JMP_LT, 1),
+                splitSingle(innerLength + tailLength)
+        ) : HalfCompiled.of(
+                // ~ int progress = sp;
+                packSingleArgOpcode(OP_PROGRESS_REC, progressSlot),
+                // ~ if (i >= min) { first try loop_tail_end, then try body } (non-greedy)
+                cmpOpcodeDual(counterSlot, min),
+                condJumpSingle(OP_FLAG_JMP_LT, 2),
+                splitSingle(1),
+                uncondJmp(innerLength + tailLength)
+        );
+        int headLength = head.length();
         return HalfCompiled.of(
                 /* entry */
                 // ~ int i = 0;
                 packSingleArgOpcode(OP_COUNTER_RESET, counterSlot),
                 /* loop_head_start */
-                // ~ int progress = sp;
-                packSingleArgOpcode(OP_PROGRESS_REC, progressSlot),
-                cmpOpcodeDual(counterSlot, min),
-                greedy
-                        // ~ if (i >= min) { first try body, then try loop_tail_end } (greedy)
-                        ? packSplitDual(OP_FLAG_JMP_GE, 0, innerLength + tailLength)
-                        // ~ if (i >= min) { first try loop_tail_end, then try body } (non-greedy)
-                        : packSplitDual(OP_FLAG_JMP_GE, innerLength + tailLength, 0),
+                head,
                 /* loop_head_end */
                 /* body */
                 inner,
@@ -250,11 +294,101 @@ final class ELispRegExpCompiler {
         );
     }
 
-    private static HalfCompiled packSplitDual(int cond, int jumpRel, int splitRel) {
-        int opcode = (cond << OP_FLAG_JMP_COND_SHIFT)
-                | (OP_FLAG_JMP_SPLIT << OP_FLAG_JMP_KIND_SHIFT)
-                | OP_FLAG_JMP;
-        return HalfCompiled.of(packSingleArgOpcode(opcode, jumpRel), splitRel);
+    private HalfCompiled quantifiedNoProgress(HalfCompiled inner, int min, int max, boolean greedy, int lookahead) {
+        if (inner.length() <= 4) {
+            // Rewrite regexps like `a{3}` to `aaa`.
+            if (min == max) {
+                HalfCompiled[] reps = new HalfCompiled[min];
+                Arrays.fill(reps, inner);
+                return HalfCompiled.of((Object[]) reps);
+            }
+            // Rewrite regexps like `a{3,}` to `aaa+`.
+            if (min > 1 && max == Integer.MAX_VALUE) {
+                HalfCompiled[] reps = new HalfCompiled[min];
+                for (int i = 0; i < min - 1; i++) {
+                    reps[i] = inner;
+                }
+                reps[min - 1] = quantifiedNoProgress(inner, 1, Integer.MAX_VALUE, greedy, lookahead);
+                return HalfCompiled.of((Object[]) reps);
+            }
+            // Fallthrough
+        }
+        if (max == Integer.MAX_VALUE) {
+            if (min == 0) {
+                // (...)*
+                int headExtra = lookahead == -1 ? 0 : 2;
+                HalfCompiled body = greedy ? HalfCompiled.of(
+                        splitSingle(inner.length() + 1),
+                        inner,
+                        uncondJmp(-1 - inner.length() - 2 - headExtra)
+                ) : HalfCompiled.of(
+                        splitSingle(1),
+                        uncondJmp(inner.length() + 1),
+                        inner,
+                        uncondJmp(-1 - inner.length() - 2 - headExtra)
+                );
+                if (lookahead != -1) {
+                    return HalfCompiled.of(
+                            packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead),
+                            condJumpSingle(OP_FLAG_JMP_NE, greedy ? 1 : 2),
+                            body
+                    );
+                }
+                return body;
+            } else if (min == 1) {
+                // (...)+
+                if (lookahead != -1) {
+                    inner = HalfCompiled.of(
+                            inner,
+                            packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead),
+                            condJumpSingle(OP_FLAG_JMP_NE, -inner.length() - 2)
+                    );
+                }
+                return greedy ? HalfCompiled.of(
+                        inner,
+                        splitSingle(1),
+                        uncondJmp(-2 - inner.length())
+                ) : HalfCompiled.of(
+                        inner,
+                        splitSingle(-1 - inner.length())
+                );
+            }
+            // Fallthrough
+        }
+        int counterSlot = allocateStackSlot();
+        int innerLength = inner.length();
+        int tailLength = 4;
+        HalfCompiled head = greedy
+                ? HalfCompiled.of(
+                // ~ if (i >= min) { first try body, then try loop_tail_end } (greedy)
+                cmpOpcodeDual(counterSlot, min),
+                condJumpSingle(OP_FLAG_JMP_LT, 1),
+                splitSingle(innerLength + tailLength)
+        ) : HalfCompiled.of(
+                // ~ if (i >= min) { first try loop_tail_end, then try body } (non-greedy)
+                cmpOpcodeDual(counterSlot, min),
+                condJumpSingle(OP_FLAG_JMP_LT, 2),
+                splitSingle(1),
+                uncondJmp(innerLength + tailLength)
+        );
+        int headLength = head.length();
+        return HalfCompiled.of(
+                /* entry */
+                // ~ int i = 0;
+                packSingleArgOpcode(OP_COUNTER_RESET, counterSlot),
+                /* loop_head_start */
+                head,
+                /* loop_head_end */
+                /* body */
+                inner,
+                /* loop_tail_start */
+                // ~ i++;
+                packSingleArgOpcode(OP_COUNTER_INC, counterSlot),
+                cmpOpcodeDual(counterSlot, max),
+                // ~ if (i < max) { continue to loop_head_start; }
+                condJumpSingle(OP_FLAG_JMP_LT, -(headLength + innerLength + tailLength))
+                /* loop_tail_end */
+        );
     }
 
     static String disassemble(IntArrayList codes) {
@@ -288,13 +422,25 @@ final class ELispRegExpCompiler {
                 return sb.append(" ".repeat(indentation));
             }
 
+            private String condToString(int cond) {
+                return switch (cond) {
+                    case OP_FLAG_JMP_UNCOND -> "always";
+                    case OP_FLAG_JMP_NO_JUMP -> "never";
+                    case OP_FLAG_JMP_LE -> "<=";
+                    case OP_FLAG_JMP_GT -> ">";
+                    case OP_FLAG_JMP_LT -> "<";
+                    case OP_FLAG_JMP_GE -> ">=";
+                    case OP_FLAG_JMP_EQ -> "==";
+                    case OP_FLAG_JMP_NE -> "!=";
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+            }
+
             private String opcodeToString(int instruction) {
                 if (instruction < 0) {
-                    if (isSplitInstruction(instruction)) {
-                        return "split";
-                    } else {
-                        return "jmp";
-                    }
+                    int opcode = instruction >> 24;
+                    String cond = condToString((opcode >> OP_FLAG_JMP_COND_SHIFT) & OP_FLAG_JMP_COND_MASK);
+                    return "jmp (if " + cond + ")";
                 }
                 int opcode = instruction >> 24;
                 return switch (opcode) {
@@ -305,6 +451,8 @@ final class ELispRegExpCompiler {
                     case OP_PROGRESS_REC -> "progress_rec";
                     case OP_PROGRESS_CMP -> "progress_cmp";
                     case OP_JUMP_TABLE -> "jump_table";
+                    case OP_SPLIT -> "~split";
+                    case OP_LOOKAHEAD_CMP -> "lookahead_cmp";
                     case OP$STR_START -> "str_start!";
                     case OP$STR_END -> "str_end!";
                     case OP$LINE_START -> "line_start!";
@@ -329,7 +477,7 @@ final class ELispRegExpCompiler {
             @Override
             public void visit(int i, HalfCompiled.Single singleIntInstruction) {
                 int opcode = singleIntInstruction.code >> 24;
-                if (opcode == OP$CHAR) {
+                if (opcode == OP$CHAR || opcode == OP_LOOKAHEAD_CMP) {
                     printFirstChar(i, singleIntInstruction.code);
                 } else {
                     printFirst(i, singleIntInstruction.code);
@@ -394,17 +542,8 @@ final class ELispRegExpCompiler {
             final int start = i;
             int code = codes.get(i);
             if (code < 0) {
-                // Jump instruction
-                boolean split = isSplitInstruction(code);
-                if (split) {
-                    // Two-int instructions
-                    i++;
-                    int splitRel = codes.get(i);
-                    visitor.visit(start, new HalfCompiled.Dual(code, splitRel));
-                } else {
-                    // Single-int instructions
-                    visitor.visit(start, new HalfCompiled.Single(code));
-                }
+                // Jump instruction: Single-int instructions
+                visitor.visit(start, new HalfCompiled.Single(code));
             } else {
                 int opcode = code >> 24;
                 int arg = (code << 8) >> 8;
@@ -430,10 +569,6 @@ final class ELispRegExpCompiler {
                 visitor.visit(start, new HalfCompiled.Single(code));
             }
         }
-    }
-
-    private static boolean isSplitInstruction(int code) {
-        return code < 0 && ((code >> (24 + OP_FLAG_JMP_KIND_SHIFT)) & OP_FLAG_JMP_KIND_MASK) == OP_FLAG_JMP_SPLIT;
     }
 
     private sealed interface HalfCompiled {

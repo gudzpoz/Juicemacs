@@ -1,12 +1,26 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+import org.openjdk.jmh.annotations.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
-class BuiltInSearchTest extends BaseFormTest {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@Threads(1)
+@Fork(1)
+@Warmup(iterations = 3, time = 5)
+@Measurement(iterations = 3, time = 5)
+@State(Scope.Benchmark)
+public class BuiltInSearchTest extends BaseFormTest {
     private static final Object[] TESTS;
 
     private final static String[] SYNTAX_FREE_MATCHES = {
@@ -30,7 +44,20 @@ class BuiltInSearchTest extends BaseFormTest {
 //            "\\<abc\\>", "abc", // TODO: Syntax table
 //            "^\\w\\{3\\}\\W\\{3\\}$", "abc   ", // TODO: Syntax table
 //            "^(\\_<make-char-table\\_>)$", "(make-char-table)", // TODO: Syntax table
+            "^[0-9]+\\.[0-9]+$", "123.456", // look-ahead optimization
+            "^.?b$", "ab", // look-ahead optimization
+            "^.??b$", "ab", // look-ahead optimization
+            "^a\\{4\\}$", "aaaa", // a{4} -> aaaa optimization
+            "^a\\{4,\\}$", "aaaaaaaa", // a{4,} -> aaaa+ optimization
     };
+
+    public static final String REGEXP_TEST = """
+            (progn
+              (string-match
+                "a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaa"
+                "aaaaaaaaaaaaaaaaaaaaaaaa")
+              (match-end 0))
+            """;
 
     static {
         Object[] tests = {
@@ -66,9 +93,31 @@ class BuiltInSearchTest extends BaseFormTest {
         try (Context context = Context.newBuilder("elisp")
                 .build()
         ) {
-            String source = "(string-match \"a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaa\"" +
-                    " \"aaaaaaaaaaaaaaaaaaaaaaaa\")";
-            context.eval("elisp", source);
+            assertEquals(24L, context.eval("elisp", REGEXP_TEST).asLong());
         }
+    }
+
+    @SuppressWarnings("NotNullFieldNotInitialized")
+    private Context context;
+
+    @Setup
+    public void setup() throws IOException {
+        context = Context.newBuilder("elisp").build();
+        context.eval(Source.newBuilder("elisp", """
+            ;;; -*- lexical-binding: t -*-
+            (defalias
+              'long-regexp
+              #'(lambda ()\s""" + REGEXP_TEST + " 1)) nil", "long-regexp").build());
+    }
+
+    @TearDown
+    public void tearDown() {
+        context.close();
+    }
+
+    @Benchmark
+    public long regExp() throws IOException {
+        Value v = context.eval(Source.newBuilder("elisp", "(long-regexp)", "<regexp-test>").build());
+        return v.asLong();
     }
 }

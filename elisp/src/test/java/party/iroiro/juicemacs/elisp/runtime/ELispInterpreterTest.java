@@ -19,6 +19,53 @@ import static org.junit.jupiter.api.Assertions.*;
 @Measurement(iterations = 3, time = 5)
 @State(Scope.Benchmark)
 public class ELispInterpreterTest {
+    public final static String MANDELBROT_NESTED_LETS = """
+            ;;; -*- lexical-binding: t -*-
+            (defalias
+              'mandelbrot-lets
+              #'(lambda (size)
+                  (let ((sum 0)
+                        (byte-acc 0)
+                        (bit-num 0)
+                        (y 0))
+                    (while (< y size)
+                      (let ((ci (- (/ (* 2.0 y) size) 1.0))
+                            (x 0))
+                        (while (< x size)
+                          (let ((zr 0.0)
+                                (zrzr 0.0)
+                                (zi 0.0)
+                                (zizi 0.0)
+                                (cr (- (/ (* 2.0 x) size) 1.5))
+                                (z 0)
+                                (escape 1)) ;; this was originally a let block
+                            (while (< z 50)
+                              (let ((tr (+ (- zrzr zizi) cr))
+                                    (ti (+ (* 2.0 zr zi) ci)))
+                                (setq zr tr
+                                      zi ti)
+                                (setq zrzr (* zr zr)
+                                      zizi (* zi zi))
+                                (if (> (+ zrzr zizi) 4.0)
+                                    (setq escape 0
+                                          z 50))
+                                (setq z (1+ z))))
+                            (setq byte-acc (logior (ash byte-acc 1) escape))
+                            (setq bit-num (1+ bit-num))
+                            (if (= 8 bit-num)
+                                (setq sum (logxor sum byte-acc)
+                                      byte-acc 0
+                                      bit-num 0)
+                              (if (= x (1- size))
+                                  (setq byte-acc (ash byte-acc (- 8 bit-num))
+                                        sum (logxor sum byte-acc)
+                                        byte-acc 0
+                                        bit-num 0)))
+                            (setq x (1+ x))))
+                        (setq y (1+ y))))
+                    sum)))
+            nil
+            """;
     public final static String MANDELBROT = """
             ;;; -*- lexical-binding: t -*-
             (defalias
@@ -87,6 +134,7 @@ public class ELispInterpreterTest {
         context = Context.newBuilder("elisp").build();
         context.eval(Source.newBuilder("elisp", FIB, "fib").build());
         context.eval(Source.newBuilder("elisp", MANDELBROT, "mandelbrot").build());
+        context.eval(Source.newBuilder("elisp", MANDELBROT_NESTED_LETS, "mandelbrot-lets").build());
     }
 
     @TearDown
@@ -108,6 +156,13 @@ public class ELispInterpreterTest {
     }
 
     @Benchmark
+    public long mandelbrotNestedLets() throws IOException {
+        Value v = context.eval(Source.newBuilder("elisp", "(mandelbrot-lets 750)", "<750>").build());
+        assertEquals(192, v.asLong());
+        return v.asLong();
+    }
+
+    @Benchmark
     public long mandelbrotJava() {
         int mandelbrot = Mandelbrot.mandelbrot(750);
         assertEquals(192, mandelbrot);
@@ -121,6 +176,19 @@ public class ELispInterpreterTest {
         assertEquals(192, benchmark.mandelbrot());
         Value v = benchmark.context
                 .eval(Source.newBuilder("elisp", "(mandelbrot 1000)", "<1000>").build());
+        assertEquals(5, v.asLong());
+        benchmark.tearDown();
+    }
+
+    @Test
+    public void testMandelbrotNestedLets() throws IOException {
+        ELispInterpreterTest benchmark = new ELispInterpreterTest();
+        benchmark.setup();
+        for (int i = 0; i < 10; i++) {
+            assertEquals(192, benchmark.mandelbrotNestedLets());
+        }
+        Value v = benchmark.context
+                .eval(Source.newBuilder("elisp", "(mandelbrot-lets 1000)", "<1000>").build());
         assertEquals(5, v.asLong());
         benchmark.tearDown();
     }

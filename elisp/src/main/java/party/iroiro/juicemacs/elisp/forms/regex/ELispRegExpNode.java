@@ -3,11 +3,14 @@ package party.iroiro.juicemacs.elisp.forms.regex;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBoolVector;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
@@ -31,6 +34,12 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
     private static final int SP_SLOT = 0;
     private static final int PC_SLOT = 1;
+
+    private static final int TRUFFLE_SLOT_INPUT = 0;
+    private static final int TRUFFLE_SLOT_STACK_POOL = 1;
+    private static final int TRUFFLE_SLOT_BUFFER = 2;
+    private static final int TRUFFLE_SLOT_START = 3;
+    private static final int TRUFFLE_SLOT_END = 4;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private final int[] code;
@@ -67,10 +76,13 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         }
         boolean search = (boolean) args[ARG_BOOL_SEARCH];
 
-        int[] initStack = initStack(start, search);
-        ArrayList<int[]> stacks = new ArrayList<>();
-        stacks.add(initStack);
-        return dispatcher(frame, 0, input, start, end, stacks, frame.getArguments()[ARG_OBJ_BUFFER]);
+        IntArrayStackPool pool = new IntArrayStackPool(initStack(start, search));
+        frame.setObject(TRUFFLE_SLOT_INPUT, input);
+        frame.setObject(TRUFFLE_SLOT_STACK_POOL, pool);
+        frame.setObject(TRUFFLE_SLOT_BUFFER, args[ARG_OBJ_BUFFER]);
+        frame.setInt(TRUFFLE_SLOT_START, start);
+        frame.setInt(TRUFFLE_SLOT_END, end);
+        return dispatcher(frame, 0);
     }
 
     private int[] initStack(int start, boolean search) {
@@ -97,33 +109,30 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
-        BacktrackingState state = (BacktrackingState) interpreterState;
-        return dispatcher(osrFrame, target,
-                state.input, state.start, state.length, state.stacks, state.buffer
-        );
+        return dispatcher(osrFrame, target);
     }
 
-    private Object dispatcher(VirtualFrame frame,
-                              int bci,
-                              Object input,
-                              int start, int end,
-                              ArrayList<int[]> stacks,
-                              Object buffer) {
+    private Object dispatcher(VirtualFrame frame, int bci) {
         // The outer backtracking loop.
         // This loop must be separated from the inner loop to allow MERGE_EXPLODE,
         // since we do not know how many backtracking states we will need.
+        Object input = frame.getObject(TRUFFLE_SLOT_INPUT);
+        IntArrayStackPool stacks = (IntArrayStackPool) frame.getObject(TRUFFLE_SLOT_STACK_POOL);
+        Object buffer = frame.getObject(TRUFFLE_SLOT_BUFFER);
+        int start = frame.getInt(TRUFFLE_SLOT_START);
+        int end = frame.getInt(TRUFFLE_SLOT_END);
         while (true) {
             Object lastRun = dispatchFromBCI(frame, bci, input, start, end, stacks, buffer);
             if (lastRun != Boolean.FALSE) {
                 return lastRun;
             }
             if (stacks.isEmpty()) {
-                return false;
+                return Boolean.FALSE;
             }
             // back-edge
             if (BytecodeOSRNode.pollOSRBackEdge(this)) {
-                BacktrackingState state = new BacktrackingState(stacks, input, start, end, buffer);
-                Object result = BytecodeOSRNode.tryOSR(this, bci, state, null, frame);
+                // An interpreter must ensure this method returns true immediately before calling tryOSR.
+                Object result = BytecodeOSRNode.tryOSR(this, 0, null, null, frame);
                 if (result != null) {
                     return result;
                 }
@@ -133,12 +142,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
     @HostCompilerDirectives.BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    private Object dispatchFromBCI(VirtualFrame frame,
-                                   int bci,
+    private Object dispatchFromBCI(VirtualFrame frame, int bci,
                                    Object input, int start, int end,
-                                   ArrayList<int[]> stacks,
+                                   IntArrayStackPool stacks,
                                    Object buffer) {
-        int[] stack = stacks.removeLast();
+        int[] stack = stacks.borrowStack();
         int cmpFlags = 0;
 
         loop:
@@ -166,28 +174,14 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 // "copies of the loop body that have the exact same state (all local variables have the same value)".
                 // So we need to reset cmpFlags to 0 after each jump.
                 cmpFlags = 0;
-                int kind = (opcode >> OP_FLAG_JMP_KIND_SHIFT) & OP_FLAG_JMP_KIND_MASK;
                 if (!success) {
-                    if (kind == OP_FLAG_JMP_SPLIT) {
-                        bci++;
-                    }
                     continue;
                 }
-                int nextBci;
-                if (kind == OP_FLAG_JMP_JMP) {
-                    nextBci = bci + arg;
-                } else {
-                    int[] newThread = stack.clone();
-                    int jumpTableIndex = code[bci];
-                    newThread[PC_SLOT] = jumpTableIndex;
-                    stacks.add(newThread);
-                    nextBci = bci + arg + 1;
-                }
+                int nextBci = bci + arg;
                 if (nextBci < bci) { // back-edge
                     if (BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        stacks.add(stack);
-                        BacktrackingState state = new BacktrackingState(stacks, input, start, end, buffer);
-                        Object result = BytecodeOSRNode.tryOSR(this, nextBci, state, null, frame);
+                        // An interpreter must ensure this method returns true immediately before calling tryOSR.
+                        Object result = BytecodeOSRNode.tryOSR(this, nextBci, null, null, frame);
                         if (result != null) {
                             return result;
                         }
@@ -222,6 +216,10 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     }
                     throw CompilerDirectives.shouldNotReachHere();
                 }
+                case OP_SPLIT -> stacks.addStackCopy(stack)[PC_SLOT] = arg;
+                case OP_LOOKAHEAD_CMP -> cmpFlags = sp < end
+                        ? Integer.compare(getChar(frame, input, sp), arg)
+                        : -1;
                 case OP$STR_START -> success = sp == start;
                 case OP$STR_END -> success = sp == end;
                 case OP$LINE_START -> success = sp == start
@@ -298,6 +296,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                             }
                         }
                         bci += arg;
+                        CompilerAsserts.partialEvaluationConstant(bci);
                         success = invert != success; // xor
                     } else {
                         success = false;
@@ -314,7 +313,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             }
             if (!success) {
-                return false;
+                stacks.disposeCurrent();
+                return Boolean.FALSE;
             }
         }
     }
@@ -410,8 +410,60 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         return ELispRegExpCompiler.disassemble(IntArrayList.newListWith(code));
     }
 
-    private record BacktrackingState(ArrayList<int[]> stacks, Object input,
-                                     int start, int length, Object buffer) {
+    static final FrameDescriptor REGEXP_FRAME_DESCRIPTOR = getFrameDescriptor();
+
+    static FrameDescriptor getFrameDescriptor() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlots(3, FrameSlotKind.Object); // input, buffer, stackPool
+        builder.addSlots(2, FrameSlotKind.Int); // start, end
+        return builder.build();
+    }
+
+    private static final class IntArrayStackPool {
+        private final ArrayList<int[]> stackPool;
+        private int stackPoolTop;
+        private int @Nullable [] currentStack;
+
+        private IntArrayStackPool(int @Nullable [] initStack) {
+            stackPool = new ArrayList<>();
+            stackPoolTop = 0;
+            currentStack = initStack;
+        }
+
+        private int[] addStackCopy(int[] stack) {
+            if (stackPoolTop == stackPool.size()) {
+                stackPool.add(new int[stack.length]);
+            }
+            int[] target = stackPool.get(stackPoolTop);
+            System.arraycopy(stack, 0, target, 0, stack.length);
+            ++stackPoolTop;
+            return target;
+        }
+
+        private boolean isEmpty() {
+            return currentStack == null && stackPoolTop == 0;
+        }
+
+        private int[] borrowStack() {
+            if (currentStack == null) {
+                if (stackPoolTop == stackPool.size()) {
+                    currentStack = stackPool.removeLast();
+                    --stackPoolTop;
+                } else {
+                    currentStack = stackPool.get(--stackPoolTop);
+                    int[] last = stackPool.removeLast();
+                    stackPool.set(stackPoolTop, last);
+                }
+            }
+            return currentStack;
+        }
+
+        private void disposeCurrent() {
+            if (currentStack != null) {
+                stackPool.add(currentStack);
+                currentStack = null;
+            }
+        }
     }
 
 }

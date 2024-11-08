@@ -23,6 +23,8 @@ final class ELispRegExpParser {
     @Nullable
     private ELispRegExpLexer parentLexer;
 
+    private int quantifierLookaheadChar;
+
     private int groupIndex;
     private final IntArrayList processingGroupIndices;
     private final IntArrayList availableGroupIndices;
@@ -34,6 +36,7 @@ final class ELispRegExpParser {
         this.encoding = encoding;
         lexer = new ELispRegExpLexer(regExp, encoding);
         stack = new ArrayList<>();
+        quantifierLookaheadChar = -1;
         groupIndex = 0;
         processingGroupIndices = new IntArrayList();
         availableGroupIndices = new IntArrayList();
@@ -141,6 +144,9 @@ final class ELispRegExpParser {
                         stack.removeLast();
                         chars.add(prev);
                     } else {
+                        if (stack.getLast() instanceof Quantifier) {
+                            quantifierLookaheadChar = chars.getLast();
+                        }
                         break;
                     }
                 }
@@ -156,11 +162,17 @@ final class ELispRegExpParser {
                  CharClass _,
                  SyntaxChar _,
                  CategoryChar _ -> new REAst.Atom(top);
-            case Quantifier quantifier -> new REAst.Quantified(processStackTop(compact), quantifier);
+            case Quantifier quantifier -> lookaheadQuantifier(quantifier);
             case GroupEnd() -> collectGroup();
             case GroupStart ignored -> throw ELispSignals.error("Unbalanced group start");
             case Alternation() -> throw CompilerDirectives.shouldNotReachHere(); // Processed by collectGroup
         };
+    }
+
+    private REAst lookaheadQuantifier(Quantifier quantifier) {
+        int lookahead = quantifierLookaheadChar;
+        quantifierLookaheadChar = -1;
+        return new REAst.Quantified(processStackTop(false), quantifier, lookahead);
     }
 
     private REAst collectGroup() {
@@ -192,8 +204,36 @@ final class ELispRegExpParser {
     }
 
     sealed interface REAst {
-        record Atom(ELispRegExpLexer.REToken token) implements REAst {}
+        default int minLength() {
+            return 0;
+        }
+
+        record Atom(ELispRegExpLexer.REToken token) implements REAst {
+            @Override
+            public int minLength() {
+                return switch (token) {
+                    case AnyChar _,
+                         CharClass _,
+                         CategoryChar _,
+                         SyntaxChar _ -> 1;
+                    default -> 0;
+                };
+            }
+        }
         record Group(int index, REAst[][] alternations) implements REAst {
+            @Override
+            public int minLength() {
+                int min = Integer.MAX_VALUE;
+                for (REAst[] alternation : alternations) {
+                    int length = 0;
+                    for (REAst child : alternation) {
+                        length += child.minLength();
+                    }
+                    min = Math.min(min, length);
+                }
+                return min;
+            }
+
             @Override
             public String toString() {
                 StringBuilder builder = new StringBuilder("Group{index=");
@@ -206,6 +246,11 @@ final class ELispRegExpParser {
         }
         record Literal(int[] chars) implements REAst {
             @Override
+            public int minLength() {
+               return chars.length;
+            }
+
+            @Override
             public String toString() {
                 StringBuilder builder = new StringBuilder("Literal{chars=[");
                 for (int c : chars) {
@@ -214,6 +259,11 @@ final class ELispRegExpParser {
                 return builder.append("]}").toString();
             }
         }
-        record Quantified(REAst child, Quantifier quantifier) implements REAst {}
+        record Quantified(REAst child, Quantifier quantifier, int lookahead) implements REAst {
+            @Override
+            public int minLength() {
+                return child.minLength() * quantifier.min();
+            }
+        }
     }
 }

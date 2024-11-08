@@ -423,7 +423,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
                 boolean charRangesFitInInt,
                 boolean invert
         ) implements REToken {
-            static CharClass preprocess(CharClassContent[] array, boolean invert) {
+            static REToken preprocess(CharClassContent[] array, boolean invert) {
                 ArrayList<CharClassContent.NamedCharClass> namedClasses = new ArrayList<>();
                 ArrayList<CharClassContent.CharRange> charRanges = new ArrayList<>();
                 boolean charRangesFitInInt = true;
@@ -435,6 +435,12 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
                         }
                         case CharClassContent.NamedCharClass named -> namedClasses.add(named);
                         default -> {}
+                    }
+                }
+                if (namedClasses.isEmpty() && charRanges.size() == 1) {
+                    CharClassContent.CharRange first = charRanges.getFirst();
+                    if (first.min == first.max) {
+                        return new Char(first.min);
                     }
                 }
                 return new CharClass(
