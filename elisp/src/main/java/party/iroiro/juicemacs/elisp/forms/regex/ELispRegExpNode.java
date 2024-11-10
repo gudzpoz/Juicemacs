@@ -129,10 +129,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
             if (stacks.isEmpty()) {
                 return Boolean.FALSE;
             }
+            bci = 0;
             // back-edge
             if (BytecodeOSRNode.pollOSRBackEdge(this)) {
                 // An interpreter must ensure this method returns true immediately before calling tryOSR.
-                Object result = BytecodeOSRNode.tryOSR(this, 0, null, null, frame);
+                Object result = BytecodeOSRNode.tryOSR(this, bci, null, null, frame);
                 if (result != null) {
                     return result;
                 }
