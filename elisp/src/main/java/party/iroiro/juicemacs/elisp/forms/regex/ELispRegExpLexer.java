@@ -91,7 +91,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             }
             case 'w', 'W' -> {
                 hasPreviousPattern = true;
-                yield new REToken.SyntaxChar((byte) 'w', c == 'W');
+                yield new REToken.SyntaxChar((byte) SWORD, c == 'W');
             }
             case '<' -> {
                 hasPreviousPattern = true;
@@ -162,7 +162,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     private REToken quantifier() {
         int min = Math.max(readInt(), 0);
         int c = reader.peek();
-        int max = Integer.MAX_VALUE;
+        int max = min;
         if (c == ',') {
             reader.consume(1);
             max = readInt();

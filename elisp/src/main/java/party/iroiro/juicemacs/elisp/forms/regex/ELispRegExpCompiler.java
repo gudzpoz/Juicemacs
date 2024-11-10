@@ -159,9 +159,9 @@ final class ELispRegExpCompiler {
             case REToken.BackReference(int index) -> packSingleArgOpcode(OP$BACKREF, index);
             case REToken.WordBoundary(boolean invert) -> packSingleArgOpcode(OP$WORD_BOUND, invert ? -1 : 0);
             case REToken.CategoryChar(byte kind, boolean invert) ->
-                    packSingleArgOpcode(OP$CATEGORY_CHAR, kind | (invert ? ARG_BIT_FLAG : 0));
+                    packSingleArgOpcode(OP$CATEGORY_CHAR, kind, invert);
             case REToken.SyntaxChar(byte kind, boolean invert) ->
-                    packSingleArgOpcode(OP$SYNTAX_CHAR, kind | (invert ? ARG_BIT_FLAG : 0));
+                    packSingleArgOpcode(OP$SYNTAX_CHAR, kind, invert);
             case REToken.Quantifier _,
                  REToken.GroupStart _,
                  REToken.GroupEnd _,

@@ -121,24 +121,27 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         Object buffer = frame.getObject(TRUFFLE_SLOT_BUFFER);
         int start = frame.getInt(TRUFFLE_SLOT_START);
         int end = frame.getInt(TRUFFLE_SLOT_END);
-        while (true) {
-            Object lastRun = dispatchFromBCI(frame, bci, input, start, end, stacks, buffer);
-            if (lastRun != Boolean.FALSE) {
-                return lastRun;
-            }
-            if (stacks.isEmpty()) {
-                return Boolean.FALSE;
-            }
-            bci = 0;
+
+        Object lastRun = dispatchFromBCI(frame, bci, input, start, end, stacks, buffer);
+        if (lastRun != Boolean.FALSE) {
+            return lastRun;
+        }
+        while (!stacks.isEmpty()) {
             // back-edge
             if (BytecodeOSRNode.pollOSRBackEdge(this)) {
                 // An interpreter must ensure this method returns true immediately before calling tryOSR.
-                Object result = BytecodeOSRNode.tryOSR(this, bci, null, null, frame);
+                Object result = BytecodeOSRNode.tryOSR(this, 0, null, null, frame);
                 if (result != null) {
                     return result;
                 }
             }
+
+            lastRun = dispatchFromBCI(frame, 0, input, start, end, stacks, buffer);
+            if (lastRun != Boolean.FALSE) {
+                return lastRun;
+            }
         }
+        return Boolean.FALSE;
     }
 
     @HostCompilerDirectives.BytecodeInterpreterSwitch
@@ -147,20 +150,21 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                                    Object input, int start, int end,
                                    IntArrayStackPool stacks,
                                    Object buffer) {
-        int[] stack = stacks.borrowStack();
+        CompilerAsserts.partialEvaluationConstant(bci);
+        final int[] stack = stacks.borrowStack();
         int cmpFlags = 0;
 
         loop:
         while (true) {
             CompilerAsserts.partialEvaluationConstant(bci);
-            int instruction = code[bci++];
+            final int instruction = code[bci++];
             CompilerAsserts.partialEvaluationConstant(instruction);
-            int opcode = instruction >> 24;
-            int arg = (instruction << 8) >> 8;
+            final int opcode = instruction >> 24;
+            final int arg = (instruction << 8) >> 8;
             if (opcode < 0) {
                 // Jump instructions
-                int cond = (opcode >> OP_FLAG_JMP_COND_SHIFT) & OP_FLAG_JMP_COND_MASK;
-                boolean success = switch (cond) {
+                final int cond = (opcode >> OP_FLAG_JMP_COND_SHIFT) & OP_FLAG_JMP_COND_MASK;
+                final boolean success = switch (cond) {
                     case OP_FLAG_JMP_UNCOND -> true;
                     case OP_FLAG_JMP_NO_JUMP -> false;
                     case OP_FLAG_JMP_LE -> cmpFlags <= 0;
@@ -178,7 +182,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 if (!success) {
                     continue;
                 }
-                int nextBci = bci + arg;
+                final int nextBci = bci + arg;
                 if (nextBci < bci) { // back-edge
                     if (BytecodeOSRNode.pollOSRBackEdge(this)) {
                         // An interpreter must ensure this method returns true immediately before calling tryOSR.
@@ -238,20 +242,20 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     };
                 }
                 case OP$SYMBOL_START, OP$SYMBOL_END -> {
-                    boolean hasSymbolBefore = sp != start || isSymbol(buffer, getChar(frame, input, sp - 1));
-                    boolean hasSymbolAfter = sp != end || isSymbol(buffer, getChar(frame, input, sp));
+                    boolean hasSymbolBefore = sp != start && isSymbol(buffer, getChar(frame, input, sp - 1));
+                    boolean hasSymbolAfter = sp != end && isSymbol(buffer, getChar(frame, input, sp));
                     success = opcode == OP$SYMBOL_START
                             ? !hasSymbolBefore && hasSymbolAfter
                             : hasSymbolBefore && !hasSymbolAfter;
                 }
                 case OP$CATEGORY_CHAR, OP$SYNTAX_CHAR -> {
-                    boolean invert = (arg & ARG_BIT_FLAG) != 0;
-                    arg = arg & ARG_BIT_MASK;
+                    final boolean invert = (arg & ARG_BIT_FLAG) != 0;
+                    final int kind = arg & ARG_BIT_MASK;
                     if (sp < end) {
                         int c = getChar(frame, input, sp);
                         success = (opcode == OP$SYNTAX_CHAR
-                                ? isSyntaxClass(buffer, c, arg)
-                                : isCategoryClass(buffer, c, arg)) != invert; // xor
+                                ? getSyntaxClass(buffer, c) == kind
+                                : isCategoryClass(buffer, c, kind)) != invert; // xor
                     } else {
                         success = false;
                     }
@@ -296,12 +300,12 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                                 }
                             }
                         }
-                        bci += arg;
                         CompilerAsserts.partialEvaluationConstant(bci);
                         success = invert != success; // xor
                     } else {
                         success = false;
                     }
+                    bci += arg;
                 }
                 case OP$CHAR -> {
                     success = sp < end && getChar(frame, input, sp) == (arg & 0xFF_FF_FF);
@@ -343,23 +347,25 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
     //#region Syntax Table
     private static boolean isPunct(Object buffer, int c) {
-        return isSyntaxClass(buffer, c, SPUNCT);
+        return getSyntaxClass(buffer, c) == SPUNCT;
     }
     private static boolean isSpace(Object buffer, int c) {
-        return isSyntaxClass(buffer, c, SWHITESPACE);
+        return getSyntaxClass(buffer, c) == SWHITESPACE;
     }
     private static boolean isWord(Object buffer, int c) {
-        return isSyntaxClass(buffer, c, SWORD);
+        return getSyntaxClass(buffer, c) == SWORD;
     }
     private static boolean isSymbol(Object buffer, int c) {
-        return isSyntaxClass(buffer, c, SSYMBOL);
+        int syntaxClass = getSyntaxClass(buffer, c);
+        return syntaxClass == SWORD || syntaxClass == SSYMBOL;
     }
-    private static boolean isSyntaxClass(Object buf, int c, int clazz) {
+    private static int getSyntaxClass(Object buf, int c) {
         ELispBuffer buffer = asBuffer(buf);
         ELispCharTable table = asCharTable(buffer.getSyntaxTable());
         return table.getChar(c) instanceof ELispCons cons
                 && cons.car() instanceof Long l
-                && (l & 0xFFFF) == clazz;
+                ? Math.toIntExact(l & 0xFFFF)
+                : -1;
     }
     private static boolean isCategoryClass(Object buf, int c, int clazz) {
         ELispBuffer buffer = asBuffer(buf);

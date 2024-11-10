@@ -60,6 +60,13 @@ class ELispRegExpOpcode {
         return (code << 24) | (arg & IN_PLACE_ARG_MASK);
     }
 
+    static int packSingleArgOpcode(int code, int arg, boolean flag) {
+        if (arg < 0 || MAX_IN_PLACE_ARG < arg) {
+            throw ELispSignals.error("Argument out of range: " + arg);
+        }
+        return packSingleArgOpcode(code, arg) | (flag ? ARG_BIT_FLAG : 0);
+    }
+
     static int packNoArgOpcode(int code) {
         return code << 24;
     }
