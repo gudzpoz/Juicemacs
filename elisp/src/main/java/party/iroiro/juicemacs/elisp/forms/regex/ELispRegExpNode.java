@@ -18,6 +18,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.util.ArrayList;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.lowerCaseP;
+import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.upperCaseP;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asCharTable;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
@@ -377,12 +379,10 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
     //#region Case Table
     private static boolean isUpperCase(Object buffer, int c) {
-        // TODO
-        return Character.isUpperCase(c);
+        return upperCaseP(c, asBuffer(buffer));
     }
     private static boolean isLowerCase(Object buffer, int c) {
-        // TODO
-        return Character.isLowerCase(c);
+        return lowerCaseP(c, asBuffer(buffer));
     }
     //#endregion Case Table
 

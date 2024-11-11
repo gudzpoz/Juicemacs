@@ -26,6 +26,7 @@ public class ELispGlobals {
         callintVars();
         casefiddleVars();
         casetabVars();
+        categoryVars();
         characterVars();
         charsetVars();
         chartabVars();
@@ -59,6 +60,7 @@ public class ELispGlobals {
         callintPostInitVars();
         casefiddlePostInitVars();
         casetabPostInitVars();
+        categoryPostInitVars();
         characterPostInitVars();
         charsetPostInitVars();
         chartabPostInitVars();
@@ -1685,4 +1687,16 @@ public class ELispGlobals {
         redisplayModeLinesCause.setValue(redisplayModeLinesCauseJInit);
     }
     //#endregion xdisp.c
+    //#region category.c
+    public static ELispSymbol.Value.Forwarded wordCombiningCategories = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded wordSeparatingCategories = new ELispSymbol.Value.Forwarded(false);
+
+    private static void categoryVars() {
+        WORD_COMBINING_CATEGORIES.initForwardTo(wordCombiningCategories);
+        WORD_SEPARATING_CATEGORIES.initForwardTo(wordSeparatingCategories);
+    }
+    private static void categoryPostInitVars() {
+
+    }
+    //#endregion category.c
 }

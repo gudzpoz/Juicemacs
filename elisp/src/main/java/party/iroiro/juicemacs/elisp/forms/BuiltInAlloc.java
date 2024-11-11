@@ -4,12 +4,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 
@@ -47,8 +45,17 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeBoolVector extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeBoolVector(Object length, Object init) {
-            throw new UnsupportedOperationException();
+        public static ELispBoolVector makeBoolVector(long length, Object init) {
+            int len = Math.toIntExact(length);
+            BitSet bitSet;
+            if (ELispSymbol.isNil(init)) {
+                bitSet = new BitSet(len);
+            } else {
+                byte[] initBytes = new byte[Math.ceilDiv(len, Byte.SIZE)];
+                Arrays.fill(initBytes, (byte) 0xFF);
+                bitSet = BitSet.valueOf(initBytes);
+            }
+            return new ELispBoolVector(bitSet, len);
         }
     }
 

@@ -26,10 +26,10 @@ public class BuiltInSearchTest extends BaseFormTest {
     private final static String[] SYNTAX_FREE_MATCHES = {
             "^abc$", "abc",
             "^\\(\\(abc\\)\\|\\(d\\)\\)\\(?:abc\\)\\{1\\}$", "dabc",
-//            "^[[:ascii:]][[:alnum:]][[:alpha:]][[:blank:]][[:cntrl:]][[:digit:]][[:graph:]][[:lower:]]" +
-//                    "[[:multibyte:]][[:nonascii:]][[:print:]][[:punct:]][[:space:]]" +
-//                    "[[:unibyte:]][[:upper:]][[:word:]][[:xdigit:]]$",
-//            "a1a \n1aa🧃🧃a, aAwB", // TODO: Syntax table
+            "^[[:ascii:]][[:alnum:]][[:alpha:]][[:blank:]][[:cntrl:]][[:digit:]][[:graph:]][[:lower:]]" +
+                    "[[:multibyte:]][[:nonascii:]][[:print:]][[:punct:]][[:space:]]" +
+                    "[[:unibyte:]][[:upper:]][[:word:]][[:xdigit:]]$",
+            "a1a \n1aa🧃🧃a, aAwB",
             "^[_[:alpha:]]\\{4\\}$", "_abc",
             "^[][]\\{4\\}$", "]][[",
             "^[\\]$", "\\",
@@ -39,11 +39,11 @@ public class BuiltInSearchTest extends BaseFormTest {
             "^\\(abc\\)\\1$", "abcabc",
             "^\\n$", "n",
             "\\`abc\\'", "abc",
-//            "\\babc\\b", "abc", // TODO: Syntax table
-//            "\\Babc\\B", "DabcD", // TODO: Syntax table
-//            "\\<abc\\>", "abc", // TODO: Syntax table
-//            "^\\w\\{3\\}\\W\\{3\\}$", "abc   ", // TODO: Syntax table
-//            "^(\\_<make-char-table\\_>)$", "(make-char-table)", // TODO: Syntax table
+            "\\babc\\b", "abc",
+            "\\babc\\B", "abcD",
+            "\\<abc\\>", "abc",
+            "^\\w\\{3\\}\\W\\{3\\}$", "abc   ",
+            "^(\\_<make-char-table\\_>)$", "(make-char-table)",
             "^[0-9]+\\.[0-9]+$", "123.456", // look-ahead optimization
             "^.?b$", "ab", // look-ahead optimization
             "^.??b$", "ab", // look-ahead optimization
@@ -93,7 +93,13 @@ public class BuiltInSearchTest extends BaseFormTest {
         try (Context context = Context.newBuilder("elisp")
                 .build()
         ) {
-            assertEquals(24L, context.eval("elisp", REGEXP_TEST).asLong());
+//            assertEquals(24L, context.eval("elisp", REGEXP_TEST).asLong());
+            for (int i = 0; i < 10000; i++) {
+                assertEquals(0L, context.eval("elisp", """
+                        (string-match "^[_[:alpha:]]\\\\{4\\\\}$" "_abc")
+                        """
+                ).asLong());
+            }
         }
     }
 

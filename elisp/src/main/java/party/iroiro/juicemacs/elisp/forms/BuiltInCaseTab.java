@@ -4,11 +4,16 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCharTab.charTableMap;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class BuiltInCaseTab extends ELispBuiltIns {
@@ -38,19 +43,74 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         return BuiltInCaseTabFactory.getFactories();
     }
 
-    private static ELispCharTable asciiDowncaseTable;
-    private static ELispCharTable asciiUpcaseTable;
-    private static ELispCharTable asciiCanonTable;
-    private static ELispCharTable asciiEqvTable;
+    public static ELispCharTable asciiDowncaseTable;
+    public static ELispCharTable asciiUpcaseTable;
+    public static ELispCharTable asciiCanonTable;
+    public static ELispCharTable asciiEqvTable;
 
-    private static ELispCharTable asCharTable(Object object) {
-        if (object instanceof ELispCharTable charTable) {
-            return charTable;
+    /// Sets elements of `table` for `c` to `c` itself.
+    private record SetIdentity(ELispCharTable table) implements BiConsumer<Object, Object> {
+        @Override
+        public void accept(Object range, Object value) {
+            if (value instanceof Long) {
+                int from, to;
+                if (range instanceof ELispCons cons) {
+                    from = asInt(cons.car());
+                    to = asInt(cons.cdr());
+                } else {
+                    from = to = asInt(range);
+                }
+                to++;
+                for (; from < to; from++) {
+                    table.setChar(from, from);
+                }
+            }
         }
-        throw ELispSignals.wrongTypeArgument(CHAR_TABLE_P, object);
     }
 
-    private void setCaseTable(ELispCharTable caseTable, boolean standard) {
+    /// Permutes the elements of `table` so that it has one cycle for each equivalence class
+    /// induced by the translation table on which [BuiltInCharTab#charTableMap(ELispCharTable, BiConsumer)]
+    /// is called.
+    private record Shuffle(ELispCharTable table) implements BiConsumer<Object, Object> {
+        @Override
+        public void accept(Object key, Object value) {
+            if (value instanceof Long elt) {
+                int from, to;
+                if (key instanceof ELispCons cons) {
+                    from = asInt(cons.car());
+                    to = asInt(cons.cdr());
+                } else {
+                    from = to = asInt(key);
+                }
+                to++;
+                for (; from < to; from++) {
+                    int c = elt.intValue();
+                    Object tem = table.getChar(c);
+                    table.setChar(c, from);
+                    table.setChar(from, tem);
+                }
+            }
+        }
+    }
+
+    /// Sets elements of the canon table (of `caseTable`) in `range` to a translated `value`
+    /// by `up` table, if `value` is a character.
+    private record SetCanon(ELispCharTable caseTable) implements BiConsumer<Object, Object> {
+        @Override
+        public void accept(Object range, Object value) {
+            ELispCharTable up = asCharTable(caseTable.getExtra(0));
+            ELispCharTable canon = asCharTable(caseTable.getExtra(1));
+            if (value instanceof Long elt) {
+                BuiltInCharTab.FSetCharTableRange.setCharTableRange(
+                        canon,
+                        range,
+                        caseTable.getChar(asInt(up.getChar(elt.intValue())))
+                );
+            }
+        }
+    }
+
+    private static ELispCharTable setCaseTable(ELispCharTable caseTable, boolean standard) {
         if (!FCaseTableP.caseTableP(caseTable)) {
             throw ELispSignals.wrongTypeArgument(CASE_TABLE_P, caseTable);
         }
@@ -58,20 +118,23 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         Object canon = caseTable.getExtra(1);
         Object eqv = caseTable.getExtra(2);
         if (ELispSymbol.isNil(up)) {
-            up = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
-//            map_char_table (set_identity, Qnil, table, up);
-//            map_char_table (shuffle, Qnil, table, up);
+            ELispCharTable upTable = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
+            up = upTable;
+            charTableMap(caseTable, new SetIdentity(upTable));
+            charTableMap(caseTable, new Shuffle(upTable));
             caseTable.setExtra(0, up);
         }
         if (ELispSymbol.isNil(canon)) {
             canon = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
             caseTable.setExtra(1, canon);
-//            map_char_table (set_canon, Qnil, table, table);
+            charTableMap(caseTable, new SetCanon(caseTable));
         }
         if (ELispSymbol.isNil(eqv)) {
-            eqv = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
-//            map_char_table (set_identity, Qnil, canon, eqv);
-//            map_char_table (shuffle, Qnil, canon, eqv);
+            ELispCharTable eqvTable = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
+            eqv = eqvTable;
+            ELispCharTable canonTable = asCharTable(canon);
+            charTableMap(canonTable, new SetIdentity(eqvTable));
+            charTableMap(canonTable, new Shuffle(eqvTable));
             caseTable.setExtra(2, eqv);
         }
         asCharTable(canon).setExtra(2, eqv);
@@ -81,8 +144,13 @@ public class BuiltInCaseTab extends ELispBuiltIns {
             asciiEqvTable = asCharTable(eqv);
             asciiCanonTable = asCharTable(canon);
         } else {
-            // TODO: Set buffer case tables
+            ELispBuffer buffer = asBuffer(CURRENT_BUFFER.getValue());
+            buffer.setDowncaseTable(caseTable);
+            buffer.setUpcaseTable(up);
+            buffer.setCaseCanonTable(canon);
+            buffer.setCaseEqvTable(eqv);
         }
+        return caseTable;
     }
 
     /**
@@ -180,8 +248,8 @@ public class BuiltInCaseTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetStandardCaseTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setStandardCaseTable(Object table) {
-            throw new UnsupportedOperationException();
+        public static ELispCharTable setStandardCaseTable(ELispCharTable table) {
+            return setCaseTable(table, true);
         }
     }
 }

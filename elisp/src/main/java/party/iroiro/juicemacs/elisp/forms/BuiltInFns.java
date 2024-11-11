@@ -247,8 +247,16 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FStringEqual extends ELispBuiltInBaseNode {
         // TODO: Handle symbols
         @Specialization
-        public static boolean stringEqual(ELispString s1, ELispString s2) {
-            return s1.lispEquals(s2);
+        public static boolean stringEqual(Object s1, Object s2) {
+            boolean nil1 = ELispSymbol.isNil(s1);
+            boolean nil2 = ELispSymbol.isNil(s2);
+            if (nil1 && nil2) {
+                return true;
+            }
+            if (nil1 || nil2) {
+                return false;
+            }
+            return asStr(s1).lispEquals(asStr(s2));
         }
     }
 
@@ -2509,8 +2517,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringSearch extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringSearch(Object needle, Object haystack, Object startPos) {
-            throw new UnsupportedOperationException();
+        public static Object stringSearch(ELispString needle, ELispString haystack, Object startPos) {
+            // TODO: Char index to code point index
+            int index = haystack.value().indexOfStringUncached(
+                    needle.value(),
+                    (int) ELispSymbol.notNilOr(startPos, 0),
+                    (int) haystack.codepointCount(),
+                    ELispString.ENCODING
+            );
+            return index == -1 ? false : (long) index;
         }
     }
 

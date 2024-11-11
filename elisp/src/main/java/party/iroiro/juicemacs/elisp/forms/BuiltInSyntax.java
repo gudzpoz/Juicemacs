@@ -3,14 +3,83 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
+import java.util.Collections;
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public class BuiltInSyntax extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
+        for (int i = 0; i < SMAX; i++) {
+            SYNTAX_CODE_OBJECT.set(i, new ELispCons((long) i));
+        }
+        BuiltInFns.FPut.put(SYNTAX_TABLE, CHAR_TABLE_EXTRA_SLOTS, 0L);
+        //noinspection SequencedCollectionMethodCanBeUsed
+        Object whitespace = SYNTAX_CODE_OBJECT.get(SWHITESPACE);
+        ELispCharTable standardSyntaxTable = BuiltInCharTab.FMakeCharTable.makeCharTable(SYNTAX_TABLE, whitespace);
+        ELispBuffer.DEFAULT_VALUES.setSyntaxTable(standardSyntaxTable);
+
+        // Control characters
+        Object punctuation = SYNTAX_CODE_OBJECT.get(SPUNCT);
+        for (int i = 0; i < ' ' - 1; i++) {
+            standardSyntaxTable.setChar(i, punctuation);
+        }
+        standardSyntaxTable.setChar(127, punctuation);
+
+        // Whitespace control characters
+        standardSyntaxTable.setChar(' ', whitespace);
+        standardSyntaxTable.setChar('\t', whitespace);
+        standardSyntaxTable.setChar('\n', whitespace);
+        standardSyntaxTable.setChar('\r', whitespace);
+        standardSyntaxTable.setChar('\f', whitespace);
+
+        // Word
+        Object word = SYNTAX_CODE_OBJECT.get(SWORD);
+        for (int i = 'a'; i <= 'z'; i++) {
+            standardSyntaxTable.setChar(i, word);
+        }
+        for (int i = 'A'; i <= 'Z'; i++) {
+            standardSyntaxTable.setChar(i, word);
+        }
+        for (int i = '0'; i <= '9'; i++) {
+            standardSyntaxTable.setChar(i, word);
+        }
+        standardSyntaxTable.setChar('$', word);
+        standardSyntaxTable.setChar('%', word);
+
+        standardSyntaxTable.setChar('(', new ELispCons((long) SOPEN, (long) ')'));
+        standardSyntaxTable.setChar(')', new ELispCons((long) SCLOSE, (long) '('));
+        standardSyntaxTable.setChar('[', new ELispCons((long) SOPEN, (long) ']'));
+        standardSyntaxTable.setChar(']', new ELispCons((long) SCLOSE, (long) '['));
+        standardSyntaxTable.setChar('{', new ELispCons((long) SOPEN, (long) '}'));
+        standardSyntaxTable.setChar('}', new ELispCons((long) SCLOSE, (long) '{'));
+        standardSyntaxTable.setChar('"', new ELispCons((long) SSTRING));
+        standardSyntaxTable.setChar('\\', new ELispCons((long) SESCAPE));
+
+        Object symbol = SYNTAX_CODE_OBJECT.get(SSYMBOL);
+        String symbols = "_-+*/&|<>=";
+        for (char c : symbols.toCharArray()) {
+            standardSyntaxTable.setChar(c, symbol);
+        }
+
+        String punctuations = ".,;:?!#@~^'`";
+        for (char c : punctuations.toCharArray()) {
+            standardSyntaxTable.setChar(c, punctuation);
+        }
+
+        standardSyntaxTable.setRange(0x80, ELispCharTable.MAX_CHAR, word);
+
         return BuiltInSyntaxFactory.getFactories();
     }
+
+    private final static ELispVector SYNTAX_CODE_OBJECT = new ELispVector(Collections.nCopies(SMAX, false));
 
     /**
      * <pre>

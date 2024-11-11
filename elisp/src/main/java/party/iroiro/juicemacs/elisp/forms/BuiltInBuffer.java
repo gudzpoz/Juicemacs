@@ -1,19 +1,53 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
 
 public class BuiltInBuffer extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInBufferFactory.getFactories();
+    }
+
+    public final static HashMap<String, ELispBuffer> buffers = new HashMap<>();
+    @CompilerDirectives.TruffleBoundary
+    @Nullable
+    private static ELispBuffer getBuffer(String name) {
+        // TODO: Handle name changes?
+        return buffers.get(name);
+    }
+    @CompilerDirectives.TruffleBoundary
+    private static void putBuffer(String name, ELispBuffer buffer) {
+        buffers.put(name, buffer);
+    }
+
+    public static int downCase(int c, ELispBuffer buffer) {
+        Object down = asCharTable(buffer.getDowncaseTable()).getChar(c);
+        return down instanceof Long l ? l.intValue() : c;
+    }
+    public static int upCase(int c, ELispBuffer buffer) {
+        Object up = asCharTable(buffer.getUpcaseTable()).getChar(c);
+        return up instanceof Long l ? l.intValue() : c;
+    }
+    public static boolean upperCaseP(int c, ELispBuffer buffer) {
+        return downCase(c, buffer) != c;
+    }
+    public static boolean lowerCaseP(int c, ELispBuffer buffer) {
+        return !upperCaseP(c, buffer) && upCase(c, buffer) != c;
     }
 
     /**
@@ -60,8 +94,12 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getBuffer(Object bufferOrName) {
-            throw new UnsupportedOperationException();
+        public static Object getBuffer(Object bufferOrName) {
+            if (bufferOrName instanceof ELispBuffer) {
+                return bufferOrName;
+            }
+            ELispBuffer buffer = BuiltInBuffer.getBuffer(asStr(bufferOrName).toString());
+            return buffer == null ? false : buffer;
         }
     }
 
@@ -137,11 +175,20 @@ public class BuiltInBuffer extends ELispBuiltIns {
     public abstract static class FGetBufferCreate extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispBuffer getBufferCreate(Object bufferOrName, Object inhibitBufferHooks) {
-            // TODO:
-            ELispBuffer buffer = new ELispBuffer();
-            if (bufferOrName instanceof ELispString s) {
-                buffer.setName(s);
+            Object object = FGetBuffer.getBuffer(bufferOrName);
+            if (object instanceof ELispBuffer buffer) {
+                return buffer;
             }
+            String name = asStr(bufferOrName).toString();
+            ELispBuffer buffer = new ELispBuffer(!ELispSymbol.isNil(inhibitBufferHooks));
+            buffer.setWidthTable(false);
+            // TODO: Texts
+            buffer.setName(new ELispString(name));
+            buffer.setLastName(buffer.getName());
+            buffer.setUndoList(name.startsWith(" "));
+            buffer.setMark(BuiltInAlloc.FMakeMarker.makeMarker());
+            putBuffer(name, buffer);
+            // TODO: run_buffer_list_update_hook
             return buffer;
         }
     }
@@ -195,8 +242,29 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGenerateNewBufferName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void generateNewBufferName(Object name, Object ignore) {
-            throw new UnsupportedOperationException();
+        public static ELispString generateNewBufferName(ELispString name, Object ignore) {
+            if (!ELispSymbol.isNil(FGetBuffer.getBuffer(name))) {
+                return name;
+            }
+            if (BuiltInFns.FStringEqual.stringEqual(name, ignore)) {
+                return name;
+            }
+            String base = name.toString();
+            if (base.startsWith(" ")) {
+                int i = new Random().nextInt(1_000_000);
+                base += "-" + i;
+                if (getBuffer(base) != null) {
+                    return new ELispString(base);
+                }
+            }
+            for (int i = 2; i < Integer.MAX_VALUE; i++) {
+                String gen = base + "<" + i + ">";
+                ELispString wrap = new ELispString(gen);
+                if (BuiltInFns.FStringEqual.stringEqual(wrap, ignore) || getBuffer(gen) == null) {
+                    return wrap;
+                }
+            }
+            throw ELispSignals.error("Unable to find a new buffer name");
         }
     }
 

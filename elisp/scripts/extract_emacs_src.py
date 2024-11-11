@@ -125,6 +125,7 @@ WANTS_NODE_ACCESS = [
     'load',
     'makeInterpretedClosure',
     'require',
+    'stringMatch',
 ]
 
 

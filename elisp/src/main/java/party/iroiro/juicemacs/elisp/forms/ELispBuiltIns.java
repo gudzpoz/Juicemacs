@@ -52,7 +52,7 @@ public abstract class ELispBuiltIns {
 
     private final boolean inline;
 
-    public void initialize(ELispLanguage language, ELispContext context) {
+    public final void initialize(ELispLanguage language, ELispContext context) {
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
         for (NodeFactory<? extends ELispExpressionNode> factory : factories) {
             for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {

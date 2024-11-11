@@ -55,6 +55,30 @@ to experiment whether it is compatible with Emacs Lisp RegExps.
 | =\_<=             | Start of symbol     | ❌          |        |
 | =\_>=             | End of symbol       | ❌          |        |
 
+* TODO [#A] Initialization logic & ordering
+
+The initialization logic of Emacs is quite complex. Basically:
+
+- Every =.c= file may contain a =syms_of_<part>= that contains the definition of
+  the symbols, variable initialization logic that this file manages.
+- Some may contain an =init_<part>= function that is called initialize...
+  things.
+- Some may contain multiple =init_<part>_<wut>= functions that contains
+  initialization instructions that must be run separately due to
+  interdependencies between all those initialization logic.
+
+The =main= function in =emacs.c= contains a dazzling amount of initialization
+code. (Search for =init_alloc_once= to start reading.) Thank you, Emacs
+developers for all those helpful comments around the init function calls. But,
+no, I would really want to avoid all these complex dependencies between code
+"modules".
+
+The question is: is simplifying all this "mess" ever possible or the Emacs
+=main= initialization is the best we can get?
+
+(One thing that comes to mind is dependency injection or inversion of control.
+But I'm afraid that the dependencies are not that simple or that OOP-friendly.)
+
 * TODO [#B] Make functions mutable
 
 Currently in GNU Emacs 29, a function may be a =lambda/closure= cons:

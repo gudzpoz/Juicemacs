@@ -5,19 +5,55 @@ import org.eclipse.jdt.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.*;
+import party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.Value.Forwarded;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 public final class ELispBuffer implements ELispValue {
     private final HashMap<ELispSymbol, Forwarded> localVariables;
+    private final boolean inhibitBufferHooks;
+    private final PieceTreeBase content;
+    private long point;
 
-    public ELispBuffer() {
-        bufferLocalFields = Arrays.copyOf(BUFFER_DEFAULTS, BUFFER_DEFAULTS.length);
-        localVariables = new HashMap<>();
+    private ELispBuffer(Object[] bufferLocalFields, PieceTreeBase content, boolean inhibitBufferHooks) {
+        this.bufferLocalFields = bufferLocalFields;
+        this.content = content;
+        this.inhibitBufferHooks = inhibitBufferHooks;
+        this.point = 0;
+        this.localVariables = new HashMap<>();
+    }
+
+    public ELispBuffer(boolean inhibitBufferHooks) {
+        this(
+                Arrays.copyOf(BUFFER_DEFAULTS, BUFFER_DEFAULTS.length),
+                new PieceTreeBase(List.of(), PieceTreeBase.EndOfLine.LF, true),
+                inhibitBufferHooks
+        );
+    }
+
+    public long getPoint() {
+        return point;
+    }
+
+    public void setPoint(long point) {
+        this.point = point;
+    }
+
+    public long getChar(long point) {
+        return content.charAt((int) point);
+    }
+
+    public void insert(String text) {
+        content.insert((int) point, text, false);
+        point += text.length();
     }
 
     @Nullable
@@ -40,6 +76,24 @@ public final class ELispBuffer implements ELispValue {
 
     public void setSlot(int index, Object value) {
         bufferLocalFields[index] = value;
+    }
+
+    public void resetLocalVariables(boolean permanentToo) {
+        setMajorMode(FUNDAMENTAL_MODE);
+        setKeymap(false);
+        setModeName(new ELispString("Fundamental"));
+        if (!(BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(0))
+                && BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(1))
+                && BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(2)))) {
+            BuiltInCaseTab.FSetStandardCaseTable.setStandardCaseTable(asciiDowncaseTable);
+        }
+        setDowncaseTable(asciiDowncaseTable);
+        setUpcaseTable(asciiDowncaseTable.getExtra(0));
+        setCaseCanonTable(asciiDowncaseTable.getExtra(1));
+        setCaseEqvTable(asciiDowncaseTable.getExtra(2));
+        setInvisibilitySpec(true);
+
+        // TODO: Reset vars
     }
 
     //#region struct buffer
@@ -412,6 +466,7 @@ public final class ELispBuffer implements ELispValue {
         BUFFER_LOCAL_FLAGS[BVAR_TEXT_CONVERSION_STYLE] = 42;
         BUFFER_LOCAL_FLAGS[BVAR_CURSOR_IN_NON_SELECTED_WINDOWS] = 43;
         BUFFER_LOCAL_FLAGS[BVAR_UNDO_LIST] = -1;
+        DEFAULT_VALUES.resetLocalVariables(true);
         FPut.put(KILL_BUFFER_HOOK, PERMANENT_LOCAL, true);
         FSetBuffer.setBuffer(FGetBufferCreate.getBufferCreate(new ELispString("*scratch*"), false));
         //#endregion init_buffer_once
@@ -538,4 +593,10 @@ public final class ELispBuffer implements ELispValue {
         BUFFER_LOCAL_SYMBOLS[74] = TEXT_CONVERSION_STYLE;
         //#endregion DEFVAR_PER_BUFFER
     }
+
+    public static final ELispBuffer DEFAULT_VALUES = new ELispBuffer(
+            BUFFER_DEFAULTS,
+            new PieceTreeBase(List.of(), PieceTreeBase.EndOfLine.LF, true),
+            true
+    );
 }

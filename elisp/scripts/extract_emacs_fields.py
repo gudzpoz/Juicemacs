@@ -135,6 +135,8 @@ def extract_init_buffer_once(fields: list[str]):
 #define PDUMPER_REMEMBER_SCALAR(a) pass
 #define pdumper_remember_lv_ptr_raw(a, b) pass
 #define memset(a, b, c) pass
+
+#define reset_buffer_local_variables(buffer, b) py_reset_buffer_local_variables(#buffer, b)
 ''').strip()
     assert init_buffer.startswith('{') and init_buffer.endswith('}'), init_buffer
     init_buffer = re.sub(r'^\s+', '', init_buffer[1:-1], flags=re.MULTILINE)
@@ -176,11 +178,20 @@ def eassert(cond):
             self.window_count = None
             for name in fields:
                 self[name] = None
+    post_inits = []
     def reset_buffer(buffer: dict[str, typing.Any]):
         for name in fields:
             buffer[name] = None
+    def reset_buffer_locals(buffer: str, b: int):
+        if buffer == 'buffer_defaults':
+            assert b == 1
+            post_inits.append(
+                f'DEFAULT_VALUES.resetLocalVariables({"true" if int(b) != 0 else "false"})'
+            )
+        else:
+            assert buffer == 'buffer_local_symbols'
+            # I don't think it is necessary to reset buffer_local_symbols
     symbols = {}
-    post_inits = []
     buffers = {
         'buffer_local_flags': Buffer(),
         'buffer_local_symbols': Buffer(),
@@ -201,7 +212,7 @@ def eassert(cond):
         'BUFFER_PVEC_INIT': ID,
         'set_buffer_intervals': lambda *_: None,
         'reset_buffer': reset_buffer,
-        'reset_buffer_local_variables': lambda buffer, b: reset_buffer(buffer), # TODO
+        'py_reset_buffer_local_variables': reset_buffer_locals,
         'NILP': lambda x: x is None,
     }
     c_globals.update(buffers)

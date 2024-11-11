@@ -64,6 +64,7 @@ public final class ELispContext {
         initSymbols(callintSymbols());
         initSymbols(casefiddleSymbols());
         initSymbols(casetabSymbols());
+        initSymbols(categorySymbols());
         initSymbols(characterSymbols());
         initSymbols(charsetSymbols());
         initSymbols(chartabSymbols());
@@ -100,6 +101,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInCallInt());
         initBuiltIns(language, new BuiltInCaseFiddle());
         initBuiltIns(language, new BuiltInCaseTab());
+        initBuiltIns(language, new BuiltInCategory());
         initBuiltIns(language, new BuiltInCharacter());
         initBuiltIns(language, new BuiltInCharSet());
         initBuiltIns(language, new BuiltInCharTab());
@@ -3639,4 +3641,22 @@ public final class ELispContext {
         };
     }
     //#endregion xdisp.c
+    //#region category.c
+    public final static ELispSymbol CATEGORYP = new ELispSymbol("categoryp");
+    public final static ELispSymbol CATEGORYSETP = new ELispSymbol("categorysetp");
+    public final static ELispSymbol CATEGORY_TABLE = new ELispSymbol("category-table");
+    public final static ELispSymbol CATEGORY_TABLE_P = new ELispSymbol("category-table-p");
+    public final static ELispSymbol WORD_COMBINING_CATEGORIES = new ELispSymbol("word-combining-categories");
+    public final static ELispSymbol WORD_SEPARATING_CATEGORIES = new ELispSymbol("word-separating-categories");
+    private ELispSymbol[] categorySymbols() {
+        return new ELispSymbol[]{
+                CATEGORYP,
+                CATEGORYSETP,
+                CATEGORY_TABLE,
+                CATEGORY_TABLE_P,
+                WORD_COMBINING_CATEGORIES,
+                WORD_SEPARATING_CATEGORIES,
+        };
+    }
+    //#endregion category.c
 }
