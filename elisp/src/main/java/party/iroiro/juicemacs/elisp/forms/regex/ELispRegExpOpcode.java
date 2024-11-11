@@ -2,7 +2,8 @@ package party.iroiro.juicemacs.elisp.forms.regex;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
-class ELispRegExpOpcode {
+@SuppressWarnings({"PMD.AvoidDollarSigns", "PMD.FieldNamingConventions"})
+abstract class ELispRegExpOpcode {
     /// Bit flag marking other opcodes
     ///
     /// ```text
@@ -60,7 +61,7 @@ class ELispRegExpOpcode {
         return (code << 24) | (arg & IN_PLACE_ARG_MASK);
     }
 
-    static int packSingleArgOpcode(int code, int arg, boolean flag) {
+    static int packSingleInvertibleArgOpcode(int code, int arg, boolean flag) {
         if (arg < 0 || MAX_IN_PLACE_ARG < arg) {
             throw ELispSignals.error("Argument out of range: " + arg);
         }

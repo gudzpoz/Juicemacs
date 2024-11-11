@@ -66,6 +66,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         this.groupSlotMap = compiled.groupSlotMap();
         lengthNode = ELispRegExpInputNodesFactory.InputLengthNodeGen.create();
         getCharNode = ELispRegExpInputNodesFactory.InputGetCharNodeGen.create();
+        adoptChildren();
     }
 
     public Object execute(VirtualFrame frame) {

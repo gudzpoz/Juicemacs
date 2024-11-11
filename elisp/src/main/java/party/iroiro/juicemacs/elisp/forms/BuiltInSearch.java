@@ -117,7 +117,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             }
             int from = isNil(start) ? 0 : asInt(start);
             Object buffer = CURRENT_BUFFER.getValue();
-            Object result = pattern.call(string.value(), true, from, -1, buffer);
+            Object result = pattern.call(string.value(), true, from, -1, buffer); // NOPMD
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
                     MATCH_DATA.setValue(result);

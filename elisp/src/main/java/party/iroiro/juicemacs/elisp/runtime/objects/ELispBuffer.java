@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.strings.AbstractTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.util.Arrays;
@@ -48,12 +49,12 @@ public final class ELispBuffer implements ELispValue {
     }
 
     public long getChar(long point) {
-        return content.charAt((int) point);
+        return content.getCharCode((int) point);
     }
 
-    public void insert(String text) {
+    public void insert(AbstractTruffleString text) {
         content.insert((int) point, text, false);
-        point += text.length();
+        point += text.codePointLengthUncached(ELispString.ENCODING);
     }
 
     @Nullable

@@ -320,11 +320,11 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     /// This seems a very, very, very bad way to detect start of the pattern.
     /// But, it's always backwards compatibility.
     private boolean atStartOfLine(int index) {
-        IntArrayList cache = reader.cache;
         if (index == 0) {
             return true;
         }
         int prev = index - 1;
+        IntArrayList cache = reader.cache;
         switch (cache.get(prev)) {
             case '(', '|' -> {}
             case ':' -> {
@@ -376,6 +376,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     }
 
     sealed interface CharClassContent {
+        @SuppressWarnings("PMD.FieldNamingConventions")
         enum NamedCharClass implements CharClassContent {
             alnum(0),
             alpha(1),

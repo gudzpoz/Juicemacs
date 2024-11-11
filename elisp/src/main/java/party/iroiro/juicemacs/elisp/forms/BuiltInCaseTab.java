@@ -62,7 +62,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
                 }
                 to++;
                 for (; from < to; from++) {
-                    table.setChar(from, from);
+                    table.setChar(from, (long) from);
                 }
             }
         }
@@ -86,7 +86,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
                 for (; from < to; from++) {
                     int c = elt.intValue();
                     Object tem = table.getChar(c);
-                    table.setChar(c, from);
+                    table.setChar(c, (long) from);
                     table.setChar(from, tem);
                 }
             }

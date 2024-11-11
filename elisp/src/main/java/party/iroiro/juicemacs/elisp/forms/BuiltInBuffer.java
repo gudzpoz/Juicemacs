@@ -23,16 +23,16 @@ public class BuiltInBuffer extends ELispBuiltIns {
         return BuiltInBufferFactory.getFactories();
     }
 
-    public final static HashMap<String, ELispBuffer> buffers = new HashMap<>();
+    public final static HashMap<String, ELispBuffer> BUFFERS = new HashMap<>();
     @CompilerDirectives.TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(String name) {
         // TODO: Handle name changes?
-        return buffers.get(name);
+        return BUFFERS.get(name);
     }
     @CompilerDirectives.TruffleBoundary
     private static void putBuffer(String name, ELispBuffer buffer) {
-        buffers.put(name, buffer);
+        BUFFERS.put(name, buffer);
     }
 
     public static int downCase(int c, ELispBuffer buffer) {

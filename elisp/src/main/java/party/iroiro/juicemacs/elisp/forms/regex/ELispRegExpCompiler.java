@@ -11,8 +11,11 @@ import org.eclipse.jdt.annotation.Nullable;
 import com.oracle.truffle.api.CompilerDirectives;
 
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.REToken;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
 
+@SuppressWarnings({"PMD.NoBoxedPrimitivesRule", "PMD.ShortMethodName"})
 final class ELispRegExpCompiler {
 
     public static Compiled compile(ELispRegExpParser.REAst ast, int maxGroup) {
@@ -159,9 +162,9 @@ final class ELispRegExpCompiler {
             case REToken.BackReference(int index) -> packSingleArgOpcode(OP$BACKREF, index);
             case REToken.WordBoundary(boolean invert) -> packSingleArgOpcode(OP$WORD_BOUND, invert ? -1 : 0);
             case REToken.CategoryChar(byte kind, boolean invert) ->
-                    packSingleArgOpcode(OP$CATEGORY_CHAR, kind, invert);
+                    packSingleInvertibleArgOpcode(OP$CATEGORY_CHAR, kind, invert);
             case REToken.SyntaxChar(byte kind, boolean invert) ->
-                    packSingleArgOpcode(OP$SYNTAX_CHAR, kind, invert);
+                    packSingleInvertibleArgOpcode(OP$SYNTAX_CHAR, kind, invert);
             case REToken.Quantifier _,
                  REToken.GroupStart _,
                  REToken.GroupEnd _,
@@ -294,6 +297,7 @@ final class ELispRegExpCompiler {
         );
     }
 
+    @CompilerDirectives.TruffleBoundary
     private HalfCompiled quantifiedNoProgress(HalfCompiled inner, int min, int max, boolean greedy, int lookahead) {
         if (inner.length() <= 4) {
             // Rewrite regexps like `a{3}` to `aaa`.
@@ -470,7 +474,7 @@ final class ELispRegExpCompiler {
                     case OP$CHAR_CLASS_32 -> "char_classes_32!";
                     case OP$CHAR -> "char!";
                     case OP$ANY -> "any!";
-                    default -> throw new IllegalArgumentException("Unknown opcode: " + opcode);
+                    default -> throw ELispSignals.error("Unknown opcode: " + opcode);
                 };
             }
 
@@ -590,7 +594,7 @@ final class ELispRegExpCompiler {
                 switch (segment) {
                     case HalfCompiled sub -> compiled.add(sub);
                     case Integer code -> compiled.add(new HalfCompiled.Single(code));
-                    default -> throw new IllegalArgumentException(segment.getClass().toString());
+                    default -> throw ELispSignals.error("Invalid segment: " + segment);
                 }
             }
             return new HalfCompiled.Segments(

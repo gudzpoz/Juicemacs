@@ -7,6 +7,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import org.eclipse.jdt.annotation.Nullable;
 
 public abstract class ELispRegExp {
 
@@ -21,6 +22,7 @@ public abstract class ELispRegExp {
             super(language, ELispRegExpNode.REGEXP_FRAME_DESCRIPTOR);
             this.node = node;
             this.regexp = regexp;
+            adoptChildren();
         }
 
         @Override
@@ -55,7 +57,8 @@ public abstract class ELispRegExp {
     }
 
     static ELispRegExpCompiler.Compiled getCompiled(AbstractTruffleString string, TruffleString.Encoding encoding) {
-        ELispRegExpParser parser = new ELispRegExpParser(string, null, encoding);
+        @Nullable AbstractTruffleString whitespaceRegExp = null; // TODO
+        ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp, encoding);
         ELispRegExpParser.REAst ast = parser.parse();
         return ELispRegExpCompiler.compile(ast, parser.getMaxGroup());
     }
