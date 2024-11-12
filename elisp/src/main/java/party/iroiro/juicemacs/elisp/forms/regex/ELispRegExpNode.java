@@ -11,6 +11,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBoolVector;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
@@ -203,6 +204,9 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
             boolean success = true;
             switch (opcode) {
                 case OP_MATCH -> {
+                    if (bci != code.length) {
+                        throw ELispSignals.error("Internal regexp engine error: unexpected end of code");
+                    }
                     return packMatchResult(stack);
                 }
                 case OP_COUNTER_RESET -> stack[arg] = 0;
@@ -303,12 +307,12 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                                 }
                             }
                         }
-                        CompilerAsserts.partialEvaluationConstant(bci);
                         success = invert != success; // xor
                     } else {
                         success = false;
                     }
                     bci += arg;
+                    CompilerAsserts.partialEvaluationConstant(bci);
                 }
                 case OP$CHAR -> {
                     success = sp < end && getChar(frame, input, sp) == (arg & 0xFF_FF_FF);

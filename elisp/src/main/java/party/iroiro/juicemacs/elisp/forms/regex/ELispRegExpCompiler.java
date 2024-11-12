@@ -324,7 +324,7 @@ final class ELispRegExpCompiler {
                 HalfCompiled body = greedy ? HalfCompiled.of(
                         splitSingle(inner.length() + 1),
                         inner,
-                        uncondJmp(-1 - inner.length() - 2 - headExtra)
+                        uncondJmp(-1 - inner.length() - 1 - headExtra)
                 ) : HalfCompiled.of(
                         splitSingle(1),
                         uncondJmp(inner.length() + 1),

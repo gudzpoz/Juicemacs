@@ -438,7 +438,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
                         default -> {}
                     }
                 }
-                if (namedClasses.isEmpty() && charRanges.size() == 1) {
+                if (namedClasses.isEmpty() && charRanges.size() == 1 && !invert) {
                     CharClassContent.CharRange first = charRanges.getFirst();
                     if (first.min == first.max) {
                         return new Char(first.min);
