@@ -28,7 +28,7 @@ public final class ELispBuffer implements ELispValue {
         this.bufferLocalFields = bufferLocalFields;
         this.content = content;
         this.inhibitBufferHooks = inhibitBufferHooks;
-        this.point = 0;
+        this.point = 1;
         this.localVariables = new HashMap<>();
     }
 
@@ -49,12 +49,35 @@ public final class ELispBuffer implements ELispValue {
     }
 
     public long getChar(long point) {
-        return content.getCharCode((int) point);
+        return content.getCharCode((int) point - 1);
     }
 
     public void insert(AbstractTruffleString text) {
-        content.insert((int) point, text, false);
+        if (text.byteLength(ELispString.ENCODING) == 0) {
+            return;
+        }
+        content.insert((int) point - 1, text, false);
         point += text.codePointLengthUncached(ELispString.ENCODING);
+    }
+
+    public void delete(long start, long length) {
+        if (length == 0) {
+            return;
+        }
+        content.delete((int) start - 1, (int) length);
+        if (start < point && point < start + length) {
+            point = start;
+        } else if (point >= start + length) {
+            point -= length;
+        }
+    }
+
+    public ELispString bufferString() {
+        return new ELispString(content.getLinesRawContent());
+    }
+
+    public int length() {
+        return content.getLength();
     }
 
     @Nullable

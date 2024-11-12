@@ -94,6 +94,7 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
             case ASTMethodCall call -> call.getMethodType();
             case ASTConstructorCall call -> call.getMethodType();
             case ASTExplicitConstructorInvocation invocation -> invocation.getMethodType();
+            case ASTEnumConstant enumConstant -> enumConstant.getMethodType();
             default -> throw new UnsupportedOperationException("Unsupported parent type: " + parent);
         };
         boolean varargs;

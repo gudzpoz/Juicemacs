@@ -258,8 +258,8 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeMarker extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeMarker() {
-            throw new UnsupportedOperationException();
+        public static ELispMarker makeMarker() {
+            return new ELispMarker();
         }
     }
 

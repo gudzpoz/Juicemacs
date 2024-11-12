@@ -1,8 +1,14 @@
 #+title: A Piece Tree Implementation in Java
 
+#+begin_quote
 Actually, this implementation is a direct transliteration of the TypeScript
 implementation from VS Code [[https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeBase.ts][pieceTreeBase.ts]]. For more information on piece
 trees, see [[https://code.visualstudio.com/blogs/2018/03/23/text-buffer-reimplementation][the blog post from a VS Code developer]].
+#+end_quote
+
+Well, it was a transliteration. But we have now migrated from =java.lang.String=
+to =TruffleString= to use code point offsets instead of UTF-16 char offsets.
+Also, the performance degraded significantly after the switch.
 
 * Some (Probably Badly Designed) Benchmarks
 

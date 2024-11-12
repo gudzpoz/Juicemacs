@@ -4,8 +4,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
@@ -14,11 +17,17 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asBuffer;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
 
 public class BuiltInEditFns extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEditFnsFactory.getFactories();
+    }
+
+    public static ELispBuffer currentBuffer() {
+        return asBuffer(CURRENT_BUFFER.getValue());
     }
 
     /**
@@ -74,8 +83,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPoint extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void point() {
-            throw new UnsupportedOperationException();
+        public static long point() {
+            return currentBuffer().getPoint();
         }
     }
 
@@ -424,7 +433,46 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode saveExcursionBailout(Object[] body) {
             CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            throw new UnsupportedOperationException();
+            return new SaveExcursionNode(body);
+        }
+
+        private static class SaveExcursionNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            private ELispExpressionNode bodyNode;
+
+            public SaveExcursionNode(Object[] body) {
+                bodyNode = BuiltInEval.FProgn.progn(body);
+                adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                Object prevBuffer = CURRENT_BUFFER.getValue();
+                long point = prevBuffer instanceof ELispBuffer buffer ? buffer.getPoint() : -1;
+                try {
+                    bodyNode.executeVoid(frame);
+                } finally {
+                    CURRENT_BUFFER.setValue(prevBuffer);
+                    if (prevBuffer instanceof ELispBuffer buffer) {
+                        buffer.setPoint(point);
+                    }
+                }
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                Object prevBuffer = CURRENT_BUFFER.getValue();
+                long point = prevBuffer instanceof ELispBuffer buffer ? buffer.getPoint() : -1;
+                try {
+                    return bodyNode.executeGeneric(frame);
+                } finally {
+                    CURRENT_BUFFER.setValue(prevBuffer);
+                    if (prevBuffer instanceof ELispBuffer buffer) {
+                        buffer.setPoint(point);
+                    }
+                }
+            }
         }
     }
 
@@ -441,7 +489,38 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode saveCurrentBufferBailout(Object[] body) {
             CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            throw new UnsupportedOperationException();
+            return new SaveCurrentBufferNode(body);
+        }
+
+        private static class SaveCurrentBufferNode extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            private ELispExpressionNode bodyNode;
+
+            public SaveCurrentBufferNode(Object[] body) {
+                bodyNode = BuiltInEval.FProgn.progn(body);
+                adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                Object prevBuffer = CURRENT_BUFFER.getValue();
+                try {
+                    bodyNode.executeVoid(frame);
+                } finally {
+                    CURRENT_BUFFER.setValue(prevBuffer);
+                }
+            }
+
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                Object prevBuffer = CURRENT_BUFFER.getValue();
+                try {
+                    return bodyNode.executeGeneric(frame);
+                } finally {
+                    CURRENT_BUFFER.setValue(prevBuffer);
+                }
+            }
         }
     }
 
@@ -477,8 +556,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPointMin extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void pointMin() {
-            throw new UnsupportedOperationException();
+        public static long pointMin() {
+            ELispBuffer buffer = currentBuffer();
+            // TODO: narrowing?
+            return 1L;
         }
     }
 
@@ -658,8 +739,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBolp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bolp() {
-            throw new UnsupportedOperationException();
+        public static boolean bolp() {
+            ELispBuffer buffer = currentBuffer();
+            long point = buffer.getPoint();
+            return point == 0 || buffer.getChar(point - 1) == '\n';
         }
     }
 
@@ -907,8 +990,16 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInsert extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void insert(Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean insert(Object[] args) {
+            ELispBuffer buffer = currentBuffer();
+            for (Object arg : args) {
+                if (arg instanceof ELispString s) {
+                    buffer.insert(s.value());
+                } else {
+                    buffer.insert(TruffleString.fromCodePointUncached(asInt(arg), ELispString.ENCODING));
+                }
+            }
+            return false;
         }
     }
 
@@ -1097,8 +1188,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferString() {
-            throw new UnsupportedOperationException();
+        public static ELispString bufferString() {
+            // TODO: Properties
+            return currentBuffer().bufferString();
         }
     }
 
@@ -1237,8 +1329,11 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDeleteRegion extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void deleteRegion(Object start, Object end) {
-            throw new UnsupportedOperationException();
+        public static boolean deleteRegion(long start, long end) {
+            long length = Math.abs(end - start);
+            start = Math.min(start, end);
+            currentBuffer().delete(start, length);
+            return false;
         }
     }
 

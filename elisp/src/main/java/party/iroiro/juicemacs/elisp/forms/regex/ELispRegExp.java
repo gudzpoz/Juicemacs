@@ -8,6 +8,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 
 public abstract class ELispRegExp {
 
@@ -41,6 +42,15 @@ public abstract class ELispRegExp {
         }
     }
 
+    public record CompiledRegExp(RootCallTarget callTarget) {
+        public Object call(AbstractTruffleString value, boolean search, int from, int end, Object buffer) {
+            return callTarget.call(value, search, from, end, buffer); // NOPMD
+        }
+        public Object call(ELispBuffer value, boolean search, int from, int end) {
+        return callTarget.call(value, search, from, end, value); // NOPMD
+        }
+    }
+
     /// Returns a callable regex object
     ///
     /// The call signature is `(StringLikeObject string, boolean search, int start, int end, ELispBuffer buffer)`,
@@ -48,16 +58,19 @@ public abstract class ELispRegExp {
     ///
     /// The buffer argument can be null, as long as one does not use category/case/syntax table-related regex.
     @CompilerDirectives.TruffleBoundary
-    public static RootCallTarget compile(TruffleLanguage<?> language,
-                                         AbstractTruffleString string, TruffleString.Encoding encoding) {
-        ELispRegExpCompiler.Compiled compiled = getCompiled(string, encoding);
+    public static CompiledRegExp compile(TruffleLanguage<?> language,
+                                         AbstractTruffleString string,
+                                         @Nullable AbstractTruffleString whitespaceRegExp,
+                                         TruffleString.Encoding encoding) {
+        ELispRegExpCompiler.Compiled compiled = getCompiled(string, whitespaceRegExp, encoding);
         ELispRegExpNode node = new ELispRegExpNode(compiled);
         RegExpFunctionNode root = new RegExpFunctionNode(language, node, string.toString());
-        return root.getCallTarget();
+        return new CompiledRegExp(root.getCallTarget());
     }
 
-    static ELispRegExpCompiler.Compiled getCompiled(AbstractTruffleString string, TruffleString.Encoding encoding) {
-        @Nullable AbstractTruffleString whitespaceRegExp = null; // TODO
+    static ELispRegExpCompiler.Compiled getCompiled(AbstractTruffleString string,
+                                                    @Nullable AbstractTruffleString whitespaceRegExp,
+                                                    TruffleString.Encoding encoding) {
         ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp, encoding);
         ELispRegExpParser.REAst ast = parser.parse();
         return ELispRegExpCompiler.compile(ast, parser.getMaxGroup());

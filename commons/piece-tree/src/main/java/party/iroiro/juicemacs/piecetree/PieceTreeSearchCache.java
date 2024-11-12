@@ -27,22 +27,25 @@ package party.iroiro.juicemacs.piecetree;
 
 import org.eclipse.jdt.annotation.Nullable;
 
-import java.util.*;
+/// Search cache for [PieceTreeBase].
+///
+/// The original TypeScript implementation allows arbitrary cache sizes. However,
+/// it is always used by the piece tree as a single cache entry... Therefore,
+/// currently, we expect the limit to be always `1`. Otherwise, the piece table
+/// will very likely end up in an invalid state (because of insufficient cache
+/// flush in the original implementation).
+final class PieceTreeSearchCache {
+    @Nullable
+    private CacheEntry cache;
 
-public final class PieceTreeSearchCache {
-    private final int limit;
-    private final ArrayDeque<CacheEntry> cache;
-
-    public PieceTreeSearchCache(int limit) {
-        this.limit = limit;
-        this.cache = new ArrayDeque<>();
+    public PieceTreeSearchCache() {
+        this.cache = null;
     }
 
     @Nullable
     public CacheEntry get(int offset) {
-        Iterator<CacheEntry> i = cache.descendingIterator();
-        while (i.hasNext()) {
-            CacheEntry nodePos = i.next();
+        CacheEntry nodePos = cache;
+        if (nodePos != null) {
             if (nodePos.nodeStartOffset <= offset &&
                     nodePos.nodeStartOffset + nodePos.node.piece.length() >= offset) {
                 return nodePos;
@@ -53,33 +56,33 @@ public final class PieceTreeSearchCache {
 
     @Nullable
     public CacheEntry get2(int lineNumber) {
-        Iterator<CacheEntry> i = cache.descendingIterator();
-        while (i.hasNext()) {
-            CacheEntry nodePos = i.next();
-            if (nodePos.nodeStartLineNumber == -1) {
-                continue;
-            }
-            if (nodePos.nodeStartLineNumber < lineNumber &&
-                    nodePos.nodeStartLineNumber + nodePos.node.piece.lineFeedCnt() >= lineNumber) {
-                return nodePos;
+        CacheEntry nodePos = cache;
+        if (nodePos != null) {
+            if (nodePos.nodeStartLineNumber != -1) {
+                if (nodePos.nodeStartLineNumber < lineNumber &&
+                        nodePos.nodeStartLineNumber + nodePos.node.piece.lineFeedCnt() >= lineNumber) {
+                    return nodePos;
+                }
             }
         }
         return null;
     }
 
     public void add(CacheEntry nodePos) {
-        if (cache.size() >= limit) {
-            cache.pop();
-        }
-        cache.push(nodePos);
+        cache = nodePos;
     }
 
     public void validate(int offset) {
-        cache.removeIf((nodePos) -> nodePos.node.isDetached() || nodePos.nodeStartOffset >= offset);
+        CacheEntry nodePos = cache;
+        if (nodePos != null) {
+            if (nodePos.node.isDetached() || nodePos.nodeStartOffset >= offset) {
+                cache = null;
+            }
+        }
     }
 
     public void clear() {
-        cache.clear();
+        cache = null;
     }
 
     public record CacheEntry(

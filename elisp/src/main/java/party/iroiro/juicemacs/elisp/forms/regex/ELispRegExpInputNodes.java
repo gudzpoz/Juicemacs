@@ -7,6 +7,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 
 abstract class ELispRegExpInputNodes {
     public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_32;
@@ -28,6 +29,11 @@ abstract class ELispRegExpInputNodes {
         public int testInputIntLength(int[] input) {
             return input.length;
         }
+
+        @Specialization
+        public int testInputBufferLength(ELispBuffer input) {
+            return input.length();
+        }
     }
 
     @GenerateInline(value = false)
@@ -45,6 +51,11 @@ abstract class ELispRegExpInputNodes {
         @Specialization
         public int inputGetIntChar(int[] input, int index) {
             return input[index];
+        }
+
+        @Specialization
+        public int inputGetBufferChar(ELispBuffer input, int index) {
+            return (int) input.getChar(index);
         }
     }
 }

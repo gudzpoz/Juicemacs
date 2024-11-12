@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static party.iroiro.juicemacs.piecetree.StringBuffer.fromString;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -76,7 +77,7 @@ public class EditingTracesTest {
         String s = readFromGzResource(file);
         Trace trace = parseTrace(s);
         PieceTreeBase tree = new PieceTreeBase(
-                List.of(new PieceTreeBase.StringBuffer(trace.start, true)),
+                List.of(new StringBuffer(fromString(trace.start), true)),
                 PieceTreeBase.EndOfLine.LF,
                 !trace.start.contains("\r")
         );
@@ -93,7 +94,7 @@ public class EditingTracesTest {
                         + ", ins=" + edit.insertedContent.length() + " (" + ((double) delta) / 1000_000 + " ms)");
             }
         }
-        assertEquals(trace.end, tree.getLinesRawContent());
+        assertEquals(trace.end, tree.getLinesRawContent().toString());
         return latency;
     }
 
@@ -307,7 +308,7 @@ public class EditingTracesTest {
         public void setUp() {
             trace = parseTrace(readFromGzResource(file));
             tree = new PieceTreeBase(
-                    List.of(new PieceTreeBase.StringBuffer(trace.start, true)),
+                    List.of(new StringBuffer(fromString(trace.start), true)),
                     PieceTreeBase.EndOfLine.LF,
                     !trace.start.contains("\r")
             );
@@ -320,7 +321,7 @@ public class EditingTracesTest {
         for (Edit edit : state.trace.edits) {
             applyEdit(edit, state.tree);
         }
-        return state.tree.length();
+        return state.tree.getLength();
     }
 
     @Benchmark
@@ -346,7 +347,7 @@ public class EditingTracesTest {
             state.delete(edit.position, edit.numDeleted);
         }
         if (!edit.insertedContent.isEmpty()) {
-            state.insert(edit.position, edit.insertedContent, false);
+            state.insert(edit.position, fromString(edit.insertedContent), false);
         }
     }
 }

@@ -82,6 +82,10 @@ java_replaces = {
     r'List<(\w+)> (\w+) = new ArrayList<>;': r'\2: \1[] = [];',
     r'createLineStartsFast\((\w+), true\)': r'createLineStartsFast(\1)',
     r'^List<\w+> ': '',
+
+    r'length\((\w+)\)': r'\1.length',
+    r'charAt\((\w+), ': r'\1.charAt(',
+    r'\.buffer\.length': r'.length',
 }
 
 with open(args.java, 'r') as f:

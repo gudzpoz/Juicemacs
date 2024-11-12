@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import java.util.*;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,8 +53,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIdentity extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void identity(Object argument) {
-            throw new UnsupportedOperationException();
+        public static Object identity(Object argument) {
+            return argument;
         }
     }
 
@@ -131,8 +132,30 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSafeLength extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void safeLength(Object list) {
-            throw new UnsupportedOperationException();
+        public static long safeLength(Object list) {
+            if (!(list instanceof ELispCons cons)) {
+                return 0L;
+            }
+            return safeLength(cons);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static long safeLength(ELispCons cons) {
+            HashSet<ELispCons> distinct = new HashSet<>();
+            long count = 0;
+            ELispCons.ConsIterator i = cons.consIterator(0);
+            while (i.hasNextCons()) {
+                try {
+                    ELispCons next = i.nextCons();
+                    if (distinct.add(next)) {
+                        count++;
+                        continue;
+                    }
+                } catch (NoSuchElementException ignored) {
+                }
+                break;
+            }
+            return count;
         }
     }
 

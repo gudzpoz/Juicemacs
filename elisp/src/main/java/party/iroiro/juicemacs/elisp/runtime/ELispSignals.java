@@ -144,5 +144,8 @@ public abstract class ELispSignals {
     public static ELispSignalException invalidRegexp(String message) {
         return signal(ELispContext.INVALID_REGEXP, message);
     }
+    public static ELispSignalException searchFailed() {
+        return signal(ELispContext.SEARCH_FAILED);
+    }
     //#endregion Object operations
 }

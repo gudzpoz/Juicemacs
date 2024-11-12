@@ -1,7 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -9,6 +8,8 @@ import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -39,7 +40,32 @@ public class BuiltInSearch extends ELispBuiltIns {
     private record RegExpKey(TruffleString regExp, @Nullable TruffleString whitespaceRegExp, boolean caseFold) {
     }
 
-    private static final ConcurrentHashMap<RegExpKey, RootCallTarget> COMPILED_REGEXPS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<RegExpKey, ELispRegExp.CompiledRegExp> COMPILED_REGEXPS = new ConcurrentHashMap<>();
+
+    private static ELispRegExp.CompiledRegExp compileRegExp(
+            ELispLanguage language,
+            ELispString regexp,
+            @Nullable TruffleString whitespaceRegExp
+    ) {
+        boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
+        RegExpKey key = new RegExpKey(
+                regexp.asTruffleString(),
+                whitespaceRegExp,
+                caseSensitive
+        );
+        ELispRegExp.CompiledRegExp pattern = COMPILED_REGEXPS.get(key);
+        if (pattern == null) {
+            // TODO: Support case-fold-search
+            pattern = ELispRegExp.compile(
+                    language,
+                    regexp.value(),
+                    whitespaceRegExp,
+                    ELispString.ENCODING
+            );
+            COMPILED_REGEXPS.put(key, pattern);
+        }
+        return pattern;
+    }
 
     /**
      * <pre>
@@ -99,25 +125,10 @@ public class BuiltInSearch extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
-            boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
-            RegExpKey key = new RegExpKey(
-                    regexp.asTruffleString(),
-                    null,
-                    caseSensitive
-            );
-            RootCallTarget pattern = COMPILED_REGEXPS.get(key);
-            if (pattern == null) {
-                // TODO: Support case-fold-search
-                pattern = ELispRegExp.compile(
-                        ELispLanguage.get(this),
-                        regexp.value(),
-                        ELispString.ENCODING
-                );
-                COMPILED_REGEXPS.put(key, pattern);
-            }
+            ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
             int from = isNil(start) ? 0 : asInt(start);
             Object buffer = CURRENT_BUFFER.getValue();
-            Object result = pattern.call(string.value(), true, from, -1, buffer); // NOPMD
+            Object result = pattern.call(string.value(), true, from, -1, buffer);
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
                     MATCH_DATA.setValue(result);
@@ -235,8 +246,27 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReSearchBackward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void reSearchBackward(Object regexp, Object bound, Object noerror, Object count) {
-            throw new UnsupportedOperationException();
+        public boolean reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
+            long limit = ELispSymbol.notNilOr(bound, Long.MAX_VALUE);
+            ELispBuffer buffer = asBuffer(CURRENT_BUFFER.getValue());
+            ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
+            int from = Math.toIntExact(buffer.getPoint());
+            int repeat = Math.toIntExact(notNilOr(count, 1));
+            for (int i = 0; i < repeat; i++) {
+                while (from >= limit) {
+                    Object result = pattern.call(buffer, false, from, -1);
+                    if (result instanceof ELispCons cons) {
+                        int start = asInt(cons.car());
+                        buffer.setPoint(start);
+                        return false;
+                    }
+                    from--;
+                }
+            }
+            if (ELispSymbol.isNil(noerror)) {
+                throw ELispSignals.searchFailed();
+            }
+            return false;
         }
     }
 

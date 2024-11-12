@@ -1,38 +1,39 @@
 package party.iroiro.juicemacs.piecetree;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.piecetree.PieceTreeBase.EndOfLine.CR_LF;
 import static party.iroiro.juicemacs.piecetree.PieceTreeBase.EndOfLine.LF;
+import static party.iroiro.juicemacs.piecetree.StringBuffer.fromString;
+import static party.iroiro.juicemacs.piecetree.StringBuffer.length;
 
 public class PieceTreeBaseTest {
     @Test
     public void testCreateTree() {
         PieceTreeBase tree = new PieceTreeBase(List.of(
-                new PieceTreeBase.StringBuffer("""
+                new StringBuffer(fromString("""
                         Hello, world!
                         Line #2
                         Line #3
                         Line #4
-                        Line""", true),
-                new PieceTreeBase.StringBuffer("""
+                        Line"""), true),
+                new StringBuffer(fromString("""
                          #5
                         Line #6
                         Line #7
-                        Line""", true),
-                new PieceTreeBase.StringBuffer(" ", true),
-                new PieceTreeBase.StringBuffer("#8\n", true),
-                new PieceTreeBase.StringBuffer("""
+                        Line"""), true),
+                new StringBuffer(fromString(" "), true),
+                new StringBuffer(fromString("#8\n"), true),
+                new StringBuffer(fromString("""
                         Line #9
-                        Line #10""", true)
+                        Line #10"""), true)
         ), PieceTreeBase.EndOfLine.LF, true);
         assertLinesMatch(
                 List.of(
@@ -47,13 +48,13 @@ public class PieceTreeBaseTest {
                         "Line #9",
                         "Line #10"
                 ),
-                tree.getLinesContent()
+                tree.getLinesContent().stream().map(TruffleString::toString).toList()
         );
     }
 
     private PieceTreeBase from(String s) {
         return new PieceTreeBase(
-                List.of(new PieceTreeBase.StringBuffer(s, true)),
+                List.of(new StringBuffer(fromString(s), true)),
                 PieceTreeBase.EndOfLine.LF,
                 !s.contains("\r")
         );
@@ -62,48 +63,48 @@ public class PieceTreeBaseTest {
     @Test
     public void testInsert() {
         PieceTreeBase hello = from("Hello ");
-        hello.insert(6, "World!", true);
-        assertEquals("Hello World!", hello.getLinesRawContent());
-        hello.insert(1, "ee", true);
-        assertEquals("Heeello World!", hello.getLinesRawContent());
+        hello.insert(6, fromString("World!"), true);
+        assertEquals("Hello World!", hello.getLinesRawContent().toString());
+        hello.insert(1, fromString("ee"), true);
+        assertEquals("Heeello World!", hello.getLinesRawContent().toString());
         hello.delete(3, 1);
-        assertEquals("Heello World!", hello.getLinesRawContent());
+        assertEquals("Heello World!", hello.getLinesRawContent().toString());
         hello.delete(2, 8);
-        assertEquals("Held!", hello.getLinesRawContent());
-        assertEquals("H", hello.getNearestChunk(0));
+        assertEquals("Held!", hello.getLinesRawContent().toString());
+        assertEquals("H", hello.getNearestChunk(0).toString());
     }
 
     @Test
     public void testGetChunk() {
         PieceTreeBase hello = from("Hello ");
-        hello.insert(6, "World!", true);
-        assertEquals("Hello ", hello.getNearestChunk(0));
-        assertEquals(" ", hello.getNearestChunk(5));
-        assertEquals("World!", hello.getNearestChunk(6));
-        assertEquals("!", hello.getNearestChunk(11));
-        assertEquals("", hello.getNearestChunk(12));
+        hello.insert(6, fromString("World!"), true);
+        assertEquals("Hello ", hello.getNearestChunk(0).toString());
+        assertEquals(" ", hello.getNearestChunk(5).toString());
+        assertEquals("World!", hello.getNearestChunk(6).toString());
+        assertEquals("!", hello.getNearestChunk(11).toString());
+        assertEquals("", hello.getNearestChunk(12).toString());
     }
 
     @Test
     public void testAppend() {
         PieceTreeBase hello = from("Hello ");
-        "World!".chars().forEach(c -> hello.insert(hello.getLength(), String.valueOf((char) c), true));
-        assertEquals("Hello World!", hello.getLinesRawContent());
+        "World!".chars().forEach(c -> hello.insert(hello.getLength(), fromString(String.valueOf((char) c)), true));
+        assertEquals("Hello World!", hello.getLinesRawContent().toString());
         for (int i = 0; i < 7; i++) {
             hello.delete(hello.getLength() - 1, 1);
         }
-        assertEquals("Hello", hello.getLinesRawContent());
+        assertEquals("Hello", hello.getLinesRawContent().toString());
     }
 
     @Test
     public void testPrepend() {
         PieceTreeBase hello = from("World!");
-        " olleH".chars().forEach(c -> hello.insert(0, String.valueOf((char) c), true));
-        assertEquals("Hello World!", hello.getLinesRawContent());
+        " olleH".chars().forEach(c -> hello.insert(0, fromString(String.valueOf((char) c)), true));
+        assertEquals("Hello World!", hello.getLinesRawContent().toString());
         for (int i = 0; i < 6; i++) {
             hello.delete(0, 1);
         }
-        assertEquals("World!", hello.getLinesRawContent());
+        assertEquals("World!", hello.getLinesRawContent().toString());
     }
 
     @Test
@@ -115,11 +116,11 @@ public class PieceTreeBaseTest {
     @Test
     public void testEmpty() {
         PieceTreeBase hello = from("");
-        assertEquals("", hello.getLinesRawContent());
+        assertEquals("", hello.getLinesRawContent().toString());
         assertEquals(0, hello.getLength());
         assertEquals(1, hello.getLineCount());
-        hello.insert(0, "hello", true);
-        assertEquals("hello", hello.getLinesRawContent());
+        hello.insert(0, fromString("hello"), true);
+        assertEquals("hello", hello.getLinesRawContent().toString());
     }
 
     @Test
@@ -127,37 +128,37 @@ public class PieceTreeBaseTest {
         PieceTreeBase hello = from("Hello\r\nWorld\r!\n!\r");
         assertEquals(5, hello.getLineCount());
         hello.setEOL(PieceTreeBase.EndOfLine.LF);
-        assertEquals("Hello\nWorld\n!\n!\n", hello.getLinesRawContent());
+        assertEquals("Hello\nWorld\n!\n!\n", hello.getLinesRawContent().toString());
     }
 
     @Test
     public void testCRThenLF() {
         PieceTreeBase tree = new PieceTreeBase(List.of(
-                new PieceTreeBase.StringBuffer("Hello\r", true),
-                new PieceTreeBase.StringBuffer("\nWorld\n", true)
+                new StringBuffer(fromString("Hello\r"), true),
+                new StringBuffer(fromString("\nWorld\n"), true)
         ), CR_LF, false);
-        assertEquals("Hello\r\nWorld\n", tree.getLinesRawContent());
-        assertEquals("Hello\r", tree.getLineRawContent(1, 0));
-        assertEquals("\n", tree.getLineRawContent(2, 0));
-        assertEquals("World\n", tree.getLineRawContent(3, 0));
+        assertEquals("Hello\r\nWorld\n", tree.getLinesRawContent().toString());
+        assertEquals("Hello\r", tree.getLineRawContent(1, 0).toString());
+        assertEquals("\n", tree.getLineRawContent(2, 0).toString());
+        assertEquals("World\n", tree.getLineRawContent(3, 0).toString());
         tree.setEOL(CR_LF);
         assertEquals(CR_LF, tree.getEOL());
-        assertEquals("Hello\r\n\r\nWorld\r\n", tree.getLinesRawContent());
-        assertEquals("Hello\r\n", tree.getLineRawContent(1, 0));
-        assertEquals("\r\n", tree.getLineRawContent(2, 0));
-        assertEquals("World\r\n", tree.getLineRawContent(3, 0));
+        assertEquals("Hello\r\n\r\nWorld\r\n", tree.getLinesRawContent().toString());
+        assertEquals("Hello\r\n", tree.getLineRawContent(1, 0).toString());
+        assertEquals("\r\n", tree.getLineRawContent(2, 0).toString());
+        assertEquals("World\r\n", tree.getLineRawContent(3, 0).toString());
     }
 
     @Test
     public void testInsertEndOfLine() {
         PieceTreeBase hello = from("Hello");
-        hello.insert(hello.getLength(), "\r", false);
-        hello.insert(hello.getLength(), "\n", false);
-        assertEquals("Hello\r\n", hello.getLinesRawContent());
+        hello.insert(hello.getLength(), fromString("\r"), false);
+        hello.insert(hello.getLength(), fromString("\n"), false);
+        assertEquals("Hello\r\n", hello.getLinesRawContent().toString());
 
-        hello.insert(0, "\n", false);
-        hello.insert(0, "\r", false);
-        assertEquals("\r\nHello\r\n", hello.getLinesRawContent());
+        hello.insert(0, fromString("\n"), false);
+        hello.insert(0, fromString("\r"), false);
+        assertEquals("\r\nHello\r\n", hello.getLinesRawContent().toString());
     }
 
     @Test
@@ -173,11 +174,11 @@ public class PieceTreeBaseTest {
     @Test
     public void testDeleteAll() {
         PieceTreeBase hello = from("Hello !");
-        hello.insert(6, "World", true);
-        hello.insert(5, ",", true);
-        assertEquals("Hello, World!", hello.getLinesRawContent());
-        hello.delete(0, hello.getLinesRawContent().length());
-        assertEquals("", hello.getLinesRawContent());
+        hello.insert(6, fromString("World"), true);
+        hello.insert(5, fromString(","), true);
+        assertEquals("Hello, World!", hello.getLinesRawContent().toString());
+        hello.delete(0, length(hello.getLinesRawContent()));
+        assertEquals("", hello.getLinesRawContent().toString());
         assertEquals(0, hello.getLength());
         assertEquals(1, hello.getLineCount());
     }
@@ -185,57 +186,46 @@ public class PieceTreeBaseTest {
     @Test
     public void testCharSequence() {
         PieceTreeBase hello = from("H!");
-        hello.insert(1, "ed", true);
-        hello.insert(2, "ll", true);
-        hello.insert(3, "lr", true);
-        hello.insert(4, "oo", true);
-        hello.insert(5, " W", true);
-        assertEquals("Hello World!", hello.getLinesRawContent());
-        Matcher matcher = Pattern.compile("\\wll\\w\\s+\\b").matcher(hello);
-        assertTrue(matcher.find());
-        assertEquals(1, matcher.start());
-        assertEquals(6, matcher.end());
+        hello.insert(1, fromString("ed"), true);
+        hello.insert(2, fromString("ll"), true);
+        hello.insert(3, fromString("lr"), true);
+        hello.insert(4, fromString("oo"), true);
+        hello.insert(5, fromString(" W"), true);
+        assertEquals("Hello World!", hello.getLinesRawContent().toString());
 
         IntStream chars = "Hello World!".chars();
         assertArrayEquals(chars.toArray(), hello.chars().toArray());
 
         String s = "🍊 🍎 🍇";
         PieceTreeBase unicode = from(s);
-        assertEquals(s, unicode.getLinesRawContent());
-        assertEquals(s, unicode.toString());
-        assertEquals(s, unicode.getLineContent(1));
-        assertEquals(s, unicode.getLineRawContent(1, 0));
-        int[] codePoints = unicode.codePoints().toArray();
+        assertEquals(s, unicode.getLinesRawContent().toString());
+        assertEquals(s, unicode.getLineContent(1).toString());
+        assertEquals(s, unicode.getLineRawContent(1, 0).toString());
+        int[] codePoints = unicode.chars().toArray();
         assertEquals(5, codePoints.length);
         assertArrayEquals(s.codePoints().toArray(), codePoints);
-        assertEquals("🍊", unicode.subSequence(0, 2));
-
-        PieceTreeBase surrogate = from("");
-        surrogate.insert(0, "" + s.charAt(0), true);
-        surrogate.insert(1, "abc", true);
-        surrogate.insert(4, "" + s.charAt(3), true);
-        assertArrayEquals(new int[]{ s.charAt(0), 'a', 'b', 'c', s.charAt(3) }, surrogate.codePoints().toArray());
+        assertEquals("🍊".codePointAt(0), unicode.getCharCode(0));
     }
 
     @Test
     public void testMergeCRLF() {
         PieceTreeBase hello = from("HelloWorld");
-        hello.insert(5, "\r \n", false);
+        hello.insert(5, fromString("\r \n"), false);
         hello.delete(6, 1);
-        assertEquals("Hello\r\nWorld", hello.getLinesRawContent());
+        assertEquals("Hello\r\nWorld", hello.getLinesRawContent().toString());
         hello.setEOL(CR_LF);
-        assertEquals("Hello\r\nWorld", hello.getLinesRawContent());
+        assertEquals("Hello\r\nWorld", hello.getLinesRawContent().toString());
 
-        hello.insert(12, "\n-", false);
-        hello.insert(12, "-\r", false);
-        assertEquals("Hello\r\nWorld-\r\n-", hello.getLinesRawContent());
+        hello.insert(12, fromString("\n-"), false);
+        hello.insert(12, fromString("-\r"), false);
+        assertEquals("Hello\r\nWorld-\r\n-", hello.getLinesRawContent().toString());
         hello.setEOL(CR_LF);
-        assertEquals("Hello\r\nWorld-\r\n-", hello.getLinesRawContent());
+        assertEquals("Hello\r\nWorld-\r\n-", hello.getLinesRawContent().toString());
 
         hello = from("test");
-        hello.insert(4, "\n", false);
-        hello.insert(4, "\r", false);
-        assertEquals("test\r\n", hello.getLinesRawContent());
+        hello.insert(4, fromString("\n"), false);
+        hello.insert(4, fromString("\r"), false);
+        assertEquals("test\r\n", hello.getLinesRawContent().toString());
     }
 
     @Test
@@ -256,7 +246,7 @@ public class PieceTreeBaseTest {
 
     private String generateRandomString(Random random, int length) {
         char[] chars = new char[length];
-        Arrays.fill(chars, (char) random.nextInt(Character.MAX_LOW_SURROGATE));
+        Arrays.fill(chars, (char) random.nextInt(Character.MIN_HIGH_SURROGATE));
         int minLineLength = random.nextInt(5);
         int maxLineLength = Math.max(40, length >> 2);
         for (int i = 0; i < length; i++) {
@@ -318,13 +308,13 @@ public class PieceTreeBaseTest {
         Random test = new Random(1);
         String content = generateRandomString(random, 10 * Short.MAX_VALUE);
         PieceTreeBase tree = from(content);
-        assertEquals(content, tree.getLinesRawContent());
+        assertEquals(content, tree.getLinesRawContent().toString());
         for (int i = 0; i < 1000; i++) {
             if (random.nextBoolean()) {
                 // insert
                 String s = generateRandomString(random);
                 int offset = random.nextInt(content.length());
-                tree.insert(offset, s, !s.contains("\r"));
+                tree.insert(offset, fromString(s), !s.contains("\r"));
                 content = content.substring(0, offset) + s + content.substring(offset);
             } else {
                 // delete
@@ -334,16 +324,16 @@ public class PieceTreeBaseTest {
                 content = content.substring(0, offset) + content.substring(offset + length);
             }
 
-            assertEquals(content, tree.getLinesRawContent(), "@" + i);
+            assertEquals(content, tree.getLinesRawContent().toString(), "@" + i);
 
             String[] lines = content.split("\r\n|\r|\n", -1);
             assertEquals(lines.length, tree.getLineCount(), "@" + i);
-            List<String> linesContent = tree.getLinesContent();
-            assertEquals(Arrays.asList(lines), linesContent);
+            List<TruffleString> linesContent = tree.getLinesContent();
+            assertEquals(Arrays.asList(lines), linesContent.stream().map(TruffleString::toString).toList());
             for (int j = 0; j < 3; j++) {
                 int line = test.nextInt(lines.length);
-                String lineContent = tree.getLineContent(line + 1);
-                assertEquals(lines[line], lineContent);
+                TruffleString lineContent = tree.getLineContent(line + 1);
+                assertEquals(lines[line], lineContent.toString());
                 assertTrue(Math.abs(lines[line].length() - tree.getLineLength(line + 1)) <= 1);
             }
             for (int j = 0; j < 10; j++) {
@@ -352,8 +342,8 @@ public class PieceTreeBaseTest {
                     continue;
                 }
                 int index = test.nextInt(lines[line].length());
-                char c = tree.getLineCharCode(line + 1, index);
-                assertEquals(lines[line].charAt(index), c);
+                int c = tree.getLineCharCode(line + 1, index);
+                assertEquals(lines[line].codePointAt(index), c);
             }
 
             for (int j = 0; j < 20; j++) {
@@ -368,14 +358,26 @@ public class PieceTreeBaseTest {
             int endOffset = test.nextInt(content.length() - startOffset) + startOffset;
             PieceTreeBase.Position startPosition = tree.getPositionAt(startOffset);
             PieceTreeBase.Position endPosition = tree.getPositionAt(endOffset);
-            String valueInRange = tree.getValueInRange(new PieceTreeBase.Range(
+            PieceTreeBase.Range range = new PieceTreeBase.Range(
                     startPosition.line(), startPosition.column(),
                     endPosition.line(), endPosition.column()
-            ), LF);
-            assertEquals(
-                    content.substring(startOffset, endOffset).replaceAll("\r\n|\r|\n", "\n"),
-                    valueInRange
             );
+            TruffleString valueInRange = tree.getValueInRange(range, LF);
+            String substring = content.substring(
+                    content.offsetByCodePoints(0, startOffset),
+                    content.offsetByCodePoints(0, endOffset)
+            );
+            try {
+                assertEquals(
+                        substring.replaceAll("\r\n|\r|\n", "\n"),
+                        valueInRange.toString(),
+                        substring.replace("\r", "<cr>\n")
+                                .replace("\n", "<lf>\n")
+                );
+            } catch (AssertionError e) {
+                tree.getValueInRange(range, LF);
+                throw e;
+            }
 
             assertValidTree(tree);
         }
