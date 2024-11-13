@@ -10,6 +10,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.*;
 
@@ -2030,8 +2033,38 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBacktraceFrameInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void backtraceFrameInternal(Object function, Object nframes, Object base) {
-            throw new UnsupportedOperationException();
+        public static Object backtraceFrameInternal(Object function, long nframes, Object base) {
+            // TODO: get stack function symbols
+            @Nullable
+            Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
+                int i = 0;
+
+                @Override
+                @Nullable
+                public Object visitFrame(FrameInstance frameInstance) {
+                    if (i == nframes) {
+                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                        boolean evaluated = true;
+                        Object f = false;
+                        ELispCons.ListBuilder args = new ELispCons.ListBuilder();
+                        for (Object argument : frame.getArguments()) {
+                            args.add(argument);
+                        }
+                        ELispCons argInfo = ELispCons.listOf(
+                                (long) frame.getArguments().length,
+                                args
+                        );
+                        Object flags = false;
+                        return FFuncall.funcall(
+                                function,
+                                new Object[]{evaluated, f, argInfo, flags}
+                        );
+                    }
+                    i++;
+                    return null;
+                }
+            });
+            return result == null ? false : result;
         }
     }
 

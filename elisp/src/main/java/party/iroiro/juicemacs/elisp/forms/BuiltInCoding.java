@@ -346,8 +346,9 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEncodeCodingString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void encodeCodingString(Object string, Object codingSystem, Object nocopy, Object buffer) {
-            throw new UnsupportedOperationException();
+        public static Object encodeCodingString(Object string, Object codingSystem, Object nocopy, Object buffer) {
+            // TODO
+            return string;
         }
     }
 

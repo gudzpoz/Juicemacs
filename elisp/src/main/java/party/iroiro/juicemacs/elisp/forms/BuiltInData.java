@@ -1026,8 +1026,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FByteCodeFunctionP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void byteCodeFunctionP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean byteCodeFunctionP(Object object) {
+            // TODO: implement
+            return false;
         }
     }
 
@@ -1040,8 +1041,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInterpretedFunctionP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void interpretedFunctionP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean interpretedFunctionP(Object object) {
+            return object instanceof ELispInterpretedClosure;
         }
     }
 

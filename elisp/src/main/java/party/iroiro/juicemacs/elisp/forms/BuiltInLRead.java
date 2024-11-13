@@ -14,17 +14,16 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
-import java.io.EOFException;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asCons;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asStr;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.READ_CHAR;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 /**
  * Built-in functions from {@code src/lread.c}
@@ -48,6 +47,70 @@ public class BuiltInLRead extends ELispBuiltIns {
         }
     }
 
+    private static boolean completeFilenameP(ELispString filename) {
+        // TODO: This is different from Emacs.
+        return Path.of(filename.toString()).isAbsolute();
+    }
+
+    @Nullable
+    public static ELispString locateOpenP(Object paths, ELispString name, Object suffixes,
+                                          Object predicate, boolean newer, boolean noNative) {
+        Instant saveMtime = Instant.MIN;
+        boolean absolute = completeFilenameP(name);
+        ELispString original = name;
+        @Nullable ELispString result = null;
+        ELispCons pathList = paths instanceof ELispCons cons ? cons : new ELispCons(new ELispString("."));
+        ELispCons suffixList = suffixes instanceof ELispCons cons ? cons : new ELispCons(new ELispString(""));
+        for (Object path : pathList) {
+            ELispString directory = asStr(path);
+            name = BuiltInFileIO.FExpandFileName.expandFileName(original, directory);
+            if (!completeFilenameP(name)) {
+                name = BuiltInFileIO.FExpandFileName.expandFileName(name, currentBuffer().getDirectory());
+                if (!completeFilenameP(name)) {
+                    continue;
+                }
+            }
+            // Emacs: Copy FILENAME's data to FN but remove starting /: if any.
+            // TODO: Why?
+            if (name.toString().startsWith("/:")) {
+                name = BuiltInFns.FSubstring.substring(name, 2L, false);
+            }
+            for (Object suffix : suffixList) {
+                ELispString suffixString = asStr(suffix);
+                ELispString test = new ELispString(name.value().concatUncached(suffixString.value(), ELispString.ENCODING, false));
+                Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
+                boolean exists;
+                if (!ELispSymbol.isNil(handler) || (!ELispSymbol.isNil(predicate) && !ELispSymbol.isT(predicate))) {
+                    if (ELispSymbol.isNil(predicate) || ELispSymbol.isT(predicate)) {
+                        exists = BuiltInFileIO.FFileReadableP.fileReadableP(test);
+                    } else {
+                        Object ret = BuiltInEval.FFuncall.funcall(predicate, new Object[]{test});
+                        if (ELispSymbol.isNil(ret)) {
+                            exists = false;
+                        } else {
+                            exists = ret == DIR_OK || !BuiltInFileIO.FFileDirectoryP.fileDirectoryP(test);
+                        }
+                    }
+                } else {
+                    exists = new File(test.asString()).canRead();
+                }
+                if (exists) {
+                    if (!newer) {
+                        return test;
+                    }
+                    Instant lastModified = Instant.ofEpochMilli(new File(test.asString()).lastModified());
+                    if (lastModified.isAfter(saveMtime)) {
+                        result = test;
+                    }
+                }
+            }
+            if (absolute) {
+                break;
+            }
+        }
+        return result;
+    }
+
     public static boolean loadFile(ELispLanguage language, Object file) {
         Object loadPath = ELispContext.LOAD_PATH.getValue();
         if (ELispSymbol.isNil(loadPath)) {
@@ -56,9 +119,14 @@ public class BuiltInLRead extends ELispBuiltIns {
         String stem = file.toString();
         for (Object path : asCons(loadPath)) {
             Path directory = Path.of(asStr(path).toString());
-            Path target = directory.resolve(stem + ".elc");
-            if (!target.toFile().isFile()) {
-                target = directory.resolve(stem + ".el");
+            Path target;
+            if (stem.endsWith(".el") || stem.endsWith(".elc")) {
+                target = directory.resolve(stem);
+            } else {
+                target = directory.resolve(stem + ".elc");
+                if (!target.toFile().isFile()) {
+                    target = directory.resolve(stem + ".el");
+                }
             }
             if (target.toFile().isFile()) {
                 try {
@@ -82,7 +150,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 }
             }
         }
-        return false;
+        throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
     }
 
     /**
@@ -262,8 +330,12 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetLoadSuffixes extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getLoadSuffixes() {
-            throw new UnsupportedOperationException();
+        public static ELispCons getLoadSuffixes() {
+            // TODO: Let load use these.
+            return ELispCons.listOf(
+                    new ELispString(".el"),
+                    new ELispString(".elc")
+            );
         }
     }
 
@@ -342,8 +414,12 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLocateFileInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void locateFileInternal(Object filename, Object path, Object suffixes, Object predicate) {
-            throw new UnsupportedOperationException();
+        public static Object locateFileInternal(ELispString filename, Object path, Object suffixes, Object predicate) {
+            if (!(path instanceof ELispCons list)) {
+                return false;
+            }
+            ELispString absolutePath = locateOpenP(list, filename, suffixes, predicate, false, false);
+            return absolutePath == null ? false : absolutePath;
         }
     }
 

@@ -34,8 +34,9 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFindFileNameHandler extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void findFileNameHandler(Object filename, Object operation) {
-            throw new UnsupportedOperationException();
+        public static boolean findFileNameHandler(Object filename, Object operation) {
+            // TODO
+            return false;
         }
     }
 
@@ -525,8 +526,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileReadableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileReadableP(Object filename) {
-            throw new UnsupportedOperationException();
+        public static boolean fileReadableP(ELispString filename) {
+            return new File(filename.asString()).canRead();
         }
     }
 

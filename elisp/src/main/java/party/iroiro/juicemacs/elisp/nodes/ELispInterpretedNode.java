@@ -4,6 +4,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -429,7 +430,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public void executeVoid(VirtualFrame frame) {
             try {
                 inlinedNode.executeVoid(frame);
-            } catch (RuntimeException e) {
+            } catch (ClassCastException | UnsupportedSpecializationException e) {
                 throw remapException(e);
             }
         }
@@ -438,7 +439,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
             try {
                 return inlinedNode.executeLong(frame);
-            } catch (RuntimeException e) {
+            } catch (ClassCastException | UnsupportedSpecializationException e) {
                 throw remapException(e);
             }
         }
@@ -447,7 +448,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
             try {
                 return inlinedNode.executeDouble(frame);
-            } catch (RuntimeException e) {
+            } catch (ClassCastException | UnsupportedSpecializationException e) {
                 throw remapException(e);
             }
         }
@@ -456,7 +457,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             try {
                 return inlinedNode.executeGeneric(frame);
-            } catch (RuntimeException e) {
+            } catch (ClassCastException | UnsupportedSpecializationException e) {
                 throw remapException(e);
             }
         }

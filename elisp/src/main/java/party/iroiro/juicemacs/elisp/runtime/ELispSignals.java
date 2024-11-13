@@ -13,9 +13,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.FileNotFoundException;
 
-/**
- * Internal presentations of {@code catch/throw} and {@code condition-case/signal}
- */
+/// Internal presentations of `catch/throw` and `condition-case/signal`
 public abstract class ELispSignals {
     @ExportLibrary(InteropLibrary.class)
     abstract sealed static class ELispNonLocalExitException extends AbstractTruffleException {

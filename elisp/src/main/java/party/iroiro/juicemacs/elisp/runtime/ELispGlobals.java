@@ -24,6 +24,7 @@ public class ELispGlobals {
         allocVars();
         bufferVars();
         callintVars();
+        callprocVars();
         casefiddleVars();
         casetabVars();
         categoryVars();
@@ -34,6 +35,7 @@ public class ELispGlobals {
         codingVars();
         compVars();
         dataVars();
+        docVars();
         editfnsVars();
         emacsVars();
         evalVars();
@@ -43,6 +45,8 @@ public class ELispGlobals {
         keyboardVars();
         keymapVars();
         lreadVars();
+        macrosVars();
+        minibufVars();
         printVars();
         processVars();
         searchVars();
@@ -58,6 +62,7 @@ public class ELispGlobals {
         allocPostInitVars();
         bufferPostInitVars();
         callintPostInitVars();
+        callprocPostInitVars();
         casefiddlePostInitVars();
         casetabPostInitVars();
         categoryPostInitVars();
@@ -68,6 +73,7 @@ public class ELispGlobals {
         codingPostInitVars();
         compPostInitVars();
         dataPostInitVars();
+        docPostInitVars();
         editfnsPostInitVars();
         emacsPostInitVars();
         evalPostInitVars();
@@ -77,6 +83,8 @@ public class ELispGlobals {
         keyboardPostInitVars();
         keymapPostInitVars();
         lreadPostInitVars();
+        macrosPostInitVars();
+        minibufPostInitVars();
         printPostInitVars();
         processPostInitVars();
         searchPostInitVars();
@@ -1699,4 +1707,157 @@ public class ELispGlobals {
 
     }
     //#endregion category.c
+    //#region doc.c
+    public static ELispSymbol.Value.Forwarded docFileName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded buildFiles = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded textQuotingStyle = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool textQuotingFlag = new ELispSymbol.Value.ForwardedBool(false);
+
+    private static void docVars() {
+        INTERNAL_DOC_FILE_NAME.initForwardTo(docFileName);
+        BUILD_FILES.initForwardTo(buildFiles);
+        TEXT_QUOTING_STYLE.initForwardTo(textQuotingStyle);
+        INTERNAL__TEXT_QUOTING_FLAG.initForwardTo(textQuotingFlag);
+    }
+    private static void docPostInitVars() {
+
+    }
+    //#endregion doc.c
+    //#region minibuf.c
+    public static ELispSymbol.Value.Forwarded readExpressionHistory = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded readBufferFunction = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferFollowsSelectedFrame = new ELispSymbol.Value.Forwarded((Object) T);
+    public static ELispSymbol.Value.ForwardedBool readBufferCompletionIgnoreCase = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.Forwarded minibufferSetupHook = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferExitHook = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded historyLength = new ELispSymbol.Value.Forwarded((Object) 100);
+    public static ELispSymbol.Value.ForwardedBool historyDeleteDuplicates = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.Forwarded historyAddNewInput = new ELispSymbol.Value.Forwarded((Object) T);
+    public static ELispSymbol.Value.ForwardedBool completionIgnoreCase = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool enableRecursiveMinibuffers = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.Forwarded minibufferCompletionTable = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferCompletionPredicate = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferCompletionConfirm = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferCompletingFileName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferHelpForm = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded minibufferHistoryVariable = new ELispSymbol.Value.Forwarded((Object) 0);
+    public static ELispSymbol.Value.Forwarded minibufferHistoryPosition = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool minibufferAutoRaise = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.Forwarded completionRegexpList = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool minibufferAllowTextProperties = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.Forwarded minibufferPromptProperties = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded readHideChar = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.ForwardedBool inhibitInteraction = new ELispSymbol.Value.ForwardedBool(false);
+    public static ELispSymbol.Value.ForwardedBool readMinibufferRestoreWindows = new ELispSymbol.Value.ForwardedBool(true);
+
+    private static void minibufVars() {
+        READ_EXPRESSION_HISTORY.initForwardTo(readExpressionHistory);
+        READ_BUFFER_FUNCTION.initForwardTo(readBufferFunction);
+        MINIBUFFER_FOLLOWS_SELECTED_FRAME.initForwardTo(minibufferFollowsSelectedFrame);
+        READ_BUFFER_COMPLETION_IGNORE_CASE.initForwardTo(readBufferCompletionIgnoreCase);
+        MINIBUFFER_SETUP_HOOK.initForwardTo(minibufferSetupHook);
+        MINIBUFFER_EXIT_HOOK.initForwardTo(minibufferExitHook);
+        HISTORY_LENGTH.initForwardTo(historyLength);
+        HISTORY_DELETE_DUPLICATES.initForwardTo(historyDeleteDuplicates);
+        HISTORY_ADD_NEW_INPUT.initForwardTo(historyAddNewInput);
+        COMPLETION_IGNORE_CASE.initForwardTo(completionIgnoreCase);
+        ENABLE_RECURSIVE_MINIBUFFERS.initForwardTo(enableRecursiveMinibuffers);
+        MINIBUFFER_COMPLETION_TABLE.initForwardTo(minibufferCompletionTable);
+        MINIBUFFER_COMPLETION_PREDICATE.initForwardTo(minibufferCompletionPredicate);
+        MINIBUFFER_COMPLETION_CONFIRM.initForwardTo(minibufferCompletionConfirm);
+        MINIBUFFER_COMPLETING_FILE_NAME.initForwardTo(minibufferCompletingFileName);
+        MINIBUFFER_HELP_FORM.initForwardTo(minibufferHelpForm);
+        MINIBUFFER_HISTORY_VARIABLE.initForwardTo(minibufferHistoryVariable);
+        MINIBUFFER_HISTORY_POSITION.initForwardTo(minibufferHistoryPosition);
+        MINIBUFFER_AUTO_RAISE.initForwardTo(minibufferAutoRaise);
+        COMPLETION_REGEXP_LIST.initForwardTo(completionRegexpList);
+        MINIBUFFER_ALLOW_TEXT_PROPERTIES.initForwardTo(minibufferAllowTextProperties);
+        MINIBUFFER_PROMPT_PROPERTIES.initForwardTo(minibufferPromptProperties);
+        READ_HIDE_CHAR.initForwardTo(readHideChar);
+        INHIBIT_INTERACTION.initForwardTo(inhibitInteraction);
+        READ_MINIBUFFER_RESTORE_WINDOWS.initForwardTo(readMinibufferRestoreWindows);
+    }
+    private static void minibufPostInitVars() {
+        MINIBUFFER_DEFAULT.setValue(NIL);
+        CUSTOM_VARIABLE_HISTORY.setValue(NIL);
+        BUFFER_NAME_HISTORY.setValue(NIL);
+        var minibufferPromptPropertiesJInit = ELispCons.listOf(READ_ONLY, T);
+        minibufferPromptProperties.setValue(minibufferPromptPropertiesJInit);
+    }
+    //#endregion minibuf.c
+    //#region callproc.c
+    public static ELispSymbol.Value.Forwarded shellFileName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded execPath = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded execSuffixes = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded execDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded dataDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded docDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded configureInfoDirectory = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded sharedGameScoreDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.Forwarded initialEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded processEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded ctagsProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded etagsProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded hexlProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded emacsclientProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded movemailProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded ebrowseProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded rcs2logProgramName = new ELispSymbol.Value.Forwarded(false);
+
+    private static void callprocVars() {
+        SHELL_FILE_NAME.initForwardTo(shellFileName);
+        EXEC_PATH.initForwardTo(execPath);
+        EXEC_SUFFIXES.initForwardTo(execSuffixes);
+        EXEC_DIRECTORY.initForwardTo(execDirectory);
+        DATA_DIRECTORY.initForwardTo(dataDirectory);
+        DOC_DIRECTORY.initForwardTo(docDirectory);
+        CONFIGURE_INFO_DIRECTORY.initForwardTo(configureInfoDirectory);
+        SHARED_GAME_SCORE_DIRECTORY.initForwardTo(sharedGameScoreDirectory);
+        INITIAL_ENVIRONMENT.initForwardTo(initialEnvironment);
+        PROCESS_ENVIRONMENT.initForwardTo(processEnvironment);
+        CTAGS_PROGRAM_NAME.initForwardTo(ctagsProgramName);
+        ETAGS_PROGRAM_NAME.initForwardTo(etagsProgramName);
+        HEXL_PROGRAM_NAME.initForwardTo(hexlProgramName);
+        EMACSCLIENT_PROGRAM_NAME.initForwardTo(emacsclientProgramName);
+        MOVEMAIL_PROGRAM_NAME.initForwardTo(movemailProgramName);
+        EBROWSE_PROGRAM_NAME.initForwardTo(ebrowseProgramName);
+        RCS2LOG_PROGRAM_NAME.initForwardTo(rcs2logProgramName);
+    }
+    private static void callprocPostInitVars() {
+        var configureInfoDirectoryJInit = new ELispString("/usr/share/info");
+        configureInfoDirectory.setValue(configureInfoDirectoryJInit);
+        var ctagsProgramNameJInit = new ELispString("ctags");
+        ctagsProgramName.setValue(ctagsProgramNameJInit);
+        var etagsProgramNameJInit = new ELispString("etags");
+        etagsProgramName.setValue(etagsProgramNameJInit);
+        var hexlProgramNameJInit = new ELispString("hexl");
+        hexlProgramName.setValue(hexlProgramNameJInit);
+        var emacsclientProgramNameJInit = new ELispString("emacsclient");
+        emacsclientProgramName.setValue(emacsclientProgramNameJInit);
+        var movemailProgramNameJInit = new ELispString("movemail");
+        movemailProgramName.setValue(movemailProgramNameJInit);
+        var ebrowseProgramNameJInit = new ELispString("ebrowse");
+        ebrowseProgramName.setValue(ebrowseProgramNameJInit);
+        var rcs2logProgramNameJInit = new ELispString("rcs2log");
+        rcs2logProgramName.setValue(rcs2logProgramNameJInit);
+    }
+    //#endregion callproc.c
+    //#region macros.c
+    public static ELispSymbol.Value.Forwarded kbdMacroTerminationHook = new ELispSymbol.Value.Forwarded(false);
+    public static ELispSymbol.Value.Forwarded definingKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static ELispSymbol.Value.Forwarded executingKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static ELispSymbol.Value.ForwardedLong executingKbdMacroIndex = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static ELispSymbol.Value.Forwarded lastKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+
+    private static void macrosVars() {
+        KBD_MACRO_TERMINATION_HOOK.initForwardTo(kbdMacroTerminationHook);
+        DEFINING_KBD_MACRO.initForwardTo(definingKbdMacro);
+        EXECUTING_KBD_MACRO.initForwardTo(executingKbdMacro);
+        EXECUTING_KBD_MACRO_INDEX.initForwardTo(executingKbdMacroIndex);
+        LAST_KBD_MACRO.initForwardTo(lastKbdMacro);
+    }
+    private static void macrosPostInitVars() {
+
+    }
+    //#endregion macros.c
 }

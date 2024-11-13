@@ -189,6 +189,11 @@ def exec_init_func(stem: str, contents: str):
                 'static union Aligned_Lisp_Subr Swatch_gc_cons_percentage =',
             ]
         },
+        'callproc': {
+            'globals': {
+                'PATH_INFO': '/usr/share/info',
+            },
+        },
         'character': {
             'globals': {
                 'MAX_CHAR': 0x3FFFFF,

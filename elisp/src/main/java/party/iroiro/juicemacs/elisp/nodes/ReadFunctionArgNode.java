@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
@@ -72,7 +73,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             }
             try {
                 return function.executeGeneric(frame);
-            } catch (RuntimeException e) {
+            } catch (ClassCastException | UnsupportedSpecializationException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw remapException(e);
             }

@@ -62,6 +62,7 @@ public final class ELispContext {
         initSymbols(allocSymbols());
         initSymbols(bufferSymbols());
         initSymbols(callintSymbols());
+        initSymbols(callprocSymbols());
         initSymbols(casefiddleSymbols());
         initSymbols(casetabSymbols());
         initSymbols(categorySymbols());
@@ -72,6 +73,7 @@ public final class ELispContext {
         initSymbols(codingSymbols());
         initSymbols(compSymbols());
         initSymbols(dataSymbols());
+        initSymbols(docSymbols());
         initSymbols(editfnsSymbols());
         initSymbols(emacsSymbols());
         initSymbols(evalSymbols());
@@ -81,6 +83,8 @@ public final class ELispContext {
         initSymbols(keyboardSymbols());
         initSymbols(keymapSymbols());
         initSymbols(lreadSymbols());
+        initSymbols(macrosSymbols());
+        initSymbols(minibufSymbols());
         initSymbols(printSymbols());
         initSymbols(processSymbols());
         initSymbols(searchSymbols());
@@ -99,6 +103,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInAlloc());
         initBuiltIns(language, new BuiltInBuffer());
         initBuiltIns(language, new BuiltInCallInt());
+        initBuiltIns(language, new BuiltInCallProc());
         initBuiltIns(language, new BuiltInCaseFiddle());
         initBuiltIns(language, new BuiltInCaseTab());
         initBuiltIns(language, new BuiltInCategory());
@@ -109,6 +114,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInCoding());
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInData());
+        initBuiltIns(language, new BuiltInDoc());
         initBuiltIns(language, new BuiltInEditFns());
         initBuiltIns(language, new BuiltInEmacs());
         initBuiltIns(language, new BuiltInEval());
@@ -118,6 +124,8 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInKeyboard());
         initBuiltIns(language, new BuiltInKeymap());
         initBuiltIns(language, new BuiltInLRead());
+        initBuiltIns(language, new BuiltInMacros());
+        initBuiltIns(language, new BuiltInMiniBuf());
         initBuiltIns(language, new BuiltInPrint());
         initBuiltIns(language, new BuiltInProcess());
         initBuiltIns(language, new BuiltInSearch());
@@ -3659,4 +3667,184 @@ public final class ELispContext {
         };
     }
     //#endregion category.c
+    //#region doc.c
+    public final static ELispSymbol BUILD_FILES = new ELispSymbol("build-files");
+    public final static ELispSymbol CURVE = new ELispSymbol("curve");
+    public final static ELispSymbol CUSTOM_DELAYED_INIT_VARIABLES = new ELispSymbol("custom-delayed-init-variables");
+    public final static ELispSymbol FUNCTION_DOCUMENTATION = new ELispSymbol("function-documentation");
+    public final static ELispSymbol GRAVE = new ELispSymbol("grave");
+    public final static ELispSymbol INTERNAL_DOC_FILE_NAME = new ELispSymbol("internal-doc-file-name");
+    public final static ELispSymbol INTERNAL__TEXT_QUOTING_FLAG = new ELispSymbol("internal--text-quoting-flag");
+    public final static ELispSymbol LISP_DIRECTORY = new ELispSymbol("lisp-directory");
+    public final static ELispSymbol STRAIGHT = new ELispSymbol("straight");
+    public final static ELispSymbol SUBSTITUTE_COMMAND_KEYS = new ELispSymbol("substitute-command-keys");
+    public final static ELispSymbol TEXT_QUOTING_STYLE = new ELispSymbol("text-quoting-style");
+    private ELispSymbol[] docSymbols() {
+        return new ELispSymbol[]{
+                BUILD_FILES,
+                CURVE,
+                CUSTOM_DELAYED_INIT_VARIABLES,
+                FUNCTION_DOCUMENTATION,
+                GRAVE,
+                INTERNAL_DOC_FILE_NAME,
+                INTERNAL__TEXT_QUOTING_FLAG,
+                LISP_DIRECTORY,
+                STRAIGHT,
+                SUBSTITUTE_COMMAND_KEYS,
+                TEXT_QUOTING_STYLE,
+        };
+    }
+    //#endregion doc.c
+    //#region minibuf.c
+    public final static ELispSymbol ACTIVATE_INPUT_METHOD = new ELispSymbol("activate-input-method");
+    public final static ELispSymbol ADD_TO_HISTORY = new ELispSymbol("add-to-history");
+    public final static ELispSymbol BUFFER_NAME_HISTORY = new ELispSymbol("buffer-name-history");
+    public final static ELispSymbol COMPLETING_READ_FUNCTION = new ELispSymbol("completing-read-function");
+    public final static ELispSymbol COMPLETION_IGNORE_CASE = new ELispSymbol("completion-ignore-case");
+    public final static ELispSymbol COMPLETION_REGEXP_LIST = new ELispSymbol("completion-regexp-list");
+    public final static ELispSymbol CURRENT_INPUT_METHOD = new ELispSymbol("current-input-method");
+    public final static ELispSymbol CUSTOM_VARIABLE_HISTORY = new ELispSymbol("custom-variable-history");
+    public final static ELispSymbol CUSTOM_VARIABLE_P = new ELispSymbol("custom-variable-p");
+    public final static ELispSymbol CYCLE_SORT_FUNCTION = new ELispSymbol("cycle-sort-function");
+    public final static ELispSymbol FORMAT_PROMPT = new ELispSymbol("format-prompt");
+    public final static ELispSymbol HISTORY_ADD_NEW_INPUT = new ELispSymbol("history-add-new-input");
+    public final static ELispSymbol HISTORY_DELETE_DUPLICATES = new ELispSymbol("history-delete-duplicates");
+    public final static ELispSymbol HISTORY_LENGTH = new ELispSymbol("history-length");
+    public final static ELispSymbol INHIBIT_INTERACTION = new ELispSymbol("inhibit-interaction");
+    public final static ELispSymbol INTERNAL_COMPLETE_BUFFER = new ELispSymbol("internal-complete-buffer");
+    public final static ELispSymbol METADATA = new ELispSymbol("metadata");
+    public final static ELispSymbol MINIBUFFER_ALLOW_TEXT_PROPERTIES = new ELispSymbol("minibuffer-allow-text-properties");
+    public final static ELispSymbol MINIBUFFER_AUTO_RAISE = new ELispSymbol("minibuffer-auto-raise");
+    public final static ELispSymbol MINIBUFFER_COMPLETING_FILE_NAME = new ELispSymbol("minibuffer-completing-file-name");
+    public final static ELispSymbol MINIBUFFER_COMPLETION_CONFIRM = new ELispSymbol("minibuffer-completion-confirm");
+    public final static ELispSymbol MINIBUFFER_COMPLETION_PREDICATE = new ELispSymbol("minibuffer-completion-predicate");
+    public final static ELispSymbol MINIBUFFER_COMPLETION_TABLE = new ELispSymbol("minibuffer-completion-table");
+    public final static ELispSymbol MINIBUFFER_DEFAULT = new ELispSymbol("minibuffer-default");
+    public final static ELispSymbol MINIBUFFER_EXIT = new ELispSymbol("minibuffer-exit");
+    public final static ELispSymbol MINIBUFFER_EXIT_HOOK = new ELispSymbol("minibuffer-exit-hook");
+    public final static ELispSymbol MINIBUFFER_FOLLOWS_SELECTED_FRAME = new ELispSymbol("minibuffer-follows-selected-frame");
+    public final static ELispSymbol MINIBUFFER_HELP_FORM = new ELispSymbol("minibuffer-help-form");
+    public final static ELispSymbol MINIBUFFER_HISTORY = new ELispSymbol("minibuffer-history");
+    public final static ELispSymbol MINIBUFFER_HISTORY_POSITION = new ELispSymbol("minibuffer-history-position");
+    public final static ELispSymbol MINIBUFFER_HISTORY_VARIABLE = new ELispSymbol("minibuffer-history-variable");
+    public final static ELispSymbol MINIBUFFER_INACTIVE_MODE = new ELispSymbol("minibuffer-inactive-mode");
+    public final static ELispSymbol MINIBUFFER_MODE = new ELispSymbol("minibuffer-mode");
+    public final static ELispSymbol MINIBUFFER_PROMPT_PROPERTIES = new ELispSymbol("minibuffer-prompt-properties");
+    public final static ELispSymbol MINIBUFFER_QUIT_RECURSIVE_EDIT = new ELispSymbol("minibuffer-quit-recursive-edit");
+    public final static ELispSymbol MINIBUFFER_SETUP_HOOK = new ELispSymbol("minibuffer-setup-hook");
+    public final static ELispSymbol PUSH_WINDOW_BUFFER_ONTO_PREV = new ELispSymbol("push-window-buffer-onto-prev");
+    public final static ELispSymbol READ_BUFFER_COMPLETION_IGNORE_CASE = new ELispSymbol("read-buffer-completion-ignore-case");
+    public final static ELispSymbol READ_BUFFER_FUNCTION = new ELispSymbol("read-buffer-function");
+    public final static ELispSymbol READ_EXPRESSION_HISTORY = new ELispSymbol("read-expression-history");
+    public final static ELispSymbol READ_HIDE_CHAR = new ELispSymbol("read-hide-char");
+    public final static ELispSymbol READ_MINIBUFFER_RESTORE_WINDOWS = new ELispSymbol("read-minibuffer-restore-windows");
+    public final static ELispSymbol SELECT_FRAME_SET_INPUT_FOCUS = new ELispSymbol("select-frame-set-input-focus");
+    private ELispSymbol[] minibufSymbols() {
+        return new ELispSymbol[]{
+                ACTIVATE_INPUT_METHOD,
+                ADD_TO_HISTORY,
+                BUFFER_NAME_HISTORY,
+                COMPLETING_READ_FUNCTION,
+                COMPLETION_IGNORE_CASE,
+                COMPLETION_REGEXP_LIST,
+                CURRENT_INPUT_METHOD,
+                CUSTOM_VARIABLE_HISTORY,
+                CUSTOM_VARIABLE_P,
+                CYCLE_SORT_FUNCTION,
+                ENABLE_RECURSIVE_MINIBUFFERS,
+                FORMAT_PROMPT,
+                HISTORY_ADD_NEW_INPUT,
+                HISTORY_DELETE_DUPLICATES,
+                HISTORY_LENGTH,
+                INHIBIT_INTERACTION,
+                INTERNAL_COMPLETE_BUFFER,
+                METADATA,
+                MINIBUFFER_ALLOW_TEXT_PROPERTIES,
+                MINIBUFFER_AUTO_RAISE,
+                MINIBUFFER_COMPLETING_FILE_NAME,
+                MINIBUFFER_COMPLETION_CONFIRM,
+                MINIBUFFER_COMPLETION_PREDICATE,
+                MINIBUFFER_COMPLETION_TABLE,
+                MINIBUFFER_DEFAULT,
+                MINIBUFFER_EXIT,
+                MINIBUFFER_EXIT_HOOK,
+                MINIBUFFER_FOLLOWS_SELECTED_FRAME,
+                MINIBUFFER_HELP_FORM,
+                MINIBUFFER_HISTORY,
+                MINIBUFFER_HISTORY_POSITION,
+                MINIBUFFER_HISTORY_VARIABLE,
+                MINIBUFFER_INACTIVE_MODE,
+                MINIBUFFER_MODE,
+                MINIBUFFER_PROMPT_PROPERTIES,
+                MINIBUFFER_QUIT_RECURSIVE_EDIT,
+                MINIBUFFER_SETUP_HOOK,
+                PUSH_WINDOW_BUFFER_ONTO_PREV,
+                READ_BUFFER_COMPLETION_IGNORE_CASE,
+                READ_BUFFER_FUNCTION,
+                READ_EXPRESSION_HISTORY,
+                READ_HIDE_CHAR,
+                READ_MINIBUFFER_RESTORE_WINDOWS,
+                SELECT_FRAME_SET_INPUT_FOCUS,
+        };
+    }
+    //#endregion minibuf.c
+    //#region callproc.c
+    public final static ELispSymbol AFTER_INSERT_FILE_SET_BUFFER_FILE_CODING_SYSTEM = new ELispSymbol("after-insert-file-set-buffer-file-coding-system");
+    public final static ELispSymbol CONFIGURE_INFO_DIRECTORY = new ELispSymbol("configure-info-directory");
+    public final static ELispSymbol CTAGS_PROGRAM_NAME = new ELispSymbol("ctags-program-name");
+    public final static ELispSymbol DATA_DIRECTORY = new ELispSymbol("data-directory");
+    public final static ELispSymbol DOC_DIRECTORY = new ELispSymbol("doc-directory");
+    public final static ELispSymbol EBROWSE_PROGRAM_NAME = new ELispSymbol("ebrowse-program-name");
+    public final static ELispSymbol EMACSCLIENT_PROGRAM_NAME = new ELispSymbol("emacsclient-program-name");
+    public final static ELispSymbol ETAGS_PROGRAM_NAME = new ELispSymbol("etags-program-name");
+    public final static ELispSymbol EXEC_DIRECTORY = new ELispSymbol("exec-directory");
+    public final static ELispSymbol EXEC_PATH = new ELispSymbol("exec-path");
+    public final static ELispSymbol EXEC_SUFFIXES = new ELispSymbol("exec-suffixes");
+    public final static ELispSymbol HEXL_PROGRAM_NAME = new ELispSymbol("hexl-program-name");
+    public final static ELispSymbol INITIAL_ENVIRONMENT = new ELispSymbol("initial-environment");
+    public final static ELispSymbol MOVEMAIL_PROGRAM_NAME = new ELispSymbol("movemail-program-name");
+    public final static ELispSymbol PROCESS_ENVIRONMENT = new ELispSymbol("process-environment");
+    public final static ELispSymbol RCS2LOG_PROGRAM_NAME = new ELispSymbol("rcs2log-program-name");
+    public final static ELispSymbol SHARED_GAME_SCORE_DIRECTORY = new ELispSymbol("shared-game-score-directory");
+    public final static ELispSymbol SHELL_FILE_NAME = new ELispSymbol("shell-file-name");
+    private ELispSymbol[] callprocSymbols() {
+        return new ELispSymbol[]{
+                AFTER_INSERT_FILE_SET_BUFFER_FILE_CODING_SYSTEM,
+                CODING_SYSTEM_FOR_WRITE,
+                CONFIGURE_INFO_DIRECTORY,
+                CTAGS_PROGRAM_NAME,
+                DATA_DIRECTORY,
+                DOC_DIRECTORY,
+                EBROWSE_PROGRAM_NAME,
+                EMACSCLIENT_PROGRAM_NAME,
+                ETAGS_PROGRAM_NAME,
+                EXEC_DIRECTORY,
+                EXEC_PATH,
+                EXEC_SUFFIXES,
+                HEXL_PROGRAM_NAME,
+                INITIAL_ENVIRONMENT,
+                MOVEMAIL_PROGRAM_NAME,
+                PROCESS_ENVIRONMENT,
+                RCS2LOG_PROGRAM_NAME,
+                SHARED_GAME_SCORE_DIRECTORY,
+                SHELL_FILE_NAME,
+        };
+    }
+    //#endregion callproc.c
+    //#region macros.c
+    public final static ELispSymbol DEFINING_KBD_MACRO = new ELispSymbol("defining-kbd-macro");
+    public final static ELispSymbol EXECUTING_KBD_MACRO = new ELispSymbol("executing-kbd-macro");
+    public final static ELispSymbol EXECUTING_KBD_MACRO_INDEX = new ELispSymbol("executing-kbd-macro-index");
+    public final static ELispSymbol KBD_MACRO_TERMINATION_HOOK = new ELispSymbol("kbd-macro-termination-hook");
+    public final static ELispSymbol LAST_KBD_MACRO = new ELispSymbol("last-kbd-macro");
+    private ELispSymbol[] macrosSymbols() {
+        return new ELispSymbol[]{
+                DEFINING_KBD_MACRO,
+                EXECUTING_KBD_MACRO,
+                EXECUTING_KBD_MACRO_INDEX,
+                KBD_MACRO_TERMINATION_HOOK,
+                LAST_KBD_MACRO,
+        };
+    }
+    //#endregion macros.c
 }

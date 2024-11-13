@@ -8,7 +8,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -487,7 +487,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FConcat extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString concat(Object[] sequences) {
-            TruffleStringBuilderUTF16 builder = TruffleStringBuilderUTF16.createUTF16();
+            TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32();
             for (Object arg : sequences) {
                 if (arg instanceof ELispString s) {
                     builder.appendStringUncached(s.toTruffleString());
@@ -2311,8 +2311,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMaphash extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void maphash(Object function, Object table) {
-            throw new UnsupportedOperationException();
+        public static boolean maphash(Object function, ELispHashtable table) {
+            table.forEach((key, value) -> BuiltInEval.FFuncall.funcall(
+                    function,
+                    new Object[]{key, value}
+            ));
+            return false;
         }
     }
 

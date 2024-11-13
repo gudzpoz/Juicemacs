@@ -217,8 +217,9 @@ public class BuiltInXFaces extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalLispFaceP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalLispFaceP(Object face, Object frame) {
-            throw new UnsupportedOperationException();
+        public static boolean internalLispFaceP(Object face, Object frame) {
+            // TODO: fonts?
+            return true;
         }
     }
 
@@ -533,8 +534,9 @@ public class BuiltInXFaces extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalSetFontSelectionOrder extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalSetFontSelectionOrder(Object order) {
-            throw new UnsupportedOperationException();
+        public static boolean internalSetFontSelectionOrder(Object order) {
+            // TODO: fonts?
+            return false;
         }
     }
 
@@ -550,8 +552,9 @@ public class BuiltInXFaces extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalSetAlternativeFontFamilyAlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalSetAlternativeFontFamilyAlist(Object alist) {
-            throw new UnsupportedOperationException();
+        public static boolean internalSetAlternativeFontFamilyAlist(Object alist) {
+            // TODO: fonts?
+            return false;
         }
     }
 
@@ -567,8 +570,9 @@ public class BuiltInXFaces extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalSetAlternativeFontRegistryAlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalSetAlternativeFontRegistryAlist(Object alist) {
-            throw new UnsupportedOperationException();
+        public static boolean internalSetAlternativeFontRegistryAlist(Object alist) {
+            // TODO: fonts?
+            return false;
         }
     }
 
