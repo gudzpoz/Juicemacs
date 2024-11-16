@@ -1002,16 +1002,30 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FAssoc extends ELispBuiltInBaseNode {
         @Specialization
         public static Object assoc(Object key, Object alist, Object testfn) {
-            if (ELispSymbol.isNil(testfn)) {
+            if (isNil(alist)) {
+                return false;
+            }
+            if (testfn == EQ) {
                 return FAssq.assq(key, alist);
             }
-            if (ELispSymbol.isNil(alist)) {
-                return false;
+            if (isNil(testfn) || testfn == EQUAL) {
+                return assocEqual(key, asCons(alist));
             }
             for (Object e : asCons(alist)) {
                 if (e instanceof ELispCons cons) {
                     Object p = BuiltInEval.FFuncall.funcall(testfn, new Object[]{cons.car(), key});
-                    if (!ELispSymbol.isNil(p)) {
+                    if (!isNil(p)) {
+                        return cons;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static Object assocEqual(Object key, ELispCons alist) {
+            for (Object e : alist) {
+                if (e instanceof ELispCons cons) {
+                    if (FEqual.equal(cons.car(), key)) {
                         return cons;
                     }
                 }
@@ -1030,8 +1044,16 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRassq extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void rassq(Object key, Object alist) {
-            throw new UnsupportedOperationException();
+        public static Object rassq(Object key, Object alist) {
+            if (isNil(alist)) {
+                return false;
+            }
+            for (Object pair : asCons(alist)) {
+                if (pair instanceof ELispCons cons && BuiltInData.FEq.eq(key, cons.cdr())) {
+                    return cons;
+                }
+            }
+            return false;
         }
     }
 
