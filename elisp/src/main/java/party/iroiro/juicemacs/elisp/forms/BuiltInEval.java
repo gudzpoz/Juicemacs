@@ -34,6 +34,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -1699,8 +1700,28 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAutoloadDoLoad extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void autoloadDoLoad(Object fundef, Object funname, Object macroOnly) {
-            throw new UnsupportedOperationException();
+        public Object autoloadDoLoad(Object fundef, ELispSymbol funname, Object macroOnly) {
+            if (!(fundef instanceof ELispCons def) || def.car() != AUTOLOAD) {
+                return fundef;
+            }
+            Object kind = def.get(4);
+            boolean isMacro = isT(kind) || kind == MACRO;
+            if (macroOnly == MACRO && !isMacro) {
+                return fundef;
+            }
+            boolean ignoreErrors = !isMacro && !isNil(macroOnly);
+            // TODO: load_with_autoload_queue
+            loadFile(ELispLanguage.get(this), asCons(def.cdr()).car(), !ignoreErrors);
+
+            if (funname == NIL || ignoreErrors) {
+                return false;
+            } else {
+                Object fun = BuiltInData.FIndirectFunction.indirectFunction(funname, false);
+                if (BuiltInFns.FEqual.equal(fun, fundef)) {
+                    throw ELispSignals.error("Autoload failed");
+                }
+                return fun;
+            }
         }
     }
 

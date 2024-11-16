@@ -110,9 +110,12 @@ public class BuiltInLRead extends ELispBuiltIns {
         return result;
     }
 
-    public static boolean loadFile(ELispLanguage language, Object file) {
+    public static boolean loadFile(ELispLanguage language, Object file, boolean errorIfNotFound) {
         Object loadPath = ELispContext.LOAD_PATH.getValue();
-        if (ELispSymbol.isNil(loadPath)) {
+        if (isNil(loadPath)) {
+            if (errorIfNotFound) {
+                throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
+            }
             return false;
         }
         String stem = file.toString();
@@ -149,7 +152,10 @@ public class BuiltInLRead extends ELispBuiltIns {
                 }
             }
         }
-        throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
+        if (errorIfNotFound) {
+            throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
+        }
+        return false;
     }
 
     /**
@@ -392,7 +398,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         @Specialization
         public boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
             // TODO: Potential lock candidate
-            return loadFile(ELispLanguage.get(this), file);
+            return loadFile(ELispLanguage.get(this), file, isNil(noerror));
         }
     }
 

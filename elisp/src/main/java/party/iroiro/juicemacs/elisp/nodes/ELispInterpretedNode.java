@@ -609,8 +609,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 return node;
             }
             Object function = getIndirectFunction(cons.car());
-            if (ELispSymbol.isNil(function)) {
+            if (isNil(function)) {
                 throw ELispSignals.voidFunction(cons.car());
+            }
+            if (function instanceof ELispCons fCons && fCons.car() == AUTOLOAD) {
+                function = autoload(fCons);
             }
             int newType = switch (function) {
                 case ELispSubroutine(_, boolean specialForm, _) when specialForm -> FORM_SPECIAL;
@@ -634,6 +637,13 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 adoptChildren();
             }
             return node;
+        }
+
+        private Object autoload(ELispCons function) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ELispString file = asStr(asCons(function.cdr()).car());
+            BuiltInLRead.loadFile(ELispLanguage.get(this), file, true);
+            return getIndirectFunction(cons.car());
         }
 
         @Override
