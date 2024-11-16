@@ -492,18 +492,16 @@ public class BuiltInEval extends ELispBuiltIns {
                                 null, // PMD: Null
                                 inner
                         );
-                        adoptChildren();
-                        write.adoptChildren();
                         writeNode = write;
+                        adoptChildren();
                         return setDynamic(frame);
                     } else {
                         top = ELispLexical.getMaterializedTop(frame);
                         write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
                                 newIndex, lexical.frame(), inner
                         );
-                        adoptChildren();
-                        write.adoptChildren();
                         writeNode = write;
+                        adoptChildren();
                     }
                 } else {
                     top = ELispLexical.getMaterializedTop(frame);

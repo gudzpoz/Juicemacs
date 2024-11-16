@@ -76,8 +76,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     private static Object getIndirectFunction(Object function) {
         if (function instanceof ELispSymbol symbol) {
             function = symbol.getIndirectFunction();
-        } else if (function instanceof ELispCons cons && cons.car() == LAMBDA) {
-            function = BuiltInEval.FFunction.function(function);
         }
         return function;
     }
@@ -284,7 +282,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
                 readNode = reader;
                 adoptChildren();
-                readNode.adoptChildren();
+                reader.adoptChildren();
                 top = reader.getValidFrameTop(currentFrame);
             }
             return readNode;
@@ -346,9 +344,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         ConsFunctionCallNode(Object function, ELispCons cons) {
             super(function, cons, false);
-            if (function instanceof ELispExpressionNode node) {
-                inlineLambdaNode = node;
-                inlineLambdaNode.adoptChildren();
+            if (function instanceof ELispCons lambda && lambda.car() == LAMBDA) {
+                inlineLambdaNode = BuiltInEval.FFunction.function(lambda);
             }
             adoptChildren();
         }
@@ -370,7 +367,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         private ConsInlinedAstNode(Object function, ELispCons cons) {
             super(function, cons, false);
             inlinedNode = generateInlineNode(cons, Objects.requireNonNull(((ELispSubroutine) function).inline()));
-            inlinedNode.adoptChildren();
+            adoptChildren();
         }
 
         private static ELispExpressionNode generateInlineNode(ELispCons cons, ELispSubroutine.InlineInfo inline) {
