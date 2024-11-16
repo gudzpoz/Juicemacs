@@ -18,7 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class ELispInterpretedClosure extends AbstractELispVector {
     @Nullable
@@ -55,7 +55,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispClosureCallNode node = new ELispClosureCallNode();
             ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
-                    node, node.requiredArgs, node.maxArgs
+                    node, node.args.requiredArgCount(), node.args.maxArgCount()
             );
             FunctionRootNode root = new FunctionRootNode(
                     ELispLanguage.get(node),
@@ -95,18 +95,16 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     }
 
     public final class ELispClosureCallNode extends ELispExpressionNode {
+
         @SuppressWarnings("FieldMayBeFinal")
         @Children
         private ReadFunctionArgNode[] optionalRestArgs;
 
-        @SuppressWarnings("FieldMayBeFinal")
+        private final ClosureArgs args;
         @CompilerDirectives.CompilationFinal(dimensions = 1)
-        private ELispSymbol[] requiredArgSymbols;
-        private final int requiredArgs;
-        private final int maxArgs;
-        @SuppressWarnings("FieldMayBeFinal")
+        private final ELispSymbol[] lexicallyBoundSymbols;
         @CompilerDirectives.CompilationFinal(dimensions = 1)
-        private ELispSymbol[] optionalArgSymbols;
+        private final ELispSymbol[] variableLikeBoundSymbols;
 
         private final boolean isLexical;
 
@@ -123,70 +121,24 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             lexical = isLexical ? initializeLexical(env) : null;
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
-            this.requiredArgSymbols = new ELispSymbol[0];
-            if (isNil(getArgs())) {
-                requiredArgs = 0;
-                maxArgs = 0;
-                this.optionalRestArgs = new ReadFunctionArgNode[0];
-                this.optionalArgSymbols = new ELispSymbol[0];
-                return;
-            }
+            this.args = ClosureArgs.parse(getArgs());
+            this.lexicallyBoundSymbols = isLexical ? args.requiredArgs : new ELispSymbol[0];
+            this.variableLikeBoundSymbols = args.variableLikeSymbols(isLexical);
+
             List<ReadFunctionArgNode> argNodes = new ArrayList<>();
-            List<ELispSymbol> symbols = new ArrayList<>();
-            int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
-            int argI = 0;
-            int required = 0;
-            for (Object arg : (ELispCons) getArgs()) {
-                ELispSymbol symbol = (ELispSymbol) arg;
-                if (symbol == AND_OPTIONAL) {
-                    if (state >= 2) {
-                        throw ELispSignals.error("&optional found after &rest in anonymous lambda");
-                    }
-                    if (isLexical) {
-                        this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
-                        symbols.clear();
-                    }
-                    state = 1;
-                } else if (symbol == AND_REST) {
-                    if (state >= 2) {
-                        throw ELispSignals.error("Nothing after &rest in anonymous lambda");
-                    }
-                    if (isLexical) {
-                        this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
-                        symbols.clear();
-                    }
-                    state = 2;
-                } else {
-                    symbols.add(symbol);
-                    if (state == 2) {
-                        argNodes.add(new ReadFunctionArgNode.ReadFunctionRestArgsAsConsNode(argI));
-                        argI = Integer.MIN_VALUE;
-                        state = 3;
-                    } else if (state == 1) {
-                        argNodes.add(new ReadFunctionArgNode(argI));
-                    } else if (state == 0) {
-                        required++;
-                        if (!isLexical) {
-                            argNodes.add(new ReadFunctionArgNode(argI));
-                        }
-                    } else {
-                        throw ELispSignals.error("Multiple vars after &rest in anonymous lambda");
-                    }
-                    argI++;
+            if (!isLexical) {
+                for (int i = 0; i < args.requiredArgs.length; i++) {
+                    argNodes.add(new ReadFunctionArgNode(i));
                 }
             }
-            requiredArgs = required;
-            maxArgs = argI;
-            if (state == 0) {
-                if (isLexical) {
-                    this.requiredArgSymbols = symbols.toArray(new ELispSymbol[0]);
-                    this.optionalArgSymbols = new ELispSymbol[0];
-                    this.optionalRestArgs = new ReadFunctionArgNode[0];
-                    adoptChildren();
-                    return;
-                }
+            for (int i = 0; i < args.optionalArgs.length; i++) {
+                argNodes.add(new ReadFunctionArgNode(i + args.requiredArgs.length));
             }
-            this.optionalArgSymbols = symbols.toArray(new ELispSymbol[0]);
+            if (args.rest != null) {
+                argNodes.add(new ReadFunctionArgNode.ReadFunctionRestArgsAsConsNode(
+                        args.optionalArgs.length + args.requiredArgs.length
+                ));
+            }
             this.optionalRestArgs = argNodes.toArray(new ReadFunctionArgNode[0]);
             adoptChildren();
         }
@@ -218,15 +170,15 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         public ELispLexical.@Nullable Dynamic pushScope(VirtualFrame frame, Object[] newValues) {
             if (isLexical && lexical != null) {
                 ELispLexical lexicalFrame =
-                        new ELispLexical(frame, lexical.frame, lexical.lexicalFrame, List.of(requiredArgSymbols));
-                for (int i = 0; i < optionalArgSymbols.length; i++) {
+                        new ELispLexical(frame, lexical.frame, lexical.lexicalFrame, List.of(lexicallyBoundSymbols));
+                for (int i = 0; i < variableLikeBoundSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols
                     // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
-                    lexicalFrame.addVariable(frame, optionalArgSymbols[i], newValues[i]);
+                    lexicalFrame.addVariable(frame, variableLikeBoundSymbols[i], newValues[i]);
                 }
                 return null;
             } else {
-                return ELispLexical.pushDynamic(optionalArgSymbols, newValues);
+                return ELispLexical.pushDynamic(variableLikeBoundSymbols, newValues);
             }
         }
 
@@ -243,7 +195,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @ExplodeLoop
         public Object execute(VirtualFrame frame, boolean isVoid) {
             Object[] newValues;
-            int length = optionalArgSymbols.length;
+            int length = variableLikeBoundSymbols.length;
             newValues = new Object[length];
             for (int i = 0; i < length; i++) {
                 newValues[i] = optionalRestArgs[i].executeGeneric(frame);
@@ -266,6 +218,72 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
         public ELispInterpretedClosure getClosure() {
             return ELispInterpretedClosure.this;
+        }
+    }
+
+    public record ClosureArgs(ELispSymbol[] requiredArgs, ELispSymbol[] optionalArgs, @Nullable ELispSymbol rest) {
+        public static ClosureArgs parse(Object args) {
+            if (isNil(args)) {
+                return new ClosureArgs(new ELispSymbol[0], new ELispSymbol[0], null);
+            }
+            ArrayList<ELispSymbol> requiredArgs = new ArrayList<>();
+            ArrayList<ELispSymbol> optionalArgs = new ArrayList<>();
+            @Nullable ELispSymbol rest = null;
+            int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
+            for (Object arg : asCons(args)) {
+                ELispSymbol symbol = asSym(arg);
+                if (symbol == AND_OPTIONAL) {
+                    if (state >= 2) {
+                        throw ELispSignals.error("&optional found after &rest in anonymous lambda");
+                    }
+                    state = 1;
+                } else if (symbol == AND_REST) {
+                    if (state >= 2) {
+                        throw ELispSignals.error("Nothing after &rest in anonymous lambda");
+                    }
+                    state = 2;
+                } else {
+                    switch (state) {
+                        case 0 -> requiredArgs.add(symbol);
+                        case 1 -> optionalArgs.add(symbol);
+                        case 2 -> {
+                            rest = symbol;
+                            state = 3;
+                        }
+                        default -> throw ELispSignals.error("Multiple vars after &rest in anonymous lambda");
+                    }
+                }
+            }
+            return new ClosureArgs(requiredArgs.toArray(new ELispSymbol[0]), optionalArgs.toArray(new ELispSymbol[0]), rest);
+        }
+
+        public ELispSymbol[] variableLikeSymbols(boolean isLexical) {
+            int start;
+            ELispSymbol[] symbols;
+            if (!isLexical) {
+                symbols = new ELispSymbol[requiredArgs.length + optionalArgs.length + (rest == null ? 0 : 1)];
+                System.arraycopy(requiredArgs, 0, symbols, 0, requiredArgs.length);
+                start = requiredArgs.length;
+            } else {
+                symbols = new ELispSymbol[optionalArgs.length + (rest == null ? 0 : 1)];
+                start = 0;
+            }
+            System.arraycopy(optionalArgs, 0, symbols, start, optionalArgs.length);
+            if (rest != null) {
+                symbols[symbols.length - 1] = rest;
+            }
+            return symbols;
+        }
+
+        public int requiredArgCount() {
+            return requiredArgs.length;
+        }
+
+        public int maxArgCount() {
+            if (rest != null) {
+                return -1;
+            }
+            return requiredArgs.length + optionalArgs.length;
         }
     }
 }
