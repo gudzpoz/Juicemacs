@@ -58,6 +58,22 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         this.cdr = cdr;
     }
 
+    public int getStartLine() {
+        return startLine;
+    }
+
+    public int getStartColumn() {
+        return startColumn;
+    }
+
+    public int getEndLine() {
+        return endLine;
+    }
+
+    public int getEndColumn() {
+        return endColumn;
+    }
+
     public void setSourceLocation(int startLine, int startColumn, int endLine, int endColumn) {
         this.startLine = startLine;
         this.startColumn = startColumn;
@@ -337,6 +353,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
 
         public ListBuilder add(Object obj) {
+            return add(obj, 0, 0, 0, 0);
+        }
+
+        public ListBuilder add(Object obj, int startLine, int startCol, int endLine, int endCol) {
             if (tail == null) {
                 cons = new ELispCons(obj);
                 tail = cons;
@@ -345,6 +365,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 tail.setCdr(next);
                 tail = next;
             }
+            tail.setSourceLocation(startLine, startCol, endLine, endCol);
             return this;
         }
 

@@ -130,14 +130,20 @@ public class ELispParser {
                     yield false;
                 }
                 ELispCons object = new ELispCons(nextObject());
+                object.setSourceLocation(line, column, 0, 0);
                 ELispCons.ListBuilder builder = new ELispCons.ListBuilder(object);
                 while (!(peek() instanceof ParenClose)) {
+                    int startLine = lexer.getLine();
+                    int startColumn = lexer.getColumn();
                     if (peek() instanceof Dot) {
                         // (a b . ???
                         read();
                         if (peek() instanceof ParenClose) {
                             // (a b .) -> (a b \.)
-                            builder.add(ELispContext.intern("."));
+                            builder.add(
+                                    ELispContext.intern("."),
+                                    startLine, startColumn, 0, 0
+                            );
                             break;
                         }
                         // (a b . c)
@@ -146,14 +152,15 @@ public class ELispParser {
                             throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
-                        object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
-                        yield object;
+                        yield fixSourceLocation(object, lexer.getLine(), lexer.getColumn());
                     }
-                    builder.add(nextObject());
+                    builder.add(
+                            nextObject(),
+                            startLine, startColumn, lexer.getLine(), lexer.getColumn()
+                    );
                 }
                 read();
-                object.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
-                yield object;
+                yield fixSourceLocation(object, lexer.getLine(), lexer.getColumn());
             }
             case RecordOpen() -> {
                 List<Object> list = readList();
@@ -222,6 +229,19 @@ public class ELispParser {
         }
         read();
         return vector;
+    }
+
+    private ELispCons fixSourceLocation(ELispCons cons, int endLine, int endColumn) {
+        ELispCons.ConsIterator i = cons.consIterator(0);
+        try {
+            while (i.hasNextCons()) {
+                ELispCons next = i.nextCons();
+                next.setSourceLocation(next.getStartLine(), next.getStartColumn(), endLine, endColumn);
+            }
+        } catch (ELispSignals.ELispSignalException ignored) {
+            // Ignore circular lists
+        }
+        return cons;
     }
 
     public int getCodepointOffset() {
