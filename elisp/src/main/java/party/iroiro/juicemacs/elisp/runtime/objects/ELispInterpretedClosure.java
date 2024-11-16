@@ -88,6 +88,10 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     }
 
     public record LexicalEnvironment(MaterializedFrame frame, ELispLexical lexicalFrame) {
+        @Override
+        public String toString() {
+            return ELispValue.display(lexicalFrame.toAssocList(frame));
+        }
     }
 
     public final class ELispClosureCallNode extends ELispExpressionNode {

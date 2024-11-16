@@ -8,6 +8,7 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -224,6 +225,25 @@ public final class ELispLexical {
                 return null;
             }
         }
+    }
+
+    public Object toAssocList(MaterializedFrame frame) {
+        ELispCons.ListBuilder lb = new ELispCons.ListBuilder();
+        for (ELispSymbol symbol : variables) {
+            Object variable = getVariable(frame, getIndex(symbol));
+            if (variable == DYNAMIC) {
+                continue;
+            }
+            lb.add(new ELispCons(symbol, variable));
+        }
+        for (ELispSymbol symbol : args) {
+            Object variable = getVariable(frame, getIndex(symbol));
+            if (variable == DYNAMIC) {
+                continue;
+            }
+            lb.add(new ELispCons(symbol, variable));
+        }
+        return lb.build();
     }
 
     @Nullable

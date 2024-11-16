@@ -1,5 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
@@ -20,7 +25,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
  * that might raise exceptions, if the list if found to be circular, for example.
  * </p>
  */
-public final class ELispCons extends AbstractSequentialList<Object> implements ELispValue {
+@ExportLibrary(InteropLibrary.class)
+public final class ELispCons extends AbstractSequentialList<Object> implements ELispValue, TruffleObject {
 
     public ELispCons(Object car) {
         this.car = Objects.requireNonNull(car);
@@ -256,6 +262,12 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     @Override
     public String toString() {
+        if (car == QUOTE && cdr instanceof ELispCons quoted && isNil(quoted.cdr)) {
+            return "'" + ELispValue.display(quoted.car);
+        }
+        if (car == BACKQUOTE && cdr instanceof ELispCons backquote && isNil(backquote.cdr)) {
+            return "`" + ELispValue.display(backquote.car);
+        }
         StringBuilder sb = new StringBuilder("(").append(ELispValue.display(car()));
         BrentTortoiseHareIterator i = listIterator(1);
         while (i.hasNextCdr()) {
@@ -270,7 +282,46 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         return sb.toString();
     }
 
-    public static class ListBuilder {
+    //#region InteropLibrary
+    @ExportMessage
+    public boolean hasMembers() {
+        return true;
+    }
+    @ExportMessage
+    public Object getMembers(boolean ignored) {
+        return new ELispVector(List.of("car", "cdr"));
+    }
+    @ExportMessage
+    public boolean isMemberReadable(String member) {
+        return member.equals("car") || member.equals("cdr");
+    }
+    @ExportMessage
+    public Object readMember(String member) throws UnknownIdentifierException {
+        return switch (member) {
+            case "car" -> car;
+            case "cdr" -> cdr;
+            default -> throw UnknownIdentifierException.create(member);
+        };
+    }
+    @ExportMessage
+    public boolean isMemberModifiable(String member) {
+        return isMemberReadable(member);
+    }
+    @ExportMessage
+    public boolean isMemberInsertable(String ignored) {
+        return false;
+    }
+    @ExportMessage
+    public void writeMember(String member, Object value) throws UnknownIdentifierException {
+        switch (member) {
+            case "car" -> car = value;
+            case "cdr" -> cdr = value;
+            default -> throw UnknownIdentifierException.create(member);
+        }
+    }
+    //#endregion InteropLibrary
+
+    public static final class ListBuilder {
         @Nullable
         private ELispCons cons;
         @Nullable

@@ -1,6 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
@@ -53,7 +57,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
  * other values stored in the value slot.
  * </p>
  */
-public final class ELispSymbol implements ELispValue {
+@ExportLibrary(InteropLibrary.class)
+public final class ELispSymbol implements ELispValue, TruffleObject {
     /// The unbound symbol, used as the value of void variables and not exposed to any caller.
     ///
     /// Qunbound is uninterned, so that it's not confused with any symbol
@@ -360,20 +365,24 @@ public final class ELispSymbol implements ELispValue {
         return this.equals(other);
     }
 
-    public static boolean isNil(Object nil) {
-        return nil == ELispContext.NIL || nil == Boolean.FALSE;
+    //#region InteropLibrary
+    @ExportMessage
+    public boolean isMetaObject() {
+        return true;
     }
-
-    public static boolean isT(Object nil) {
-        return nil == ELispContext.T || nil == Boolean.TRUE;
+    @ExportMessage
+    public Object getMetaQualifiedName() {
+        return getMetaSimpleName();
     }
-
-    public static long notNilOr(Object maybeNil, long defaultValue) {
-        if (isNil(maybeNil)) {
-            return defaultValue;
-        }
-        return (long) maybeNil;
+    @ExportMessage
+    public Object getMetaSimpleName() {
+        return name;
     }
+    @ExportMessage
+    public boolean isMetaInstance(Object ignored) {
+        return false;
+    }
+    //#endregion InteropLibrary
 
     private Object checkUnbound(Object value) {
         if (value == UNBOUND) {
