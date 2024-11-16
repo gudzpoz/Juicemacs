@@ -13,4 +13,5 @@ repositories {
 
 dependencies {
     implementation 'org.javamodularity.moduleplugin:org.javamodularity.moduleplugin.gradle.plugin:1.8.15'
+    implementation 'com.gradleup.shadow:com.gradleup.shadow.gradle.plugin:8.3.5'
 }

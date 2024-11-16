@@ -7,7 +7,9 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * A context holding static everything
@@ -44,6 +46,10 @@ public final class ELispContext {
         }
     }
 
+    public static List<ELispSymbol> internedSymbols() {
+        return new ArrayList<>(INTERN_MAP.values());
+    }
+
     public static String applyShorthands(String symbol) {
         // TODO: Implementation
         return symbol;
@@ -53,8 +59,7 @@ public final class ELispContext {
         return ELispInterpretedNode.create(expressions, lexicalBinding);
     }
 
-    public void registerFunction(String name, ELispValue function) {
-        ELispSymbol symbol = intern(name);
+    public void registerFunction(ELispSymbol symbol, ELispValue function) {
         symbol.setFunction(function);
     }
 

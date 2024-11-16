@@ -20,6 +20,7 @@ dependencies {
     implementation 'com.lodborg:interval-tree:1.0.0'
 
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
+    implementation "org.graalvm.polyglot:polyglot:${truffleVersion}"
     annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
     runtimeOnly "org.graalvm.truffle:truffle-runtime:${truffleVersion}"
 

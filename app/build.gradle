@@ -8,8 +8,11 @@ plugins {
 
 dependencies {
     implementation project(':elisp')
+
+    implementation 'org.jline:jline:3.26.3'
+    implementation 'info.picocli:picocli:4.7.6'
 }
 
 application {
-    mainClass = 'org.example.app.App'
+    mainClass = 'party.iroiro.juicemacs.juice.ELispRepl'
 }
