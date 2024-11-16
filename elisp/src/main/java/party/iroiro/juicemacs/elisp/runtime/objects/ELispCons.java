@@ -358,7 +358,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 //noinspection DataFlowIssue: tail != null => cons != null
                 return cons;
             }
-            return false;
+            return tailCdr;
         }
     }
 
