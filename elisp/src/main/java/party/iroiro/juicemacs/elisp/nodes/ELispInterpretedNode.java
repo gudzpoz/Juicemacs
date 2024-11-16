@@ -503,8 +503,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     abstract static class ConsMacroCallNode extends ConsCallNode {
-        @Nullable
-        private Object generated = null;
+        private final ELispCons cons;
 
         @Child
         @Nullable
@@ -516,6 +515,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         ConsMacroCallNode(Object function, ELispCons cons) {
             super(getIndirectFunction(((ELispCons) function).cdr()), cons, true);
+            this.cons = cons;
             if (this.function instanceof ELispExpressionNode node) {
                 inlineLambdaNode = node;
             }
@@ -524,23 +524,40 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Specialization
         public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+            return updateGenerated(frame, dispatchNode).executeGeneric(frame);
+        }
+
+        public ELispExpressionNode updateGenerated(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+            ELispExpressionNode inner = generatedNode;
+            if (inner != null) {
+                return inner;
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(true)) {
                 Object function = this.function;
                 if (inlineLambdaNode != null) {
                     function = inlineLambdaNode.executeGeneric(frame);
                 }
                 Object o = dispatchNode.executeDispatch(this, getFunctionObject(function), evalArgs(frame));
-                ELispExpressionNode macro = generatedNode;
-                Object generated = this.generated;
-                if (macro == null || generated == null || !BuiltInFns.FEqual.equal(generated, o)) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    this.generated = o;
-                    macro = ELispInterpretedNode.create(o);
-                    this.generatedNode = macro;
-                    adoptChildren();
+                if (o instanceof ELispCons debuggable) {
+                    debuggable.setSourceLocation(
+                            cons.getStartLine(),
+                            cons.getStartColumn(),
+                            cons.getEndLine(),
+                            cons.getEndColumn()
+                    );
                 }
-                return macro.executeGeneric(frame);
+                inner = ELispInterpretedNode.create(o);
+                this.generatedNode = inner;
+                adoptChildren();
             }
+            return inner;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return generatedNode == null ? null : generatedNode.getSourceSection();
         }
     }
 
