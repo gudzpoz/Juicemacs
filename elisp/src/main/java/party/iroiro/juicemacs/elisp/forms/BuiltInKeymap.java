@@ -8,15 +8,14 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInFns.iterateSequence;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asInt;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInKeymap extends ELispBuiltIns {
     public BuiltInKeymap() {
@@ -82,7 +81,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
             if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR) {
                 result = charTable.getChar(asInt(l));
             }
-            if (ELispSymbol.isNil(result)) {
+            if (isNil(result)) {
                 result = tail.get(key, parent);
             }
             return result;
@@ -233,7 +232,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                     KEYMAP,
                     new ELispCons(
                             BuiltInCharTab.FMakeCharTable.makeCharTable(KEYMAP, false),
-                            ELispSymbol.isNil(string) ? false : new ELispCons(string)
+                            isNil(string) ? false : new ELispCons(string)
                     )
             );
         }
@@ -258,7 +257,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         public static ELispCons makeSparseKeymap(Object string) {
             return new ELispCons(
                     KEYMAP,
-                    ELispSymbol.isNil(string) ? false : new ELispCons(string)
+                    isNil(string) ? false : new ELispCons(string)
             );
         }
     }
@@ -386,7 +385,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         public static boolean mapKeymap(Object function, Object keymap, Object sortFirst) {
             while (true) {
                 keymap = FMapKeymapInternal.mapKeymapInternal(function, keymap);
-                if (ELispSymbol.isNil(keymap)) {
+                if (isNil(keymap)) {
                     break;
                 }
             }
@@ -501,9 +500,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FDefineKey extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean defineKey(ELispCons keymap, Object key, Object def, Object remove) {
-            boolean doRemove = !ELispSymbol.isNil(remove);
+            boolean doRemove = !isNil(remove);
             if (key instanceof ELispVector vector && !vector.isEmpty()) {
-                if (ELispSymbol.isT(vector.getFirst())) {
+                if (isT(vector.getFirst())) {
                     if (vector.size() != 1) {
                         throw ELispSignals.error("Key sequence starts with non-prefix key <t>");
                     }
@@ -513,7 +512,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                     }
                     Keymap wrap = Keymap.wrap(keymap);
                     Object remap = wrap.get(REMAP, false);
-                    if (ELispSymbol.isNil(remap)) {
+                    if (isNil(remap)) {
                         remap = FMakeSparseKeymap.makeSparseKeymap(false);
                         wrap.set(REMAP, remap, false);
                     }

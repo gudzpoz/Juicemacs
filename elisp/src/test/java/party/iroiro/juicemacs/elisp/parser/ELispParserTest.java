@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
 public class ELispParserTest {
 
@@ -67,8 +69,8 @@ public class ELispParserTest {
 
         ELispBoolVector bVec = assertInstanceOf(ELispBoolVector.class, read("#&2\"\\1\""));
         assertEquals(2, bVec.size());
-        assertTrue(ELispSymbol.isT(bVec.get(0)));
-        assertTrue(ELispSymbol.isNil(bVec.get(1)));
+        assertTrue(isT(bVec.get(0)));
+        assertTrue(isNil(bVec.get(1)));
     }
 
     private void assertCons(String expr, String[] symbols) throws IOException {

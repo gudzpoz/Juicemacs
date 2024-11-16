@@ -11,7 +11,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import java.util.HashSet;
 import java.util.Objects;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asSym;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 
 /**
@@ -174,7 +175,7 @@ public final class ELispSymbol implements ELispValue {
     }
 
     public boolean isBound() {
-        return this.value.getValue() != UNBOUND;
+        return getAnyValue() != UNBOUND;
     }
 
     public void makeUnbound() {
@@ -204,9 +205,9 @@ public final class ELispSymbol implements ELispValue {
             // TODO: "If this variable is not always local in all buffers"...
             // What is a not-always-local buffer-local variable?
             local.defaultValue = value;
-        } else if (this.value instanceof Value.VarAlias alias) {
+        } else if (this.value instanceof Value.VarAlias(ELispSymbol target)) {
             // Recursive call: Truffle bails out
-            alias.target.setDefaultValue(value);
+            target.setDefaultValue(value);
         } else {
             this.value.setValue(value);
         }
@@ -214,8 +215,8 @@ public final class ELispSymbol implements ELispValue {
 
     @CompilerDirectives.TruffleBoundary
     public void setBufferLocal(boolean localIfSet) {
-        if (this.value instanceof Value.VarAlias alias) {
-            alias.target.setBufferLocal(localIfSet);
+        if (this.value instanceof Value.VarAlias(ELispSymbol target)) {
+            target.setBufferLocal(localIfSet);
             return;
         }
         if (this.value instanceof Value.BufferLocal local) {
@@ -437,8 +438,8 @@ public final class ELispSymbol implements ELispValue {
 
             public ELispSymbol getAliased() {
                 ELispSymbol alias = target;
-                while (alias.value instanceof VarAlias next) {
-                    alias = next.target;
+                while (alias.value instanceof VarAlias(ELispSymbol next)) {
+                    alias = next;
                 }
                 return alias;
             }

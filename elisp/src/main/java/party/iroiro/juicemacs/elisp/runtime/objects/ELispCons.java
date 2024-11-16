@@ -9,7 +9,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 /**
  * A cons cell in ELisp
@@ -141,7 +142,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
 
         public boolean hasNextCdr() {
-            return !ELispSymbol.isNil(tail);
+            return !isNil(tail);
         }
 
         public Object current() {
@@ -168,7 +169,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 next = cons;
                 tail = cons.cdr;
                 i++;
-            } else if (ELispSymbol.isNil(tail)) {
+            } else if (isNil(tail)) {
                 throw new NoSuchElementException();
             } else {
                 throw ELispSignals.wrongTypeArgument(ELispContext.LISTP, ELispCons.this);
@@ -324,7 +325,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     public static Iterable<?> iterate(Object list) {
-        if (ELispSymbol.isNil(list)) {
+        if (isNil(list)) {
             return Collections.emptyList();
         } else {
             return (ELispCons) list;

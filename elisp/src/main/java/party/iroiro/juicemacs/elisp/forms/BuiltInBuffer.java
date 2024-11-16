@@ -8,14 +8,13 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInBuffer extends ELispBuiltIns {
     @Override
@@ -180,7 +179,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
                 return buffer;
             }
             String name = asStr(bufferOrName).toString();
-            ELispBuffer buffer = new ELispBuffer(!ELispSymbol.isNil(inhibitBufferHooks));
+            ELispBuffer buffer = new ELispBuffer(!isNil(inhibitBufferHooks));
             buffer.setWidthTable(false);
             // TODO: Texts
             buffer.setName(new ELispString(name));
@@ -243,7 +242,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     public abstract static class FGenerateNewBufferName extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString generateNewBufferName(ELispString name, Object ignore) {
-            if (!ELispSymbol.isNil(FGetBuffer.getBuffer(name))) {
+            if (!isNil(FGetBuffer.getBuffer(name))) {
                 return name;
             }
             if (BuiltInFns.FStringEqual.stringEqual(name, ignore)) {

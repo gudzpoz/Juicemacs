@@ -21,9 +21,8 @@ import java.util.HashSet;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asCons;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asStr;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**
  * Built-in functions from {@code src/lread.c}
@@ -80,12 +79,12 @@ public class BuiltInLRead extends ELispBuiltIns {
                 ELispString test = new ELispString(name.value().concatUncached(suffixString.value(), ELispString.ENCODING, false));
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
                 boolean exists;
-                if (!ELispSymbol.isNil(handler) || (!ELispSymbol.isNil(predicate) && !ELispSymbol.isT(predicate))) {
-                    if (ELispSymbol.isNil(predicate) || ELispSymbol.isT(predicate)) {
+                if (!isNil(handler) || (!isNil(predicate) && !isT(predicate))) {
+                    if (isNil(predicate) || isT(predicate)) {
                         exists = BuiltInFileIO.FFileReadableP.fileReadableP(test);
                     } else {
                         Object ret = BuiltInEval.FFuncall.funcall(predicate, new Object[]{test});
-                        if (ELispSymbol.isNil(ret)) {
+                        if (isNil(ret)) {
                             exists = false;
                         } else {
                             exists = ret == DIR_OK || !BuiltInFileIO.FFileDirectoryP.fileDirectoryP(test);
@@ -504,11 +503,11 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FRead extends ELispBuiltInBaseNode {
         @Specialization
         public static Object read(Object stream) {
-            if (ELispSymbol.isNil(stream)) {
+            if (isNil(stream)) {
                 // TODO: Vstandard_input
                 throw new UnsupportedOperationException();
             }
-            if (ELispSymbol.isT(stream)) {
+            if (isT(stream)) {
                 stream = READ_CHAR;
             }
             if (stream == READ_CHAR) {
@@ -559,8 +558,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FReadFromString extends ELispBuiltInBaseNode {
         @Specialization
         public static Object readFromString(ELispString string, Object start, Object end) {
-            long from = ELispSymbol.notNilOr(start, 0L);
-            long to = ELispSymbol.notNilOr(end, string.codepointCount());
+            long from = notNilOr(start, 0L);
+            long to = notNilOr(end, string.codepointCount());
             TruffleString sub = string.toTruffleString().substringUncached((int) from, (int) (to - from), ELispString.ENCODING, false);
             try {
                 Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
@@ -608,7 +607,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FIntern extends ELispBuiltInBaseNode {
         @Specialization
         public static Object intern(ELispString string, Object obarray) {
-            if (!ELispSymbol.isNil(obarray)) {
+            if (!isNil(obarray)) {
                 throw new UnsupportedOperationException();
             }
             return ELispContext.intern(string.toString());

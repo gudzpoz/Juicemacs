@@ -20,8 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
-import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.isNil;
-import static party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.notNilOr;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSearch extends ELispBuiltIns {
     public BuiltInSearch() {
@@ -247,7 +246,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FReSearchBackward extends ELispBuiltInBaseNode {
         @Specialization
         public boolean reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
-            long limit = ELispSymbol.notNilOr(bound, Long.MAX_VALUE);
+            long limit = notNilOr(bound, Long.MAX_VALUE);
             ELispBuffer buffer = asBuffer(CURRENT_BUFFER.getValue());
             ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
             int from = Math.toIntExact(buffer.getPoint());
@@ -263,7 +262,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                     from--;
                 }
             }
-            if (ELispSymbol.isNil(noerror)) {
+            if (isNil(noerror)) {
                 throw ELispSignals.searchFailed();
             }
             return false;

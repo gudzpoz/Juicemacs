@@ -15,8 +15,8 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asLong;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**
  * Built-in functions from {@code src/data.c}
@@ -611,11 +611,11 @@ public class BuiltInData extends ELispBuiltIns {
             if (obj1 instanceof Long) {
                 return obj1.equals(obj2);
             }
-            if (ELispSymbol.isNil(obj1)) {
-                return ELispSymbol.isNil(obj2);
+            if (isNil(obj1)) {
+                return isNil(obj2);
             }
-            if (ELispSymbol.isT(obj1)) {
-                return ELispSymbol.isT(obj2);
+            if (isT(obj1)) {
+                return isT(obj2);
             }
             return obj1 == obj2;
         }
@@ -631,7 +631,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FNull extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean null_(Object object) {
-            return ELispSymbol.isNil(object);
+            return isNil(object);
         }
     }
 
@@ -734,7 +734,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FListp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean listp(Object object) {
-            return object instanceof ELispCons || ELispSymbol.isNil(object);
+            return object instanceof ELispCons || isNil(object);
         }
     }
 
@@ -1338,7 +1338,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FFboundp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean fboundp(ELispSymbol symbol) {
-            return !ELispSymbol.isNil(symbol.getFunction());
+            return !isNil(symbol.getFunction());
         }
     }
 
@@ -2254,7 +2254,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static Object stringToNumber(ELispString string, Object base) {
             String s = string.toString();
-            long b = ELispSymbol.notNilOr(base, 10);
+            long b = notNilOr(base, 10);
             if (b != 10) {
                 s = s.trim();
                 s = "#" + b + "r" + s;

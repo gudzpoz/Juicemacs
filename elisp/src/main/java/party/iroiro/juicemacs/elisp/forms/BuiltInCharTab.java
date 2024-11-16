@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_TABLE_EXTRA_SLOTS;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCharTab extends ELispBuiltIns {
     @Override
@@ -29,7 +30,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
                 if (BuiltInData.FEq.eq(prev, o)) {
                     return;
                 }
-                if (!ELispSymbol.isNil(prev)) {
+                if (!isNil(prev)) {
                     if (prevChar == l - 1) {
                         callback.accept(prevChar, prev);
                     } else {
@@ -59,7 +60,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
         @Specialization
         public static ELispCharTable makeCharTable(ELispSymbol purpose, Object init) {
             Object slotProp = BuiltInFns.FGet.get(purpose, CHAR_TABLE_EXTRA_SLOTS);
-            int extraSlots = ELispSymbol.isNil(slotProp) ? 0 : asInt(slotProp);
+            int extraSlots = isNil(slotProp) ? 0 : asInt(slotProp);
             if (extraSlots < 0 || 10 < extraSlots) {
                 throw ELispSignals.argsOutOfRange(extraSlots);
             }
@@ -177,9 +178,9 @@ public class BuiltInCharTab extends ELispBuiltIns {
     public abstract static class FSetCharTableRange extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setCharTableRange(ELispCharTable charTable, Object range, Object value) {
-            if (ELispSymbol.isT(range)) {
+            if (isT(range)) {
                 charTable.setAll(value);
-            } else if (ELispSymbol.isNil(range)) {
+            } else if (isNil(range)) {
                 charTable.setDefault(value);
             } else if (range instanceof Long l) {
                 charTable.setChar(asInt(l), value);

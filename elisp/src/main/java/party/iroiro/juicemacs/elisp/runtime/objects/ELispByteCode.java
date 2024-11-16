@@ -4,6 +4,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+
 public final class ELispByteCode extends AbstractELispVector {
 
     private ELispByteCode(List<Object> inner) {
@@ -16,7 +18,7 @@ public final class ELispByteCode extends AbstractELispVector {
         Object constants = inner.get(2);
         Object stack = inner.get(3);
         if (!(
-                (argList instanceof Long || argList instanceof ELispCons || ELispSymbol.isNil(argList))
+                (argList instanceof Long || argList instanceof ELispCons || isNil(argList))
                         && (byteCode instanceof ELispString)
                         && (constants instanceof ELispVector)
                         && (stack instanceof Long)

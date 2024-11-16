@@ -4,12 +4,14 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInFileIO extends ELispBuiltIns {
     @Override
@@ -259,7 +261,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 path = System.getProperty("user.home") + path.substring(1);
             } else if (!path.startsWith("/")) {
                 return new ELispString(ELispString.from(
-                        Path.of(ELispSymbol.isNil(defaultDirectory)
+                        Path.of(isNil(defaultDirectory)
                                         ? System.getProperty("user.home") // TODO: default-directory
                                         : defaultDirectory.toString(), path)
                                 .toAbsolutePath().toString()

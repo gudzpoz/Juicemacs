@@ -7,14 +7,13 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharTab.charTableMap;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCaseTab extends ELispBuiltIns {
     @Override
@@ -117,19 +116,19 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         Object up = caseTable.getExtra(0);
         Object canon = caseTable.getExtra(1);
         Object eqv = caseTable.getExtra(2);
-        if (ELispSymbol.isNil(up)) {
+        if (isNil(up)) {
             ELispCharTable upTable = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
             up = upTable;
             charTableMap(caseTable, new SetIdentity(upTable));
             charTableMap(caseTable, new Shuffle(upTable));
             caseTable.setExtra(0, up);
         }
-        if (ELispSymbol.isNil(canon)) {
+        if (isNil(canon)) {
             canon = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
             caseTable.setExtra(1, canon);
             charTableMap(caseTable, new SetCanon(caseTable));
         }
-        if (ELispSymbol.isNil(eqv)) {
+        if (isNil(eqv)) {
             ELispCharTable eqvTable = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
             eqv = eqvTable;
             ELispCharTable canonTable = asCharTable(canon);
@@ -173,10 +172,10 @@ public class BuiltInCaseTab extends ELispBuiltIns {
             Object up = charTable.getExtra(0);
             Object canon = charTable.getExtra(1);
             Object eqv = charTable.getExtra(2);
-            return (ELispSymbol.isNil(up) || BuiltInData.FCharTableP.charTableP(up))
-            && (ELispSymbol.isNil(canon) && ELispSymbol.isNil(eqv)
+            return (isNil(up) || BuiltInData.FCharTableP.charTableP(up))
+            && (isNil(canon) && isNil(eqv)
                     || FCaseTableP.caseTableP(canon)
-                    && (ELispSymbol.isNil(eqv) || FCaseTableP.caseTableP(eqv)));
+                    && (isNil(eqv) || FCaseTableP.caseTableP(eqv)));
         }
     }
 

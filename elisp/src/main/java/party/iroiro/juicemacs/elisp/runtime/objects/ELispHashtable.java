@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public final class ELispHashtable implements ELispValue {
 
@@ -117,7 +118,7 @@ public final class ELispHashtable implements ELispValue {
         Object testSym = getFromPseudoPlist(list, TEST);
         ELispHashtable table = new ELispHashtable(Objects.requireNonNullElse(testSym, false));
         Object data = getFromPseudoPlist(list, DATA);
-        if (data != null && !ELispSymbol.isNil(data)) {
+        if (data != null && !isNil(data)) {
             ELispCons cons = (ELispCons) data;
             Iterator<Object> iterator = cons.iterator();
             while (iterator.hasNext()) {

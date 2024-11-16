@@ -6,7 +6,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import java.util.*;
 import java.util.function.BiConsumer;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asSym;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 
 /**
  * Char table object

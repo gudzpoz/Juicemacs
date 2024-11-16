@@ -14,6 +14,7 @@ import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCharSet extends ELispBuiltIns {
     public BuiltInCharSet() {
@@ -88,7 +89,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     private static ELispCharset getCharset(Object symbol) {
         ELispVector vec = getCharsetAttr(symbol);
         //noinspection SequencedCollectionMethodCanBeUsed
-        int index = ELispBuiltInBaseNode.asInt(vec.get(CHARSET_ID));
+        int index = asInt(vec.get(CHARSET_ID));
         return CHARSET_LIST.get(index);
     }
 
@@ -230,7 +231,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             }
 
             Object dimensionVal = args[CHARSET_ARG_DIMENSION];
-            if (!ELispSymbol.isNil(dimensionVal)) {
+            if (!isNil(dimensionVal)) {
                 dimension = (int) asRanged(dimensionVal, 1, 4);
             }
 
@@ -267,19 +268,19 @@ public class BuiltInCharSet extends ELispBuiltIns {
             long charIndexOffset = 0;
 
             Object minCodeVal = args[CHARSET_ARG_MIN_CODE];
-            if (!ELispSymbol.isNil(minCodeVal)) {
+            if (!isNil(minCodeVal)) {
                 long code = asRanged(consToUnsigned(minCodeVal, maxCode), minCode, maxCode);
                 charIndexOffset = ELispCharset.codepointToIndex(code, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
                 minCode = code;
             }
             Object maxCodeVal = args[CHARSET_ARG_MAX_CODE];
-            if (!ELispSymbol.isNil(maxCodeVal)) {
+            if (!isNil(maxCodeVal)) {
                 maxCode = asRanged(consToUnsigned(maxCodeVal, maxCode), minCode, maxCode);
             }
 
             Object invalidVal = args[CHARSET_ARG_INVALID_CODE];
             long invalidCode;
-            if (ELispSymbol.isNil(invalidVal)) {
+            if (isNil(invalidVal)) {
                 if (minCode > 0) {
                     invalidCode = 0;
                 } else if (maxCode < Integer.toUnsignedLong(-1)) {
@@ -293,18 +294,18 @@ public class BuiltInCharSet extends ELispBuiltIns {
 
             Object isoFinalVal = args[CHARSET_ARG_ISO_FINAL];
             int isoFinal;
-            if (ELispSymbol.isNil(isoFinalVal)) {
+            if (isNil(isoFinalVal)) {
                 isoFinal = -1;
             } else {
                 isoFinal = (int) asRanged(isoFinalVal, '0', 127);
             }
 
             Object isoRevisionVal = args[CHARSET_ARG_ISO_REVISION];
-            int isoRevision = ELispSymbol.isNil(isoRevisionVal) ? -1 : (int) asRanged(isoRevisionVal, -1, 63);
+            int isoRevision = isNil(isoRevisionVal) ? -1 : (int) asRanged(isoRevisionVal, -1, 63);
 
             Object emacsMuleVal = args[CHARSET_ARG_EMACS_MULE_ID];
             int emacsMule;
-            if (ELispSymbol.isNil(emacsMuleVal)) {
+            if (isNil(emacsMuleVal)) {
                 emacsMule = -1;
             } else {
                 emacsMule = asInt(emacsMuleVal);
@@ -313,13 +314,13 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 }
             }
 
-            boolean asciiCompatibleP = !ELispSymbol.isNil(args[CHARSET_ARG_ASCII_COMPATIBLE_P]);
-            boolean supplementaryP = !ELispSymbol.isNil(args[CHARSET_ARG_SUPPLEMENTARY_P]);
+            boolean asciiCompatibleP = !isNil(args[CHARSET_ARG_ASCII_COMPATIBLE_P]);
+            boolean supplementaryP = !isNil(args[CHARSET_ARG_SUPPLEMENTARY_P]);
 
             byte[] fastMap = new byte[190];
             CharsetMethod method;
             long codeOffset = 0, minChar = 0, maxChar = 0;
-            if (!ELispSymbol.isNil(args[CHARSET_ARG_CODE_OFFSET])) {
+            if (!isNil(args[CHARSET_ARG_CODE_OFFSET])) {
                 Object val = args[CHARSET_ARG_CODE_OFFSET];
                 int c = asInt(val);
                 method = CharsetMethod.OFFSET;
@@ -338,11 +339,11 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 if (codeOffset == 0 && maxChar >= 0x80) {
                     asciiCompatibleP = true;
                 }
-            } else if (!ELispSymbol.isNil(args[CHARSET_ARG_MAP])) {
+            } else if (!isNil(args[CHARSET_ARG_MAP])) {
                 Object val = args[CHARSET_ARG_MAP];
                 attrs.set(CHARSET_MAP, val);
                 method = CharsetMethod.MAP;
-            } else if (!ELispSymbol.isNil(args[CHARSET_ARG_SUBSET])) {
+            } else if (!isNil(args[CHARSET_ARG_SUBSET])) {
                 Object[] array = asCons(args[CHARSET_ARG_SUBSET]).toArray();
                 Object parent = array[0];
                 ELispCharset parentCharset = getCharset(parent);
@@ -359,7 +360,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 fastMap = Arrays.copyOf(parentCharset.fastMap, parentCharset.fastMap.length);
                 minChar = parentCharset.minChar;
                 maxChar = parentCharset.maxChar;
-            } else if (!ELispSymbol.isNil(args[CHARSET_ARG_SUPERSET])) {
+            } else if (!isNil(args[CHARSET_ARG_SUPERSET])) {
                 ELispCons val = asCons(args[CHARSET_ARG_SUPERSET]);
                 method = CharsetMethod.SUPERSET;
                 minChar = Integer.MAX_VALUE;
@@ -387,7 +388,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             }
 
             Object unifyMapVal = args[CHARSET_ARG_UNIFY_MAP];
-            if (!ELispSymbol.isNil(unifyMapVal) && !(unifyMapVal instanceof ELispString)) {
+            if (!isNil(unifyMapVal) && !(unifyMapVal instanceof ELispString)) {
                 if (!(unifyMapVal instanceof ELispVector)) {
                     throw ELispSignals.wrongTypeArgument(VECTORP, unifyMapVal);
                 }

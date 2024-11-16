@@ -21,11 +21,11 @@ import java.util.ArrayList;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.lowerCaseP;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.upperCaseP;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asBuffer;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.asCharTable;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.CharClassContent.NamedCharClass.*;
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCharTable;
 
 class ELispRegExpNode extends Node implements BytecodeOSRNode {
 

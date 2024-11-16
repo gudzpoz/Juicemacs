@@ -5,7 +5,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -33,6 +35,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**
  * Built-in functions from {@code src/eval.c}
@@ -85,7 +88,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 int length = nodes.length;
                 for (int i = 0; i < length; i++) {
                     Object result = nodes[i].executeGeneric(frame);
-                    if (!ELispSymbol.isNil(result)) {
+                    if (!isNil(result)) {
                         return result;
                     }
                 }
@@ -134,7 +137,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 for (int i = 0; i < length; i++) {
                     ELispExpressionNode node = nodes[i];
                     lastResult = node.executeGeneric(frame);
-                    if (ELispSymbol.isNil(lastResult)) {
+                    if (isNil(lastResult)) {
                         return false;
                     }
                 }
@@ -181,7 +184,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                if (isNil(condition.executeGeneric(frame))) {
                     elseBranch.executeVoid(frame);
                     return;
                 }
@@ -190,7 +193,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                if (isNil(condition.executeGeneric(frame))) {
                     return elseBranch.executeGeneric(frame);
                 }
                 return thenBranch.executeGeneric(frame);
@@ -250,7 +253,7 @@ public class BuiltInEval extends ELispBuiltIns {
             public void executeVoid(VirtualFrame frame) {
                 int length = conditions.length;
                 for (int i = 0; i < length; i++) {
-                    if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
+                    if (!isNil(conditions[i].executeGeneric(frame))) {
                         thenCases[i].executeVoid(frame);
                         return;
                     }
@@ -262,7 +265,7 @@ public class BuiltInEval extends ELispBuiltIns {
             public Object executeGeneric(VirtualFrame frame) {
                 int length = conditions.length;
                 for (int i = 0; i < length; i++) {
-                    if (!ELispSymbol.isNil(conditions[i].executeGeneric(frame))) {
+                    if (!isNil(conditions[i].executeGeneric(frame))) {
                         return thenCases[i].executeGeneric(frame);
                     }
                 }
@@ -1102,7 +1105,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     ELispCons cons = asCons(assignment);
                     symbol = cons.car();
                     ELispCons cdr = asCons(cons.cdr());
-                    if (!ELispSymbol.isNil(cdr.cdr())) {
+                    if (!isNil(cdr.cdr())) {
                         throw ELispSignals.error("`let' bindings can have only one value-form");
                     }
                     value = cdr.car();
@@ -1200,7 +1203,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public boolean executeRepeating(VirtualFrame frame) {
-                if (ELispSymbol.isNil(condition.executeGeneric(frame))) {
+                if (isNil(condition.executeGeneric(frame))) {
                     return false;
                 } else {
                     bodyNode.executeVoid(frame);
@@ -1320,7 +1323,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 try {
                     return bodyNodes.executeGeneric(frame);
                 } catch (ELispSignals.ELispCatchException e) {
-                    if (!ELispSymbol.isNil(tag) && e.getTag() == tag) {
+                    if (!isNil(tag) && e.getTag() == tag) {
                         return e.getData();
                     }
                     throw e;
@@ -1520,7 +1523,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     for (i = 0; i < length; i++) {
                         Object conditionName = conditionNames[i];
                         boolean shouldHandle = false;
-                        if (ELispSymbol.isT(conditionName)) {
+                        if (isT(conditionName)) {
                             shouldHandle = true;
                         } else if (conditionName instanceof ELispCons list) {
                             for (Object sym : list) {
@@ -1669,7 +1672,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static Object autoload(ELispSymbol function, ELispString file, Object docstring, Object interactive, Object type) {
             // TODO: Add support in evalSub
-            if (!ELispSymbol.isNil(function.getFunction())) {
+            if (!isNil(function.getFunction())) {
                 return false;
             }
             function.setFunction(new ELispCons.ListBuilder()
@@ -1752,7 +1755,7 @@ public class BuiltInEval extends ELispBuiltIns {
         public static Object apply(Object function, Object[] arguments) {
             List<Object> objects = new ArrayList<>(Arrays.asList(arguments).subList(0, arguments.length - 1));
             Object last = arguments[arguments.length - 1];
-            if (!ELispSymbol.isNil(last)) {
+            if (!isNil(last)) {
                 objects.addAll(asCons(last));
             }
             arguments = objects.toArray();

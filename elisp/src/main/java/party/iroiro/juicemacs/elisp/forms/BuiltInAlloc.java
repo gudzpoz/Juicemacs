@@ -11,6 +11,8 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+
 public class BuiltInAlloc extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -48,7 +50,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
         public static ELispBoolVector makeBoolVector(long length, Object init) {
             int len = Math.toIntExact(length);
             BitSet bitSet;
-            if (ELispSymbol.isNil(init)) {
+            if (isNil(init)) {
                 bitSet = new BitSet(len);
             } else {
                 byte[] initBytes = new byte[Math.ceilDiv(len, Byte.SIZE)];

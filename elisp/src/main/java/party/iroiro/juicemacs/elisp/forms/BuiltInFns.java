@@ -17,6 +17,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**
  * Built-in functions from {@code src/comp.c}
@@ -32,7 +33,7 @@ public class BuiltInFns extends ELispBuiltIns {
     }
 
     public static Iterator<?> iterateSequence(Object sequence) {
-        if (ELispSymbol.isNil(sequence)) {
+        if (isNil(sequence)) {
             return Collections.emptyIterator();
         }
         return switch (sequence) {
@@ -42,6 +43,13 @@ public class BuiltInFns extends ELispBuiltIns {
             case ELispBoolVector boolVector -> boolVector.iterator();
             default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         };
+    }
+
+    private static boolean expectNil(ELispSymbol seq) {
+        if (isNil(seq)) {
+            return false;
+        }
+        throw ELispSignals.wrongTypeArgument(SEQUENCEP, seq);
     }
 
     /**
@@ -98,7 +106,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FLength extends ELispBuiltInBaseNode {
         @Specialization
         public static long lengthNil(ELispSymbol sequence) {
-            if (ELispSymbol.isNil(sequence)) {
+            if (isNil(sequence)) {
                 return 0;
             }
             throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
@@ -271,8 +279,8 @@ public class BuiltInFns extends ELispBuiltIns {
         // TODO: Handle symbols
         @Specialization
         public static boolean stringEqual(Object s1, Object s2) {
-            boolean nil1 = ELispSymbol.isNil(s1);
-            boolean nil2 = ELispSymbol.isNil(s2);
+            boolean nil1 = isNil(s1);
+            boolean nil2 = isNil(s2);
             if (nil1 && nil2) {
                 return true;
             }
@@ -541,10 +549,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FCopySequence extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean copySequenceNil(ELispSymbol arg) {
-            if (ELispSymbol.isNil(arg)) {
-                return false;
-            }
-            throw ELispSignals.wrongTypeArgument(SEQUENCEP, arg);
+            return expectNil(arg);
         }
 
         @Specialization
@@ -750,7 +755,7 @@ public class BuiltInFns extends ELispBuiltIns {
             TruffleString s = string.toTruffleString();
             int length = s.codePointLengthUncached(ELispString.ENCODING);
             int start;
-            if (ELispSymbol.isNil(from)) {
+            if (isNil(from)) {
                 start = 0;
             } else {
                 start = asInt(from);
@@ -759,7 +764,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 }
             }
             int end;
-            if (ELispSymbol.isNil(to)) {
+            if (isNil(to)) {
                 end = length;
             } else {
                 end = asInt(to);
@@ -852,7 +857,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FNth extends ELispBuiltInBaseNode {
         @Specialization
         public static Object nth(long n, Object list) {
-            if (ELispSymbol.isNil(list)) {
+            if (isNil(list)) {
                 return false;
             }
             try {
@@ -874,10 +879,7 @@ public class BuiltInFns extends ELispBuiltIns {
         // TODO: Support other sequences
         @Specialization
         public static Object eltNil(ELispSymbol sequence, long n) {
-            if (ELispSymbol.isNil(sequence)) {
-                return false;
-            }
-            throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
+            return expectNil(sequence);
         }
         @Specialization
         public static Object eltCharTable(ELispCharTable sequence, long n) {
@@ -908,15 +910,15 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FMember extends ELispBuiltInBaseNode {
         @Specialization
         public static Object member(Object elt, Object list) {
-            if (ELispSymbol.isNil(list)) {
+            if (isNil(list)) {
                 return false;
             }
-            ELispCons.BrentTortoiseHareIterator iterator = asCons(list).listIterator(0);
-            while (iterator.hasNext()) {
-                if (FEqual.equal(iterator.currentCons().car(), elt)) {
-                    return iterator.currentCons();
+            ELispCons.ConsIterator iterator = asCons(list).consIterator(0);
+            while (iterator.hasNextCons()) {
+                ELispCons next = iterator.nextCons();
+                if (FEqual.equal(next.car(), elt)) {
+                    return next;
                 }
-                iterator.next();
             }
             return false;
         }
@@ -933,15 +935,15 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FMemq extends ELispBuiltInBaseNode {
         @Specialization
         public static Object memq(Object elt, Object list) {
-            if (ELispSymbol.isNil(list)) {
+            if (isNil(list)) {
                 return false;
             }
-            ELispCons.BrentTortoiseHareIterator iterator = asCons(list).listIterator(0);
-            while (iterator.hasNext()) {
-                if (BuiltInData.FEq.eq(iterator.currentCons().car(), elt)) {
-                    return iterator.currentCons();
+            ELispCons.ConsIterator iterator = asCons(list).consIterator(0);
+            while (iterator.hasNextCons()) {
+                ELispCons next = iterator.nextCons();
+                if (BuiltInData.FEq.eq(next.car(), elt)) {
+                    return next;
                 }
-                iterator.next();
             }
             return false;
         }
@@ -974,7 +976,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FAssq extends ELispBuiltInBaseNode {
         @Specialization
         public static Object assq(Object key, Object alist) {
-            if (ELispSymbol.isNil(alist)) {
+            if (isNil(alist)) {
                 return false;
             }
             for (Object e : asCons(alist)) {
@@ -1066,13 +1068,13 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FDelq extends ELispBuiltInBaseNode {
         @Specialization
         public static Object delq(Object elt, Object list) {
-            if (ELispSymbol.isNil(list)) {
+            if (isNil(list)) {
                 return false;
             }
             ELispCons cons = asCons(list);
             while (BuiltInData.FEq.eq(cons.car(), elt)) {
                 Object cdr = cons.cdr();
-                if (ELispSymbol.isNil(cdr)) {
+                if (isNil(cdr)) {
                     return false;
                 }
                 cons = asCons(cdr);
@@ -1114,16 +1116,13 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FDelete extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean deleteNil(Object elt, ELispSymbol seq) {
-            if (ELispSymbol.isNil(seq)) {
-                return false;
-            }
-            throw ELispSignals.wrongTypeArgument(SEQUENCEP, seq);
+            return expectNil(seq);
         }
         @Specialization
         public static Object deleteList(Object elt, ELispCons seq) {
             while (FEqual.equal(elt, seq.car())) {
                 Object cdr = seq.cdr();
-                if (ELispSymbol.isNil(cdr)) {
+                if (isNil(cdr)) {
                     return false;
                 }
                 seq = asCons(cdr);
@@ -1176,10 +1175,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FNreverse extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean nreverseNil(ELispSymbol seq) {
-            if (ELispSymbol.isNil(seq)) {
-                return false;
-            }
-            throw ELispSignals.wrongTypeArgument(SEQUENCEP, seq);
+            return expectNil(seq);
         }
 
         @Specialization
@@ -1200,7 +1196,7 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static ELispCons nreverseList(ELispCons seq) {
             ELispCons head = new ELispCons(seq.car());
-            if (ELispSymbol.isNil(seq.cdr())) {
+            if (isNil(seq.cdr())) {
                 return head;
             }
             for (Object e : asCons(seq.cdr())) {
@@ -1302,14 +1298,14 @@ public class BuiltInFns extends ELispBuiltIns {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
             }
-            ELispSymbol eq = ELispSymbol.isNil(predicate) ? ELispContext.EQ : asSym(predicate);
+            ELispSymbol eq = isNil(predicate) ? ELispContext.EQ : asSym(predicate);
             Iterator<Object> iterator = cons.iterator();
             try {
                 Object[] args = new Object[2];
                 args[0] = prop;
                 while (iterator.hasNext()) {
                     args[1] = iterator.next();
-                    if (!ELispSymbol.isNil(BuiltInEval.FFuncall.funcall(eq, args))) {
+                    if (!isNil(BuiltInEval.FFuncall.funcall(eq, args))) {
                         return iterator.next();
                     }
                     iterator.next();
@@ -1358,14 +1354,14 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FPlistPut extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispCons plistPut(Object plist, Object prop, Object val, Object predicate) {
-            if (ELispSymbol.isNil(predicate)) {
+            if (isNil(predicate)) {
                 return plistPutEq(plist, prop, val);
             }
             throw new UnsupportedOperationException();
         }
 
         private static ELispCons plistPutEq(Object plist, Object prop, Object val) {
-            if (ELispSymbol.isNil(plist)) {
+            if (isNil(plist)) {
                 return ELispCons.listOf(prop, val);
             }
             ELispCons list = asCons(plist);
@@ -1554,7 +1550,7 @@ public class BuiltInFns extends ELispBuiltIns {
             Object result = false;
             @Nullable Object prev = null;
             for (Object arg : lists) {
-                if (ELispSymbol.isNil(arg)) {
+                if (isNil(arg)) {
                     continue;
                 }
                 if (prev == null) {
@@ -1726,14 +1722,14 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static boolean featurep(ELispSymbol feature, Object subfeature) {
             Object isMem = FMemq.memq(feature, ELispContext.FEATURES.getValue());
-            if (ELispSymbol.isNil(isMem)) {
-                return !ELispSymbol.isNil(isMem);
+            if (isNil(isMem)) {
+                return !isNil(isMem);
             }
-            if (ELispSymbol.isNil(subfeature)) {
+            if (isNil(subfeature)) {
                 return true;
             }
             ELispSymbol feat = asSym(BuiltInData.FCar.car(isMem));
-            return !ELispSymbol.isNil(FMemq.memq(subfeature, feat.getProperty(SUBFEATURES)));
+            return !isNil(FMemq.memq(subfeature, feat.getProperty(SUBFEATURES)));
         }
     }
 
@@ -1751,10 +1747,10 @@ public class BuiltInFns extends ELispBuiltIns {
         public static Object provide(ELispSymbol feature, Object subfeatures) {
             ELispSymbol features = ELispContext.FEATURES;
             Object isMem = FMemq.memq(feature, features.getValue());
-            if (ELispSymbol.isNil(isMem)) {
+            if (isNil(isMem)) {
                 features.setValue(new ELispCons(feature, features.getValue()));
             }
-            if (!ELispSymbol.isNil(subfeatures)) {
+            if (!isNil(subfeatures)) {
                 feature.putProperty(SUBFEATURES, subfeatures);
             }
             // TODO: Run after-load-alist hooks
@@ -1793,7 +1789,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (FFeaturep.featurep(feature, false)) {
                 return true;
             }
-            if (ELispSymbol.isNil(filename)) {
+            if (isNil(filename)) {
                 filename = new ELispString(feature.name());
             }
             return BuiltInLRead.loadFile(ELispLanguage.get(this), filename);
@@ -2548,7 +2544,7 @@ public class BuiltInFns extends ELispBuiltIns {
             // TODO: Char index to code point index
             int index = haystack.value().indexOfStringUncached(
                     needle.value(),
-                    (int) ELispSymbol.notNilOr(startPos, 0),
+                    (int) notNilOr(startPos, 0),
                     (int) haystack.codepointCount(),
                     ELispString.ENCODING
             );

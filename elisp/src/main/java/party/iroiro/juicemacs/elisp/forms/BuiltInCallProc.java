@@ -4,9 +4,10 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInCallProc extends ELispBuiltIns {
     @Override
@@ -137,7 +138,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
     public abstract static class FGetenvInternal extends ELispBuiltInBaseNode {
         @Specialization
         public static Object getenvInternal(ELispString variable, Object env) {
-            if (!ELispSymbol.isNil(env)) {
+            if (!isNil(env)) {
                 // TODO: process-environment?
                 throw new UnsupportedOperationException();
             }

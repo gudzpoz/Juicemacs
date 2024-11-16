@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
@@ -172,7 +173,7 @@ public final class ELispString implements TruffleObject, ELispValue {
             long start = (long) list.get(i);
             long end = (long) list.get(i + 1);
             Object props = list.get(i + 2);
-            if (ELispSymbol.isNil(props) || (props instanceof ELispCons cons && cons.size() % 2 == 0)) {
+            if (isNil(props) || (props instanceof ELispCons cons && cons.size() % 2 == 0)) {
                 intervals.add(new Properties((int) start, (int) end, props));
             } else {
                 throw ELispSignals.argsOutOfRange(start, end);

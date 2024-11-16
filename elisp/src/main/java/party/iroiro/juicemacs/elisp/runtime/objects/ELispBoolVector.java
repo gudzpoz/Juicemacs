@@ -2,6 +2,8 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import java.util.BitSet;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+
 public final class ELispBoolVector extends ELispVectorLike<Boolean> {
     private final BitSet bits;
     private final int size;
@@ -37,7 +39,7 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
 
     @Override
     public void setUntyped(int i, Object object) {
-        set(i, !ELispSymbol.isNil(object));
+        set(i, !isNil(object));
     }
 
     public ELispBoolVector reverse() {

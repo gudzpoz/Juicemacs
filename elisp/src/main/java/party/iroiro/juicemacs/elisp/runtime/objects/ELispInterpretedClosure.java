@@ -113,12 +113,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
         public ELispClosureCallNode() {
             Object env = getEnv();
-            isLexical = !ELispSymbol.isNil(env);
+            isLexical = !isNil(env);
             lexical = isLexical ? initializeLexical(env) : null;
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
             this.requiredArgSymbols = new ELispSymbol[0];
-            if (ELispSymbol.isNil(getArgs())) {
+            if (isNil(getArgs())) {
                 requiredArgs = 0;
                 maxArgs = 0;
                 this.optionalRestArgs = new ReadFunctionArgNode[0];
