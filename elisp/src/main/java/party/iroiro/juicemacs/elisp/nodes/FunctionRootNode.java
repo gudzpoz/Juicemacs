@@ -10,17 +10,18 @@ import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 
 public final class FunctionRootNode extends RootNode {
 
-    private String name;
+    private Object lispFunction;
+
     @SuppressWarnings("FieldMayBeFinal")
     @Child
     private ReadFunctionArgNode.ArgCountVerificationNode functionBody;
 
     public FunctionRootNode(ELispLanguage language,
-                            String name,
+                            Object lispFunction,
                             ReadFunctionArgNode.ArgCountVerificationNode functionBody,
                             @Nullable FrameDescriptor descriptor) {
         super(language, descriptor);
-        this.name = name;
+        this.lispFunction = lispFunction;
         this.functionBody = functionBody;
         adoptChildren();
     }
@@ -38,13 +39,17 @@ public final class FunctionRootNode extends RootNode {
         return true;
     }
 
-    @Override
-    public String getName() {
-        return name == null ? functionBody.getClass().getSimpleName() : name;
+    public Object getLispFunction() {
+        return lispFunction;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setLispFunction(Object lispFunction) {
+        this.lispFunction = lispFunction;
+    }
+
+    @Override
+    public String getName() {
+        return lispFunction.toString();
     }
 
     @Override

@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class ELispInterpretedClosure extends AbstractELispVector {
     @Nullable
@@ -56,10 +57,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                     node, node.requiredArgs, node.maxArgs
             );
-            String name = this.name == null ? this.toString() : this.name.toString();
             FunctionRootNode root = new FunctionRootNode(
-                    ELispLanguage.get(node), name, wrapper,
-                    ELispLexical.frameDescriptor(!ELispSymbol.isNil(getEnv()))
+                    ELispLanguage.get(node),
+                    this.name == null ? this : this.name,
+                    wrapper,
+                    ELispLexical.frameDescriptor(!isNil(getEnv()))
             );
             f = new ELispFunctionObject(root.getCallTarget());
             functionRootNode = root;
@@ -76,7 +78,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         this.name = name;
         FunctionRootNode f = functionRootNode;
         if (f != null) {
-            f.setName(name.toString());
+            f.setLispFunction(name);
         }
     }
 

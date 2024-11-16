@@ -2038,31 +2038,46 @@ public class BuiltInEval extends ELispBuiltIns {
             // TODO: get stack function symbols
             @Nullable
             Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
-                int i = 0;
+                int i = isNil(base) ? 0 : -1;
 
                 @Override
                 @Nullable
                 public Object visitFrame(FrameInstance frameInstance) {
+                    CallTarget frameTarget = frameInstance.getCallTarget();
+                    if (frameTarget == null) {
+                        return null;
+                    }
+                    Object f = getFunctionObject(frameTarget);
+                    if (i == -1 && base == f) {
+                        i = 0;
+                    }
                     if (i == nframes) {
                         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
                         boolean evaluated = true;
-                        Object f = false;
                         ELispCons.ListBuilder args = new ELispCons.ListBuilder();
                         for (Object argument : frame.getArguments()) {
                             args.add(argument);
                         }
-                        ELispCons argInfo = ELispCons.listOf(
-                                (long) frame.getArguments().length,
-                                args
-                        );
-                        Object flags = false;
-                        return FFuncall.funcall(
-                                function,
-                                new Object[]{evaluated, f, argInfo, flags}
-                        );
+                        ELispCons argInfo = ELispCons.listOf((long) frame.getArguments().length, args);
+                        Object flags = false; // TODO: backtrace_debug_on_exit?
+                        return FFuncall.funcall(function, new Object[]{evaluated, f, argInfo, flags});
                     }
-                    i++;
+                    if (i != -1) {
+                        i++;
+                    }
                     return null;
+                }
+
+                private static Object getFunctionObject(CallTarget frameTarget) {
+                    if (!(frameTarget instanceof RootCallTarget rootCallTarget)) {
+                        throw new UnsupportedOperationException();
+                    }
+                    RootNode rootNode = rootCallTarget.getRootNode();
+                    return switch (rootNode) {
+                        case FunctionRootNode functionRootNode -> functionRootNode.getLispFunction();
+                        case ELispRootNode _ -> false;
+                        default -> throw new UnsupportedOperationException();
+                    };
                 }
             });
             return result == null ? false : result;
