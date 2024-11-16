@@ -353,10 +353,10 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
 
         public ListBuilder add(Object obj) {
-            return add(obj, 0, 0, 0, 0);
+            return addWithLocation(obj, 0, 0, 0, 0);
         }
 
-        public ListBuilder add(Object obj, int startLine, int startCol, int endLine, int endCol) {
+        public ListBuilder addWithLocation(Object obj, int startLine, int startCol, int endLine, int endCol) {
             if (tail == null) {
                 cons = new ELispCons(obj);
                 tail = cons;

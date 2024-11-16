@@ -140,7 +140,7 @@ public class ELispParser {
                         read();
                         if (peek() instanceof ParenClose) {
                             // (a b .) -> (a b \.)
-                            builder.add(
+                            builder.addWithLocation(
                                     ELispContext.intern("."),
                                     startLine, startColumn, 0, 0
                             );
@@ -154,7 +154,7 @@ public class ELispParser {
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
                         yield fixSourceLocation(object, lexer.getLine(), lexer.getColumn());
                     }
-                    builder.add(
+                    builder.addWithLocation(
                             nextObject(),
                             startLine, startColumn, lexer.getLine(), lexer.getColumn()
                     );

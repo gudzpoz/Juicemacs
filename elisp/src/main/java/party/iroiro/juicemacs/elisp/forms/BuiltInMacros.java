@@ -132,7 +132,7 @@ public class BuiltInMacros extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FExecuteKbdMacro extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void executeKbdMacro(Object macro, Object count, Object loopfunc) {
+        public static Void emacsExecuteKbdMacro(Object macro, Object count, Object loopfunc) {
             throw new UnsupportedOperationException();
         }
     }

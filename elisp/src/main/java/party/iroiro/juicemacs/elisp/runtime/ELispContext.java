@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -36,6 +37,12 @@ public final class ELispContext {
     @CompilerDirectives.TruffleBoundary
     public static ELispSymbol intern(String symbol) {
         return INTERN_MAP.computeIfAbsent(symbol, ELispSymbol::new);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    @Nullable
+    public static ELispSymbol getInterned(String symbol) {
+        return INTERN_MAP.get(symbol);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -83,6 +90,7 @@ public final class ELispContext {
         initSymbols(emacsSymbols());
         initSymbols(evalSymbols());
         initSymbols(fileioSymbols());
+        initSymbols(floatfnsSymbols());
         initSymbols(fnsSymbols());
         initSymbols(frameSymbols());
         initSymbols(keyboardSymbols());
@@ -124,6 +132,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInEmacs());
         initBuiltIns(language, new BuiltInEval());
         initBuiltIns(language, new BuiltInFileIO());
+        initBuiltIns(language, new BuiltInFloatFns());
         initBuiltIns(language, new BuiltInFns());
         initBuiltIns(language, new BuiltInFrame());
         initBuiltIns(language, new BuiltInKeyboard());
@@ -3852,4 +3861,12 @@ public final class ELispContext {
         };
     }
     //#endregion macros.c
+    //#region floatfns.c
+
+    private ELispSymbol[] floatfnsSymbols() {
+        return new ELispSymbol[]{
+
+        };
+    }
+    //#endregion floatfns.c
 }

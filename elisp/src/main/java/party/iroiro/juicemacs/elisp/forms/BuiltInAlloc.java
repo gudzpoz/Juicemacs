@@ -155,8 +155,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRecord extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void record(Object type, Object[] slots) {
-            throw new UnsupportedOperationException();
+        public static ELispRecord record(Object type, Object[] slots) {
+            Object[] inner = new Object[slots.length + 1];
+            System.arraycopy(slots, 0, inner, 1, slots.length);
+            inner[0] = type;
+            return new ELispRecord(inner);
         }
     }
 

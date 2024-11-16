@@ -74,6 +74,7 @@ var ArrayList<List<String>> templateTasks = [
         ['Emacs', 'emacs.c'],
         ['Eval', 'eval.c'],
         ['FileIO', 'fileio.c'],
+        ['FloatFns', 'floatfns.c'],
         ['Fns', 'fns.c'],
         ['Frame', 'frame.c'],
         ['Keyboard', 'keyboard.c'],

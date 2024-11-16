@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
@@ -144,11 +145,11 @@ public class BuiltInFns extends ELispBuiltIns {
             if (!(list instanceof ELispCons cons)) {
                 return 0L;
             }
-            return safeLength(cons);
+            return safeLengthCons(cons);
         }
 
         @CompilerDirectives.TruffleBoundary
-        private static long safeLength(ELispCons cons) {
+        private static long safeLengthCons(ELispCons cons) {
             HashSet<ELispCons> distinct = new HashSet<>();
             long count = 0;
             ELispCons.ConsIterator i = cons.consIterator(0);
@@ -335,8 +336,20 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringLessp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringLessp(Object string1, Object string2) {
-            throw new UnsupportedOperationException();
+        public static boolean stringLessp(Object string1, Object string2) {
+            String value1;
+            if (string1 instanceof ELispString s) {
+                value1 = s.toString();
+            } else {
+                value1 = asSym(string1).name();
+            }
+            String value2;
+            if (string2 instanceof ELispString s) {
+                value2 = s.toString();
+            } else {
+                value2 = asSym(string2).name();
+            }
+            return value1.compareTo(value2) < 0;
         }
     }
 
@@ -807,8 +820,19 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTake extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void take(Object n, Object list) {
-            throw new UnsupportedOperationException();
+        public static Object take(long n, Object list) {
+            if (isNil(list) || n <= 0) {
+                return false;
+            }
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            ELispCons.BrentTortoiseHareIterator iterator = asCons(list).listIterator(0);
+            for (int i = 0, limit = Math.toIntExact(n); i < limit; i++) {
+                if (!iterator.hasNext()) {
+                    break;
+                }
+                builder.add(iterator.next());
+            }
+            return builder.build();
         }
     }
 
@@ -1294,8 +1318,82 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSort extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void sort(Object seq, Object[] args) {
+        public static boolean sortNil(ELispSymbol seq, Object[] args) {
+            return expectNil(seq);
+        }
+        @Specialization
+        public static ELispVector sortVector(ELispVector seq, Object[] args) {
+            SortParameters params = SortParameters.parse(args);
+            // TODO
             throw new UnsupportedOperationException();
+        }
+        @Specialization
+        public static Object sortList(ELispCons seq, Object[] args) {
+            SortParameters params = SortParameters.parse(args);
+            Stream<Object> sorted = seq.stream().sorted(params);
+            if (params.inPlace) {
+                ELispCons.ConsIterator iterator = seq.consIterator(0);
+                sorted.forEachOrdered((o) -> iterator.nextCons().setCar(o));
+                return seq;
+            } else {
+                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+                sorted.forEachOrdered(builder::add);
+                return builder.build();
+            }
+        }
+
+        private record SortParameters(
+                @Nullable Object key,
+                @Nullable Object lessp,
+                boolean reverse,
+                boolean inPlace
+        ) implements Comparator<Object> {
+            public Object getKey(Object element) {
+                if (key == null) {
+                    return element;
+                }
+                return BuiltInEval.FFuncall.funcall(key, new Object[]{element});
+            }
+
+            public boolean isLessThan(Object a, Object b) {
+                return asBool(BuiltInEval.FFuncall.funcall(Objects.requireNonNullElse(lessp, VALUELT), new Object[]{a, b}));
+            }
+
+            static SortParameters parse(Object[] args) {
+                if (args.length == 0) {
+                    return new SortParameters(null, null, false, false);
+                }
+                if (args.length == 1) {
+                    return new SortParameters(null, args[0], false, true);
+                }
+                @Nullable Object key = null;
+                @Nullable Object lessp = null;
+                boolean reverse = false;
+                boolean inPlace = false;
+                for (int i = 0; i < args.length; i += 2) {
+                    Object option = args[i];
+                    Object value = args[i + 1];
+                    if (option == CKEY) {
+                        key = isNil(value) ? null : value;
+                    } else if (option == CLESSP) {
+                        lessp = isNil(value) ? null : value;
+                    } else if (option == CREVERSE) {
+                        reverse = !isNil(value);
+                    } else if (option == CIN_PLACE) {
+                        inPlace = !isNil(value);
+                    }
+                }
+                return new SortParameters(key, lessp, reverse, inPlace);
+            }
+
+            @Override
+            public int compare(Object o1, Object o2) {
+                if (BuiltInData.FEq.eq(o1, o2)) {
+                    return 0;
+                }
+                boolean less = isLessThan(getKey(o1), getKey(o2));
+                return reverse ? (less ? 1 : -1) : (less ? -1 : 1);
+            }
         }
     }
 
@@ -1522,8 +1620,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FValuelt extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void valuelt(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean valueltNumber(Number a, Number b) {
+            return BuiltInData.compareTo(a, b) < 0;
+        }
+        @Specialization
+        public static boolean valueltString(ELispString a, ELispString b) {
+            return FStringLessp.stringLessp(a, b);
         }
     }
 
@@ -1606,8 +1708,20 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapconcat extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapconcat(Object function, Object sequence, Object separator) {
-            throw new UnsupportedOperationException();
+        public static ELispString mapconcat(Object function, Object sequence, Object separator) {
+            Iterator<?> i = iterateSequence(sequence);
+            TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32();
+            while (i.hasNext()) {
+                Object result = BuiltInEval.FFuncall.funcall(function, new Object[]{i.next()});
+                builder.appendStringUncached(
+                        BuiltInPrint.FPrin1ToString.prin1ToString(result, false, false)
+                                .asTruffleString()
+                );
+                if (!isNil(separator) && i.hasNext()) {
+                    builder.appendStringUncached(asStr(separator).asTruffleString());
+                }
+            }
+            return new ELispString(builder.toStringUncached());
         }
     }
 
@@ -1663,8 +1777,13 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapcan extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapcan(Object function, Object sequence) {
-            throw new UnsupportedOperationException();
+        public static Object mapcan(Object function, Object sequence) {
+            Iterator<?> iterator = iterateSequence(sequence);
+            ArrayList<Object> results = new ArrayList<>();
+            while (iterator.hasNext()) {
+                results.add(BuiltInEval.FFuncall.funcall(function, new Object[]{iterator.next()}));
+            }
+            return FNconc.nconc(results.toArray());
         }
     }
 
@@ -1814,7 +1933,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(filename)) {
                 filename = new ELispString(feature.name());
             }
-            return BuiltInLRead.loadFile(ELispLanguage.get(this), filename);
+            return BuiltInLRead.loadFile(ELispLanguage.get(this), filename, isNil(noerror));
         }
     }
 

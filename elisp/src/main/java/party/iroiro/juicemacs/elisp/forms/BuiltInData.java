@@ -649,7 +649,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTypeOf extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol typeOf(Object object) {
+        public static Object typeOf(Object object) {
             return switch (object) {
                 case Boolean _, ELispSymbol _ -> SYMBOL;
                 case Long _, ELispBigNum _ -> INTEGER;
@@ -674,7 +674,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FClTypeOf extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol clTypeOf(Object object) {
+        public static Object clTypeOf(Object object) {
             return switch (object) {
                 case Long _ -> FIXNUM;
                 case Double _ -> FLOAT;
@@ -688,6 +688,13 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispVector _ -> VECTOR;
                 case ELispBoolVector _ -> BOOL_VECTOR;
                 case ELispCharTable _ -> CHAR_TABLE;
+                case ELispHashtable _ -> HASH_TABLE;
+                case ELispRecord record -> {
+                    if (record.getFirst() instanceof ELispRecord clazz && clazz.size() > 1) {
+                        yield clazz.get(1);
+                    }
+                    yield record.getFirst();
+                }
                 // TODO: Handle other pseudo-vectors
                 case ELispCons _ -> CONS;
                 default -> throw new UnsupportedOperationException();
@@ -2072,6 +2079,11 @@ public class BuiltInData extends ELispBuiltIns {
             array.set((int) idx, newelt);
             return newelt;
         }
+        @Specialization
+        public static Object asetRecord(ELispRecord array, long idx, Object newelt) {
+            array.set((int) idx, newelt);
+            return newelt;
+        }
     }
 
     /**
@@ -2232,8 +2244,16 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNumberToString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void numberToString(Object number) {
-            throw new UnsupportedOperationException();
+        public static ELispString numberToStringFixed(long number) {
+            return new ELispString(Long.toString(number));
+        }
+        @Specialization
+        public static ELispString numberToStringFloat(double number) {
+            return new ELispString(Double.toString(number));
+        }
+        @Specialization
+        public static ELispString numberToStringBigNum(ELispBigNum number) {
+            return new ELispString(number.toString());
         }
     }
 

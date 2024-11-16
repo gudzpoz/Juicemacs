@@ -93,13 +93,15 @@ public class BuiltInSearchTest extends BaseFormTest {
         try (Context context = Context.newBuilder("elisp")
                 .build()
         ) {
-//            assertEquals(24L, context.eval("elisp", REGEXP_TEST).asLong());
-            for (int i = 0; i < 10000; i++) {
-                assertEquals(0L, context.eval("elisp", """
-                        (string-match "^[_[:alpha:]]\\\\{4\\\\}$" "_abc")
-                        """
-                ).asLong());
-            }
+            assertEquals(24L, context.eval("elisp", REGEXP_TEST).asLong());
+            assertEquals(0L, context.eval("elisp", """
+                    (string-match "\\\\`<[^ <>\\t\\n\\f][^>\\t\\n\\f]*>" "<mouse-1>")
+                    """
+            ).asLong());
+            assertEquals(0L, context.eval("elisp", """
+                    (string-match "^[_[:alpha:]]\\\\{4\\\\}$" "_abc")
+                    """
+            ).asLong());
         }
     }
 

@@ -2027,8 +2027,8 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSpecialVariableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void specialVariableP(Object symbol) {
-            throw new UnsupportedOperationException();
+        public static boolean specialVariableP(ELispSymbol symbol) {
+            return symbol.isSpecial();
         }
     }
 

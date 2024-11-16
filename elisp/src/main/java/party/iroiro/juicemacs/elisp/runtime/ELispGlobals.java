@@ -40,6 +40,7 @@ public class ELispGlobals {
         emacsVars();
         evalVars();
         fileioVars();
+        floatfnsVars();
         fnsVars();
         frameVars();
         keyboardVars();
@@ -79,6 +80,7 @@ public class ELispGlobals {
         evalPostInitVars();
         fnsPostInitVars();
         fileioPostInitVars();
+        floatfnsPostInitVars();
         framePostInitVars();
         keyboardPostInitVars();
         keymapPostInitVars();
@@ -1860,4 +1862,13 @@ public class ELispGlobals {
 
     }
     //#endregion macros.c
+    //#region floatfns.c
+
+    private static void floatfnsVars() {
+
+    }
+    private static void floatfnsPostInitVars() {
+
+    }
+    //#endregion floatfns.c
 }

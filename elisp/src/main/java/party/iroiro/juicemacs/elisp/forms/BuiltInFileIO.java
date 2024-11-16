@@ -964,8 +964,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCarLessThanCar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void carLessThanCar(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean carLessThanCar(ELispCons a, ELispCons b) {
+            return BuiltInData.compareTo(a.car(), b.car()) < 0;
         }
     }
 

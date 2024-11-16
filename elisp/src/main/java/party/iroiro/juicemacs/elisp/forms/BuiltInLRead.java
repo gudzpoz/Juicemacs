@@ -79,7 +79,9 @@ public class BuiltInLRead extends ELispBuiltIns {
                 ELispString test = new ELispString(name.value().concatUncached(suffixString.value(), ELispString.ENCODING, false));
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
                 boolean exists;
-                if (!isNil(handler) || (!isNil(predicate) && !isT(predicate))) {
+                if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
+                    exists = new File(test.asString()).canRead();
+                } else {
                     if (isNil(predicate) || isT(predicate)) {
                         exists = BuiltInFileIO.FFileReadableP.fileReadableP(test);
                     } else {
@@ -90,8 +92,6 @@ public class BuiltInLRead extends ELispBuiltIns {
                             exists = ret == DIR_OK || !BuiltInFileIO.FFileDirectoryP.fileDirectoryP(test);
                         }
                     }
-                } else {
-                    exists = new File(test.asString()).canRead();
                 }
                 if (exists) {
                     if (!newer) {
@@ -633,8 +633,12 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternSoft extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internSoft(Object name, Object obarray) {
-            throw new UnsupportedOperationException();
+        public static Object internSoft(ELispString name, Object obarray) {
+            if (!isNil(obarray)) {
+                throw new UnsupportedOperationException();
+            }
+            @Nullable ELispSymbol interned = getInterned(name.toString());
+            return interned == null ? false : interned;
         }
     }
 

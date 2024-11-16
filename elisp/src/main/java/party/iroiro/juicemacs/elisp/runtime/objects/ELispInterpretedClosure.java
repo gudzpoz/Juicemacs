@@ -260,13 +260,13 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         public ELispSymbol[] variableLikeSymbols(boolean isLexical) {
             int start;
             ELispSymbol[] symbols;
-            if (!isLexical) {
+            if (isLexical) {
+                symbols = new ELispSymbol[optionalArgs.length + (rest == null ? 0 : 1)];
+                start = 0;
+            } else {
                 symbols = new ELispSymbol[requiredArgs.length + optionalArgs.length + (rest == null ? 0 : 1)];
                 System.arraycopy(requiredArgs, 0, symbols, 0, requiredArgs.length);
                 start = requiredArgs.length;
-            } else {
-                symbols = new ELispSymbol[optionalArgs.length + (rest == null ? 0 : 1)];
-                start = 0;
             }
             System.arraycopy(optionalArgs, 0, symbols, start, optionalArgs.length);
             if (rest != null) {
