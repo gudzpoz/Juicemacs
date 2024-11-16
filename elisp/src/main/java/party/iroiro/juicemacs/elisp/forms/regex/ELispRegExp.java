@@ -7,8 +7,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 public abstract class ELispRegExp {
 
@@ -66,6 +69,24 @@ public abstract class ELispRegExp {
         ELispRegExpNode node = new ELispRegExpNode(compiled);
         RegExpFunctionNode root = new RegExpFunctionNode(language, node, string.toString());
         return new CompiledRegExp(root.getCallTarget());
+    }
+
+    public static ELispString quote(AbstractTruffleString string, TruffleString.Encoding encoding) {
+        int length = string.codePointLengthUncached(encoding);
+        TruffleStringIterator i = string.createCodePointIteratorUncached(encoding);
+        TruffleStringBuilderUTF32 quoted = TruffleStringBuilderUTF32.createUTF32(length);
+        while (i.hasNext()) {
+            int c = i.nextUncached();
+            boolean escapeNeeded = switch (c) {
+                case '^', '$', '+', '?', '*', '.', '[', '\\' -> true;
+                default -> false;
+            };
+            if (escapeNeeded) {
+                quoted.appendCodePointUncached('\\');
+            }
+            quoted.appendCodePointUncached(c);
+        }
+        return new ELispString(quoted.toStringUncached());
     }
 
     static ELispRegExpCompiler.Compiled getCompiled(AbstractTruffleString string,

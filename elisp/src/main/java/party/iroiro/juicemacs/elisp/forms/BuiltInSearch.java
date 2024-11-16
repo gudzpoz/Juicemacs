@@ -558,7 +558,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                 Object o = iterator.next();
                 if (iterator.hasNext()) {
                     Object p = iterator.next();
-                    if (BuiltInData.FNatnump.natnump(o) && BuiltInData.FNatnump.natnump(p)) {
+                    if ((BuiltInData.FNatnump.natnump(o) && BuiltInData.FNatnump.natnump(p)) || (isNil(o) && isNil(p))) {
                         builder.add(o).add(p);
                     } else {
                         throw new UnsupportedOperationException();
@@ -605,8 +605,8 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRegexpQuote extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void regexpQuote(Object string) {
-            throw new UnsupportedOperationException();
+        public static ELispString regexpQuote(ELispString string) {
+            return ELispRegExp.quote(string.asTruffleString(), ELispString.ENCODING);
         }
     }
 
