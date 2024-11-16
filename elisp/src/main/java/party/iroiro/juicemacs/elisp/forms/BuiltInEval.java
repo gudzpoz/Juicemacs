@@ -1808,7 +1808,11 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static boolean runHooks(Object[] hooks) {
             for (Object hook : hooks) {
-                Object value = asSym(hook).getValue();
+                ELispSymbol symbol = asSym(hook);
+                if (!symbol.isBound()) {
+                    continue;
+                }
+                Object value = symbol.getValue();
                 if (FFunctionp.functionp(value)) {
                     FFuncall.funcall(value, new Object[0]);
                 } else if (value instanceof ELispCons cons) {
@@ -1839,16 +1843,19 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FRunHookWithArgs extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean runHookWithArgs(ELispSymbol hook, Object[] args) {
+            if (!hook.isBound()) {
+                return false;
+            }
             Object value = hook.getValue();
-            if (ELispSymbol.isNil(value)) {
-                return false;
-            }
-            if (FFunctionp.functionp(value)) {
-                FFuncall.funcall(value, args);
-                return false;
-            }
-            for (Object function : asCons(value)) {
-                FFuncall.funcall(function, args);
+            if (!isNil(value)) {
+                if (FFunctionp.functionp(value)) {
+                    FFuncall.funcall(value, args);
+                } else {
+                    // TODO: Handle buffer-local hooks
+                    for (Object function : asCons(value)) {
+                        FFuncall.funcall(function, args);
+                    }
+                }
             }
             return false;
         }
@@ -1873,8 +1880,28 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHookWithArgsUntilSuccess extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void runHookWithArgsUntilSuccess(Object hook, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object runHookWithArgsUntilSuccess(ELispSymbol hook, Object[] args) {
+            if (!hook.isBound()) {
+                return false;
+            }
+            Object value = hook.getValue();
+            if (isNil(value)) {
+                return false;
+            }
+            ELispCons hooks;
+            if (value instanceof ELispCons cons) {
+                hooks = cons;
+            } else {
+                hooks = new ELispCons(value);
+            }
+            for (Object callable : hooks) {
+                // TODO: Handle buffer-local hooks
+                Object result = FFuncall.funcall(callable, args);
+                if (!isNil(result)) {
+                    return result;
+                }
+            }
+            return false;
         }
     }
 
