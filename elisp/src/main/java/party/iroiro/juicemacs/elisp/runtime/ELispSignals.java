@@ -1,17 +1,24 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.FileNotFoundException;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /// Internal presentations of `catch/throw` and `condition-case/signal`
 public abstract class ELispSignals {
@@ -20,7 +27,8 @@ public abstract class ELispSignals {
         private final Object tag;
         private final Object data;
 
-        private ELispNonLocalExitException(Object tag, Object data) {
+        private ELispNonLocalExitException(Object tag, Object data, @Nullable Node location) {
+            super(location);
             this.tag = tag;
             this.data = data;
         }
@@ -58,15 +66,28 @@ public abstract class ELispSignals {
     }
 
     public static final class ELispSignalException extends ELispNonLocalExitException {
+        public ELispSignalException(Object tag, Object data, @Nullable Node location) {
+            super(tag, data, location);
+        }
         public ELispSignalException(Object tag, Object data) {
-            super(tag, data);
+            this(tag, data, null);
         }
     }
 
     public static final class ELispCatchException extends ELispNonLocalExitException {
-        public ELispCatchException(Object tag, Object data) {
-            super(tag, data);
+        public ELispCatchException(Object tag, Object data, @Nullable Node location) {
+            super(tag, data, location);
         }
+        public ELispCatchException(Object tag, Object data) {
+            this(tag, data, null);
+        }
+    }
+
+    private static ELispSignalException attachLocation(ELispSignalException exception, Node location) {
+        if (exception.hasSourceLocation()) {
+            return exception;
+        }
+        return new ELispSignalException(exception.getTag(), exception.getData(), location);
     }
 
     private static ELispSignalException signal(ELispSymbol error, Object... data) {
@@ -146,4 +167,50 @@ public abstract class ELispSignals {
         return signal(ELispContext.SEARCH_FAILED);
     }
     //#endregion Object operations
+
+    //#region Remap
+    private final static Pattern CLASS_CAST_GUESS =
+            Pattern.compile("(?=class )?(\\S+) cannot be cast to (=?class )?(\\S+)");
+
+    private final static Map<String, ELispSymbol> CLASS_CAST_MAP;
+
+    static {
+        CLASS_CAST_MAP = Map.of(
+                "party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol",
+                ELispContext.SYMBOLP,
+                "party.iroiro.juicemacs.elisp.runtime.objects.ELispCons",
+                ELispContext.CONSP,
+                "party.iroiro.juicemacs.elisp.runtime.objects.ELispString",
+                ELispContext.STRINGP,
+                "java.lang.Long",
+                ELispContext.INTEGERP,
+                "java.lang.Double",
+                ELispContext.FLOATP
+        );
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public static RuntimeException remapException(RuntimeException e, Node location) {
+        ELispSignals.ELispSignalException mapped = switch (e) {
+            case ClassCastException cast -> {
+                Matcher matcher = CLASS_CAST_GUESS.matcher(cast.getMessage());
+                if (matcher.find()) {
+                    String actual = matcher.group(1);
+                    String expected = matcher.group(2);
+                    ELispSymbol predicate = CLASS_CAST_MAP.get(expected);
+                    if (predicate == null) {
+                        predicate = ELispContext.intern(expected);
+                    }
+                    yield ELispSignals.wrongTypeArgument(predicate, actual);
+                }
+                yield ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
+            }
+            case UnsupportedSpecializationException _ ->
+                    ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
+            case ELispSignals.ELispSignalException signal -> ELispSignals.attachLocation(signal, location);
+            default -> null;
+        };
+        return mapped == null ? e : ELispSignals.attachLocation(mapped, location);
+    }
+    //#endregion Remap
 }

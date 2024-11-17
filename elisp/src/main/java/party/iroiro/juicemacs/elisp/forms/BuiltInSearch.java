@@ -18,8 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CASE_FOLD_SEARCH;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSearch extends ELispBuiltIns {
@@ -550,7 +549,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         @Specialization
         public static boolean setMatchData(Object list, Object reseat) {
             if (!BuiltInData.FListp.listp(list)) {
-                throw new UnsupportedOperationException();
+                throw ELispSignals.wrongTypeArgument(LISTP, list);
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             Iterator<Object> iterator = asCons(list).iterator();

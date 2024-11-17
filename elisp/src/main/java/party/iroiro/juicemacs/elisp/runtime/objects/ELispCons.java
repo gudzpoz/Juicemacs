@@ -81,8 +81,9 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         this.endColumn = endColumn;
     }
 
+    @Nullable
     public SourceSection getSourceSection(Source source) {
-        return startLine == 0 ? source.createUnavailableSection() : source.createSection(startLine, startColumn, endLine, endColumn);
+        return startLine == 0 ? null : source.createSection(startLine, startColumn, endLine, endColumn);
     }
 
     @Override

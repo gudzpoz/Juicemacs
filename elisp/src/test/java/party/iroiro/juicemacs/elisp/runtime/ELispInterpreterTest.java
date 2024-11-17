@@ -1,13 +1,13 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.*;
 import org.junit.jupiter.api.Test;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -328,6 +328,116 @@ public class ELispInterpreterTest {
             assertTrue(c.eval("elisp", "(eval ast)").asBoolean());
             // Emacs: false
             assertFalse(c.eval("elisp", "(eval ast)").asBoolean());
+        }
+    }
+
+    @Test
+    public void testFullStackTrace() {
+        try (Context c = Context.newBuilder("elisp").build()) {
+            // Lisp functions
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (defalias 'f1 #'(lambda ()
+                          (f2)))
+                        (defalias 'f2 #'(lambda ()
+                          (f3)))
+                        (defalias 'f3 #'(lambda ()
+                          (f4)))
+                        (defalias 'f4 #'(lambda ()
+                          (f5)))
+                        (defalias 'f5 #'(lambda ()
+                          (signal 'error "test")))
+                        (f1)
+                        """)
+                );
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("signal", list.getFirst().getRootName());
+                assertEquals("BuiltInEval.java", list.getFirst().getSourceLocation().getSource().getName());
+                for (int i = 1; i <= 5; i++) {
+                    PolyglotException.StackFrame frame = list.get(i);
+                    int fn = 5 - i + 1;
+                    assertEquals("f" + fn, frame.getRootName());
+                    assertEquals(fn * 2, frame.getSourceLocation().getStartLine());
+                }
+                assertEquals("Unnamed", list.get(6).getRootName());
+                assertEquals(11, list.get(6).getSourceLocation().getStartLine());
+            }
+            // Built-in functions
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (defalias 'f1 #'(lambda () (f2)))
+                        (defalias 'f2 #'(lambda () (f3)))
+                        (defalias 'f3 #'(lambda () (autoload 1 1)))
+                        (f1)
+                        """)
+                );
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("autoload", list.getFirst().getRootName());
+            }
+            // Built-in function thrown
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (set-match-data 0)
+                        """)
+                );
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("set-match-data", list.getFirst().getRootName());
+                SourceSection location = list.getFirst().getSourceLocation();
+                assertNotNull(location);
+            }
+            // Macro expansion #1
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (defalias 'f1 (cons 'macro #'(lambda () (list 'signal ''error ''data))))
+                        (f1)
+                        """));
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("signal", list.getFirst().getRootName());
+                assertEquals("Unnamed", list.get(1).getRootName());
+                assertEquals(2, list.get(1).getSourceLocation().getStartLine());
+            }
+            // Macro expansion #2
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (defalias 'f1 (cons 'macro #'(lambda () 'undefined-var)))
+                        (f1)
+                        """));
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("Unnamed", list.getFirst().getRootName());
+                assertEquals(2, list.getFirst().getSourceLocation().getStartLine());
+            }
+            // Eval
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (eval
+                          '(signal 'error 'data))
+                        """)
+                );
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("signal", list.getFirst().getRootName());
+                assertEquals("Unnamed", list.get(1).getRootName());
+                assertEquals(2, list.get(1).getSourceLocation().getStartLine());
+            }
+            // Inlined
+            {
+                PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
+                        (+
+                          1
+                          2
+                          nil)
+                        """)
+                );
+                Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+                List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+                assertEquals("Unnamed", list.getFirst().getRootName());
+                assertEquals(4, list.getFirst().getSourceLocation().getEndLine());
+            }
         }
     }
 }

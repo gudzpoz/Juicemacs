@@ -9,6 +9,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -24,15 +25,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
 
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
-import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
@@ -49,6 +43,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEvalFactory.getFactories();
+    }
+
+    @Nullable
+    public static SourceSection getCallerSource() {
+        CallTarget callTarget = Truffle.getRuntime().iterateFrames(FrameInstance::getCallTarget, 1);
+        return callTarget instanceof RootCallTarget root ? root.getRootNode().getSourceSection() : null;
     }
 
     /**
@@ -1700,7 +1700,8 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAutoloadDoLoad extends ELispBuiltInBaseNode {
         @Specialization
-        public Object autoloadDoLoad(Object fundef, ELispSymbol funname, Object macroOnly) {
+        public Object autoloadDoLoad(Object fundef, ELispSymbol funname, Object macroOnly,
+                                     @Cached FunctionDispatchNode dispatchNode) {
             if (!(fundef instanceof ELispCons def) || def.car() != AUTOLOAD) {
                 return fundef;
             }
@@ -1711,7 +1712,10 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             boolean ignoreErrors = !isMacro && !isNil(macroOnly);
             // TODO: load_with_autoload_queue
-            loadFile(ELispLanguage.get(this), asCons(def.cdr()).car(), !ignoreErrors);
+            ELispRootNode root = loadFile(ELispLanguage.get(this), asCons(def.cdr()).car(), !ignoreErrors);
+            if (root != null) {
+                dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
+            }
 
             if (funname == NIL || ignoreErrors) {
                 return false;
@@ -1741,21 +1745,31 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEval extends ELispBuiltInBaseNode {
         @Specialization
-        public Object eval(Object form, boolean lexical) {
+        public Object eval(Object form, boolean lexical, @Cached FunctionDispatchNode dispatchNode) {
             try {
-                return CompilerDirectives.interpreterOnly(() -> evalForm(form, lexical));
+                return CompilerDirectives.interpreterOnly(() -> evalForm(form, lexical, dispatchNode));
             } catch (Exception e) {
                 throw e instanceof RuntimeException re ? re : CompilerDirectives.shouldNotReachHere();
             }
         }
 
-        private Object evalForm(Object form, boolean lexical) {
+        private Object evalForm(Object form, boolean lexical, FunctionDispatchNode dispatchNode) {
             ELispExpressionNode expr = ELispInterpretedNode.create(new Object[]{form}, lexical);
-            Source source = this.getRootNode().getSourceSection().getSource();
-            SourceSection sourceSection =
-                    form instanceof ELispCons cons ? cons.getSourceSection(source) : source.createUnavailableSection();
+            SourceSection callerSource = getCallerSource();
+            SourceSection sourceSection;
+            if (callerSource == null) {
+                Source source = Source.newBuilder(
+                        "elisp",
+                        "",
+                        "<eval#" + Integer.toHexString(System.identityHashCode(form)) + ">"
+                ).content(Source.CONTENT_NONE).build();
+                sourceSection = source.createSection(1);
+            } else {
+                Source source = callerSource.getSource();
+                sourceSection = form instanceof ELispCons cons ? cons.getSourceSection(source) : callerSource;
+            }
             ELispRootNode root = new ELispRootNode(ELispLanguage.get(this), expr, sourceSection);
-            return root.getCallTarget().call();
+            return dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
         }
     }
 

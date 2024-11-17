@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -14,8 +15,11 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class ELispBuiltIns {
+
+    static final ConcurrentHashMap<String, Source> BUILT_IN_SOURCES = new ConcurrentHashMap<>();
 
     protected ELispBuiltIns() {
         this(false);
@@ -54,6 +58,14 @@ public abstract class ELispBuiltIns {
     private final boolean inline;
 
     public final void initialize(ELispLanguage language, ELispContext context) {
+        Source javaSource = Source.newBuilder(
+                "java", "", this.getClass().getSimpleName() + ".java"
+        )
+                .content(Source.CONTENT_NONE)
+                .internal(false)
+                .build();
+        BUILT_IN_SOURCES.put(this.getClass().getSimpleName(), javaSource);
+
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
         for (NodeFactory<? extends ELispExpressionNode> factory : factories) {
             for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
@@ -76,10 +88,10 @@ public abstract class ELispBuiltIns {
                 FunctionRootNode rootNode = new FunctionRootNode(language, symbol, wrapper, null); // NOPMD
                 ELispSubroutine.@Nullable InlineInfo inlineInfo = null;
                 @Nullable Object inliner = null;
-                if (inline && !builtIn.rawArg()) {
-                    inliner = function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory
-                            ? inlineFactory
-                            : factory;
+                if (function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory) {
+                    inliner = inlineFactory;
+                } else if (inline && !builtIn.rawArg()) {
+                    inliner = factory;
                 }
                 if (inliner != null || builtIn.rawArg()) {
                     inlineInfo = new ELispSubroutine.InlineInfo(

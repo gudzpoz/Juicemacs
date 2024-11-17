@@ -11,6 +11,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispSignals.remapException;
+
 public class ReadFunctionArgNode extends ELispExpressionNode {
 
     protected final int index;
@@ -73,9 +75,9 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             }
             try {
                 return function.executeGeneric(frame);
-            } catch (ClassCastException | UnsupportedSpecializationException e) {
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw remapException(e);
+                throw remapException(e, this.function);
             }
         }
 

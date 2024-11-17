@@ -14,7 +14,16 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
 
     @Override
     public SourceSection getSourceSection() {
-        return JAVA_SOURCE.createUnavailableSection();
+        Class<?> enclosingClass = this.getClass();
+        while (enclosingClass.getEnclosingClass() != null) {
+            enclosingClass = enclosingClass.getEnclosingClass();
+        }
+        String simpleName = enclosingClass.getSimpleName();
+        if (simpleName.endsWith("Factory")) {
+            simpleName = simpleName.substring(0, simpleName.length() - "Factory".length());
+        }
+        Source source = ELispBuiltIns.BUILT_IN_SOURCES.getOrDefault(simpleName, JAVA_SOURCE);
+        return source.createUnavailableSection();
     }
 
     /// A factory interface for hand-rolled built-in function inlining

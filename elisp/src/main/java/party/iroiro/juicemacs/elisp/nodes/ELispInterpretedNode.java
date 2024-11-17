@@ -2,13 +2,12 @@ package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -26,20 +25,17 @@ import java.util.Objects;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
-/**
- * Special nodes for interpreted ELisp
- *
- * <p>
- * Interpreted ELisp is too dynamic to compile to a constant AST. This class (and its subclasses)
- * are used to represent interpreted ELisp expressions, somehow dynamically.
- * </p>
- *
- * <h2>Dynamically Constant AST</h2>
- * <p>
- * Basically, what it does is to try to "predict" the AST of the expression at compile time, and
- * dynamically "replaces" the nodes that we have had a wrong prediction.
- * </p>
- */
+/// Special nodes for interpreted ELisp
+///
+/// Interpreted ELisp is too dynamic to compile to a constant AST. This class (and its subclasses)
+/// are used to represent interpreted ELisp expressions, somehow dynamically.
+///
+/// ## Dynamically Constant AST
+///
+/// Basically, what it does is to try to "predict" the AST of the expression at compile time, and
+/// dynamically "replaces" the nodes that we have had a wrong prediction.
+///
+/// @see ELispConsExpressionNode
 public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
     public static ELispInterpretedNode create(Object expression) {
@@ -151,7 +147,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private final static class ELispLongLiteralNode extends ELispInterpretedNode {
-        private final long literal;
+        private final Long literal;
 
         public ELispLongLiteralNode(long literal) {
             this.literal = literal;
@@ -173,7 +169,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private final static class ELispDoubleLiteralNode extends ELispInterpretedNode {
-        private final double literal;
+        private final Double literal;
 
         public ELispDoubleLiteralNode(double literal) {
             this.literal = literal;
@@ -363,7 +359,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         private ConsInlinedAstNode(Object function, ELispCons cons) {
             super(function, cons, false);
-            inlinedNode = generateInlineNode(cons, Objects.requireNonNull(((ELispSubroutine) function).inline()));
+            ELispSubroutine subroutine = (ELispSubroutine) function;
+            inlinedNode = generateInlineNode(cons, Objects.requireNonNull(subroutine.inline()));
             adoptChildren();
         }
 
@@ -424,8 +421,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public void executeVoid(VirtualFrame frame) {
             try {
                 inlinedNode.executeVoid(frame);
-            } catch (ClassCastException | UnsupportedSpecializationException e) {
-                throw remapException(e);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw rewriteException(e);
             }
         }
 
@@ -433,8 +430,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
             try {
                 return inlinedNode.executeLong(frame);
-            } catch (ClassCastException | UnsupportedSpecializationException e) {
-                throw remapException(e);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw rewriteException(e);
             }
         }
 
@@ -442,8 +439,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
             try {
                 return inlinedNode.executeDouble(frame);
-            } catch (ClassCastException | UnsupportedSpecializationException e) {
-                throw remapException(e);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw rewriteException(e);
             }
         }
 
@@ -451,9 +448,14 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             try {
                 return inlinedNode.executeGeneric(frame);
-            } catch (ClassCastException | UnsupportedSpecializationException e) {
-                throw remapException(e);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw rewriteException(e);
             }
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        public RuntimeException rewriteException(RuntimeException e) {
+            return ELispSignals.remapException(e, getParent() == null ? this : getParent());
         }
     }
 
@@ -524,7 +526,12 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Specialization
         public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
-            return updateGenerated(frame, dispatchNode).executeGeneric(frame);
+            try {
+                return updateGenerated(frame, dispatchNode).executeGeneric(frame);
+            } catch (ELispSignals.ELispSignalException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw ELispSignals.remapException(e, this);
+            }
         }
 
         public ELispExpressionNode updateGenerated(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
@@ -652,14 +659,36 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 type = newType;
                 callNode = node;
                 adoptChildren();
+                if (cons.getStartLine() == 0) {
+                    fillDebugInfo();
+                }
             }
             return node;
         }
 
+        private void fillDebugInfo() {
+            Node parent = getParent();
+            while (parent != null) {
+                if (parent instanceof ELispConsExpressionNode consExpr && consExpr.cons.getStartLine() != 0) {
+                    ELispCons upper = consExpr.cons;
+                    cons.setSourceLocation(
+                            upper.getStartLine(),
+                            upper.getStartColumn(),
+                            upper.getEndLine(),
+                            upper.getEndColumn()
+                    );
+                    return;
+                }
+                parent = parent.getParent();
+            }
+        }
+
         private Object autoload(ELispCons function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            IndirectCallNode indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
             ELispString file = asStr(asCons(function.cdr()).car());
-            BuiltInLRead.loadFile(ELispLanguage.get(this), file, true);
+            ELispRootNode root = BuiltInLRead.loadFile(ELispLanguage.get(this), file, true);
+            indirectCallNode.call(Objects.requireNonNull(root).getCallTarget());
             return getIndirectFunction(cons.car());
         }
 

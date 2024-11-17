@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -13,7 +14,10 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
+import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -1926,14 +1930,20 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRequire extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean require(ELispSymbol feature, Object filename, Object noerror) {
+        public boolean require(ELispSymbol feature, Object filename, Object noerror,
+                               @Cached FunctionDispatchNode dispatchNode) {
             if (FFeaturep.featurep(feature, false)) {
                 return true;
             }
             if (isNil(filename)) {
                 filename = new ELispString(feature.name());
             }
-            return BuiltInLRead.loadFile(ELispLanguage.get(this), filename, isNil(noerror));
+            ELispRootNode root = BuiltInLRead.loadFile(ELispLanguage.get(this), filename, isNil(noerror));
+            if (root == null) {
+                return false;
+            }
+            dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
+            return true;
         }
     }
 

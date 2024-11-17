@@ -194,9 +194,8 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
         @ExplodeLoop
         public Object execute(VirtualFrame frame, boolean isVoid) {
-            Object[] newValues;
             int length = variableLikeBoundSymbols.length;
-            newValues = new Object[length];
+            Object[] newValues = new Object[length];
             for (int i = 0; i < length; i++) {
                 newValues[i] = optionalRestArgs[i].executeGeneric(frame);
             }
