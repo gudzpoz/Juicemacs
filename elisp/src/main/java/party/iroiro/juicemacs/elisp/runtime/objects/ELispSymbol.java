@@ -635,6 +635,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     public static class ThreadLocalValue implements InternalValue {
         private final ThreadLocal<Value.Forwarded> threadLocal = new ThreadLocal<>();
 
+        @CompilerDirectives.TruffleBoundary
         @Override
         public Object getValue() {
             @Nullable Value forwarded = threadLocal.get();
@@ -642,6 +643,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
             return forwarded == null ? UNBOUND : forwarded.getValue();
         }
 
+        @CompilerDirectives.TruffleBoundary
         public boolean isBoundAndSetValue(Object value) {
             @Nullable Value forwarded = threadLocal.get();
             //noinspection ConstantValue
@@ -652,6 +654,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
             return false;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Override
         public void setValue(Object value) {
             if (value == UNBOUND) {

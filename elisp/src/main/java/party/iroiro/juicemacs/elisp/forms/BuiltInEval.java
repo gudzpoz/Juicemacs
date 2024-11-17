@@ -4,15 +4,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -478,16 +476,25 @@ public class BuiltInEval extends ELispBuiltIns {
                 )) {
                     return null;
                 }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                 ELispLexical.@Nullable LexicalReference lexical =
                         lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, asSym(symbol));
-                int newIndex;
-                if (lexical == null) {
-                    newIndex = ELispFrameSlotNode.BYPASS;
+                boolean dynamic = slowPathUpdateSlots(lexical, write);
+                if (dynamic) {
+                    return setDynamic(frame);
                 } else {
-                    newIndex = lexical.index();
+                    top = ELispLexical.getMaterializedTop(frame);
+                    return null;
                 }
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            private boolean slowPathUpdateSlots(
+                    ELispLexical.@Nullable LexicalReference lexical,
+                    ELispFrameSlotNode.@Nullable ELispFrameSlotWriteNode write
+            ) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                int newIndex = lexical == null ? ELispFrameSlotNode.BYPASS : lexical.index();
                 if (write == null || write.getSlot() != newIndex) {
                     if (lexical == null) {
                         top = DYNAMIC;
@@ -498,19 +505,16 @@ public class BuiltInEval extends ELispBuiltIns {
                         );
                         writeNode = write;
                         adoptChildren();
-                        return setDynamic(frame);
+                        return true;
                     } else {
-                        top = ELispLexical.getMaterializedTop(frame);
                         write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
                                 newIndex, lexical.frame(), inner
                         );
                         writeNode = write;
                         adoptChildren();
                     }
-                } else {
-                    top = ELispLexical.getMaterializedTop(frame);
                 }
-                return null;
+                return false;
             }
 
             private Object setDynamic(VirtualFrame frame) {
@@ -956,6 +960,67 @@ public class BuiltInEval extends ELispBuiltIns {
             return new LetxNode(varlist, body);
         }
 
+        private final static class LetxMakeScopeNode extends FLet.MakeScopeNode {
+            private final ELispSymbol[] symbols;
+            @SuppressWarnings("FieldMayBeFinal")
+            @Children
+            ELispInterpretedNode[] valueNodes;
+
+            public LetxMakeScopeNode(ELispInterpretedNode[] values, ELispSymbol[] symbols) {
+                this.symbols = symbols;
+                valueNodes = values;
+                adoptChildren();
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+
+            @ExplodeLoop
+            @Override
+            public ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame) {
+                ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
+                ArrayList<Object> specialValues = new ArrayList<>();
+
+                ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                boolean dynamicBinding = lexicalFrame == null;
+                int length = symbols.length;
+                try {
+                    for (int i = 0; i < length; i++) {
+                        ELispSymbol symbol = symbols[i];
+                        Object value = valueNodes[i].executeGeneric(frame);
+                        if (dynamicBinding || ELispLexical.isDynamic(frame, symbol)) {
+                            specialBindings.add(symbol);
+                            specialValues.add(symbol.swapThreadLocalValue(value));
+                        } else {
+                            // TODO: Check if Truffle bail out on this.
+                            lexicalFrame = lexicalFrame.fork(frame);
+                            lexicalFrame.addVariable(frame, symbol, value);
+                        }
+                    }
+                } catch (Throwable e) {
+                    // Restore dynamic scopes.
+                    ELispLexical.pushDynamic(
+                            specialBindings.toArray(new ELispSymbol[0]),
+                            specialValues.toArray(new Object[0])
+                    ).close();
+                    // The caller is responsible for restoring lexical scopes.
+                    throw e;
+                }
+                ELispLexical.Dynamic handle = null;
+                if (!specialBindings.isEmpty()) {
+                    ELispSymbol[] specialSymbols = specialBindings.toArray(new ELispSymbol[0]);
+                    Object[] values = specialValues.toArray(new Object[0]);
+                    handle = new ELispLexical.Dynamic(
+                            specialSymbols,
+                            values
+                    );
+                }
+                return handle;
+            }
+        }
+
         private static class LetxNode extends ELispExpressionNode {
             @SuppressWarnings("FieldMayBeFinal")
             @Child
@@ -965,7 +1030,7 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispExpressionNode bodyNode;
 
             public LetxNode(Object varlist, Object[] body) {
-                scopeNode = FLet.makeScope(varlist, true);
+                scopeNode = FLet.makeScope(varlist, LetxMakeScopeNode::new);
                 bodyNode = new FProgn.PrognBlockNode(ELispInterpretedNode.create(body));
                 adoptChildren();
             }
@@ -1009,17 +1074,20 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "let", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FLet extends ELispBuiltInBaseNode {
-        static class MakeScopeNode extends ELispExpressionNode {
-            private final boolean progressive;
-            private final Object[] symbols;
+        private abstract sealed static class MakeScopeNode extends ELispExpressionNode {
+            @Override
+            public abstract ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame);
+        }
+
+        private final static class LetMakeScopeNode extends MakeScopeNode {
+            private final ELispSymbol[] symbols;
             @SuppressWarnings("FieldMayBeFinal")
             @Children
             ELispInterpretedNode[] valueNodes;
 
-            public MakeScopeNode(List<ELispInterpretedNode> values, boolean progressive, Object[] symbols) {
-                this.progressive = progressive;
+            public LetMakeScopeNode(ELispInterpretedNode[] values, ELispSymbol[] symbols) {
                 this.symbols = symbols;
-                valueNodes = values.toArray(ELispInterpretedNode[]::new);
+                valueNodes = values;
                 adoptChildren();
             }
 
@@ -1036,65 +1104,46 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                 boolean dynamicBinding = lexicalFrame == null;
-                Object[] lexicalValues = (dynamicBinding && !progressive) ? new Object[0] : new Object[symbols.length];
+                Object[] lexicalValues = dynamicBinding ? new Object[0] : new Object[symbols.length];
                 int length = symbols.length;
-                try {
-                    for (int i = 0; i < length; i++) {
-                        ELispSymbol symbol = asSym(symbols[i]);
-                        Object value = valueNodes[i].executeGeneric(frame);
-                        if (dynamicBinding || ELispLexical.isDynamic(frame, symbol)) {
-                            specialBindings.add(symbol);
-                            specialValues.add(progressive ? symbol.swapThreadLocalValue(value) : value);
-                        } else {
-                            // TODO: Check if Truffle bail out on this.
-                            if (progressive) {
-                                lexicalFrame = lexicalFrame.fork(frame);
-                                lexicalFrame.addVariable(frame, symbol, value);
-                            } else {
-                                lexicalValues[i] = value;
-                            }
-                        }
+                for (int i = 0; i < length; i++) {
+                    ELispSymbol symbol = symbols[i];
+                    Object value = valueNodes[i].executeGeneric(frame);
+                    if (dynamicBinding || ELispLexical.isDynamic(frame, symbol)) {
+                        specialBindings.add(symbol);
+                        specialValues.add(value);
+                    } else {
+                        lexicalValues[i] = value;
                     }
-                } catch (Throwable e) {
-                    if (progressive) {
-                        // Restore dynamic scopes.
-                        ELispLexical.pushDynamic(
-                                specialBindings.toArray(new ELispSymbol[0]),
-                                specialValues.toArray(new Object[0])
-                        ).close();
-                        // The caller is responsible for restoring lexical scopes.
-                    }
-                    throw e;
                 }
                 ELispLexical.Dynamic handle = null;
                 if (!specialBindings.isEmpty()) {
                     ELispSymbol[] specialSymbols = specialBindings.toArray(new ELispSymbol[0]);
                     Object[] values = specialValues.toArray(new Object[0]);
-                    handle = progressive ? new ELispLexical.Dynamic(
-                            specialSymbols,
-                            values
-                    ) : ELispLexical.pushDynamic(
+                    handle = ELispLexical.pushDynamic(
                             specialSymbols,
                             values
                     );
                 }
-                if (!progressive) {
-                    if (!dynamicBinding) {
-                        lexicalFrame = lexicalFrame.fork(frame);
-                        for (int i = 0; i < length; i++) {
-                            Object value = lexicalValues[i];
-                            if (value != null) {
-                                lexicalFrame.addVariable(frame, asSym(symbols[i]), value);
-                            }
+                if (!dynamicBinding) {
+                    lexicalFrame = lexicalFrame.fork(frame);
+                    for (int i = 0; i < length; i++) {
+                        Object value = lexicalValues[i];
+                        if (value != null) {
+                            lexicalFrame.addVariable(frame, asSym(symbols[i]), value);
                         }
                     }
                 }
                 return handle;
             }
         }
-        static MakeScopeNode makeScope(Object varlist, boolean progressive) {
+
+        static <T extends MakeScopeNode> MakeScopeNode makeScope(
+                Object varlist,
+                BiFunction<ELispInterpretedNode[], ELispSymbol[], T> scopeConstructor
+        ) {
             CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            List<Object> symbolList = new ArrayList<>();
+            List<ELispSymbol> symbolList = new ArrayList<>();
             List<ELispInterpretedNode> values = new ArrayList<>();
             for (Object assignment : ELispCons.iterate(varlist)) {
                 Object symbol;
@@ -1111,11 +1160,14 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
                     value = cdr.car();
                 }
-                symbolList.add(symbol);
+                symbolList.add(asSym(symbol));
                 values.add(ELispInterpretedNode.create(value));
             }
-            Object[] symbols = symbolList.toArray();
-            return new MakeScopeNode(values, progressive, symbols);
+            ELispSymbol[] symbols = symbolList.toArray(ELispSymbol[]::new);
+            return scopeConstructor.apply(
+                    values.toArray(ELispInterpretedNode[]::new),
+                    symbols
+            );
         }
 
         @Specialization
@@ -1137,7 +1189,7 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispExpressionNode bodyNode;
 
             public LetNode(Object varlist, Object[] body) {
-                scopeNode = FLet.makeScope(varlist, false);
+                scopeNode = FLet.makeScope(varlist, LetMakeScopeNode::new);
                 bodyNode = FProgn.progn(body);
                 adoptChildren();
             }
@@ -1221,7 +1273,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public WhileNode(Object test, Object[] body) {
                 loopNode = Truffle.getRuntime().createLoopNode(new RepeatingBodyNode(test, body));
                 adoptChildren();
-                loopNode.adoptChildren();
             }
 
             @Override
@@ -1996,19 +2047,59 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "funcall", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FFuncall extends ELispBuiltInBaseNode {
+    public abstract static class FFuncall extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public static Object funcall(Object function, Object[] arguments) {
+            return getFunctionObject(function).callTarget().call(arguments);
+        }
+
+        public static ELispFunctionObject getFunctionObject(Object function) {
             if (function instanceof ELispSymbol symbol) {
                 function = symbol.getIndirectFunction();
             }
-            if (function instanceof ELispSubroutine subroutine && !subroutine.specialForm()) {
-                return subroutine.body().callTarget().call(arguments);
+            return switch (function) {
+                case ELispSubroutine subroutine when !subroutine.specialForm() ->
+                    subroutine.body();
+                case ELispInterpretedClosure closure -> closure.getFunction();
+                default -> throw new UnsupportedOperationException();
+            };
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 0) {
+                throw ELispSignals.wrongNumberOfArguments(FUNCALL, 0);
             }
-            if (function instanceof ELispInterpretedClosure closure) {
-                return closure.getFunction().callTarget().call(arguments);
+            ELispExpressionNode[] funcArgs = new ELispExpressionNode[arguments.length - 1];
+            System.arraycopy(arguments, 1, funcArgs, 0, funcArgs.length);
+            return BuiltInEvalFactory.FFuncallFactory.InlinedFuncallNodeGen.create(
+                    arguments[0], funcArgs
+            );
+        }
+
+        abstract static class InlinedFuncall extends ELispExpressionNode {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            private ELispExpressionNode function;
+            @Children
+            private final ELispExpressionNode[] arguments;
+
+            InlinedFuncall(ELispExpressionNode function, ELispExpressionNode[] arguments) {
+                this.function = function;
+                this.arguments = arguments;
+                adoptChildren();
             }
-            throw new UnsupportedOperationException();
+
+            @ExplodeLoop
+            @Specialization
+            public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+                Object f = function.executeGeneric(frame);
+                Object[] args = new Object[arguments.length];
+                for (int i = 0; i < arguments.length; i++) {
+                    args[i] = arguments[i].executeGeneric(frame);
+                }
+                return dispatchNode.executeDispatch(this, getFunctionObject(f), args);
+            }
         }
     }
 
