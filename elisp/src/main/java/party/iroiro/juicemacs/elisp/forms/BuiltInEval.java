@@ -1154,11 +1154,17 @@ public class BuiltInEval extends ELispBuiltIns {
                 } else {
                     ELispCons cons = asCons(assignment);
                     symbol = cons.car();
-                    ELispCons cdr = asCons(cons.cdr());
-                    if (!isNil(cdr.cdr())) {
-                        throw ELispSignals.error("`let' bindings can have only one value-form");
+                    if (cons.cdr() instanceof ELispCons cdr) {
+                        if (!isNil(cdr.cdr())) {
+                            throw ELispSignals.error("`let' bindings can have only one value-form");
+                        }
+                        value = cdr.car();
+                    } else {
+                        if (!isNil(cons.cdr())) {
+                            throw ELispSignals.wrongTypeArgument(LISTP, cons);
+                        }
+                        value = false;
                     }
-                    value = cdr.car();
                 }
                 symbolList.add(asSym(symbol));
                 values.add(ELispInterpretedNode.create(value));
