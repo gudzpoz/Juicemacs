@@ -105,6 +105,22 @@ public class BuiltInSearchTest extends BaseFormTest {
         }
     }
 
+    @Test
+    void testCaseFold() {
+        try (Context context = Context.newBuilder("elisp")
+                .build()
+        ) {
+            assertEquals(0L, context.eval("elisp", """
+                    (let ((case-fold-search t))
+                      (string-match "^\\\\(az_\\\\)\\\\1[a-z][a-z][A-Z][A-Z]文🧃$" "AZ_az_lUlU文🧃"))
+                    """).asLong());
+            assertEquals(0L, context.eval("elisp", """
+                    (let ((case-fold-search t))
+                      (string-match "^\\\\(AZ_\\\\)\\\\1[a-z][a-z][A-Z][A-Z]$" "az_AZ_UlUl"))
+                    """).asLong());
+        }
+    }
+
     @SuppressWarnings("NotNullFieldNotInitialized")
     private Context context;
 

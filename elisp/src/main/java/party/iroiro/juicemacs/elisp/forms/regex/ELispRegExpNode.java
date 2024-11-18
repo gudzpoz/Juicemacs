@@ -49,6 +49,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private final int[] groupSlotMap;
     private final int stackSize;
+    private final boolean caseFold;
 
     @CompilerDirectives.CompilationFinal
     private Object osrMetadata;
@@ -61,10 +62,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @Child
     private ELispRegExpInputNodes.InputGetCharNode getCharNode;
 
-    protected ELispRegExpNode(ELispRegExpCompiler.Compiled compiled) {
+    protected ELispRegExpNode(ELispRegExpCompiler.Compiled compiled, boolean caseFold) {
         this.code = compiled.opcodes();
         this.stackSize = compiled.stackSize();
         this.groupSlotMap = compiled.groupSlotMap();
+        this.caseFold = caseFold;
         lengthNode = ELispRegExpInputNodesFactory.InputLengthNodeGen.create();
         getCharNode = ELispRegExpInputNodesFactory.InputGetCharNodeGen.create();
         adoptChildren();
@@ -156,6 +158,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                                    Object buffer) {
         CompilerAsserts.partialEvaluationConstant(bci);
         final int[] stack = stacks.borrowStack();
+        ELispCharTable canon = caseFold ? asCharTable(asBuffer(buffer).getCaseCanonTable()) : null;
         int cmpFlags = 0;
 
         loop:
@@ -278,14 +281,14 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                         if (sp + groupLength > end) {
                             success = false;
                         } else {
-                            success = substringEquals(frame, input, sp, groupStart, groupLength);
+                            success = substringEquals(frame, input, sp, groupStart, groupLength, canon);
                             stack[SP_SLOT] = sp + groupLength;
                         }
                     }
                 }
                 case OP$CHAR_CLASS, OP$CHAR_CLASS_32 -> {
                     if (sp < end) {
-                        int c = getChar(frame, input, sp);
+                        int c = getCharCanon(frame, input, sp, canon);
                         stack[SP_SLOT] = sp + 1;
                         boolean invert = code[bci] < 0;
                         success = matchCharClassBitMap(buffer, c, code[bci]);
@@ -315,7 +318,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(bci);
                 }
                 case OP$CHAR -> {
-                    success = sp < end && getChar(frame, input, sp) == (arg & 0xFF_FF_FF);
+                    success = sp < end && getCharCanon(frame, input, sp, canon) == (arg & 0xFF_FF_FF);
                     stack[SP_SLOT] = sp + 1;
                 }
                 case OP$ANY -> {
@@ -331,7 +334,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static boolean matchCharClassBitMap(Object buffer, int c, int bits) {
+    private boolean matchCharClassBitMap(Object buffer, int c, int bits) {
         return (alnum.match(bits) && (Character.isAlphabetic(c) || Character.isDigit(c)))
                 || (alpha.match(bits) && Character.isAlphabetic(c))
                 || (ascii.match(bits) && c < 0x80)
@@ -340,14 +343,14 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 || (digit.match(bits) && '0' <= c && c <= '9')
                 || (graph.match(bits) && Character.isValidCodePoint(c)
                 && !(Character.isWhitespace(c) || Character.getType(c) == Character.CONTROL))
-                || (lower.match(bits) && isLowerCase(buffer, c))
+                || (lower.match(bits) && (isLowerCase(buffer, c) || (caseFold && isUpperCase(buffer, c))))
                 || (multibyte.match(bits) && c >= 0x100)
                 || (nonascii.match(bits) && c >= 0x80)
                 || (print.match(bits) && Character.isValidCodePoint(c) && Character.getType(c) != Character.CONTROL)
                 || (punct.match(bits) && isPunct(buffer, c))
                 || (space.match(bits) && isSpace(buffer, c))
                 || (unibyte.match(bits) && c < 0x100)
-                || (upper.match(bits) && isUpperCase(buffer, c))
+                || (upper.match(bits) && (isUpperCase(buffer, c) || (caseFold && isLowerCase(buffer, c))))
                 || (word.match(bits) && isWord(buffer, c))
                 || (xdigit.match(bits) && (Character.isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')));
     }
@@ -391,15 +394,26 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     }
     //#endregion Case Table
 
+    public static int translate(int current, ELispCharTable canon) {
+        Object c = canon.getChar(current);
+        return c instanceof Long l ? l.intValue() : current;
+    }
+
     private int getChar(VirtualFrame frame, Object input, int sp) {
         return getCharNode.execute(frame, input, sp);
     }
 
-    private boolean substringEquals(VirtualFrame frame, Object input, int sp, int groupStart, int groupLength) {
+    private int getCharCanon(VirtualFrame frame, Object input, int sp, ELispCharTable canon) {
+        int c = getChar(frame, input, sp);
+        return caseFold ? translate(c, canon) : c;
+    }
+
+    private boolean substringEquals(VirtualFrame frame, Object input, int sp, int groupStart, int groupLength,
+                                    ELispCharTable canon) {
         for (int i = 0; i < groupLength; ++i) {
             int from = groupStart + i;
             int to = sp + i;
-            if (getChar(frame, input, from) != getChar(frame, input, to)) {
+            if (getCharCanon(frame, input, from, canon) != getCharCanon(frame, input, to, canon)) {
                 return false;
             }
         }

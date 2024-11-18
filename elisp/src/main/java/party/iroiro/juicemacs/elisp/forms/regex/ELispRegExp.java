@@ -11,6 +11,7 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 public abstract class ELispRegExp {
@@ -64,9 +65,10 @@ public abstract class ELispRegExp {
     public static CompiledRegExp compile(TruffleLanguage<?> language,
                                          AbstractTruffleString string,
                                          @Nullable AbstractTruffleString whitespaceRegExp,
-                                         TruffleString.Encoding encoding) {
-        ELispRegExpCompiler.Compiled compiled = getCompiled(string, whitespaceRegExp, encoding);
-        ELispRegExpNode node = new ELispRegExpNode(compiled);
+                                         TruffleString.Encoding encoding,
+                                         @Nullable ELispCharTable canon) {
+        ELispRegExpCompiler.Compiled compiled = getCompiled(string, whitespaceRegExp, encoding, canon);
+        ELispRegExpNode node = new ELispRegExpNode(compiled, canon != null);
         RegExpFunctionNode root = new RegExpFunctionNode(language, node, string.toString());
         return new CompiledRegExp(root.getCallTarget());
     }
@@ -91,10 +93,11 @@ public abstract class ELispRegExp {
 
     static ELispRegExpCompiler.Compiled getCompiled(AbstractTruffleString string,
                                                     @Nullable AbstractTruffleString whitespaceRegExp,
-                                                    TruffleString.Encoding encoding) {
+                                                    TruffleString.Encoding encoding,
+                                                    @Nullable ELispCharTable canon) {
         ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp, encoding);
         ELispRegExpParser.REAst ast = parser.parse();
-        return ELispRegExpCompiler.compile(ast, parser.getMaxGroup());
+        return ELispRegExpCompiler.compile(ast, parser.getMaxGroup(), canon);
     }
 
 }

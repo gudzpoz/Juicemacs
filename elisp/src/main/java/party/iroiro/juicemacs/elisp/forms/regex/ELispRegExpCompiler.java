@@ -12,14 +12,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.REToken;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
 
 @SuppressWarnings({"PMD.NoBoxedPrimitivesRule", "PMD.ShortMethodName"})
 final class ELispRegExpCompiler {
 
-    public static Compiled compile(ELispRegExpParser.REAst ast, int maxGroup) {
-        ELispRegExpCompiler compiler = new ELispRegExpCompiler();
+    public static Compiled compile(ELispRegExpParser.REAst ast, int maxGroup,
+                                   @Nullable ELispCharTable canon) {
+        ELispRegExpCompiler compiler = new ELispRegExpCompiler(canon);
         HalfCompiled searcher = compiler.compileAst(new ELispRegExpParser.REAst.Quantified(
                 new ELispRegExpParser.REAst.Atom(new REToken.AnyChar()),
                 new REToken.Quantifier(0, Integer.MAX_VALUE, false),
@@ -77,9 +79,13 @@ final class ELispRegExpCompiler {
 
     public int frameTop;
 
+    @Nullable
+    private final ELispCharTable canon;
+
     private final HashMap<Integer, Integer> groupSlotMap = new HashMap<>();
 
-    private ELispRegExpCompiler() {
+    private ELispRegExpCompiler(@Nullable ELispCharTable canon) {
+        this.canon = canon;
         frameTop = 2; // Slot 0/1 is reserved for SP/PC
     }
 
@@ -109,7 +115,14 @@ final class ELispRegExpCompiler {
                         packSingleArgOpcode(OP_PROGRESS_REC, slot + 1)
                 );
             }
-            case ELispRegExpParser.REAst.Literal(int[] chars) -> literal(chars);
+            case ELispRegExpParser.REAst.Literal(int[] chars) -> {
+                if (canon != null) {
+                    for (int i = 0; i < chars.length; i++) {
+                        chars[i] = ELispRegExpNode.translate(chars[i], canon);
+                    }
+                }
+                yield literal(chars);
+            }
             case ELispRegExpParser.REAst.Quantified(
                     ELispRegExpParser.REAst child,
                     REToken.Quantifier quantifier, int lookahead
@@ -134,29 +147,14 @@ final class ELispRegExpCompiler {
         return bits | (invert ? (1 << 31) : 0);
     }
 
-    private static HalfCompiled atom(REToken token) {
+    private HalfCompiled atom(REToken token) {
         if (token instanceof REToken.CharClass(
                 ELispRegExpLexer.CharClassContent.NamedCharClass[] namedClasses,
                 ELispRegExpLexer.CharClassContent.CharRange[] charRanges,
                 boolean charRangesFitInInt,
                 boolean invert
         )) {
-            int extraCodes = charRanges.length * (charRangesFitInInt ? 1 : 2) + 1;
-            IntArrayList opcodes = new IntArrayList(1 + extraCodes);
-            opcodes.add(packSingleArgOpcode(
-                    charRangesFitInInt ? OP$CHAR_CLASS : OP$CHAR_CLASS_32,
-                    extraCodes
-            ));
-            opcodes.add(packNamedCharClassBitmap(namedClasses, invert));
-            for (ELispRegExpLexer.CharClassContent.CharRange range : charRanges) {
-                if (charRangesFitInInt) {
-                    opcodes.add((range.min()) | (range.max() << 16));
-                } else {
-                    opcodes.add(range.min());
-                    opcodes.add(range.max());
-                }
-            }
-            return new HalfCompiled.Multiple(opcodes.toArray());
+            return processCharClass(namedClasses, charRanges, charRangesFitInInt, invert);
         }
         int opcode = switch (token) {
             case REToken.BackReference(int index) -> packSingleArgOpcode(OP$BACKREF, index);
@@ -186,6 +184,69 @@ final class ELispRegExpCompiler {
             });
         };
         return HalfCompiled.of(opcode);
+    }
+
+    private HalfCompiled.Multiple processCharClass(
+            ELispRegExpLexer.CharClassContent.NamedCharClass[] namedClasses,
+            ELispRegExpLexer.CharClassContent.CharRange[] charRanges,
+            boolean charRangesFitInInt,
+            boolean invert
+    ) {
+        if (canon != null) {
+            ArrayList<ELispRegExpLexer.CharClassContent.CharRange> newRanges = new ArrayList<>();
+            charRangesFitInInt = translateRanges(charRanges, newRanges);
+            charRanges = newRanges.toArray(ELispRegExpLexer.CharClassContent.CharRange[]::new);
+        }
+        int extraCodes = charRanges.length * (charRangesFitInInt ? 1 : 2) + 1;
+        IntArrayList opcodes = new IntArrayList(1 + extraCodes);
+        opcodes.add(packSingleArgOpcode(
+                charRangesFitInInt ? OP$CHAR_CLASS : OP$CHAR_CLASS_32,
+                extraCodes
+        ));
+        opcodes.add(packNamedCharClassBitmap(namedClasses, invert));
+        for (ELispRegExpLexer.CharClassContent.CharRange range : charRanges) {
+            if (charRangesFitInInt) {
+                opcodes.add((range.min()) | (range.max() << 16));
+            } else {
+                opcodes.add(range.min());
+                opcodes.add(range.max());
+            }
+        }
+        return new HalfCompiled.Multiple(opcodes.toArray());
+    }
+
+    private boolean translateRanges(
+            ELispRegExpLexer.CharClassContent.CharRange[] charRanges,
+            ArrayList<ELispRegExpLexer.CharClassContent.CharRange> newRanges
+    ) {
+        assert canon != null;
+        boolean charRangesFitInInt = true;
+        int start = -1;
+        int end = -1;
+        for (ELispRegExpLexer.CharClassContent.CharRange range : charRanges) {
+            int min = range.min();
+            int max = range.max();
+            for (int i = min; i <= max; i++) {
+                int translated = ELispRegExpNode.translate(i, canon);
+                if (start == -1) {
+                    start = end = translated;
+                    continue;
+                }
+                if (translated < start - 1 || end + 1 < translated) {
+                    charRangesFitInInt &= end <= 0xFFFF;
+                    newRanges.add(new ELispRegExpLexer.CharClassContent.CharRange(start, end));
+                    start = end = translated;
+                }
+                if (translated == start - 1) {
+                    start = translated;
+                } else if (translated == end + 1) {
+                    end = translated;
+                }
+            }
+        }
+        charRangesFitInInt &= end <= 0xFFFF;
+        newRanges.add(new ELispRegExpLexer.CharClassContent.CharRange(start, end));
+        return charRangesFitInInt;
     }
 
     private static HalfCompiled empty() {

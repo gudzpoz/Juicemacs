@@ -9,15 +9,11 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -35,30 +31,70 @@ public class BuiltInSearch extends ELispBuiltIns {
     private static final ELispSymbol.ThreadLocalValue MATCH_DATA = new ELispSymbol.ThreadLocalValue();
     private static final ELispSymbol.ThreadLocalValue MATCHED_STR = new ELispSymbol.ThreadLocalValue();
 
-    private record RegExpKey(TruffleString regExp, @Nullable TruffleString whitespaceRegExp, boolean caseFold) {
+    private record RegExpKey(TruffleString regExp, @Nullable TruffleString whitespaceRegExp,
+                             @Nullable ELispCharTable canon) {
     }
 
-    private static final ConcurrentHashMap<RegExpKey, ELispRegExp.CompiledRegExp> COMPILED_REGEXPS = new ConcurrentHashMap<>();
+    private static class RegexpCache extends LinkedHashMap<RegExpKey, ELispRegExp.CompiledRegExp> {
+        private static final int COMPILED_REGEXP_CACHE_SIZE = 1024;
+        public static final int CACHE_SIZE_INC_STEP = 128;
 
+        private int max;
+        private int requests, misses;
+
+        public RegexpCache() {
+            super(COMPILED_REGEXP_CACHE_SIZE, 0.75f, true);
+            max = COMPILED_REGEXP_CACHE_SIZE;
+            requests = 0;
+            misses = 0;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<RegExpKey, ELispRegExp.CompiledRegExp> eldest) {
+            return size() > max;
+        }
+
+        @Override
+        public ELispRegExp.@Nullable CompiledRegExp get(Object key) {
+            ELispRegExp.CompiledRegExp regexp = super.get(key);
+            requests++;
+            if (regexp == null) {
+                misses++;
+            }
+            if (requests > CACHE_SIZE_INC_STEP && requests % CACHE_SIZE_INC_STEP == 0) {
+                if (misses * 5 > requests) {
+                    misses = 0;
+                    requests = 0;
+                    max += CACHE_SIZE_INC_STEP;
+                }
+            }
+            return regexp;
+        }
+    }
+
+    private static final RegexpCache COMPILED_REGEXPS = new RegexpCache();
+
+    @CompilerDirectives.TruffleBoundary
     private static ELispRegExp.CompiledRegExp compileRegExp(
             ELispLanguage language,
             ELispString regexp,
             @Nullable TruffleString whitespaceRegExp
     ) {
         boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
+        ELispCharTable canon = caseSensitive ? null : asCharTable(currentBuffer().getCaseCanonTable());
         RegExpKey key = new RegExpKey(
                 regexp.asTruffleString(),
                 whitespaceRegExp,
-                caseSensitive
+                canon
         );
         ELispRegExp.CompiledRegExp pattern = COMPILED_REGEXPS.get(key);
         if (pattern == null) {
-            // TODO: Support case-fold-search
             pattern = ELispRegExp.compile(
                     language,
                     regexp.value(),
                     whitespaceRegExp,
-                    ELispString.ENCODING
+                    ELispString.ENCODING,
+                    canon
             );
             COMPILED_REGEXPS.put(key, pattern);
         }
