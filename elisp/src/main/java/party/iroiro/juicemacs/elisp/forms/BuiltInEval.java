@@ -49,6 +49,31 @@ public class BuiltInEval extends ELispBuiltIns {
         return callTarget instanceof RootCallTarget root ? root.getRootNode().getSourceSection() : null;
     }
 
+    abstract static class InlinedFuncall extends ELispExpressionNode {
+        @SuppressWarnings("FieldMayBeFinal")
+        @Child
+        private ELispExpressionNode function;
+        @Children
+        private final ELispExpressionNode[] arguments;
+
+        InlinedFuncall(ELispExpressionNode function, ELispExpressionNode[] arguments) {
+            this.function = function;
+            this.arguments = arguments;
+            adoptChildren();
+        }
+
+        @ExplodeLoop
+        @Specialization
+        public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+            Object f = function.executeGeneric(frame);
+            Object[] args = new Object[arguments.length];
+            for (int i = 0; i < arguments.length; i++) {
+                args[i] = arguments[i].executeGeneric(frame);
+            }
+            return dispatchNode.executeDispatch(this, FFuncall.getFunctionObject(f), args);
+        }
+    }
+
     /**
      * <pre>
      * Eval args until one of them yields non-nil, then return that value.
@@ -590,6 +615,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FMakeInterpretedClosure extends ELispBuiltInBaseNode {
         @Specialization
         public ELispInterpretedClosure makeInterpretedClosure(Object args, ELispCons body, Object env, Object docstring, Object iform) {
+            body.fillDebugInfo(getCallerSource());
             return new ELispInterpretedClosure(
                     args,
                     body,
@@ -672,6 +698,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 @Override
                 public Object executeGeneric(VirtualFrame frame) {
+                    body.fillDebugInfo(getParent());
                     @Nullable ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                     return new ELispInterpretedClosure(
                             args,
@@ -1803,11 +1830,8 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FEval extends ELispBuiltInBaseNode {
         @Specialization
         public Object eval(Object form, boolean lexical, @Cached FunctionDispatchNode dispatchNode) {
-            try {
-                return CompilerDirectives.interpreterOnly(() -> evalForm(form, lexical, dispatchNode));
-            } catch (Exception e) {
-                throw e instanceof RuntimeException re ? re : CompilerDirectives.shouldNotReachHere();
-            }
+            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return evalForm(form, lexical, dispatchNode);
         }
 
         private Object evalForm(Object form, boolean lexical, FunctionDispatchNode dispatchNode) {
@@ -2078,34 +2102,9 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             ELispExpressionNode[] funcArgs = new ELispExpressionNode[arguments.length - 1];
             System.arraycopy(arguments, 1, funcArgs, 0, funcArgs.length);
-            return BuiltInEvalFactory.FFuncallFactory.InlinedFuncallNodeGen.create(
+            return BuiltInEvalFactory.InlinedFuncallNodeGen.create(
                     arguments[0], funcArgs
             );
-        }
-
-        abstract static class InlinedFuncall extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
-            @Child
-            private ELispExpressionNode function;
-            @Children
-            private final ELispExpressionNode[] arguments;
-
-            InlinedFuncall(ELispExpressionNode function, ELispExpressionNode[] arguments) {
-                this.function = function;
-                this.arguments = arguments;
-                adoptChildren();
-            }
-
-            @ExplodeLoop
-            @Specialization
-            public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
-                Object f = function.executeGeneric(frame);
-                Object[] args = new Object[arguments.length];
-                for (int i = 0; i < arguments.length; i++) {
-                    args[i] = arguments[i].executeGeneric(frame);
-                }
-                return dispatchNode.executeDispatch(this, getFunctionObject(f), args);
-            }
         }
     }
 

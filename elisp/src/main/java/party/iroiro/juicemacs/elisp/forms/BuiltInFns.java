@@ -131,6 +131,11 @@ public class BuiltInFns extends ELispBuiltIns {
         public static long lengthString(ELispString sequence) {
             return sequence.codepointCount();
         }
+
+        @Specialization
+        public static long lengthClosure(ELispInterpretedClosure sequence) {
+            return sequence.size();
+        }
     }
 
     /**
@@ -1581,6 +1586,11 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FEqual extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean equal(Object o1, Object o2) {
+            if (o1 == o2) {
+                // This is both a fast path and a workaround to stack overflow due to recursion
+                return true;
+            }
+            // TODO: Recursive objects?
             return switch (o1) {
                 case Long l when o2 instanceof Long n -> l.equals(n);
                 case Long l when o2 instanceof Double d -> d.equals(l.doubleValue());

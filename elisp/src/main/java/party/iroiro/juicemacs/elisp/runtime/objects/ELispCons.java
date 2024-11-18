@@ -5,10 +5,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
@@ -81,9 +83,40 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         this.endColumn = endColumn;
     }
 
-    @Nullable
+    public void fillDebugInfo(@Nullable Node parent) {
+        if (getStartLine() != 0) {
+            return;
+        }
+        while (parent != null) {
+            if (parent instanceof ELispInterpretedNode.ELispConsExpressionNode consExpr
+                    && consExpr.getCons().getStartLine() != 0) {
+                ELispCons upper = consExpr.getCons();
+                setSourceLocation(
+                        upper.getStartLine(),
+                        upper.getStartColumn(),
+                        upper.getEndLine(),
+                        upper.getEndColumn()
+                );
+                return;
+            }
+            parent = parent.getParent();
+        }
+    }
+
+    public void fillDebugInfo(@Nullable SourceSection source) {
+        if (source == null) {
+            return;
+        }
+        setSourceLocation(
+                source.getStartLine(),
+                source.getStartColumn(),
+                source.getEndLine(),
+                source.getEndColumn()
+        );
+    }
+
     public SourceSection getSourceSection(Source source) {
-        return startLine == 0 ? null : source.createSection(startLine, startColumn, endLine, endColumn);
+        return startLine == 0 ? source.createUnavailableSection() : source.createSection(startLine, startColumn, endLine, endColumn);
     }
 
     @Override

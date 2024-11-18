@@ -243,7 +243,8 @@ public final class ELispLexical {
             }
             lb.add(new ELispCons(symbol, variable));
         }
-        return lb.build();
+        return lb.buildWithCdr(parent == null ? false : parent.toAssocList(
+                materializedParent == null ? frame : materializedParent));
     }
 
     @Nullable

@@ -52,6 +52,13 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     public Object sub1() {
         return wrap(value.subtract(BigInteger.ONE));
     }
+    @TruffleBoundary
+    public Object log2() {
+        if (value.compareTo(BigInteger.ZERO) <= 0) {
+            return Double.NaN;
+        }
+        return (long) value.bitLength() - 1;
+    }
     //#endregion Lisp API
 
     //#region BigInteger

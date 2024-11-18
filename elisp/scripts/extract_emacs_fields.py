@@ -44,6 +44,7 @@ EMACS_ENUMS = [
     ('charset.h', 'define_charset_arg_index'),
     ('charset.h', 'charset_attr_index'),
     ('coding.c', 'coding_category'),
+    ('lisp.h', 'Lisp_Closure'),
     ('syntax.h', 'syntaxcode'),
 ]
 
@@ -56,6 +57,14 @@ def extract_enums(original: str):
             assert section.startswith('{'), (enum_name, section)
             assert section.endswith('}'), (enum_name, section)
             enum_items = [i.strip() for i in section[1:-1].split(',')]
+            if '=' in section:
+                for i, line in enumerate(enum_items):
+                    assert '=' in line, line
+                    name, value = line.split('=')
+                    name = name.strip()
+                    value = value.strip()
+                    assert int(value) == i, line
+                    enum_items[i] = name
             original = replace_or_insert_region_general(
                 original,
                 f'enum {enum_name}',

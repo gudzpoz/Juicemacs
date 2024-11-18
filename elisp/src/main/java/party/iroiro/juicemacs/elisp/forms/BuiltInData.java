@@ -1019,8 +1019,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FClosurep extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void closurep(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean closurep(Object object) {
+            return object instanceof ELispInterpretedClosure;
         }
     }
 
@@ -2059,6 +2059,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispBoolVector boolVec -> boolVec.get((int) idx);
                 case ELispRecord record -> record.get((int) idx);
                 case ELispByteCode bytecode -> bytecode.get((int) idx);
+                case ELispInterpretedClosure closure -> closure.get((int) idx);
                 default -> throw ELispSignals.wrongTypeArgument(ARRAYP, array);
             };
         }

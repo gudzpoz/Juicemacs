@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 
 import java.util.List;
 
@@ -261,8 +262,23 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLogb extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void logb(Object arg) {
-            throw new UnsupportedOperationException();
+        public static long logbFloat(double arg) {
+            return Math.getExponent(arg);
+        }
+        @Specialization(guards = "arg > 0")
+        public static long logbLongPos(long arg) {
+            return Long.SIZE - 1 - Long.numberOfTrailingZeros(arg);
+        }
+        @Specialization
+        public static Object logbLong(long arg) {
+            if (arg <= 0) {
+                return Double.NaN;
+            }
+            return logbLongPos(arg);
+        }
+        @Specialization
+        public static Object logbBigNum(ELispBigNum arg) {
+            return arg.log2();
         }
     }
 

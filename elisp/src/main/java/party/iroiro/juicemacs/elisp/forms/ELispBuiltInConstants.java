@@ -101,4 +101,12 @@ public abstract class ELispBuiltInConstants {
     public final static int SSTRING_FENCE = 15;
     public final static int SMAX = 16;
     //#endregion enum syntaxcode
+    //#region enum Lisp_Closure
+    public final static int CLOSURE_ARGLIST = 0;
+    public final static int CLOSURE_CODE = 1;
+    public final static int CLOSURE_CONSTANTS = 2;
+    public final static int CLOSURE_STACK_DEPTH = 3;
+    public final static int CLOSURE_DOC_STRING = 4;
+    public final static int CLOSURE_INTERACTIVE = 5;
+    //#endregion enum Lisp_Closure
 }

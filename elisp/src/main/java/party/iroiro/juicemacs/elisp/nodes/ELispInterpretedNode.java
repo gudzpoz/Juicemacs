@@ -603,6 +603,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             return Assumption.NEVER_VALID;
         }
 
+        public ELispCons getCons() {
+            return cons;
+        }
+
         @Override
         public void executeVoid(VirtualFrame frame) {
             ConsCallNode node = updateInnerNode();
@@ -659,28 +663,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 type = newType;
                 callNode = node;
                 adoptChildren();
-                if (cons.getStartLine() == 0) {
-                    fillDebugInfo();
-                }
+                cons.fillDebugInfo(getParent());
             }
             return node;
-        }
-
-        private void fillDebugInfo() {
-            Node parent = getParent();
-            while (parent != null) {
-                if (parent instanceof ELispConsExpressionNode consExpr && consExpr.cons.getStartLine() != 0) {
-                    ELispCons upper = consExpr.cons;
-                    cons.setSourceLocation(
-                            upper.getStartLine(),
-                            upper.getStartColumn(),
-                            upper.getEndLine(),
-                            upper.getEndColumn()
-                    );
-                    return;
-                }
-                parent = parent.getParent();
-            }
         }
 
         private Object autoload(ELispCons function) {

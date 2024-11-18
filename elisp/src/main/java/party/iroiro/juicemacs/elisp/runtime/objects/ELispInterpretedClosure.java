@@ -17,6 +17,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -33,20 +34,38 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public ELispInterpretedClosure(
             Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
     ) {
-        super(new Object[]{args, body, env, doc, iForm});
+        super(new Object[6]);
+        set(CLOSURE_ARGLIST, args);
+        set(CLOSURE_CODE, body);
+        set(CLOSURE_CONSTANTS, env);
+        set(CLOSURE_STACK_DEPTH, false);
+        set(CLOSURE_DOC_STRING, doc);
+        set(CLOSURE_INTERACTIVE, iForm);
         this.rootNode = rootNode;
     }
 
+    @Override
+    public Object get(int index) {
+        if (index == CLOSURE_CONSTANTS) {
+            Object env = inner[CLOSURE_CONSTANTS];
+            if (env instanceof LexicalEnvironment lexicalEnv) {
+                return lexicalEnv.toAssocList();
+            }
+            return env;
+        }
+        return super.get(index);
+    }
+
     private Object getArgs() {
-        return get(0);
+        return inner[CLOSURE_ARGLIST];
     }
 
     private ELispCons getBody() {
-        return (ELispCons) get(1);
+        return (ELispCons) inner[CLOSURE_CODE];
     }
 
     private Object getEnv() {
-        return get(2);
+        return inner[CLOSURE_CONSTANTS];
     }
 
     public ELispFunctionObject getFunction() {
@@ -90,7 +109,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public record LexicalEnvironment(MaterializedFrame frame, ELispLexical lexicalFrame) {
         @Override
         public String toString() {
-            return ELispValue.display(lexicalFrame.toAssocList(frame));
+            return "#lexical-" + Integer.toHexString(System.identityHashCode(lexicalFrame));
+        }
+
+        public Object toAssocList() {
+            return lexicalFrame.toAssocList(frame);
         }
     }
 
@@ -212,7 +235,14 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Override
         public SourceSection getSourceSection() {
             RootNode root = rootNode;
-            return root == null ? null : getBody().getSourceSection(root.getSourceSection().getSource());
+            if (root == null) {
+                return null;
+            }
+            SourceSection sourceSection = root.getSourceSection();
+            if (sourceSection == null) {
+                return null;
+            }
+            return getBody().getSourceSection(sourceSection.getSource());
         }
 
         public ELispInterpretedClosure getClosure() {
