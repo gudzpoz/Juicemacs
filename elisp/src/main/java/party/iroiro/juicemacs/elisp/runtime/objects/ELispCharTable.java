@@ -84,8 +84,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
  * See there instead.
  * </p>
  */
-public sealed class ELispCharTable extends ELispVectorLike<Object>
-        permits ELispSyntaxTable {
+public final class ELispCharTable extends AbstractELispVector {
     public final static int CHARTAB_SIZE_BITS_0 = 6;
     public final static int CHARTAB_SIZE_BITS_1 = 4;
     public final static int CHARTAB_SIZE_BITS_2 = 5;
@@ -106,10 +105,8 @@ public sealed class ELispCharTable extends ELispVectorLike<Object>
     public final static int CHARTAB_STANDARD_SLOTS = CONTENT_BASE_SLOT + (1 << CHARTAB_SIZE_BITS_0);
     public final static int SUB_CONTENT_BASE_SLOT = 2;
 
-    private final Object[] inner;
-
     private ELispCharTable(List<Object> inner) {
-        this.inner = inner instanceof ELispCharTable charTable ? charTable.inner.clone() : inner.toArray();
+        super(inner instanceof ELispCharTable charTable ? charTable.inner.clone() : inner.toArray());
     }
 
     public ELispCharTable(Object init, int extraSlots) {
@@ -207,11 +204,6 @@ public sealed class ELispCharTable extends ELispVectorLike<Object>
         return inner.length;
     }
 
-    @Override
-    public boolean lispEquals(Object other) {
-        return equals(other);
-    }
-
     @CompilerDirectives.TruffleBoundary
     public void setChar(int codepoint, Object value) {
         if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
@@ -297,7 +289,7 @@ public sealed class ELispCharTable extends ELispVectorLike<Object>
         return new ELispCharTable(objects);
     }
 
-    public static class SubTable extends AbstractELispVector {
+    public static final class SubTable extends AbstractELispVector {
         public final static int DEPTH_SLOT = 0;
         public final static int MIN_CHAR_SLOT = 1;
 

@@ -94,7 +94,7 @@ public class ELispParserTest {
         assertCons(",unquoted-symbol", new String[]{",", "unquoted-symbol"});
         assertCons(",@unquoted-symbol", new String[]{",@", "unquoted-symbol"});
 
-        assertEquals("(` (match (, val) , upat))", read("`(match ,val . ,upat)").toString());
+        assertEquals("`(match ,val \\, upat)", read("`(match ,val . ,upat)").toString());
     }
 
     @Test

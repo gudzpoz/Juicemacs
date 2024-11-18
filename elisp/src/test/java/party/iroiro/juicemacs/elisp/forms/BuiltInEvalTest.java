@@ -117,9 +117,9 @@ public class BuiltInEvalTest extends BaseFormTest {
     public void testSignals() {
         try (Context context = Context.create("elisp")) {
             assertErrorMessage(context, "((lambda ()) 1)",
-                    "(wrong-number-of-arguments (lambda nil (nil) nil nil nil) 1)");
+                    "(wrong-number-of-arguments (lambda nil (nil) nil nil nil nil) 1)");
             assertErrorMessage(context, "((lambda (x)))",
-                    "(wrong-number-of-arguments (lambda (x) (nil) nil nil nil) 0)");
+                    "(wrong-number-of-arguments (lambda (x) (nil) nil nil nil nil) 0)");
             assertDoesNotThrow(() -> context.eval("elisp", "((lambda (&rest x)))"));
             assertErrorMessage(context, "(1+)", "(wrong-number-of-arguments 1+ 0)");
             assertErrorMessage(context, "(1+ 1 1 1)", "(wrong-number-of-arguments 1+ 3)");

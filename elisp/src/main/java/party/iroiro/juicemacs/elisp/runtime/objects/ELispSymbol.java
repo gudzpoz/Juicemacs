@@ -58,14 +58,15 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
  * </p>
  */
 @ExportLibrary(InteropLibrary.class)
-public final class ELispSymbol implements ELispValue, TruffleObject {
+public final class ELispSymbol extends AbstractELispIdentityObject implements TruffleObject {
     /// The unbound symbol, used as the value of void variables and not exposed to any caller.
     ///
     /// Qunbound is uninterned, so that it's not confused with any symbol
     /// 'unbound' created by a Lisp program.
     ///
     /// This symbol is not put in [ELispContext] because of recursive dependency.
-    public final static ELispSymbol UNBOUND = new ELispSymbol("unbound");
+    public static final ELispSymbol UNBOUND = new ELispSymbol("unbound");
+    public static final String SPECIAL_CHARS = "()[]#?\"'`,;.";
 
     /**
      * Indicates where the value can be found.
@@ -356,13 +357,22 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     }
 
     @Override
-    public String toString() {
-        return name;
+    public String display() {
+        PrimitiveIterator.OfInt i = name.codePoints().iterator();
+        StringBuilder result = new StringBuilder(name.length());
+        while (i.hasNext()) {
+            int c = i.nextInt();
+            if (c <= ' ' || SPECIAL_CHARS.indexOf(c) != -1 || c == 0x00A0 /* no breaking space */) {
+                result.append('\\');
+            }
+            result.appendCodePoint(c);
+        }
+        return result.toString();
     }
 
     @Override
-    public boolean lispEquals(Object other) {
-        return this.equals(other);
+    public String toString() {
+        return name;
     }
 
     //#region InteropLibrary

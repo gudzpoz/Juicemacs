@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
@@ -16,7 +15,7 @@ import java.util.function.BiConsumer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
-public final class ELispHashtable implements ELispValue {
+public final class ELispHashtable extends AbstractELispIdentityObject {
 
     private final EconomicMap<Object, Object> inner;
     private final Object eqSymbol;
@@ -47,7 +46,7 @@ public final class ELispHashtable implements ELispValue {
                 }
                 @Override
                 public int hashCode(Object o) {
-                    return o.hashCode();
+                    return ELispValue.lispHashCode(o);
                 }
             };
         } else {
@@ -104,12 +103,6 @@ public final class ELispHashtable implements ELispValue {
         while (cursor.advance()) {
             action.accept(cursor.getKey(), cursor.getValue());
         }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    @Override
-    public boolean lispEquals(Object other) {
-        return other instanceof ELispHashtable t && eqSymbol == t.eqSymbol && EconomicMapUtil.equals(inner, t.inner);
     }
 
     @CompilerDirectives.TruffleBoundary

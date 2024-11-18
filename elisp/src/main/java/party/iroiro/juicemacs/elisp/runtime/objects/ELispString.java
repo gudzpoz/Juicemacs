@@ -37,6 +37,10 @@ public final class ELispString implements TruffleObject, ELispValue {
     public boolean lispEquals(Object other) {
         return other instanceof ELispString s && value.equals(s.value);
     }
+    @Override
+    public int lispHashCode() {
+        return value.hashCode();
+    }
 
     public long codepointCount() {
         return value.codePointLengthUncached(ENCODING);

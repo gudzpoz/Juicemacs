@@ -518,8 +518,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         ConsMacroCallNode(Object function, ELispCons cons) {
             super(getIndirectFunction(((ELispCons) function).cdr()), cons, true);
             this.cons = cons;
-            if (this.function instanceof ELispExpressionNode node) {
-                inlineLambdaNode = node;
+            if (this.function instanceof ELispCons lambda && lambda.car() == LAMBDA) {
+                inlineLambdaNode = BuiltInEval.FFunction.function(lambda);
             }
             adoptChildren();
         }

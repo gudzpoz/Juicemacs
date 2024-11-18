@@ -155,9 +155,24 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     @Override
     public boolean lispEquals(Object other) {
+        if (this == other) {
+            return true;
+        }
         return other instanceof ELispCons cons
                 && BuiltInFns.FEqual.equal(car(), cons.car())
                 && BuiltInFns.FEqual.equal(cdr(), cons.cdr());
+    }
+    @Override
+    public int lispHashCode() {
+        int result = 1;
+        ConsIterator i = consIterator(0);
+        ELispCons last = this;
+        while (i.hasNextCons()) {
+            last = i.nextCons();
+            result = 31 * result + ELispValue.lispHashCode(last.car);
+        }
+        result = 31 * result + ELispValue.lispHashCode(last.cdr);
+        return result;
     }
 
     public ELispCons tail() {
@@ -312,11 +327,20 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     @Override
     public String toString() {
-        if (car == QUOTE && cdr instanceof ELispCons quoted && isNil(quoted.cdr)) {
-            return "'" + ELispValue.display(quoted.car);
-        }
-        if (car == BACKQUOTE && cdr instanceof ELispCons backquote && isNil(backquote.cdr)) {
-            return "`" + ELispValue.display(backquote.car);
+        switch (cdr) {
+            case ELispCons quoted when car == QUOTE && isNil(quoted.cdr) -> {
+                return "'" + ELispValue.display(quoted.car);
+            }
+            case ELispCons backquote when car == BACKQUOTE && isNil(backquote.cdr) -> {
+                return "`" + ELispValue.display(backquote.car);
+            }
+            case ELispCons comma when car == COMMA && isNil(comma.cdr) -> {
+                return "," + ELispValue.display(comma.car);
+            }
+            case ELispCons comma when car == COMMA_AT && isNil(comma.cdr) -> {
+                return ",@" + ELispValue.display(comma.car);
+            }
+            default -> {}
         }
         StringBuilder sb = new StringBuilder("(").append(ELispValue.display(car()));
         BrentTortoiseHareIterator i = listIterator(1);

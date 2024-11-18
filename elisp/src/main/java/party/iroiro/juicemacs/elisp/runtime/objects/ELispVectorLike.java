@@ -6,7 +6,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
 import java.util.AbstractList;
 import java.util.Iterator;
@@ -17,25 +16,15 @@ public abstract class ELispVectorLike<T> extends AbstractList<T> implements List
     public abstract void setUntyped(int i, Object object);
 
     @Override
-    public boolean lispEquals(Object other) {
-        if (this.getClass() == other.getClass()) {
-            ELispVectorLike<?> list = (ELispVectorLike<?>) other;
-            if (list.size() != size()) {
-                return false;
-            }
-            for (int i = 0; i < size(); i++) {
-                if (!BuiltInFns.FEqual.equal(get(i), list.get(i))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+    public final boolean equals(Object o) {
+        // AbstractList overrides equals and hashCode, and we need to get it back.
+        return this == o;
     }
 
     @Override
-    public boolean equals(Object o) {
-        return this == o;
+    public final int hashCode() {
+        // AbstractList overrides equals and hashCode, and we need to get it back.
+        return System.identityHashCode(this);
     }
 
     protected static String vectorToStringHelper(String prefix, String suffix, Iterator<?> iterator) {

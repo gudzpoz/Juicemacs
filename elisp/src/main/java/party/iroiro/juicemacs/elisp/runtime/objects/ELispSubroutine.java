@@ -25,6 +25,10 @@ public record ELispSubroutine(
     public boolean lispEquals(Object other) {
         return this.equals(other);
     }
+    @Override
+    public int lispHashCode() {
+        return hashCode();
+    }
 
     @Override
     public String toString() {

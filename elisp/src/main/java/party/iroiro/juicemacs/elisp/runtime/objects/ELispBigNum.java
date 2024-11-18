@@ -143,19 +143,19 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
 
     @Override
     public boolean lispEquals(Object other) {
-        return (other instanceof Long l && value.equals(BigInteger.valueOf(l)))
-                || ((other instanceof ELispBigNum n) && value.equals(n.value));
+        return equals(other);
     }
-
-    @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
     @Override
-    public boolean equals(Object obj) {
+    public int lispHashCode() {
+        return hashCode();
+    }
+    @Override
+    public boolean equals(Object other) {
         // TODO: Document incompatibilities
         // In Emacs, two bignums of identical values are not necessarily equal (by #'eq).
         // We choose to differ from Emacs here.
-        return lispEquals(obj);
+        return other instanceof ELispBigNum n && value.equals(n.value);
     }
-
     @Override
     public int hashCode() {
         return value.hashCode();

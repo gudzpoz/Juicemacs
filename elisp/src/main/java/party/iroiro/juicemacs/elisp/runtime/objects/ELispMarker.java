@@ -2,6 +2,8 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.Nullable;
 
+import java.util.Objects;
+
 public final class ELispMarker extends Number implements ELispValue {
     @Nullable
     private ELispBuffer buffer;
@@ -10,6 +12,10 @@ public final class ELispMarker extends Number implements ELispValue {
     @Override
     public boolean lispEquals(Object other) {
         return other instanceof ELispMarker marker && marker.buffer == buffer && marker.position == position;
+    }
+    @Override
+    public int lispHashCode() {
+        return Objects.hash(buffer, position);
     }
 
     //#region Number

@@ -60,4 +60,13 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         builder.append("\"");
         return builder.toString();
     }
+
+    @Override
+    public boolean lispEquals(Object other) {
+        return other instanceof ELispBoolVector vector && bits.equals(vector.bits);
+    }
+    @Override
+    public int lispHashCode() {
+        return bits.hashCode();
+    }
 }

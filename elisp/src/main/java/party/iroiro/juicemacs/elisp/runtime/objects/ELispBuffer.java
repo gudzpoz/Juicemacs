@@ -18,7 +18,7 @@ import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
-public final class ELispBuffer implements ELispValue {
+public final class ELispBuffer extends AbstractELispIdentityObject {
     private final HashMap<ELispSymbol, Forwarded> localVariables;
     private final boolean inhibitBufferHooks;
     private final PieceTreeBase content;
@@ -87,11 +87,6 @@ public final class ELispBuffer implements ELispValue {
 
     public Forwarded makeLocal(ELispSymbol symbol) {
         return localVariables.computeIfAbsent(symbol, _ -> new Forwarded());
-    }
-
-    @Override
-    public boolean lispEquals(Object other) {
-        return this.equals(other);
     }
 
     public Object getSlot(int index) {

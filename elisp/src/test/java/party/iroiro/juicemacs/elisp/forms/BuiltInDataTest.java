@@ -101,7 +101,10 @@ public class BuiltInDataTest extends BaseFormTest {
             "(cdr-safe '(1 . 2))", 2L,
             "(let ((a '(1 . 2))) (setcar a 3) (car a))", 3L,
             "(let ((a '(1 . 2))) (setcdr a 3) (cdr a))", 3L,
-            "(let ((not-globally-bound 1)) (boundp 'not-globally-bound))", false,
+            "(let ((not-globally-bound 1)) (boundp 'not-globally-bound))", true,
+            """
+            ;;; -*- lexical-binding: t -*-
+            (let ((not-globally-bound 1)) (boundp 'not-globally-bound))""", false,
             """
             (and (setq not-bound-yet 1) (boundp 'not-bound-yet)
                  (makunbound 'not-bound-yet) (null (boundp 'not-bound-yet)))

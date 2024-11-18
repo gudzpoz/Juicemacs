@@ -326,7 +326,7 @@ class ELispLexer {
     /**
      * Maintained by {@link #readCodepoint()}. See also {@link Token}.
      */
-    private int column = 0;
+    private int column = 1;
     private int codepointOffset = 0;
     /**
      * Maintained by {@link #readCodepoint()}.
@@ -356,7 +356,7 @@ class ELispLexer {
         }
         if (c == '\n') {
             line++;
-            column = 0;
+            column = 1;
         }
         column++;
         codepointOffset++;
