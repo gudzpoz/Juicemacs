@@ -8,6 +8,7 @@ plugins {
 }
 
 ext {
+    eclipseCollectionsVersion = '11.1.0'
     pmdVersion = '7.7.0'
     truffleVersion = '24.1.1'
 }

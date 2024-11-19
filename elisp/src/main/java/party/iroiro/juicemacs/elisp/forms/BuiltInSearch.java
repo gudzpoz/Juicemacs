@@ -4,12 +4,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
 
@@ -31,8 +32,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     private static final ELispSymbol.ThreadLocalValue MATCH_DATA = new ELispSymbol.ThreadLocalValue();
     private static final ELispSymbol.ThreadLocalValue MATCHED_STR = new ELispSymbol.ThreadLocalValue();
 
-    private record RegExpKey(TruffleString regExp, @Nullable TruffleString whitespaceRegExp,
-                             @Nullable ELispCharTable canon) {
+    private record RegExpKey(MuleString regExp, @Nullable MuleString whitespaceRegExp, @Nullable ELispCharTable canon) {
     }
 
     private static class RegexpCache extends LinkedHashMap<RegExpKey, ELispRegExp.CompiledRegExp> {
@@ -78,12 +78,12 @@ public class BuiltInSearch extends ELispBuiltIns {
     private static ELispRegExp.CompiledRegExp compileRegExp(
             ELispLanguage language,
             ELispString regexp,
-            @Nullable TruffleString whitespaceRegExp
+            @Nullable MuleString whitespaceRegExp
     ) {
         boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
         ELispCharTable canon = caseSensitive ? null : asCharTable(currentBuffer().getCaseCanonTable());
         RegExpKey key = new RegExpKey(
-                regexp.asTruffleString(),
+                regexp.value(),
                 whitespaceRegExp,
                 canon
         );
@@ -93,7 +93,6 @@ public class BuiltInSearch extends ELispBuiltIns {
                     language,
                     regexp.value(),
                     whitespaceRegExp,
-                    ELispString.ENCODING,
                     canon
             );
             COMPILED_REGEXPS.put(key, pattern);
@@ -461,12 +460,12 @@ public class BuiltInSearch extends ELispBuiltIns {
             ELispCons cons = asCons(MATCH_DATA.getValue()).getCons((int) (subexpN * 2));
             int start = asInt(cons.car());
             int end = asInt(asCons(cons.cdr()).car());
-            TruffleString before = s.toTruffleString().substringUncached(0, start, ELispString.ENCODING, false);
-            TruffleString after = s.toTruffleString().substringUncached(end, (int) s.codepointCount() - end,
-                    ELispString.ENCODING, false);
-            TruffleString result = before.
-                    concatUncached(newtext.toTruffleString(), ELispString.ENCODING, false)
-                    .concatUncached(after, ELispString.ENCODING, false);
+            MuleString before = s.value().subSequence(0, start);
+            MuleString after = s.value().subSequence(end, s.value().length());
+            MuleString result = new MuleStringBuffer()
+                    .append(before)
+                    .append(newtext.value())
+                    .append(after).build();
             return new ELispString(result);
         }
     }
@@ -641,7 +640,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FRegexpQuote extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString regexpQuote(ELispString string) {
-            return ELispRegExp.quote(string.asTruffleString(), ELispString.ENCODING);
+            return ELispRegExp.quote(string.value());
         }
     }
 

@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    api "org.graalvm.truffle:truffle-api:${truffleVersion}"
+    api project(':commons:mule-truffle')
 
     testImplementation 'org.json:json:20240303'
     testImplementation 'com.github.Techcable:ahmadsoft-ropes:1.2.7'

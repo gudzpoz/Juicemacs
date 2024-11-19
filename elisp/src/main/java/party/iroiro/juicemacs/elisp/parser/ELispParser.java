@@ -2,9 +2,6 @@ package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.MutableTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
@@ -16,6 +13,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -86,7 +84,7 @@ public class ELispParser {
             case Num(NumberVariant.BigNum(BigInteger value)) -> ELispBigNum.wrap(value);
             case Num(NumberVariant.Float(double value)) -> value;
             case Char(int value) -> (long) value;
-            case Str(MutableTruffleString value) -> new ELispString(value);
+            case Str(MuleString value) -> new ELispString(value);
             case Symbol(String value, boolean intern, boolean shorthand) -> {
                 String symbol = value;
                 if (shorthand) {
@@ -97,15 +95,14 @@ public class ELispParser {
                 }
                 yield new ELispSymbol(symbol);
             }
-            case BoolVec(long length, MutableTruffleString value) -> {
+            case BoolVec(long length, MuleString value) -> {
                 byte[] bytes = new byte[(int) Math.ceilDiv(length, 8)];
-                TruffleStringIterator iterator = TruffleString.CreateCodePointIteratorNode.getUncached()
-                        .execute(value, ELispString.ENCODING);
+                PrimitiveIterator.OfInt iterator = value.iterator(0);
                 for (int i = 0; i < length; i += 8) {
                     if (!iterator.hasNext()) {
                         throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
                     }
-                    int codepoint = iterator.nextUncached();
+                    int codepoint = iterator.nextInt();
                     if (codepoint > 0xFF) {
                         throw ELispSignals.invalidReadSyntax("Expected raw byte string");
                     }

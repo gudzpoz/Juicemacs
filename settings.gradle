@@ -18,6 +18,7 @@ rootProject.name = 'Juicemacs'
 include(
         'app',
         'elisp',
+        'commons:mule-truffle',
         'commons:piece-tree',
         'commons:pmd-no-int',
 )

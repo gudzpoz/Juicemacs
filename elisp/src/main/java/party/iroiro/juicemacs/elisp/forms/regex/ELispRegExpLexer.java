@@ -1,11 +1,8 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
-import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,9 +18,8 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     @Nullable
     private REToken peeked = null;
 
-    public ELispRegExpLexer(AbstractTruffleString regExp,
-                            TruffleString.Encoding encoding) {
-        this.reader = new TruffleStringReader(regExp, encoding);
+    public ELispRegExpLexer(MuleString regExp) {
+        this.reader = new TruffleStringReader(regExp);
     }
 
     @Override
@@ -274,14 +270,14 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             return null;
         }
         int index = reader.index + 2; // skip opening "[:"
-        IntArrayList cache = reader.cache;
-        int limit = Math.min(index + CharClassContent.NamedCharClass.MAX_NAME_LENGTH, cache.size() - 2);
+        MuleString cache = reader.string;
+        int limit = Math.min(index + CharClassContent.NamedCharClass.MAX_NAME_LENGTH, cache.length() - 2);
         int end = index;
         for (; end <= limit; end++) {
-            if (cache.get(end) == ':' && cache.get(end + 1) == ']') {
+            if (cache.codePointAt(end) == ':' && cache.codePointAt(end + 1) == ']') {
                 StringBuilder s = new StringBuilder(end - index);
                 for (int i = index; i < end; i++) {
-                    s.append((char) cache.get(i));
+                    s.append((char) cache.codePointAt(i));
                 }
                 reader.consume(end - reader.index + 2);
                 // TODO: Handle invalid exceptions
@@ -324,14 +320,14 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             return true;
         }
         int prev = index - 1;
-        IntArrayList cache = reader.cache;
-        switch (cache.get(prev)) {
+        MuleString cache = reader.string;
+        switch (cache.codePointAt(prev)) {
             case '(', '|' -> {}
             case ':' -> {
-                while (prev > 0 && '0'<= cache.get(prev - 1) && cache.get(prev - 1) <= '9') {
+                while (prev > 0 && '0'<= cache.codePointAt(prev - 1) && cache.codePointAt(prev - 1) <= '9') {
                     prev--;
                 }
-                if (!(prev > 1 && cache.get(prev - 1) == '?' && cache.get(prev - 2) == '(')) {
+                if (!(prev > 1 && cache.codePointAt(prev - 1) == '?' && cache.codePointAt(prev - 2) == '(')) {
                     return false;
                 }
                 prev -= 2;
@@ -341,7 +337,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             }
         }
         index = prev;
-        while (prev > 0 && cache.get(prev - 1) == '\\') {
+        while (prev > 0 && cache.codePointAt(prev - 1) == '\\') {
             prev--;
         }
         return ((index - prev) & 1) != 0;
@@ -358,10 +354,10 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     /// Emacs `at_endline_loc_p`
     private REToken lineEnd() {
         int index = reader.index;
-        IntArrayList cache = reader.cache;
-        if (index == cache.size()
-                || (cache.get(index) == '\\' && index + 1 < cache.size()
-                && (cache.get(index + 1) == '|' || cache.get(index + 1) == ')'))
+        MuleString cache = reader.string;
+        if (index == cache.length()
+                || (cache.codePointAt(index) == '\\' && index + 1 < cache.length()
+                && (cache.codePointAt(index + 1) == '|' || cache.codePointAt(index + 1) == ')'))
         ) {
             hasPreviousPattern = true;
             return new REToken.EndOfLine();
@@ -481,24 +477,20 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     }
 
     private static final class TruffleStringReader {
-        private final IntArrayList cache;
+        private final MuleString string;
         private int index = 0;
 
-        private TruffleStringReader(AbstractTruffleString string, TruffleString.Encoding encoding) {
-            int length = string.codePointLengthUncached(encoding);
-            this.cache = new IntArrayList(length);
-            TruffleStringIterator iterator = string.createCodePointIteratorUncached(encoding);
-            while (iterator.hasNext()) {
-                cache.add(iterator.nextUncached());
-            }
+        private TruffleStringReader(MuleString string) {
+            this.string = string;
+            int length = string.length();
         }
 
         public boolean hasNext() {
-            return index < cache.size();
+            return index < string.length();
         }
 
         public int next() {
-            return cache.get(index++);
+            return string.codePointAt(index++);
         }
 
         public void consume(int n) {
@@ -506,15 +498,15 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
         }
 
         public int peek() {
-            return index < cache.size() ? cache.get(index) : -1;
+            return index < string.length() ? string.codePointAt(index) : -1;
         }
 
         public boolean unexpectedNext(byte b1, byte b2) {
-            int rest = cache.size() - index;
+            int rest = string.length() - index;
             if (rest < 2) {
                 return true;
             }
-            return cache.get(index) != b1 || cache.get(index + 1) != b2;
+            return string.codePointAt(index) != b1 || string.codePointAt(index + 1) != b2;
         }
     }
 }

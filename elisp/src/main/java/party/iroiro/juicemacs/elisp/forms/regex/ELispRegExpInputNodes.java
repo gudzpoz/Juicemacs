@@ -8,6 +8,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.mule.MuleString;
 
 abstract class ELispRegExpInputNodes {
     public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_32;
@@ -18,16 +19,8 @@ abstract class ELispRegExpInputNodes {
         public abstract int execute(VirtualFrame frame, Object input);
 
         @Specialization
-        public int testInputStrLength(
-                AbstractTruffleString input,
-                @Cached TruffleString.CodePointLengthNode lengthNode
-        ) {
-            return lengthNode.execute(input, TruffleString.Encoding.UTF_32);
-        }
-
-        @Specialization
-        public int testInputIntLength(int[] input) {
-            return input.length;
+        public int testInputStrLength(MuleString input) {
+            return input.length();
         }
 
         @Specialization
@@ -41,16 +34,8 @@ abstract class ELispRegExpInputNodes {
         public abstract int execute(VirtualFrame frame, Object input, int index);
 
         @Specialization
-        public int inputGetStrChar(
-                AbstractTruffleString input, int index,
-                @Cached TruffleString.CodePointAtIndexNode readCodepointNode
-        ) {
-            return readCodepointNode.execute(input, index, ENCODING);
-        }
-
-        @Specialization
-        public int inputGetIntChar(int[] input, int index) {
-            return input[index];
+        public int inputGetStrChar(MuleString input, int index) {
+            return input.codePointAt(index);
         }
 
         @Specialization

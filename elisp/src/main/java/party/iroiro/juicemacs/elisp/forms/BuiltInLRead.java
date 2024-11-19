@@ -6,7 +6,6 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
@@ -16,10 +15,13 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.io.*;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -79,7 +81,11 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             for (Object suffix : suffixList) {
                 ELispString suffixString = asStr(suffix);
-                ELispString test = new ELispString(name.value().concatUncached(suffixString.value(), ELispString.ENCODING, false));
+                ELispString test = new ELispString(
+                        new MuleStringBuffer()
+                                .append(name.value())
+                                .append(suffixString.value())
+                                .build());
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
                 boolean exists;
                 if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
@@ -574,8 +580,8 @@ public class BuiltInLRead extends ELispBuiltIns {
         @Specialization
         public static Object readFromString(ELispString string, Object start, Object end) {
             long from = notNilOr(start, 0L);
-            long to = notNilOr(end, string.codepointCount());
-            TruffleString sub = string.toTruffleString().substringUncached((int) from, (int) (to - from), ELispString.ENCODING, false);
+            long to = notNilOr(end, string.length());
+            MuleString sub = string.value().subSequence((int) from, (int) to);
             try {
                 Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
                 ELispParser parser = new ELispParser(elisp);

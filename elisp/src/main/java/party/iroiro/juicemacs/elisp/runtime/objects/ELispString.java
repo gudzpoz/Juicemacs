@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import com.lodborg.intervaltree.IntegerInterval;
 import com.lodborg.intervaltree.Interval;
 import com.lodborg.intervaltree.IntervalTree;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -13,9 +12,11 @@ import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -24,14 +25,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
-
-    public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_32;
-
-    public static MutableTruffleString from(String str) {
-        Builder builder = new Builder();
-        builder.appendString(str);
-        return builder.toTruffleString();
-    }
 
     @Override
     public boolean lispEquals(Object other) {
@@ -42,30 +35,20 @@ public final class ELispString implements TruffleObject, ELispValue {
         return value.hashCode();
     }
 
-    public long codepointCount() {
-        return value.codePointLengthUncached(ENCODING);
+    public long length() {
+        return value.length();
     }
 
     public long codepointAt(int idx) {
-        return value.codePointAtIndexUncached(idx, ENCODING);
+        return value.codePointAt(idx);
     }
 
-    public AbstractTruffleString value() {
+    public MuleString value() {
         return value;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public ELispString reverse() {
-        TruffleStringIterator i = value.createBackwardCodePointIteratorUncached(ENCODING);
-        Builder builder = new Builder();
-        while (i.hasPrevious()) {
-            builder.appendCodePoint(i.previousUncached());
-        }
-        return new ELispString(builder.toTruffleString());
-    }
-
     public Iterator<Object> iterator() {
-        TruffleStringIterator i = codePointIterator();
+        PrimitiveIterator.OfInt i = codePointIterator();
         return new Iterator<>() {
             @Override
             public boolean hasNext() {
@@ -74,17 +57,13 @@ public final class ELispString implements TruffleObject, ELispValue {
 
             @Override
             public Object next() {
-                return (long) i.nextUncached();
+                return (long) i.nextInt();
             }
         };
     }
 
-    public TruffleStringIterator codePointIterator() {
-        return value.createCodePointIteratorUncached(ENCODING);
-    }
-
-    public TruffleString toTruffleString() {
-        return value.asTruffleStringUncached(ENCODING);
+    public PrimitiveIterator.OfInt codePointIterator() {
+        return value.iterator(0);
     }
 
     public static final class Properties extends IntegerInterval {
@@ -114,23 +93,19 @@ public final class ELispString implements TruffleObject, ELispValue {
         }
     }
 
-    private final MutableTruffleString value;
+    private MuleString value;
     private final IntervalTree<Integer> intervals;
 
     /**
      * @param init the string value, no copy is performed
      */
-    public ELispString(MutableTruffleString init) {
+    public ELispString(MuleString init) {
         this.value = init;
         this.intervals = new IntervalTree<>();
     }
 
-    public ELispString(TruffleString init) {
-        this(init.asMutableTruffleStringUncached(ENCODING));
-    }
-
     public ELispString(String init) {
-        this(from(init));
+        this(MuleString.fromString(init));
     }
 
     @Nullable
@@ -196,7 +171,7 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
     @ExportMessage
     public TruffleString asTruffleString() {
-        return value.asTruffleStringUncached(ENCODING);
+        return TruffleString.fromJavaStringUncached(value.toString(), TruffleString.Encoding.UTF_32);
     }
     @ExportMessage
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
@@ -211,20 +186,4 @@ public final class ELispString implements TruffleObject, ELispValue {
         return ELispLanguage.class;
     }
     //#endregion InteropLibrary exports
-
-    public static final class Builder {
-        private final TruffleStringBuilder builder = TruffleStringBuilder.createUTF32();
-
-        public void appendCodePoint(int codepoint) {
-            builder.appendCodePointUncached(codepoint);
-        }
-
-        public void appendString(String s) {
-            builder.appendStringUncached(TruffleString.fromJavaStringUncached(s, ENCODING));
-        }
-
-        public MutableTruffleString toTruffleString() {
-            return builder.toStringUncached().asMutableTruffleStringUncached(ENCODING);
-        }
-    }
 }

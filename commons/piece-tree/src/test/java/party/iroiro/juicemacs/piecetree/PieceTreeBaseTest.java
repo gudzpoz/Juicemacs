@@ -1,7 +1,7 @@
 package party.iroiro.juicemacs.piecetree;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.Arrays;
 import java.util.List;
@@ -9,10 +9,9 @@ import java.util.Random;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.mule.MuleString.fromString;
 import static party.iroiro.juicemacs.piecetree.PieceTreeBase.EndOfLine.CR_LF;
 import static party.iroiro.juicemacs.piecetree.PieceTreeBase.EndOfLine.LF;
-import static party.iroiro.juicemacs.piecetree.StringBuffer.fromString;
-import static party.iroiro.juicemacs.piecetree.StringBuffer.length;
 
 public class PieceTreeBaseTest {
     @Test
@@ -48,7 +47,7 @@ public class PieceTreeBaseTest {
                         "Line #9",
                         "Line #10"
                 ),
-                tree.getLinesContent().stream().map(TruffleString::toString).toList()
+                tree.getLinesContent().stream().map(MuleString::toString).toList()
         );
     }
 
@@ -177,7 +176,7 @@ public class PieceTreeBaseTest {
         hello.insert(6, fromString("World"), true);
         hello.insert(5, fromString(","), true);
         assertEquals("Hello, World!", hello.getLinesRawContent().toString());
-        hello.delete(0, length(hello.getLinesRawContent()));
+        hello.delete(0, hello.getLinesRawContent().length());
         assertEquals("", hello.getLinesRawContent().toString());
         assertEquals(0, hello.getLength());
         assertEquals(1, hello.getLineCount());
@@ -328,11 +327,11 @@ public class PieceTreeBaseTest {
 
             String[] lines = content.split("\r\n|\r|\n", -1);
             assertEquals(lines.length, tree.getLineCount(), "@" + i);
-            List<TruffleString> linesContent = tree.getLinesContent();
-            assertEquals(Arrays.asList(lines), linesContent.stream().map(TruffleString::toString).toList());
+            List<MuleString> linesContent = tree.getLinesContent();
+            assertEquals(Arrays.asList(lines), linesContent.stream().map(MuleString::toString).toList());
             for (int j = 0; j < 3; j++) {
                 int line = test.nextInt(lines.length);
-                TruffleString lineContent = tree.getLineContent(line + 1);
+                MuleString lineContent = tree.getLineContent(line + 1);
                 assertEquals(lines[line], lineContent.toString());
                 assertTrue(Math.abs(lines[line].length() - tree.getLineLength(line + 1)) <= 1);
             }
@@ -362,7 +361,7 @@ public class PieceTreeBaseTest {
                     startPosition.line(), startPosition.column(),
                     endPosition.line(), endPosition.column()
             );
-            TruffleString valueInRange = tree.getValueInRange(range, LF);
+            MuleString valueInRange = tree.getValueInRange(range, LF);
             String substring = content.substring(
                     content.offsetByCodePoints(0, startOffset),
                     content.offsetByCodePoints(0, endOffset)

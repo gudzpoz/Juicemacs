@@ -5,14 +5,14 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
+
+import java.util.PrimitiveIterator;
 
 public abstract class ELispRegExp {
 
@@ -47,7 +47,7 @@ public abstract class ELispRegExp {
     }
 
     public record CompiledRegExp(RootCallTarget callTarget) {
-        public Object call(AbstractTruffleString value, boolean search, int from, int end, Object buffer) {
+        public Object call(MuleString value, boolean search, int from, int end, Object buffer) {
             return callTarget.call(value, search, from, end, buffer); // NOPMD
         }
         public Object call(ELispBuffer value, boolean search, int from, int end) {
@@ -63,39 +63,36 @@ public abstract class ELispRegExp {
     /// The buffer argument can be null, as long as one does not use category/case/syntax table-related regex.
     @CompilerDirectives.TruffleBoundary
     public static CompiledRegExp compile(TruffleLanguage<?> language,
-                                         AbstractTruffleString string,
-                                         @Nullable AbstractTruffleString whitespaceRegExp,
-                                         TruffleString.Encoding encoding,
+                                         MuleString string,
+                                         @Nullable MuleString whitespaceRegExp,
                                          @Nullable ELispCharTable canon) {
-        ELispRegExpCompiler.Compiled compiled = getCompiled(string, whitespaceRegExp, encoding, canon);
+        ELispRegExpCompiler.Compiled compiled = getCompiled(string, whitespaceRegExp, canon);
         ELispRegExpNode node = new ELispRegExpNode(compiled, canon != null);
         RegExpFunctionNode root = new RegExpFunctionNode(language, node, string.toString());
         return new CompiledRegExp(root.getCallTarget());
     }
 
-    public static ELispString quote(AbstractTruffleString string, TruffleString.Encoding encoding) {
-        int length = string.codePointLengthUncached(encoding);
-        TruffleStringIterator i = string.createCodePointIteratorUncached(encoding);
-        TruffleStringBuilderUTF32 quoted = TruffleStringBuilderUTF32.createUTF32(length);
+    public static ELispString quote(MuleString string) {
+        PrimitiveIterator.OfInt i = string.iterator(0);
+        MuleStringBuffer quoted = new MuleStringBuffer();
         while (i.hasNext()) {
-            int c = i.nextUncached();
+            int c = i.nextInt();
             boolean escapeNeeded = switch (c) {
                 case '^', '$', '+', '?', '*', '.', '[', '\\' -> true;
                 default -> false;
             };
             if (escapeNeeded) {
-                quoted.appendCodePointUncached('\\');
+                quoted.append('\\');
             }
-            quoted.appendCodePointUncached(c);
+            quoted.append(c);
         }
-        return new ELispString(quoted.toStringUncached());
+        return new ELispString(quoted.build());
     }
 
-    static ELispRegExpCompiler.Compiled getCompiled(AbstractTruffleString string,
-                                                    @Nullable AbstractTruffleString whitespaceRegExp,
-                                                    TruffleString.Encoding encoding,
+    static ELispRegExpCompiler.Compiled getCompiled(MuleString string,
+                                                    @Nullable MuleString whitespaceRegExp,
                                                     @Nullable ELispCharTable canon) {
-        ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp, encoding);
+        ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp);
         ELispRegExpParser.REAst ast = parser.parse();
         return ELispRegExpCompiler.compile(ast, parser.getMaxGroup(), canon);
     }

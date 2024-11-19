@@ -9,9 +9,6 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
@@ -20,6 +17,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -129,7 +128,7 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static long lengthString(ELispString sequence) {
-            return sequence.codepointCount();
+            return sequence.length();
         }
 
         @Specialization
@@ -517,18 +516,18 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FConcat extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString concat(Object[] sequences) {
-            TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32();
+            MuleStringBuffer builder = new MuleStringBuffer();
             for (Object arg : sequences) {
                 if (arg instanceof ELispString s) {
-                    builder.appendStringUncached(s.toTruffleString());
+                    builder.append(s.value());
                 } else {
                     Iterator<?> i = iterateSequence(arg);
                     while (i.hasNext()) {
-                        builder.appendCodePointUncached(asInt(i.next()));
+                        builder.append(asInt(i.next()));
                     }
                 }
             }
-            return new ELispString(builder.toStringUncached());
+            return new ELispString(builder.build());
         }
     }
 
@@ -774,8 +773,8 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString substring(ELispString string, Object from, Object to) {
-            TruffleString s = string.toTruffleString();
-            int length = s.codePointLengthUncached(ELispString.ENCODING);
+            MuleString s = string.value();
+            int length = s.length();
             int start;
             if (isNil(from)) {
                 start = 0;
@@ -794,7 +793,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     end = length + end;
                 }
             }
-            return new ELispString(s.substringUncached(start, end - start, ELispString.ENCODING, false));
+            return new ELispString(s.substring(start, end));
         }
     }
 
@@ -1196,10 +1195,10 @@ public class BuiltInFns extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
-            TruffleStringIterator i = seq.codePointIterator();
+            PrimitiveIterator.OfInt i = seq.codePointIterator();
             StringBuilder builder = new StringBuilder();
             while (i.hasNext()) {
-                int codepoint = i.nextUncached();
+                int codepoint = i.nextInt();
                 if (!(elt instanceof Long l && l == codepoint)) {
                     builder.appendCodePoint(codepoint);
                 }
@@ -1245,7 +1244,11 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString nreverseString(ELispString seq) {
-            return seq.reverse();
+            MuleStringBuffer builder = new MuleStringBuffer();
+            for (int i = (int) (seq.length() - 1); i >= 0; i--) {
+                builder.appendCodePoint((int) seq.codepointAt(i));
+            }
+            return new ELispString(builder.build());
         }
 
         @Specialization
@@ -1724,18 +1727,18 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static ELispString mapconcat(Object function, Object sequence, Object separator) {
             Iterator<?> i = iterateSequence(sequence);
-            TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32();
+            MuleStringBuffer builder = new MuleStringBuffer();
             while (i.hasNext()) {
                 Object result = BuiltInEval.FFuncall.funcall(function, new Object[]{i.next()});
-                builder.appendStringUncached(
+                builder.append(
                         BuiltInPrint.FPrin1ToString.prin1ToString(result, false, false)
-                                .asTruffleString()
+                                .value()
                 );
                 if (!isNil(separator) && i.hasNext()) {
-                    builder.appendStringUncached(asStr(separator).asTruffleString());
+                    builder.append(asStr(separator).value());
                 }
             }
-            return new ELispString(builder.toStringUncached());
+            return new ELispString(builder.build());
         }
     }
 
@@ -2702,14 +2705,31 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FStringSearch extends ELispBuiltInBaseNode {
         @Specialization
         public static Object stringSearch(ELispString needle, ELispString haystack, Object startPos) {
-            // TODO: Char index to code point index
-            int index = haystack.value().indexOfStringUncached(
-                    needle.value(),
-                    (int) notNilOr(startPos, 0),
-                    (int) haystack.codepointCount(),
-                    ELispString.ENCODING
-            );
-            return index == -1 ? false : (long) index;
+            // TODO: This is slow.
+            MuleString needleS = needle.value();
+            MuleString haystackS = haystack.value();
+            int start = (int) notNilOr(startPos, 0);
+            int end = (int) haystack.length();
+            int needleLength = needleS.length();
+            if (needleLength == 0) {
+                return isNil(startPos) ? 0L : startPos;
+            }
+
+            int startChar = needleS.codePointAt(0);
+            next:
+            for (int i = start; i < end - needleLength + 1; i++) {
+                int current = haystackS.codePointAt(i);
+                if (current != startChar) {
+                    continue;
+                }
+                for (int j = 1; j < needleLength; j++) {
+                    if (needleS.charAt(j) != haystackS.charAt(i + j)) {
+                        continue next;
+                    }
+                }
+                return (long) i;
+            }
+            return false;
         }
     }
 

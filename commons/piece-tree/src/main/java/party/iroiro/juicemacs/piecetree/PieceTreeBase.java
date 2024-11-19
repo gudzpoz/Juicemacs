@@ -25,14 +25,11 @@
 
 package party.iroiro.juicemacs.piecetree;
 
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -43,25 +40,25 @@ import static party.iroiro.juicemacs.piecetree.TreeNode.*;
 /// Transliterated from <a href="https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeBase.ts">
 /// pieceTreeBase.ts @ vscode</a>
 ///
-/// Those lowercase `todo` comments are from the original code.
+/// Those lowercase `to do` comments are from the original code.
 @SuppressWarnings({"UnnecessaryLocalVariable", "ExtractMethodRecommender"})
 public final class PieceTreeBase {
     public static final int AVERAGE_BUFFER_SIZE = 65535;
-    public static final TruffleString EMPTY_STRING = TruffleString.fromConstant("", ENCODING);
-    public static final TruffleString CR_LF_STRING = TruffleString.fromConstant("\r\n", StringBuffer.ENCODING);
-    public static final TruffleString CR_STRING = TruffleString.fromConstant("\r", StringBuffer.ENCODING);
-    public static final TruffleString LF_STRING = TruffleString.fromConstant("\n", StringBuffer.ENCODING);
+    public static final MuleString EMPTY_STRING = new MuleStringBuffer().build();
+    public static final MuleString CR_LF_STRING = MuleString.fromString("\r\n");
+    public static final MuleString CR_STRING = MuleString.fromString("\r");
+    public static final MuleString LF_STRING = MuleString.fromString("\n");
 
     /* Skipped: class LineStarts */
 
-    static OrderedIntArrayList createLineStartsFast(AbstractTruffleString str, boolean readonly) {
-        OrderedIntArrayList.LazyArrayList r = OrderedIntArrayList.ofLazy(length(str) / 80, length(str));
+    static OrderedIntArrayList createLineStartsFast(MuleString str, boolean readonly) {
+        OrderedIntArrayList.LazyArrayList r = OrderedIntArrayList.ofLazy(str.length() / 80, str.length());
         r.set(0, 0);
         int rLength = 1;
-        for (int i = 0, len = length(str); i < len; i++) {
-            int chr = charAt(str, i);
+        for (int i = 0, len = str.length(); i < len; i++) {
+            int chr = str.charAt(i);
             if (chr == '\r') {
-                if (i + 1 < len && charAt(str, i + 1) == '\n') {
+                if (i + 1 < len && str.charAt(i + 1) == '\n') {
                     // \r\n... case
                     r.set(rLength++, i + 2);
                     i++; // skip \n
@@ -106,9 +103,7 @@ public final class PieceTreeBase {
     ) {
     }
 
-    /* Moved: class StringBuffer -> StringBuffer.java */
-
-    /* Skipped: class PieceTreeSnapshot
+    /* Skipped: class PieceTreeSnapshot */
 
     /* Moved: class PieceTreeSearchCache -> PieceTreeSearchCache.java */
 
@@ -121,7 +116,7 @@ public final class PieceTreeBase {
     private BufferCursor lastChangeBufferPos = new BufferCursor(0, 0);
     private final PieceTreeSearchCache searchCache;
     private int lastVisitedLine;
-    private TruffleString lastVisitedLineValue = EMPTY_STRING;
+    private MuleString lastVisitedLineValue = EMPTY_STRING;
 
     public PieceTreeBase(List<StringBuffer> chunks, EndOfLine EOL, boolean EOLNormalized) {
         buffers = new ArrayList<>();
@@ -141,16 +136,16 @@ public final class PieceTreeBase {
 
         TreeNode lastNode = null;
         for (int i = 0, len = chunks.size(); i < len; i++) {
-            if (!chunks.get(i).isEmpty()) {
+            if (!chunks.get(i).buffer.isEmpty()) {
                 Piece piece = new Piece(
                         i + 1,
                         new BufferCursor(0, 0),
                         new BufferCursor(
                                 chunks.get(i).lineStarts.size() - 1,
-                                chunks.get(i).length() - chunks.get(i).lineStarts.getLast()
+                                chunks.get(i).buffer.length() - chunks.get(i).lineStarts.getLast()
                         ),
                         chunks.get(i).lineStarts.size() - 1,
-                        chunks.get(i).length()
+                        chunks.get(i).buffer.length()
                 );
                 buffers.add(chunks.get(i));
                 //noinspection DataFlowIssue: When root is SENTINEL, lastNode being null is fine.
@@ -168,43 +163,42 @@ public final class PieceTreeBase {
         int averageBufferSize = AVERAGE_BUFFER_SIZE;
         int min = averageBufferSize - averageBufferSize / 3;
         int max = min * 2;
-        AtomicReference<TruffleStringBuilderUTF32> tempChunkContainer =
-                new AtomicReference<>(TruffleStringBuilderUTF32.createUTF32());
+        MuleStringBuffer tempChunk = new MuleStringBuffer();
         List<StringBuffer> chunks = new ArrayList<>();
         iterate(root, (node) -> {
-            TruffleStringBuilderUTF32 tempChunk = tempChunkContainer.get();
-            TruffleStringBuilderUTF32 sb = TruffleStringBuilderUTF32.createUTF32();
+            MuleStringBuffer sb = new MuleStringBuffer();
             getNodeContent(node, sb);
-            TruffleString str = toTString(sb);
-            int len = length(str);
-            if (min < tempChunk.byteLength() && max <= tempChunk.byteLength() + len) {
+            MuleString str = sb.build();
+            int len = str.length();
+            if (min < tempChunk.length() && max <= tempChunk.length() + len) {
                 // flush anyway
-                chunks.add(new StringBuffer(toTString(tempChunk), true));
-                tempChunk = TruffleStringBuilderUTF32.createUTF32();
-                tempChunkContainer.set(tempChunk);
+                chunks.add(new StringBuffer(tempChunk.build(), true));
+                tempChunk.clear();
             }
-            TruffleStringIterator i = iterator(str);
+            PrimitiveIterator.OfInt i = str.iterator(0);
             while (i.hasNext()) {
-                int c = iteratorNext(i);
-                if (c == '\r') {
-                    appendString(tempChunk, eol.eol);
-                    if (i.hasNext()) {
-                        c = iteratorNext(i);
-                        if (c != '\n') {
-                            appendCodepoint(tempChunk, c);
+                int c = i.nextInt();
+                do {
+                    if (c == '\r') {
+                        tempChunk.append(eol.eol);
+                        if (i.hasNext()) {
+                            c = (char) i.nextInt();
+                            if (c != '\n') {
+                                continue;
+                            }
                         }
+                    } else if (c == '\n') {
+                        tempChunk.append(eol.eol);
+                    } else {
+                        tempChunk.append(c);
                     }
-                } else if (c == '\n') {
-                    appendString(tempChunk, eol.eol);
-                } else {
-                    appendCodepoint(tempChunk, c);
-                }
+                    break;
+                } while (true);
             }
             return true;
         });
-        TruffleStringBuilderUTF32 tempChunk = tempChunkContainer.get();
         if (!tempChunk.isEmpty()) {
-            chunks.add(new StringBuffer(toTString(tempChunk), true));
+            chunks.add(new StringBuffer(tempChunk.build(), true));
         }
         create(chunks, eol, true);
     }
@@ -274,13 +268,13 @@ public final class PieceTreeBase {
         return new Position(1, 1);
     }
 
-    public TruffleString getValueInRange(Range range, @Nullable EndOfLine eol) {
+    public MuleString getValueInRange(Range range, @Nullable EndOfLine eol) {
         if (range.startLineNumber == range.endLineNumber && range.startColumn == range.endColumn) {
             return EMPTY_STRING;
         }
         NodePosition startPosition = nodeAt2(range.startLineNumber, range.startColumn);
         NodePosition endPosition = nodeAt2(range.endLineNumber, range.endColumn);
-        TruffleString value = getValueInRange2(startPosition, endPosition);
+        MuleString value = getValueInRange2(startPosition, endPosition);
         if (eol != null) {
             if (eol != this.EOL || !EOLNormalized) {
                 return replaceAllEol(value, eol.eol());
@@ -289,46 +283,39 @@ public final class PieceTreeBase {
         return value;
     }
 
-    public TruffleString getValueInRange2(NodePosition startPosition, NodePosition endPosition) {
+    public MuleString getValueInRange2(NodePosition startPosition, NodePosition endPosition) {
         if (startPosition.node == endPosition.node) {
             TreeNode node = startPosition.node;
-            StringBuffer buffer = buffers.get(node.piece.bufferIndex);
+            MuleStringBuffer buffer = buffers.get(node.piece.bufferIndex).buffer;
             int startOffset = offsetInBuffer(node.piece.bufferIndex, node.piece.start);
             return buffer.substring(startOffset + startPosition.remainder, startOffset + endPosition.remainder);
         }
         TreeNode x = startPosition.node;
-        StringBuffer buffer = buffers.get(x.piece.bufferIndex);
+        MuleStringBuffer buffer = buffers.get(x.piece.bufferIndex).buffer;
         int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
-        TruffleStringBuilderUTF32 ret = TruffleStringBuilderUTF32.createUTF32();
-        appendSubstring(
-                ret, buffer,
-                startOffset + startPosition.remainder, startOffset + x.piece.length()
-        );
+        MuleStringBuffer ret = new MuleStringBuffer();
+        ret.append(buffer, startOffset + startPosition.remainder, startOffset + x.piece.length());
         x = x.next();
         while (x != SENTINEL) {
-            buffer = buffers.get(x.piece.bufferIndex);
+            buffer = buffers.get(x.piece.bufferIndex).buffer;
             startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
             if (x == endPosition.node) {
-                appendSubstring(ret, buffer, startOffset, startOffset + endPosition.remainder);
+                ret.append(buffer, startOffset, startOffset + endPosition.remainder);
                 break;
             } else {
-                appendSubstring(ret, buffer, startOffset, startOffset + x.piece.length());
+                ret.append(buffer, startOffset, startOffset + x.piece.length());
             }
             x = x.next();
         }
-        return toTString(ret);
+        return ret;
     }
 
-    public List<TruffleString> getLinesContent() {
-        List<TruffleString> lines = new ArrayList<>();
-        AtomicReference<TruffleStringBuilderUTF32> currentLineContainer = new AtomicReference<>(
-                TruffleStringBuilderUTF32.createUTF32()
-        );
+    public List<MuleString> getLinesContent() {
+        List<MuleString> lines = new ArrayList<>();
+        final MuleStringBuffer currentLine = new MuleStringBuffer();
         final boolean[] danglingCR = {false};
 
         iterate(root, (node) -> {
-            TruffleStringBuilderUTF32 currentLine = currentLineContainer.get();
-
             if (node == SENTINEL) {
                 return true;
             }
@@ -338,7 +325,7 @@ public final class PieceTreeBase {
                 return true;
             }
 
-            final StringBuffer buffer = buffers.get(piece.bufferIndex);
+            final MuleStringBuffer buffer = buffers.get(piece.bufferIndex).buffer;
             final OrderedIntArrayList lineStarts = buffers.get(piece.bufferIndex).lineStarts;
             final int pieceStartLine = piece.start().line();
             final int pieceEndLine = piece.end().line();
@@ -348,9 +335,8 @@ public final class PieceTreeBase {
                     pieceStartOffset++;
                     pieceLength--;
                 }
-                lines.add(toTString(currentLine));
-                currentLine = TruffleStringBuilderUTF32.createUTF32();
-                currentLineContainer.set(currentLine);
+                lines.add(currentLine.build());
+                currentLine.clear();
                 danglingCR[0] = false;
                 if (pieceLength == 0) {
                     return true;
@@ -361,33 +347,33 @@ public final class PieceTreeBase {
                 // this piece has no new lines
                 if (!EOLNormalized && buffer.charAt(pieceStartOffset + pieceLength - 1) == '\r') {
                     danglingCR[0] = true;
-                    appendSubstring(currentLine, buffer, pieceStartOffset, pieceStartOffset + pieceLength - 1);
+                    currentLine.append(buffer, pieceStartOffset, pieceStartOffset + pieceLength - 1);
                 } else {
-                    appendSubstring(currentLine, buffer, pieceStartOffset, pieceStartOffset + pieceLength);
+                    currentLine.append(buffer, pieceStartOffset, pieceStartOffset + pieceLength);
                 }
                 return true;
             }
 
             // add the text before the first line start in this piece
             if (EOLNormalized) {
-                appendSubstring(currentLine, buffer,
+                currentLine.append(
+                        buffer,
                         pieceStartOffset,
                         Math.max(pieceStartOffset, lineStarts.get(pieceStartLine + 1) - EOL.length())
                 );
             } else {
                 appendSubstringTrimEol(currentLine, buffer, pieceStartOffset, lineStarts.get(pieceStartLine + 1));
             }
-            lines.add(toTString(currentLine));
+            lines.add(currentLine.build());
 
             for (int line = pieceStartLine + 1; line < pieceEndLine; line++) {
-                currentLine = TruffleStringBuilderUTF32.createUTF32();
-                currentLineContainer.set(currentLine);
+                currentLine.clear();
                 if (EOLNormalized) {
-                    appendSubstring(currentLine, buffer, lineStarts.get(line), lineStarts.get(line + 1) - EOL.length());
+                    currentLine.append(buffer, lineStarts.get(line), lineStarts.get(line + 1) - EOL.length());
                 } else {
                     appendSubstringTrimEol(currentLine, buffer, lineStarts.get(line), lineStarts.get(line + 1));
                 }
-                lines.add(toTString(currentLine));
+                lines.add(currentLine.build());
             }
             if (!EOLNormalized && buffer.charAt(lineStarts.get(pieceEndLine) + piece.end().column() - 1) == '\r') {
                 danglingCR[0] = true;
@@ -395,23 +381,20 @@ public final class PieceTreeBase {
                     // The last line ended with a \r, let's undo the push, it will be pushed by next iteration
                     lines.removeLast();
                 } else {
-                    currentLine = TruffleStringBuilderUTF32.createUTF32();
-                    currentLineContainer.set(currentLine);
-                    appendSubstring(currentLine, buffer, lineStarts.get(pieceEndLine), lineStarts.get(pieceEndLine) + piece.end().column() - 1);
+                    currentLine.clear();
+                    currentLine.append(buffer, lineStarts.get(pieceEndLine), lineStarts.get(pieceEndLine) + piece.end().column() - 1);
                 }
             } else {
-                currentLine = TruffleStringBuilderUTF32.createUTF32();
-                currentLineContainer.set(currentLine);
-                appendSubstring(currentLine, buffer, lineStarts.get(pieceEndLine), lineStarts.get(pieceEndLine) + piece.end().column());
+                currentLine.clear();
+                currentLine.append(buffer, lineStarts.get(pieceEndLine), lineStarts.get(pieceEndLine) + piece.end().column());
             }
             return true;
         });
-        TruffleStringBuilderUTF32 currentLine = currentLineContainer.get();
         if (danglingCR[0]) {
-            lines.add(toTString(currentLine));
-            currentLine = TruffleStringBuilderUTF32.createUTF32();
+            lines.add(currentLine.build());
+            currentLine.clear();
         }
-        lines.add(toTString(currentLine));
+        lines.add(currentLine.build());
         return lines;
     }
 
@@ -423,7 +406,7 @@ public final class PieceTreeBase {
         return lineCnt;
     }
 
-    public TruffleString getLineContent(int lineNumber) {
+    public MuleString getLineContent(int lineNumber) {
         if (lastVisitedLine == lineNumber) {
             return lastVisitedLineValue;
         }
@@ -433,7 +416,7 @@ public final class PieceTreeBase {
         } else if (EOLNormalized) {
             lastVisitedLineValue = getLineRawContent(lineNumber, EOL.length());
         } else {
-            TruffleString line = getLineRawContent(lineNumber, 0);
+            MuleString line = getLineRawContent(lineNumber, 0);
             lastVisitedLineValue = trimEol(line);
         }
         return lastVisitedLineValue;
@@ -448,12 +431,12 @@ public final class PieceTreeBase {
             }
             StringBuffer buffer = buffers.get(matchingNode.piece.bufferIndex);
             int startOffset = offsetInBuffer(matchingNode.piece.bufferIndex, matchingNode.piece.start);
-            return buffer.charAt(startOffset);
+            return buffer.buffer.charAt(startOffset);
         } else {
             StringBuffer buffer = buffers.get(nodePos.node.piece.bufferIndex);
             int startOffset = offsetInBuffer(nodePos.node.piece.bufferIndex, nodePos.node.piece.start);
             int targetOffset = startOffset + nodePos.remainder;
-            return buffer.charAt(targetOffset);
+            return buffer.buffer.charAt(targetOffset);
         }
     }
 
@@ -475,7 +458,7 @@ public final class PieceTreeBase {
         return getCharCode(nodePos);
     }
 
-    public TruffleString getNearestChunk(int offset) {
+    public MuleString getNearestChunk(int offset) {
         NodePosition nodePos = nodeAt(offset);
         if (nodePos.remainder == nodePos.node.piece.length) {
             // the offset is at the head of next node.
@@ -485,13 +468,13 @@ public final class PieceTreeBase {
             }
             StringBuffer buffer = buffers.get(matchingNode.piece.bufferIndex);
             int startOffset = offsetInBuffer(matchingNode.piece.bufferIndex, matchingNode.piece.start);
-            return buffer.substring(startOffset, startOffset + matchingNode.piece.length);
+            return buffer.buffer.substring(startOffset, startOffset + matchingNode.piece.length);
         } else {
             StringBuffer buffer = buffers.get(nodePos.node.piece.bufferIndex);
             int startOffset = offsetInBuffer(nodePos.node.piece.bufferIndex, nodePos.node.piece.start);
             int targetOffset = startOffset + nodePos.remainder;
             int targetEnd = startOffset + nodePos.node.piece.length;
-            return buffer.substring(targetOffset, targetEnd);
+            return buffer.buffer.substring(targetOffset, targetEnd);
         }
     }
 
@@ -501,7 +484,7 @@ public final class PieceTreeBase {
     //#endregion
 
     //#region Piece Table
-    public void insert(int offset, AbstractTruffleString value, boolean eolNormalized) {
+    public void insert(int offset, MuleString value, boolean eolNormalized) {
         this.EOLNormalized = this.EOLNormalized && eolNormalized;
         lastVisitedLine = 0;
         lastVisitedLineValue = EMPTY_STRING;
@@ -517,7 +500,7 @@ public final class PieceTreeBase {
                     piece.end.line == lastChangeBufferPos.line &&
                     piece.end.column == lastChangeBufferPos.column &&
                     (nodeStartOffset + piece.length == offset) &&
-                    length(value) < AVERAGE_BUFFER_SIZE
+                    value.length() < AVERAGE_BUFFER_SIZE
             ) {
                 // changed buffer
                 appendToNode(node, value);
@@ -548,7 +531,7 @@ public final class PieceTreeBase {
                                 getLineFeedCnt(newRightPiece.bufferIndex, newStart, newRightPiece.end),
                                 newRightPiece.length - 1
                         );
-                        value = concat(value, LF_STRING);
+                        value = new MuleStringBuffer().append(value).append('\n');
                     }
                 }
                 // reuse node for content before insertion point.
@@ -557,7 +540,7 @@ public final class PieceTreeBase {
                     if (tailOfLeft == '\r') {
                         BufferCursor previousPos = positionInBuffer(node, remainder - 1);
                         deleteNodeTail(node, previousPos);
-                        value = concat(CR_STRING, value);
+                        value = new MuleStringBuffer().append('\r').append(value);
                         if (node.piece.length == 0) {
                             nodesToDel.add(node);
                         }
@@ -654,7 +637,7 @@ public final class PieceTreeBase {
         computeBufferMetadata();
     }
 
-    private void insertContentToNodeLeft(AbstractTruffleString value, TreeNode node) {
+    private void insertContentToNodeLeft(MuleString value, TreeNode node) {
         // we are inserting content to the beginning of node
         List<TreeNode> nodesToDel = new ArrayList<>();
         if (shouldCheckCRLF() && endWithCR(value) && startWithLF(node)) {
@@ -669,7 +652,7 @@ public final class PieceTreeBase {
                     piece.length - 1
             );
             node.piece = nPiece;
-            value = concat(value, LF_STRING);
+            value = new MuleStringBuffer().append(value).append('\n');
             updateTreeMetadata(this, node, -1, -1);
             if (node.piece.length == 0) {
                 nodesToDel.add(node);
@@ -684,11 +667,11 @@ public final class PieceTreeBase {
         deleteNodes(nodesToDel);
     }
 
-    private void insertContentToNodeRight(AbstractTruffleString value, TreeNode node) {
+    private void insertContentToNodeRight(MuleString value, TreeNode node) {
         // we are inserting to the right of this node.
         if (adjustCarriageReturnFromNext(value, node)) {
             // move \n to the new node.
-            value = concat(value, LF_STRING);
+            value = new MuleStringBuffer().append(value).append('\n');
         }
         List<Piece> newPieces = createNewPieces(value);
         TreeNode newNode = rbInsertRight(node, newPieces.getFirst());
@@ -748,7 +731,7 @@ public final class PieceTreeBase {
         // character at endOffset is \n, so we check the character before first
         // if character at endOffset is \r, end.column is 0 and we can't get here.
         int previousCharOffset = endOffset - 1; // end.column > 0 so it's okay.
-        StringBuffer buffer = buffers.get(bufferIndex);
+        MuleStringBuffer buffer = buffers.get(bufferIndex).buffer;
         if (buffer.charAt(previousCharOffset) == '\r') {
             return end.line - start.line + 1;
         } else {
@@ -767,53 +750,52 @@ public final class PieceTreeBase {
         }
     }
 
-    private List<Piece> createNewPieces(AbstractTruffleString text) {
-        int initLength = length(text);
-        if (initLength > AVERAGE_BUFFER_SIZE) {
+    private List<Piece> createNewPieces(MuleString text) {
+        if (text.length() > AVERAGE_BUFFER_SIZE) {
             // the content is large, operations like substring, charCode becomes slow
             // so here we split it into smaller chunks, just like what we did for CR/LF normalization
-            List<Piece> newPieces = new ArrayList<>(initLength / AVERAGE_BUFFER_SIZE);
+            List<Piece> newPieces = new ArrayList<>(text.length() / AVERAGE_BUFFER_SIZE);
             int start = 0;
-            while (initLength - start > AVERAGE_BUFFER_SIZE) {
-                int lastChar = charAt(text, start + AVERAGE_BUFFER_SIZE - 1);
-                TruffleString splitText;
+            while (text.length() - start > AVERAGE_BUFFER_SIZE) {
+                int lastChar = text.charAt(start + AVERAGE_BUFFER_SIZE - 1);
+                MuleString splitText;
                 if (lastChar == '\r') {
                     // last character is \r or a high surrogate => keep it back
-                    splitText = substring(text, start, start + AVERAGE_BUFFER_SIZE - 1);
+                    splitText = text.substring(start, start + AVERAGE_BUFFER_SIZE - 1);
                     start += AVERAGE_BUFFER_SIZE - 1;
                 } else {
-                    splitText = substring(text, start, start + AVERAGE_BUFFER_SIZE);
+                    splitText = text.substring(start, start + AVERAGE_BUFFER_SIZE);
                     start += AVERAGE_BUFFER_SIZE;
                 }
                 OrderedIntArrayList lineStarts = createLineStartsFast(splitText, true);
                 newPieces.add(new Piece(
                         buffers.size(),
                         new BufferCursor(0, 0),
-                        new BufferCursor(lineStarts.size() - 1, length(splitText) - lineStarts.getLast()),
+                        new BufferCursor(lineStarts.size() - 1, splitText.length() - lineStarts.getLast()),
                         lineStarts.size() - 1,
-                        length(splitText)
+                        splitText.length()
                 ));
-                buffers.add(new StringBuffer(splitText, lineStarts, true));
+                buffers.add(new StringBuffer(splitText, lineStarts));
             }
-            TruffleString trailing = substring(text, start, length(text));
-            OrderedIntArrayList lineStarts = createLineStartsFast(trailing, true);
+            text = text.substring(start, text.length());
+            OrderedIntArrayList lineStarts = createLineStartsFast(text, true);
             newPieces.add(new Piece(
                     buffers.size(),
                     new BufferCursor(0, 0),
-                    new BufferCursor(lineStarts.size() - 1, length(trailing) - lineStarts.getLast()),
+                    new BufferCursor(lineStarts.size() - 1, text.length() - lineStarts.getLast()),
                     lineStarts.size() - 1,
-                    length(trailing)
+                    text.length()
             ));
-            buffers.add(new StringBuffer(trailing, lineStarts, true));
+            buffers.add(new StringBuffer(text, lineStarts));
             return newPieces;
         }
-        int startOffset = buffers.getFirst().length();
+        int startOffset = buffers.getFirst().buffer.length();
         OrderedIntArrayList lineStarts = createLineStartsFast(text, false);
         BufferCursor start = lastChangeBufferPos;
         if (buffers.getFirst().lineStarts.getLast() == startOffset
                 && startOffset != 0
                 && startWithLF(text)
-                && endWithCR(buffers.getFirst()) // todo, we can check lastChangeBufferPos's column as it's the last one
+                && endWithCR(buffers.getFirst().buffer) // todo, we can check lastChangeBufferPos's column as it's the last one
         ) {
             lastChangeBufferPos = new BufferCursor(lastChangeBufferPos.line, lastChangeBufferPos.column + 1);
             start = lastChangeBufferPos;
@@ -821,7 +803,7 @@ public final class PieceTreeBase {
                 lineStarts.set(i, lineStarts.get(i) + 1);
             }
             buffers.getFirst().lineStarts.addAll(lineStarts, 1);
-            buffers.getFirst().append('_').append(text);
+            buffers.getFirst().buffer.append('_').append(text);
             startOffset += 1;
         } else {
             if (startOffset != 0) {
@@ -830,9 +812,9 @@ public final class PieceTreeBase {
                 }
             }
             buffers.getFirst().lineStarts.addAll(lineStarts, 1);
-            buffers.getFirst().append(text);
+            buffers.getFirst().buffer.append(text);
         }
-        int endOffset = buffers.getFirst().length();
+        int endOffset = buffers.getFirst().buffer.length();
         int endIndex = buffers.getFirst().lineStarts.size() - 1;
         int endColumn = endOffset - buffers.getFirst().lineStarts.get(endIndex);
         BufferCursor endPos = new BufferCursor(endIndex, endColumn);
@@ -847,22 +829,22 @@ public final class PieceTreeBase {
         return List.of(newPiece);
     }
 
-    public TruffleString getLinesRawContent() {
+    public MuleString getLinesRawContent() {
         return getContentOfSubTree(root);
     }
 
-    public TruffleString getLineRawContent(int lineNumber, int endOffset) {
+    public MuleString getLineRawContent(int lineNumber, int endOffset) {
         TreeNode x = root;
-        TruffleStringBuilderUTF32 ret = TruffleStringBuilderUTF32.createUTF32();
+        MuleStringBuffer ret = new MuleStringBuffer();
         PieceTreeSearchCache.@Nullable CacheEntry cache = searchCache.get2(lineNumber);
         if (cache != null) {
             x = cache.node();
             int prevAccumulatedValue = getAccumulatedValue(x, lineNumber - cache.nodeStartLineNumber() - 1);
-            StringBuffer buffer = buffers.get(x.piece.bufferIndex);
+            MuleStringBuffer buffer = buffers.get(x.piece.bufferIndex).buffer;
             int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
             if (cache.nodeStartLineNumber() + x.piece.lineFeedCnt == lineNumber) {
-                ret = TruffleStringBuilderUTF32.createUTF32();
-                appendSubstring(ret, buffer, startOffset + prevAccumulatedValue, startOffset + x.piece.length);
+                ret.clear();
+                ret.append(buffer, startOffset + prevAccumulatedValue, startOffset + x.piece.length);
             } else {
                 int accumulatedValue = getAccumulatedValue(x, lineNumber - cache.nodeStartLineNumber());
                 return buffer.substring(startOffset + prevAccumulatedValue, startOffset + accumulatedValue - endOffset);
@@ -876,17 +858,17 @@ public final class PieceTreeBase {
                 } else if (x.lf_left + x.piece.lineFeedCnt > lineNumber - 1) {
                     int prevAccumulatedValue = getAccumulatedValue(x, lineNumber - x.lf_left - 2);
                     int accumulatedValue = getAccumulatedValue(x, lineNumber - x.lf_left - 1);
-                    StringBuffer buffer = buffers.get(x.piece.bufferIndex);
+                    MuleStringBuffer buffer = buffers.get(x.piece.bufferIndex).buffer;
                     int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
                     nodeStartOffset += x.size_left;
                     searchCache.add(new PieceTreeSearchCache.CacheEntry(x, nodeStartOffset, originalLineNumber - (lineNumber - 1 - x.lf_left)));
                     return buffer.substring(startOffset + prevAccumulatedValue, startOffset + accumulatedValue - endOffset);
                 } else if (x.lf_left + x.piece.lineFeedCnt == lineNumber - 1) {
                     int prevAccumulatedValue = getAccumulatedValue(x, lineNumber - x.lf_left - 2);
-                    StringBuffer buffer = buffers.get(x.piece.bufferIndex);
+                    MuleStringBuffer buffer = buffers.get(x.piece.bufferIndex).buffer;
                     int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
-                    ret = TruffleStringBuilderUTF32.createUTF32();
-                    appendSubstring(ret, buffer, startOffset + prevAccumulatedValue, startOffset + x.piece.length);
+                    ret.clear();
+                    ret.append(buffer, startOffset + prevAccumulatedValue, startOffset + x.piece.length);
                     break;
                 } else {
                     lineNumber -= x.lf_left + x.piece.lineFeedCnt;
@@ -898,19 +880,19 @@ public final class PieceTreeBase {
         // search in order, to find the node contains end column
         x = x.next();
         while (x != SENTINEL) {
-            StringBuffer buffer = buffers.get(x.piece.bufferIndex);
+            MuleStringBuffer buffer = buffers.get(x.piece.bufferIndex).buffer;
             if (x.piece.lineFeedCnt > 0) {
                 int accumulatedValue = getAccumulatedValue(x, 0);
                 int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
-                appendSubstring(ret, buffer, startOffset, startOffset + accumulatedValue - endOffset);
-                return toTString(ret);
+                ret.append(buffer, startOffset, startOffset + accumulatedValue - endOffset);
+                return ret;
             } else {
                 int startOffset = offsetInBuffer(x.piece.bufferIndex, x.piece.start);
-                appendSubstring(ret, buffer, startOffset, startOffset + x.piece.length);
+                ret.append(buffer, startOffset, startOffset + x.piece.length);
             }
             x = x.next();
         }
-        return toTString(ret);
+        return ret;
     }
 
     private void computeBufferMetadata() {
@@ -1032,13 +1014,13 @@ public final class PieceTreeBase {
         validateCRLFWithPrevNode(newNode);
     }
 
-    private void appendToNode(TreeNode node, AbstractTruffleString value) {
+    private void appendToNode(TreeNode node, MuleString value) {
         if (adjustCarriageReturnFromNext(value, node)) {
-            value = concat(value, LF_STRING);
+            value = new MuleStringBuffer().append(value).append('\n');
         }
         boolean hitCRLF = shouldCheckCRLF() && startWithLF(value) && endWithCR(node);
-        int startOffset = buffers.getFirst().length();
-        buffers.getFirst().append(value);
+        int startOffset = buffers.getFirst().buffer.length();
+        buffers.getFirst().buffer.append(value);
         OrderedIntArrayList lineStarts = createLineStartsFast(value, false);
         for (int i = 0; i < lineStarts.size(); i++) {
             lineStarts.set(i, lineStarts.get(i) + startOffset);
@@ -1052,9 +1034,9 @@ public final class PieceTreeBase {
         }
         buffers.getFirst().lineStarts.addAll(lineStarts, 1);
         int endIndex = buffers.getFirst().lineStarts.size() - 1;
-        int endColumn = buffers.getFirst().length() - buffers.getFirst().lineStarts.get(endIndex);
+        int endColumn = buffers.getFirst().buffer.length() - buffers.getFirst().lineStarts.get(endIndex);
         BufferCursor newEnd = new BufferCursor(endIndex, endColumn);
-        int newLength = node.piece.length + length(value);
+        int newLength = node.piece.length + value.length();
         int oldLineFeedCnt = node.piece.lineFeedCnt;
         int newLineFeedCnt = getLineFeedCnt(0, node.piece.start, newEnd);
         int lf_delta = newLineFeedCnt - oldLineFeedCnt;
@@ -1066,7 +1048,7 @@ public final class PieceTreeBase {
                 newLength
         );
         lastChangeBufferPos = newEnd;
-        updateTreeMetadata(this, node, length(value), lf_delta);
+        updateTreeMetadata(this, node, value.length(), lf_delta);
     }
 
     private NodePosition nodeAt(int offset) {
@@ -1145,7 +1127,7 @@ public final class PieceTreeBase {
         }
         StringBuffer buffer = buffers.get(node.piece.bufferIndex);
         int newOffset = offsetInBuffer(node.piece.bufferIndex, node.piece.start) + offset;
-        return buffer.charAt(newOffset);
+        return buffer.buffer.charAt(newOffset);
     }
 
     private int offsetOfNode(TreeNode node) {
@@ -1165,8 +1147,8 @@ public final class PieceTreeBase {
         return !(EOLNormalized && EOL == EndOfLine.LF);
     }
 
-    private boolean startWithLF(AbstractTruffleString val) {
-        return charAt(val, 0) == '\n';
+    private boolean startWithLF(MuleString val) {
+        return val.charAt(0) == '\n';
     }
 
     private boolean startWithLF(TreeNode val) {
@@ -1185,14 +1167,10 @@ public final class PieceTreeBase {
         if (nextLineOffset > startOffset + 1) {
             return false;
         }
-        return buffers.get(piece.bufferIndex).charAt(startOffset) == '\n';
+        return buffers.get(piece.bufferIndex).buffer.charAt(startOffset) == '\n';
     }
 
-    private boolean endWithCR(AbstractTruffleString val) {
-        return StringBuffer.charAt(val, StringBuffer.length(val) - 1) == '\r';
-    }
-
-    private boolean endWithCR(StringBuffer val) {
+    private boolean endWithCR(MuleString val) {
         return val.charAt(val.length() - 1) == '\r';
     }
 
@@ -1273,7 +1251,7 @@ public final class PieceTreeBase {
         }
     }
 
-    private boolean adjustCarriageReturnFromNext(AbstractTruffleString value, TreeNode node) {
+    private boolean adjustCarriageReturnFromNext(MuleString value, TreeNode node) {
         if (shouldCheckCRLF() && endWithCR(value)) {
             TreeNode nextNode = node.next();
             if (startWithLF(nextNode)) {
@@ -1313,7 +1291,7 @@ public final class PieceTreeBase {
         return callback.test(node) && iterate(node.right, callback);
     }
 
-    private void getNodeContent(TreeNode node, TruffleStringBuilderUTF32 output) {
+    private void getNodeContent(TreeNode node, MuleStringBuffer output) {
         if (node == SENTINEL) {
             return;
         }
@@ -1321,14 +1299,14 @@ public final class PieceTreeBase {
         Piece piece = node.piece;
         int startOffset = offsetInBuffer(piece.bufferIndex(), piece.start);
         int endOffset = offsetInBuffer(piece.bufferIndex(), piece.end);
-        appendSubstring(output, buffer, startOffset, endOffset);
+        output.append(buffer.buffer, startOffset, endOffset);
     }
 
-    private TruffleString getPieceContent(Piece piece) {
+    private MuleString getPieceContent(Piece piece) {
         StringBuffer buffer = buffers.get(piece.bufferIndex());
         int startOffset = offsetInBuffer(piece.bufferIndex(), piece.start);
         int endOffset = offsetInBuffer(piece.bufferIndex(), piece.end);
-        TruffleString currentContent = buffer.substringLazy(startOffset, endOffset);
+        MuleString currentContent = buffer.buffer.subSequence(startOffset, endOffset);
         return currentContent;
     }
 
@@ -1381,13 +1359,13 @@ public final class PieceTreeBase {
         return z;
     }
 
-    private TruffleString getContentOfSubTree(TreeNode subTree) {
-        TruffleStringBuilderUTF32 str = TruffleStringBuilderUTF32.createUTF32();
+    private MuleString getContentOfSubTree(TreeNode subTree) {
+        MuleStringBuffer str = new MuleStringBuffer();
         iterate(subTree, (node) -> {
             getNodeContent(node, str);
             return true;
         });
-        return toTString(str);
+        return str;
     }
     //#endregion
 
@@ -1405,25 +1383,18 @@ public final class PieceTreeBase {
         LF(LF_STRING),
         CR_LF(CR_LF_STRING);
 
-        private final TruffleString eol;
-        private final int length;
+        private final MuleString eol;
 
-        EndOfLine(TruffleString eol) {
+        EndOfLine(MuleString eol) {
             this.eol = eol;
-            this.length = StringBuffer.length(eol);
         }
 
-        public TruffleString eol() {
+        public MuleString eol() {
             return eol;
         }
 
         public int length() {
-            return length;
-        }
-
-        @Override
-        public String toString() {
-            return eol.toString();
+            return eol.length();
         }
     }
 
@@ -1445,7 +1416,7 @@ public final class PieceTreeBase {
             if (cachedStartOffset == -1) {
                 cachedStartOffset = offsetInBuffer(piece.bufferIndex, piece.start);
             }
-            StringBuffer buffer = buffers.get(piece.bufferIndex);
+            MuleStringBuffer buffer = buffers.get(piece.bufferIndex).buffer;
             return buffer.charAt(cachedStartOffset + current++);
         }
 

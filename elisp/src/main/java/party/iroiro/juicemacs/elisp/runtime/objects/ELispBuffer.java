@@ -13,6 +13,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.Value.Forwarded;
+import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab.*;
@@ -52,12 +53,12 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return content.getCharCode((int) point - 1);
     }
 
-    public void insert(AbstractTruffleString text) {
-        if (text.byteLength(ELispString.ENCODING) == 0) {
+    public void insert(MuleString text) {
+        if (text.length() == 0) {
             return;
         }
         content.insert((int) point - 1, text, false);
-        point += text.codePointLengthUncached(ELispString.ENCODING);
+        point += text.length();
     }
 
     public void delete(long start, long length) {

@@ -1,0 +1,14 @@
+/*
+ * This project uses @Incubating APIs which are subject to change.
+ */
+
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+repositories {
+}
+
+dependencies {
+    api "org.graalvm.truffle:truffle-api:${truffleVersion}"
+}

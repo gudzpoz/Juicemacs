@@ -10,10 +10,10 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.MutableTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 /// A ELisp lexer
 ///
@@ -256,7 +256,7 @@ class ELispLexer {
         record Char(int value) implements Token {
         }
 
-        record Str(MutableTruffleString value) implements Token {
+        record Str(MuleString value) implements Token {
         }
 
         record Num(NumberVariant value) implements Token {
@@ -268,7 +268,7 @@ class ELispLexer {
         /**
          * Bool vector as is in {@code #&10"value"}
          */
-        record BoolVec(long length, MutableTruffleString value) implements Token {
+        record BoolVec(long length, MuleString value) implements Token {
         }
     }
 
@@ -624,14 +624,14 @@ class ELispLexer {
     /**
      * Read the remaining ELisp string after the initial {@code "} character.
      */
-    private MutableTruffleString readStr() throws IOException {
-        ELispString.Builder sb = new ELispString.Builder();
+    private MuleString readStr() throws IOException {
+        MuleStringBuffer sb = new MuleStringBuffer();
         while (true) {
             int c = noEOF(peekCodepoint());
             switch (c) {
                 case '"' -> {
                     readCodepoint();
-                    return sb.toTruffleString();
+                    return sb.build();
                 }
                 case '\\' -> {
                     c = readChar(true);

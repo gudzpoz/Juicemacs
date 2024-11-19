@@ -1,11 +1,10 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,8 +14,7 @@ import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.REToken.
 
 final class ELispRegExpParser {
     @Nullable
-    private final AbstractTruffleString whitespaceRegExp;
-    private final TruffleString.Encoding encoding;
+    private final MuleString whitespaceRegExp;
     private final ArrayList<ELispRegExpLexer.REToken> stack;
 
     private ELispRegExpLexer lexer;
@@ -29,12 +27,10 @@ final class ELispRegExpParser {
     private final IntArrayList processingGroupIndices;
     private final IntArrayList availableGroupIndices;
 
-    public ELispRegExpParser(AbstractTruffleString regExp,
-                             @Nullable AbstractTruffleString whitespaceRegExp,
-                             TruffleString.Encoding encoding) {
+    public ELispRegExpParser(MuleString regExp,
+                             @Nullable MuleString whitespaceRegExp) {
         this.whitespaceRegExp = whitespaceRegExp;
-        this.encoding = encoding;
-        lexer = new ELispRegExpLexer(regExp, encoding);
+        lexer = new ELispRegExpLexer(regExp);
         stack = new ArrayList<>();
         quantifierLookaheadChar = -1;
         groupIndex = 0;
@@ -123,7 +119,7 @@ final class ELispRegExpParser {
                     }
                 } else {
                     parentLexer = lexer;
-                    lexer = new ELispRegExpLexer(whitespaceRegExp, encoding);
+                    lexer = new ELispRegExpLexer(whitespaceRegExp);
                 }
             }
             default -> stack.add(token);

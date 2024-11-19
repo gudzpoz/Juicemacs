@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static party.iroiro.juicemacs.piecetree.StringBuffer.fromString;
+import static party.iroiro.juicemacs.mule.MuleString.fromString;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)

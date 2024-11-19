@@ -5,12 +5,12 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -996,7 +996,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 if (arg instanceof ELispString s) {
                     buffer.insert(s.value());
                 } else {
-                    buffer.insert(TruffleString.fromCodePointUncached(asInt(arg), ELispString.ENCODING));
+                    buffer.insert(new MuleStringBuffer().append(asInt(arg)));
                 }
             }
             return false;
@@ -1601,7 +1601,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
         public static ELispString propertize(ELispString string, Object[] properties) {
             // TODO
             ELispString s = BuiltInFns.FCopySequence.copySequenceString(string);
-            long length = s.codepointCount();
+            long length = s.length();
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             for (int i = 0; i < properties.length; i += 2) {
                 builder.add(properties[i]);
