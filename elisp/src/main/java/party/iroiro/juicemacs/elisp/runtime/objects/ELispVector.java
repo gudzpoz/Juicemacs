@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class ELispVector extends AbstractELispVector {
@@ -14,6 +15,10 @@ public final class ELispVector extends AbstractELispVector {
 
     public ELispVector(ELispVector other) {
         super(Arrays.copyOf(other.inner, other.inner.length));
+    }
+
+    public ELispVector(int count, Object value) {
+        this(Collections.nCopies(count, value));
     }
 
     public ELispVector reverse() {

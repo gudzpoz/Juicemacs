@@ -12,8 +12,10 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.PrimitiveIterator;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
@@ -82,9 +84,10 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
      */
     private TrappedWrite trappedWrite;
     /**
-     * Interned state of the symbol.
+     * Interned state of the symbol, storing the obarray.
      */
-    private Interned interned;
+    @Nullable
+    private HashMap<String, ELispSymbol> interned;
     /**
      * True means that this variable has been explicitly declared
      * special (with `defvar' etc.), and shouldn't be lexically bound.
@@ -101,16 +104,10 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
 
     private Object function;
 
-    /**
-     * Next symbol in obarray bucket, if the symbol is interned.
-     */
-    @Nullable
-    ELispSymbol next = null;
-
     public ELispSymbol(String name) {
         this.value = new Value.PlainValue(UNBOUND);
         this.trappedWrite = TrappedWrite.NORMAL_WRITE;
-        this.interned = Interned.UNINTERNED;
+        this.interned = null;
         this.name = name;
         this.properties = new ELispHashtable();
         // Use false instead of NIL because ELispContext.NIL is null before initialization
@@ -352,8 +349,36 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         properties.clear();
     }
 
-    public void setInterned(Interned interned) {
-        this.interned = interned;
+    @CompilerDirectives.TruffleBoundary
+    public void intern(@Nullable HashMap<String, ELispSymbol> obarray) {
+        HashMap<String, ELispSymbol> prev = this.interned;
+        if (prev == obarray) {
+            return;
+        }
+        if (prev != null) {
+            prev.remove(name);
+        }
+        if (obarray != null) {
+            obarray.put(name, this);
+        }
+        this.interned = obarray;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public void internFast(HashMap<String, ELispSymbol> obarray) {
+        HashMap<String, ELispSymbol> prev = this.interned;
+        if (prev == obarray) {
+            return;
+        }
+        if (prev != null) {
+            prev.remove(name);
+        }
+        this.interned = obarray;
+    }
+
+    @Nullable
+    public HashMap<String, ELispSymbol> getInterned() {
+        return interned;
     }
 
     @Override
@@ -405,12 +430,6 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         NORMAL_WRITE,
         NO_WRITE,
         TRAPPED_WRITE,
-    }
-
-    public enum Interned {
-        UNINTERNED,
-        INTERNED,
-        INTERNED_IN_INITIAL_OBARRAY,
     }
 
     public interface InternalValue {

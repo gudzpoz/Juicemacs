@@ -628,10 +628,11 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FIntern extends ELispBuiltInBaseNode {
         @Specialization
         public static Object intern(ELispString string, Object obarray) {
+            String name = string.toString();
             if (!isNil(obarray)) {
-                throw new UnsupportedOperationException();
+                return ELispContext.intern(name, asVector(obarray));
             }
-            return ELispContext.intern(string.toString());
+            return ELispContext.intern(name);
         }
     }
 
@@ -649,10 +650,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FInternSoft extends ELispBuiltInBaseNode {
         @Specialization
         public static Object internSoft(ELispString name, Object obarray) {
-            if (!isNil(obarray)) {
-                throw new UnsupportedOperationException();
-            }
-            @Nullable ELispSymbol interned = getInterned(name.toString());
+            @Nullable ELispSymbol interned = getInterned(name.toString(), isNil(obarray) ? null : asVector(obarray));
             return interned == null ? false : interned;
         }
     }
@@ -671,8 +669,14 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnintern extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void unintern(Object name, Object obarray) {
-            throw new UnsupportedOperationException();
+        public static boolean unintern(Object name, Object obarray) {
+            if (name instanceof ELispString s) {
+                name = FInternSoft.internSoft(s, obarray);
+                if (isNil(name)) {
+                    return false;
+                }
+            }
+            return ELispContext.unintern(asSym(name), isNil(obarray) ? null : asVector(obarray));
         }
     }
 
@@ -687,8 +691,11 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FObarrayMake extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void obarrayMake(Object size) {
-            throw new UnsupportedOperationException();
+        public static ELispVector obarrayMake(Object size) {
+            if (!isNil(size)) {
+                asRanged(size, 0, Long.MAX_VALUE);
+            }
+            return new ELispVector(List.of(false));
         }
     }
 
@@ -701,8 +708,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FObarrayp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void obarrayp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean obarrayp(Object object) {
+            return object instanceof ELispVector vector && !vector.isEmpty();
         }
     }
 
@@ -714,9 +721,15 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "obarray-clear", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FObarrayClear extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static Void obarrayClear(Object obarray) {
-            throw new UnsupportedOperationException();
+        public static boolean obarrayClear(ELispVector obarray) {
+            HashMap<String, ELispSymbol> inner = getObarrayInner(obarray);
+            for (ELispSymbol symbol : inner.values()) {
+                symbol.intern(null);
+            }
+            obarray.set(0, false);
+            return false;
         }
     }
 
@@ -729,9 +742,17 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "mapatoms", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMapatoms extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static Void mapatoms(Object function, Object obarray) {
-            throw new UnsupportedOperationException();
+        public static boolean mapatoms(Object function, Object obarray) {
+            if (isNil(obarray)) {
+                obarray = PSEUDO_OBARRAY;
+            }
+            HashMap<String, ELispSymbol> inner = getObarrayInner(asVector(obarray));
+            for (ELispSymbol symbol : inner.values()) {
+                BuiltInEval.FFuncall.funcall(function, new Object[]{symbol});
+            }
+            return false;
         }
     }
 
