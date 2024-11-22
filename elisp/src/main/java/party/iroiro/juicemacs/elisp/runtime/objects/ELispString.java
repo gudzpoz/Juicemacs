@@ -26,73 +26,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
 
-    @Override
-    public boolean lispEquals(Object other) {
-        return other instanceof ELispString s && value.equals(s.value);
-    }
-    @Override
-    public int lispHashCode() {
-        return value.hashCode();
-    }
-
-    public long length() {
-        return value.length();
-    }
-
-    public long codepointAt(int idx) {
-        return value.codePointAt(idx);
-    }
-
-    public MuleString value() {
-        return value;
-    }
-
-    public Iterator<Object> iterator() {
-        PrimitiveIterator.OfInt i = codePointIterator();
-        return new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                return i.hasNext();
-            }
-
-            @Override
-            public Object next() {
-                return (long) i.nextInt();
-            }
-        };
-    }
-
-    public PrimitiveIterator.OfInt codePointIterator() {
-        return value.iterator(0);
-    }
-
-    public static final class Properties extends IntegerInterval {
-        Object propertyList;
-
-        Properties(int start, int end, Object propertyList) {
-            super(start, end, Bounded.CLOSED_LEFT); // NOPMD
-            this.propertyList = propertyList;
-        }
-
-        @Override
-        protected Properties create() {
-            return new Properties(0, 0, NIL);
-        }
-
-        @Override
-        public int hashCode() {
-            // OpenJDK Arrays::hashCode
-            return 31 + super.hashCode() * 31 + propertyList.hashCode() * 31 * 31;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof Properties props
-                    && propertyList.equals(props.propertyList)
-                    && super.equals(obj);
-        }
-    }
-
     private MuleString value;
     private final IntervalTree<Integer> intervals;
 
@@ -106,6 +39,22 @@ public final class ELispString implements TruffleObject, ELispValue {
 
     public ELispString(String init) {
         this(MuleString.fromString(init));
+    }
+
+    public ELispString(byte[] latin1) {
+        this(MuleString.fromLatin1(latin1));
+    }
+
+    public long length() {
+        return value.length();
+    }
+
+    public long codePointAt(int idx) {
+        return value.codePointAt(idx);
+    }
+
+    public MuleString value() {
+        return value;
     }
 
     @Nullable
@@ -186,4 +135,59 @@ public final class ELispString implements TruffleObject, ELispValue {
         return ELispLanguage.class;
     }
     //#endregion InteropLibrary exports
+
+    @Override
+    public boolean lispEquals(Object other) {
+        return other instanceof ELispString s && value.equals(s.value);
+    }
+    @Override
+    public int lispHashCode() {
+        return value.hashCode();
+    }
+
+    public Iterator<Object> iterator() {
+        PrimitiveIterator.OfInt i = codePointIterator();
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return i.hasNext();
+            }
+
+            @Override
+            public Object next() {
+                return (long) i.nextInt();
+            }
+        };
+    }
+
+    public PrimitiveIterator.OfInt codePointIterator() {
+        return value.iterator(0);
+    }
+
+    public static final class Properties extends IntegerInterval {
+        Object propertyList;
+
+        Properties(int start, int end, Object propertyList) {
+            super(start, end, Bounded.CLOSED_LEFT); // NOPMD
+            this.propertyList = propertyList;
+        }
+
+        @Override
+        protected Properties create() {
+            return new Properties(0, 0, NIL);
+        }
+
+        @Override
+        public int hashCode() {
+            // OpenJDK Arrays::hashCode
+            return 31 + super.hashCode() * 31 + propertyList.hashCode() * 31 * 31;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Properties props
+                    && propertyList.equals(props.propertyList)
+                    && super.equals(obj);
+        }
+    }
 }

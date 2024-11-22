@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,7 +88,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
      * Interned state of the symbol, storing the obarray.
      */
     @Nullable
-    private HashMap<String, ELispSymbol> interned;
+    private HashMap<MuleString, ELispSymbol> interned;
     /**
      * True means that this variable has been explicitly declared
      * special (with `defvar' etc.), and shouldn't be lexically bound.
@@ -95,7 +96,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     private boolean special;
 
     // NOTE: Is Emacs symbol names immutable?
-    private final String name;
+    private final MuleString name;
 
     /**
      * The symbol's property list.
@@ -105,6 +106,10 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     private Object function;
 
     public ELispSymbol(String name) {
+        this(MuleString.fromString(name));
+    }
+
+    public ELispSymbol(MuleString name) {
         this.value = new Value.PlainValue(UNBOUND);
         this.trappedWrite = TrappedWrite.NORMAL_WRITE;
         this.interned = null;
@@ -319,7 +324,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         }
     }
 
-    public String name() {
+    public MuleString name() {
         return name;
     }
 
@@ -350,8 +355,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void intern(@Nullable HashMap<String, ELispSymbol> obarray) {
-        HashMap<String, ELispSymbol> prev = this.interned;
+    public void intern(@Nullable HashMap<MuleString, ELispSymbol> obarray) {
+        HashMap<MuleString, ELispSymbol> prev = this.interned;
         if (prev == obarray) {
             return;
         }
@@ -365,8 +370,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void internFast(HashMap<String, ELispSymbol> obarray) {
-        HashMap<String, ELispSymbol> prev = this.interned;
+    public void internFast(HashMap<MuleString, ELispSymbol> obarray) {
+        HashMap<MuleString, ELispSymbol> prev = this.interned;
         if (prev == obarray) {
             return;
         }
@@ -377,7 +382,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     @Nullable
-    public HashMap<String, ELispSymbol> getInterned() {
+    public HashMap<MuleString, ELispSymbol> getInterned() {
         return interned;
     }
 
@@ -397,7 +402,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
 
     @Override
     public String toString() {
-        return name;
+        return name.toString();
     }
 
     //#region InteropLibrary

@@ -628,11 +628,10 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FIntern extends ELispBuiltInBaseNode {
         @Specialization
         public static Object intern(ELispString string, Object obarray) {
-            String name = string.toString();
             if (!isNil(obarray)) {
-                return ELispContext.intern(name, asVector(obarray));
+                return ELispContext.intern(string.value(), asVector(obarray));
             }
-            return ELispContext.intern(name);
+            return ELispContext.intern(string.value());
         }
     }
 
@@ -650,7 +649,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FInternSoft extends ELispBuiltInBaseNode {
         @Specialization
         public static Object internSoft(ELispString name, Object obarray) {
-            @Nullable ELispSymbol interned = getInterned(name.toString(), isNil(obarray) ? null : asVector(obarray));
+            @Nullable ELispSymbol interned = getInterned(name.value(), isNil(obarray) ? null : asVector(obarray));
             return interned == null ? false : interned;
         }
     }
@@ -724,7 +723,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public static boolean obarrayClear(ELispVector obarray) {
-            HashMap<String, ELispSymbol> inner = getObarrayInner(obarray);
+            HashMap<MuleString, ELispSymbol> inner = getObarrayInner(obarray);
             for (ELispSymbol symbol : inner.values()) {
                 symbol.intern(null);
             }
@@ -748,7 +747,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (isNil(obarray)) {
                 obarray = PSEUDO_OBARRAY;
             }
-            HashMap<String, ELispSymbol> inner = getObarrayInner(asVector(obarray));
+            HashMap<MuleString, ELispSymbol> inner = getObarrayInner(asVector(obarray));
             for (ELispSymbol symbol : inner.values()) {
                 BuiltInEval.FFuncall.funcall(function, new Object[]{symbol});
             }

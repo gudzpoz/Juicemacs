@@ -64,6 +64,7 @@ var ArrayList<List<String>> templateTasks = [
         ['CaseFiddle', 'casefiddle.c'],
         ['CaseTab', 'casetab.c'],
         ['Category', 'category.c'],
+        ['Ccl', 'ccl.c'],
         ['Character', 'character.c'],
         ['CharSet', 'charset.c'],
         ['CharTab', 'chartab.c'],

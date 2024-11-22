@@ -2032,7 +2032,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Specialization
         public static Object arefStr(ELispString array, long idx) {
-            return array.codepointAt((int) idx);
+            return array.codePointAt((int) idx);
         }
         @Specialization
         public static Object arefCharTable(ELispCharTable array, long idx) {

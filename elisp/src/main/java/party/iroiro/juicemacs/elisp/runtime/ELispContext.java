@@ -7,6 +7,7 @@ import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,25 +34,29 @@ public final class ELispContext {
     public final static ELispSymbol.ThreadLocalValue CURRENT_BUFFER = new ELispSymbol.ThreadLocalValue();
 
     public final static ELispVector PSEUDO_OBARRAY = new ELispVector(List.of(false));
-    private final static HashMap<String, ELispSymbol> INTERN_MAP = new HashMap<>();
+    private final static HashMap<MuleString, ELispSymbol> INTERN_MAP = new HashMap<>();
 
     public static ELispSymbol intern(String symbol) {
+        return intern(MuleString.fromString(symbol), INTERN_MAP);
+    }
+
+    public static ELispSymbol intern(MuleString symbol) {
         return intern(symbol, INTERN_MAP);
     }
 
-    public static ELispSymbol intern(String symbol, @Nullable ELispVector obarray) {
+    public static ELispSymbol intern(MuleString symbol, @Nullable ELispVector obarray) {
         if (obarray == null) {
             obarray = PSEUDO_OBARRAY;
         }
-        HashMap<String, ELispSymbol> inner = getObarrayInner(obarray);
+        HashMap<MuleString, ELispSymbol> inner = getObarrayInner(obarray);
         ELispSymbol created = intern(symbol, inner);
         obarray.set(0, created);
         return created;
     }
 
-    public static HashMap<String, ELispSymbol> getObarrayInner(ELispVector obarray) {
+    public static HashMap<MuleString, ELispSymbol> getObarrayInner(ELispVector obarray) {
         Object first = obarray.getFirst();
-        @Nullable HashMap<String, ELispSymbol> inner = null;
+        @Nullable HashMap<MuleString, ELispSymbol> inner = null;
         if (first instanceof ELispSymbol sym) {
             inner = sym.getInterned();
         }
@@ -59,7 +64,7 @@ public final class ELispContext {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static ELispSymbol intern(String symbol, HashMap<String, ELispSymbol> obarray) {
+    public static ELispSymbol intern(MuleString symbol, HashMap<MuleString, ELispSymbol> obarray) {
         ELispSymbol existing = obarray.computeIfAbsent(symbol, ELispSymbol::new);
         existing.internFast(obarray);
         return existing;
@@ -67,7 +72,7 @@ public final class ELispContext {
 
     @CompilerDirectives.TruffleBoundary
     @Nullable
-    public static ELispSymbol getInterned(String symbol, @Nullable ELispVector obarray) {
+    public static ELispSymbol getInterned(MuleString symbol, @Nullable ELispVector obarray) {
         return getObarrayInner(obarray == null ? PSEUDO_OBARRAY : obarray).get(symbol);
     }
 
@@ -80,7 +85,7 @@ public final class ELispContext {
         if (obarray == null) {
             obarray = PSEUDO_OBARRAY;
         }
-        HashMap<String, ELispSymbol> inner = getObarrayInner(obarray);
+        HashMap<MuleString, ELispSymbol> inner = getObarrayInner(obarray);
         if (symbol.getInterned() == inner) {
             symbol.intern(null);
             if (obarray.getFirst() == symbol) {

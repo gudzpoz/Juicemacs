@@ -2,8 +2,6 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
-import java.util.Collections;
-
 /// Emacs C constants extracted by `extract_emacs_fields.py`
 public abstract class ELispBuiltInConstants {
     //#region enum define_charset_arg_index
@@ -109,4 +107,101 @@ public abstract class ELispBuiltInConstants {
     public final static int CLOSURE_DOC_STRING = 4;
     public final static int CLOSURE_INTERACTIVE = 5;
     //#endregion enum Lisp_Closure
+    //#region enum coding_attr_index
+    public final static int CODING_ATTR_BASE_NAME = 0;
+    public final static int CODING_ATTR_DOCSTRING = 1;
+    public final static int CODING_ATTR_MNEMONIC = 2;
+    public final static int CODING_ATTR_TYPE = 3;
+    public final static int CODING_ATTR_CHARSET_LIST = 4;
+    public final static int CODING_ATTR_ASCII_COMPAT = 5;
+    public final static int CODING_ATTR_DECODE_TBL = 6;
+    public final static int CODING_ATTR_ENCODE_TBL = 7;
+    public final static int CODING_ATTR_TRANS_TBL = 8;
+    public final static int CODING_ATTR_POST_READ = 9;
+    public final static int CODING_ATTR_PRE_WRITE = 10;
+    public final static int CODING_ATTR_DEFAULT_CHAR = 11;
+    public final static int CODING_ATTR_FOR_UNIBYTE = 12;
+    public final static int CODING_ATTR_PLIST = 13;
+    public final static int CODING_ATTR_CATEGORY = 14;
+    public final static int CODING_ATTR_SAFE_CHARSETS = 15;
+    public final static int CODING_ATTR_CHARSET_VALIDS = 16;
+    public final static int CODING_ATTR_CCL_DECODER = 17;
+    public final static int CODING_ATTR_CCL_ENCODER = 18;
+    public final static int CODING_ATTR_CCL_VALIDS = 19;
+    public final static int CODING_ATTR_ISO_INITIAL = 20;
+    public final static int CODING_ATTR_ISO_USAGE = 21;
+    public final static int CODING_ATTR_ISO_REQUEST = 22;
+    public final static int CODING_ATTR_ISO_FLAGS = 23;
+    public final static int CODING_ATTR_UTF_BOM = 24;
+    public final static int CODING_ATTR_UTF_16_ENDIAN = 25;
+    public final static int CODING_ATTR_EMACS_MULE_FULL = 26;
+    public final static int CODING_ATTR_UNDECIDED_INHIBIT_NULL_BYTE_DETECTION = 27;
+    public final static int CODING_ATTR_UNDECIDED_INHIBIT_ISO_ESCAPE_DETECTION = 28;
+    public final static int CODING_ATTR_UNDECIDED_PREFER_UTF_8 = 29;
+    public final static int CODING_ATTR_LAST_INDEX = 30;
+    //#endregion enum coding_attr_index
+    //#region enum define_coding_system_arg_index
+    public final static int CODING_ARG_NAME = 0;
+    public final static int CODING_ARG_MNEMONIC = 1;
+    public final static int CODING_ARG_CODING_TYPE = 2;
+    public final static int CODING_ARG_CHARSET_LIST = 3;
+    public final static int CODING_ARG_ASCII_COMPATIBLE_P = 4;
+    public final static int CODING_ARG_DECODE_TRANSLATION_TABLE = 5;
+    public final static int CODING_ARG_ENCODE_TRANSLATION_TABLE = 6;
+    public final static int CODING_ARG_POST_READ_CONVERSION = 7;
+    public final static int CODING_ARG_PRE_WRITE_CONVERSION = 8;
+    public final static int CODING_ARG_DEFAULT_CHAR = 9;
+    public final static int CODING_ARG_FOR_UNIBYTE = 10;
+    public final static int CODING_ARG_PLIST = 11;
+    public final static int CODING_ARG_EOL_TYPE = 12;
+    public final static int CODING_ARG_MAX = 13;
+    //#endregion enum define_coding_system_arg_index
+    //#region enum define_coding_iso2022_arg_index
+    public final static int CODING_ARG_ISO2022_INITIAL = 13;
+    public final static int CODING_ARG_ISO2022_REG_USAGE = 14;
+    public final static int CODING_ARG_ISO2022_REQUEST = 15;
+    public final static int CODING_ARG_ISO2022_FLAGS = 16;
+    public final static int CODING_ARG_ISO2022_MAX = 17;
+    //#endregion enum define_coding_iso2022_arg_index
+    //#region enum define_coding_utf8_arg_index
+    public final static int CODING_ARG_UTF8_BOM = 13;
+    public final static int CODING_ARG_UTF8_MAX = 14;
+    //#endregion enum define_coding_utf8_arg_index
+    //#region enum define_coding_utf16_arg_index
+    public final static int CODING_ARG_UTF16_BOM = 13;
+    public final static int CODING_ARG_UTF16_ENDIAN = 14;
+    public final static int CODING_ARG_UTF16_MAX = 15;
+    //#endregion enum define_coding_utf16_arg_index
+    //#region enum define_coding_ccl_arg_index
+    public final static int CODING_ARG_CCL_DECODER = 13;
+    public final static int CODING_ARG_CCL_ENCODER = 14;
+    public final static int CODING_ARG_CCL_VALIDS = 15;
+    public final static int CODING_ARG_CCL_MAX = 16;
+    //#endregion enum define_coding_ccl_arg_index
+    //#region enum define_coding_undecided_arg_index
+    public final static int CODING_ARG_UNDECIDED_INHIBIT_NULL_BYTE_DETECTION = 13;
+    public final static int CODING_ARG_UNDECIDED_INHIBIT_ISO_ESCAPE_DETECTION = 14;
+    public final static int CODING_ARG_UNDECIDED_PREFER_UTF_8 = 15;
+    public final static int CODING_ARG_UNDECIDED_MAX = 16;
+    //#endregion enum define_coding_undecided_arg_index
+    //#region define CODING_ISO_FLAG_\w+
+    public final static int CODING_ISO_FLAG_LONG_FORM = 0x0001;
+    public final static int CODING_ISO_FLAG_RESET_AT_EOL = 0x0002;
+    public final static int CODING_ISO_FLAG_RESET_AT_CNTL = 0x0004;
+    public final static int CODING_ISO_FLAG_SEVEN_BITS = 0x0008;
+    public final static int CODING_ISO_FLAG_LOCKING_SHIFT = 0x0010;
+    public final static int CODING_ISO_FLAG_SINGLE_SHIFT = 0x0020;
+    public final static int CODING_ISO_FLAG_DESIGNATION = 0x0040;
+    public final static int CODING_ISO_FLAG_REVISION = 0x0080;
+    public final static int CODING_ISO_FLAG_DIRECTION = 0x0100;
+    public final static int CODING_ISO_FLAG_INIT_AT_BOL = 0x0200;
+    public final static int CODING_ISO_FLAG_DESIGNATE_AT_BOL = 0x0400;
+    public final static int CODING_ISO_FLAG_SAFE = 0x0800;
+    public final static int CODING_ISO_FLAG_LATIN_EXTRA = 0x1000;
+    public final static int CODING_ISO_FLAG_COMPOSITION = 0x2000;
+    public final static int CODING_ISO_FLAG_USE_ROMAN = 0x8000;
+    public final static int CODING_ISO_FLAG_USE_OLDJIS = 0x10000;
+    public final static int CODING_ISO_FLAG_LEVEL_4 = 0x20000;
+    public final static int CODING_ISO_FLAG_FULL_SUPPORT = 0x100000;
+    //#endregion define CODING_ISO_FLAG_\w+
 }

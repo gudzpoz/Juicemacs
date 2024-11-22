@@ -154,6 +154,12 @@ See also:
 - [[https://man7.org/linux/man-pages/man5/charmap.5.html][=man 5 charmap=]]
 - [[https://man7.org/linux/man-pages/man7/charsets.7.html][=man 7 charsets=]]
 
+** TODO Emacs Code Conversion Language (CCL)
+
+https://news.ycombinator.com/item?id=42207282
+
+https://emacsninja.com/posts/code-conversion-language.html
+
 * TODO [#C] Keymaps
 
 I now know there are sparse maps and dense ones, and they nest. And keymaps are

@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 public sealed interface MuleString
+        extends Comparable<MuleString>
         permits MuleByteArrayString, MuleIntArrayString, MuleStringBuffer, MuleTruffleString {
     int length();
 
@@ -32,6 +33,10 @@ public sealed interface MuleString
 
     default MuleString substring(int start, int end) {
         return subSequence(start, end);
+    }
+
+    default IntStream codePoints() {
+        return codePoints(0);
     }
 
     default IntStream codePoints(int start) {
@@ -60,6 +65,10 @@ public sealed interface MuleString
             }
         }
         return new CodePointIterator();
+    }
+
+    static MuleString fromLatin1(byte[] bytes) {
+        return new MuleByteArrayString(bytes);
     }
 
     static MuleString fromString(String string) {
@@ -92,5 +101,29 @@ public sealed interface MuleString
             h = 31 * h + i.nextInt();
         }
         return h;
+    }
+
+    default boolean startsWith(String s) {
+        PrimitiveIterator.OfInt expected = s.codePoints().iterator();
+        PrimitiveIterator.OfInt actual = iterator(0);
+        while (expected.hasNext()) {
+            if (!actual.hasNext() || expected.nextInt() != actual.nextInt()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    default int compareTo(MuleString other) {
+        PrimitiveIterator.OfInt i = iterator(0);
+        PrimitiveIterator.OfInt j = other.iterator(0);
+        while (i.hasNext() && j.hasNext()) {
+            int cmp = Integer.compare(i.nextInt(), j.nextInt());
+            if (cmp != 0) {
+                return cmp;
+            }
+        }
+        return i.hasNext() ? 1 : (j.hasNext() ? -1 : 0);
     }
 }

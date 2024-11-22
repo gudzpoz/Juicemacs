@@ -345,15 +345,15 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FStringLessp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean stringLessp(Object string1, Object string2) {
-            String value1;
+            MuleString value1;
             if (string1 instanceof ELispString s) {
-                value1 = s.toString();
+                value1 = s.value();
             } else {
                 value1 = asSym(string1).name();
             }
-            String value2;
+            MuleString value2;
             if (string2 instanceof ELispString s) {
-                value2 = s.toString();
+                value2 = s.value();
             } else {
                 value2 = asSym(string2).name();
             }
@@ -1246,7 +1246,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static ELispString nreverseString(ELispString seq) {
             MuleStringBuffer builder = new MuleStringBuffer();
             for (int i = (int) (seq.length() - 1); i >= 0; i--) {
-                builder.appendCodePoint((int) seq.codepointAt(i));
+                builder.appendCodePoint((int) seq.codePointAt(i));
             }
             return new ELispString(builder.build());
         }
