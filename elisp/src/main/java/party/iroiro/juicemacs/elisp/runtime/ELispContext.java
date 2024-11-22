@@ -117,6 +117,7 @@ public final class ELispContext {
         initSymbols(casefiddleSymbols());
         initSymbols(casetabSymbols());
         initSymbols(categorySymbols());
+        initSymbols(cclSymbols());
         initSymbols(characterSymbols());
         initSymbols(charsetSymbols());
         initSymbols(chartabSymbols());
@@ -159,6 +160,7 @@ public final class ELispContext {
         initBuiltIns(language, new BuiltInCaseFiddle());
         initBuiltIns(language, new BuiltInCaseTab());
         initBuiltIns(language, new BuiltInCategory());
+        initBuiltIns(language, new BuiltInCcl());
         initBuiltIns(language, new BuiltInCharacter());
         initBuiltIns(language, new BuiltInCharSet());
         initBuiltIns(language, new BuiltInCharTab());
@@ -3908,4 +3910,26 @@ public final class ELispContext {
         };
     }
     //#endregion floatfns.c
+    //#region ccl.c
+    public final static ELispSymbol CCL = new ELispSymbol("ccl");
+    public final static ELispSymbol CCLP = new ELispSymbol("cclp");
+    public final static ELispSymbol CCL_PROGRAM_IDX = new ELispSymbol("ccl-program-idx");
+    public final static ELispSymbol CODE_CONVERSION_MAP = new ELispSymbol("code-conversion-map");
+    public final static ELispSymbol CODE_CONVERSION_MAP_ID = new ELispSymbol("code-conversion-map-id");
+    public final static ELispSymbol CODE_CONVERSION_MAP_VECTOR = new ELispSymbol("code-conversion-map-vector");
+    public final static ELispSymbol FONT_CCL_ENCODER_ALIST = new ELispSymbol("font-ccl-encoder-alist");
+    public final static ELispSymbol TRANSLATION_HASH_TABLE_VECTOR = new ELispSymbol("translation-hash-table-vector");
+    private ELispSymbol[] cclSymbols() {
+        return new ELispSymbol[]{
+                CCL,
+                CCLP,
+                CCL_PROGRAM_IDX,
+                CODE_CONVERSION_MAP,
+                CODE_CONVERSION_MAP_ID,
+                CODE_CONVERSION_MAP_VECTOR,
+                FONT_CCL_ENCODER_ALIST,
+                TRANSLATION_HASH_TABLE_VECTOR,
+        };
+    }
+    //#endregion ccl.c
 }

@@ -44,12 +44,24 @@ EMACS_ENUMS = [
     ('charset.h', 'define_charset_arg_index'),
     ('charset.h', 'charset_attr_index'),
     ('coding.c', 'coding_category'),
+    ('coding.h', 'coding_attr_index'),
+    ('coding.h', 'define_coding_system_arg_index'),
+    # These define_coding_*_arg_index depend on define_coding_system_arg_index
+    ('coding.h', 'define_coding_iso2022_arg_index'),
+    ('coding.h', 'define_coding_utf8_arg_index'),
+    ('coding.h', 'define_coding_utf16_arg_index'),
+    ('coding.h', 'define_coding_ccl_arg_index'),
+    ('coding.h', 'define_coding_undecided_arg_index'),
     ('lisp.h', 'Lisp_Closure'),
     ('syntax.h', 'syntaxcode'),
+]
+EMACS_DEFINES = [
+    ('coding.c', r'CODING_ISO_FLAG_\w+'),
 ]
 
 
 def extract_enums(original: str):
+    global_vars = {}
     for file, enum_name in EMACS_ENUMS:
         with open(emacs_src_dir / file, 'r') as f:
             src = f.read()
@@ -57,20 +69,57 @@ def extract_enums(original: str):
             assert section.startswith('{'), (enum_name, section)
             assert section.endswith('}'), (enum_name, section)
             enum_items = [i.strip() for i in section[1:-1].split(',')]
-            if '=' in section:
-                for i, line in enumerate(enum_items):
-                    assert '=' in line, line
-                    name, value = line.split('=')
-                    name = name.strip()
-                    value = value.strip()
-                    assert int(value) == i, line
-                    enum_items[i] = name
+            enum_names = [i.split('=')[0].strip() for i in enum_items]
+            enum_evals = [
+                (f'{item} = inc_i()' if '=' not in item else
+                 f'{item.split('=')[0]} = inc_i({item.split("=")[1]})').strip()
+                for item in enum_items
+            ]
+            def missing(k: str):
+                raise Exception(f'Could not find enum item {k} in {enum_name}')
+            def assign(k: typing.Any, v: typing.Any):
+                global_vars[k] = v
+                return v
+            exec_c_as_python(f'''
+i = 0
+def inc_i(x=None):
+    global i
+    if x is not None:
+        i = x
+    ret = i
+    i += 1
+    return ret
+{'\n'.join(enum_evals)}
+''', global_vars, missing, assign, None)
+            enum_values = [
+                (name, global_vars[name])
+                for name in enum_names
+            ]
             original = replace_or_insert_region_general(
                 original,
                 f'enum {enum_name}',
                 ''.join(
                     f'    public final static int {name.upper()} = {i};\n'
-                    for i, name in enumerate(enum_items)
+                    for name, i in enum_values
+                ),
+            )
+    return original
+
+
+def extract_defines(original: str):
+    for file, regexp in EMACS_DEFINES:
+        with open(emacs_src_dir / file, 'r') as f:
+            src = f.read()
+            defines = re.compile(
+                f'^#define\\s+({regexp})\\s+(\\w+)',
+                re.MULTILINE,
+            ).findall(src)
+            original = replace_or_insert_region_general(
+                original,
+                f'define {regexp}',
+                ''.join(
+                    f'    public final static int {name.upper()} = {i};\n'
+                    for name, i in defines
                 ),
             )
     return original
@@ -85,6 +134,7 @@ with open(output_file, 'r') as f:
     original = f.read()
 
 output = extract_enums(original)
+output = extract_defines(original)
 
 with open(output_file, 'w') as f:
     f.write(output)

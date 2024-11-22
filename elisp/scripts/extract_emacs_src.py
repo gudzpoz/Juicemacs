@@ -508,12 +508,12 @@ with open(args.context, 'r') as f:
         f'    public final static ELispSymbol {varname} = '
         f'new ELispSymbol("{symbol}");'
         for varname, symbol in sorted(symbols.items())
-        if varname not in duplicates
+        if varname not in duplicates and varname != ''
     )
     gather_symbols = f'''
     private ELispSymbol[] {stem}Symbols() {{
         return new ELispSymbol[]{{
-{'\n'.join(f'                {k},' for k in sorted(symbols.keys()))}
+{'\n'.join(f'                {k},' for k in sorted(symbols.keys()) if k != '')}
         }};
     }}
 '''
@@ -534,12 +534,12 @@ with open(args.globals, 'r') as f:
         contents,
         c_file,
         ''.join(
-            f'    public static {v.format()};\n'
+            f'    {v.prefix()}public static final {v.format()};\n'
             for v in variables if v.lisp_type != 'BVAR'
         ) + f'''
     private static void {stem}Vars() {{
 {'\n'.join(f'        {v.init()};'
-           for v in variables if v.lisp_type != 'BVAR')
+           for v in variables if v.lisp_type != 'BVAR' and v.name != '')
            }{
                '\n        ELispBuffer.initBufferLocalVars();'
                if stem == 'buffer' else ''

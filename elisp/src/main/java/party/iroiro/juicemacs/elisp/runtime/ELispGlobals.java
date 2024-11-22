@@ -28,6 +28,7 @@ public class ELispGlobals {
         casefiddleVars();
         casetabVars();
         categoryVars();
+        cclVars();
         characterVars();
         charsetVars();
         chartabVars();
@@ -67,6 +68,7 @@ public class ELispGlobals {
         casefiddlePostInitVars();
         casetabPostInitVars();
         categoryPostInitVars();
+        cclPostInitVars();
         characterPostInitVars();
         charsetPostInitVars();
         chartabPostInitVars();
@@ -99,24 +101,24 @@ public class ELispGlobals {
     }
 
     //#region alloc.c
-    public static ELispSymbol.Value.ForwardedLong gcConsThreshold = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded gcConsPercentage = new ELispSymbol.Value.Forwarded((Object) 0.1);
-    public static ELispSymbol.Value.ForwardedLong pureBytesUsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong consCellsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong floatsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong vectorCellsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong symbolsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong stringCharsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong intervalsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong stringsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded purifyFlag = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.ForwardedBool garbageCollectionMessages = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded postGcHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded memorySignalData = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded memoryFull = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded gcElapsed = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.ForwardedLong gcsDone = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong integerWidth = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong gcConsThreshold = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded gcConsPercentage = new ELispSymbol.Value.Forwarded((Object) 0.1);
+    public static final ELispSymbol.Value.ForwardedLong pureBytesUsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong consCellsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong floatsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong vectorCellsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong symbolsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong stringCharsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong intervalsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong stringsConsed = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded purifyFlag = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.ForwardedBool garbageCollectionMessages = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded postGcHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded memorySignalData = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded memoryFull = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded gcElapsed = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.ForwardedLong gcsDone = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong integerWidth = new ELispSymbol.Value.ForwardedLong((long) 0);
 
     private static void allocVars() {
         GC_CONS_THRESHOLD.initForwardTo(gcConsThreshold);
@@ -144,7 +146,7 @@ public class ELispGlobals {
     }
     //#endregion alloc.c
     //#region chartab.c
-    public static ELispSymbol.Value.Forwarded charCodePropertyAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded charCodePropertyAlist = new ELispSymbol.Value.Forwarded(false);
 
     private static void chartabVars() {
         CHAR_CODE_PROPERTY_ALIST.initForwardTo(charCodePropertyAlist);
@@ -154,21 +156,21 @@ public class ELispGlobals {
     }
     //#endregion chartab.c
     //#region comp.c
-    public static ELispSymbol.Value.ForwardedBool nativeCompJitCompilation = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded compCtxt = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compSubrList = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded compAbiHash = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compNativeVersionDir = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compDeferredPendingH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compElnToElH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded nativeCompElnLoadPath = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded nativeCompEnableSubrTrampolines = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded compInstalledTrampolinesH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compNoNativeFileH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool compFilePreloadedP = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded compLoadedCompUnitsH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded compSubrAritiesH = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool compSanitizerActive = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool nativeCompJitCompilation = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded compCtxt = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded compSubrList = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded compAbiHash = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded compNativeVersionDir = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded compDeferredPendingH = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded compElnToElH = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded nativeCompElnLoadPath = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded nativeCompEnableSubrTrampolines = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded compInstalledTrampolinesH = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded compNoNativeFileH = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool compFilePreloadedP = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded compLoadedCompUnitsH = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded compSubrAritiesH = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool compSanitizerActive = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void compVars() {
         NATIVE_COMP_JIT_COMPILATION.initForwardTo(nativeCompJitCompilation);
@@ -220,9 +222,9 @@ public class ELispGlobals {
     }
     //#endregion comp.c
     //#region data.c
-    public static ELispSymbol.Value.Forwarded mostPositiveFixnum = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded mostNegativeFixnum = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool symbolsWithPosEnabled = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded mostPositiveFixnum = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded mostNegativeFixnum = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool symbolsWithPosEnabled = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void dataVars() {
         MOST_POSITIVE_FIXNUM.initForwardTo(mostPositiveFixnum);
@@ -307,25 +309,31 @@ public class ELispGlobals {
     }
     //#endregion data.c
     //#region eval.c
-    public static ELispSymbol.Value.ForwardedLong maxLispEvalDepth = new ELispSymbol.Value.ForwardedLong((long) 1_600);
-    public static ELispSymbol.Value.ForwardedLong lispEvalDepthReserve = new ELispSymbol.Value.ForwardedLong((long) 200);
-    public static ELispSymbol.Value.Forwarded quitFlag = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitQuit = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitDebugger = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugOnError = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugIgnoredErrors = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool debugOnQuit = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool debugOnNextCall = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool backtraceOnRedisplayError = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool debuggerMayContinue = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool debuggerStackFrameAsList = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded debugger = new ELispSymbol.Value.Forwarded((Object) DEBUG_EARLY);
-    public static ELispSymbol.Value.Forwarded signalHookFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugOnSignal = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool backtraceOnErrorNoninteractive = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedLong whenEnteredDebugger = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded internalInterpreterEnvironment = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded internalMakeInterpretedClosureFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong maxLispEvalDepth = new ELispSymbol.Value.ForwardedLong((long) 1_600);
+    public static final ELispSymbol.Value.ForwardedLong lispEvalDepthReserve = new ELispSymbol.Value.ForwardedLong((long) 200);
+    public static final ELispSymbol.Value.Forwarded quitFlag = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitQuit = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitDebugger = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded debugOnError = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded debugIgnoredErrors = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool debugOnQuit = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool debugOnNextCall = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool backtraceOnRedisplayError = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool debuggerMayContinue = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool debuggerStackFrameAsList = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded debugger = new ELispSymbol.Value.Forwarded((Object) DEBUG_EARLY);
+    public static final ELispSymbol.Value.Forwarded signalHookFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded debugOnSignal = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool backtraceOnErrorNoninteractive = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedLong whenEnteredDebugger = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded internalInterpreterEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded internalMakeInterpretedClosureFunction = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded runHooks = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded autoloadQueue = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded signalingFunction = new ELispSymbol.Value.Forwarded(false);
 
     private static void evalVars() {
         MAX_LISP_EVAL_DEPTH.initForwardTo(maxLispEvalDepth);
@@ -350,15 +358,17 @@ public class ELispGlobals {
     }
     private static void evalPostInitVars() {
         ELispContext.unintern(INTERNAL_INTERPRETER_ENVIRONMENT);
+        var runHooksJInit = ELispContext.intern("run-hooks");
+        runHooks.setValue(runHooksJInit);
     }
     //#endregion eval.c
     //#region fns.c
-    public static ELispSymbol.Value.Forwarded overridingPlistEnvironment = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded features = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool useDialogBox = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool useFileDialog = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool useShortAnswers = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded yesOrNoPrompt = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded overridingPlistEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded features = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool useDialogBox = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool useFileDialog = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool useShortAnswers = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded yesOrNoPrompt = new ELispSymbol.Value.Forwarded(false);
 
     private static void fnsVars() {
         OVERRIDING_PLIST_ENVIRONMENT.initForwardTo(overridingPlistEnvironment);
@@ -378,39 +388,41 @@ public class ELispGlobals {
     }
     //#endregion fns.c
     //#region lread.c
-    public static ELispSymbol.Value.Forwarded obarray = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded values = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded standardInput = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded readCircle = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded loadPath = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded loadSuffixes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded moduleFileSuffix = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded dynamicLibrarySuffixes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadFileRepSuffixes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool loadInProgress = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded afterLoadAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadHistory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadFileName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadTrueFileName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded userInitFile = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded currentLoadList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded loadReadFunction = new ELispSymbol.Value.Forwarded((Object) READ);
-    public static ELispSymbol.Value.Forwarded loadSourceFileFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool loadForceDocStrings = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool loadConvertToUnibyte = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded sourceDirectory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded preloadedFileList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded byteBooleanVars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool loadDangerousLibraries = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool forceLoadMessages = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded bytecompVersionRegexp = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lexicalBinding = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded evalBufferList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lreadUnescapedCharacterLiterals = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool loadPreferNewer = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool loadNoNative = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded readSymbolShorthands = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded macroexpDynvars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded obarray = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded values = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded standardInput = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded readCircle = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded loadPath = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded loadSuffixes = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded moduleFileSuffix = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded dynamicLibrarySuffixes = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded loadFileRepSuffixes = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool loadInProgress = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded afterLoadAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded loadHistory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded loadFileName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded loadTrueFileName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded userInitFile = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded currentLoadList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded loadReadFunction = new ELispSymbol.Value.Forwarded((Object) READ);
+    public static final ELispSymbol.Value.Forwarded loadSourceFileFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool loadForceDocStrings = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool loadConvertToUnibyte = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded sourceDirectory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded preloadedFileList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded byteBooleanVars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool loadDangerousLibraries = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool forceLoadMessages = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded bytecompVersionRegexp = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lexicalBinding = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded evalBufferList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lreadUnescapedCharacterLiterals = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool loadPreferNewer = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool loadNoNative = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded readSymbolShorthands = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded macroexpDynvars = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded loadsInProgress = new ELispSymbol.Value.Forwarded(false);
 
     private static void lreadVars() {
         OBARRAY.initForwardTo(obarray);
@@ -461,16 +473,16 @@ public class ELispGlobals {
     }
     //#endregion lread.c
     //#region process.c
-    public static ELispSymbol.Value.ForwardedBool deleteExitedProcesses = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded processConnectionType = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded processAdaptiveReadBuffering = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool processPrioritizeLowerFds = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded interruptProcessFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded signalProcessFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded internalDaemonSockname = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong readProcessOutputMax = new ELispSymbol.Value.ForwardedLong((long) 65_536);
-    public static ELispSymbol.Value.ForwardedBool fastReadProcessOutput = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedLong processErrorPauseTime = new ELispSymbol.Value.ForwardedLong((long) 1);
+    public static final ELispSymbol.Value.ForwardedBool deleteExitedProcesses = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded processConnectionType = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded processAdaptiveReadBuffering = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool processPrioritizeLowerFds = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded interruptProcessFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded signalProcessFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded internalDaemonSockname = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong readProcessOutputMax = new ELispSymbol.Value.ForwardedLong((long) 65_536);
+    public static final ELispSymbol.Value.ForwardedBool fastReadProcessOutput = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedLong processErrorPauseTime = new ELispSymbol.Value.ForwardedLong((long) 1);
 
     private static void processVars() {
         DELETE_EXITED_PROCESSES.initForwardTo(deleteExitedProcesses);
@@ -493,10 +505,18 @@ public class ELispGlobals {
     }
     //#endregion process.c
     //#region charset.c
-    public static ELispSymbol.Value.Forwarded charsetMapPath = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitLoadCharsetMap = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded charsetList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded currentIso639Language = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded charsetMapPath = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitLoadCharsetMap = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded charsetList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded currentIso639Language = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded charsetOrderedList = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded iso2022CharsetList = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded emacsMuleCharsetList = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded charsetHashTable = new ELispSymbol.Value.Forwarded(false);
 
     private static void charsetVars() {
         CHARSET_MAP_PATH.initForwardTo(charsetMapPath);
@@ -505,6 +525,8 @@ public class ELispGlobals {
         CURRENT_ISO639_LANGUAGE.initForwardTo(currentIso639Language);
     }
     private static void charsetPostInitVars() {
+        var charsetHashTableJInit = FMakeHashTable.makeHashTable(new Object[]{CTEST, EQ});
+        charsetHashTable.setValue(charsetHashTableJInit);
         defineCharsetInternal(ASCII, 1, "\u0000\u007f\u0000\u0000\u0000\u0000\u0000", 0, 127, 66, -1, 0, 1, 0, 0);
         defineCharsetInternal(ISO_8859_1, 1, "\u0000\u00ff\u0000\u0000\u0000\u0000\u0000", 0, 255, -1, -1, -1, 1, 0, 0);
         defineCharsetInternal(UNICODE, 3, "\u0000\u00ff\u0000\u00ff\u0000\u0010\u0000", 0, 1114111, -1, 0, -1, 1, 0, 0);
@@ -513,21 +535,21 @@ public class ELispGlobals {
     }
     //#endregion charset.c
     //#region fileio.c
-    public static ELispSymbol.Value.Forwarded fileNameCodingSystem = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded defaultFileNameCodingSystem = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded fileNameHandlerAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded setAutoCodingFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded afterInsertFileFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded writeRegionAnnotateFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded writeRegionPostAnnotationFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded writeRegionAnnotationsSoFar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitFileNameHandlers = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitFileNameOperation = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoSaveListFileName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoSaveVisitedFileName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoSaveIncludeBigDeletions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool writeRegionInhibitFsync = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool deleteByMovingToTrash = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded fileNameCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded defaultFileNameCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded fileNameHandlerAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded setAutoCodingFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded afterInsertFileFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded writeRegionAnnotateFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded writeRegionPostAnnotationFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded writeRegionAnnotationsSoFar = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitFileNameHandlers = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitFileNameOperation = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded autoSaveListFileName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded autoSaveVisitedFileName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded autoSaveIncludeBigDeletions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool writeRegionInhibitFsync = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool deleteByMovingToTrash = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void fileioVars() {
         FILE_NAME_CODING_SYSTEM.initForwardTo(fileNameCodingSystem);
@@ -565,15 +587,15 @@ public class ELispGlobals {
     }
     //#endregion fileio.c
     //#region editfns.c
-    public static ELispSymbol.Value.Forwarded inhibitFieldTextMotion = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded bufferAccessFontifyFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded bufferAccessFontifiedProperty = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded systemName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded userFullName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded userLoginName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded userRealLoginName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded operatingSystemRelease = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.ForwardedBool binaryAsUnsigned = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded inhibitFieldTextMotion = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded bufferAccessFontifyFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded bufferAccessFontifiedProperty = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded systemName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded userFullName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded userLoginName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded userRealLoginName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded operatingSystemRelease = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.ForwardedBool binaryAsUnsigned = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void editfnsVars() {
         INHIBIT_FIELD_TEXT_MOTION.initForwardTo(inhibitFieldTextMotion);
@@ -591,27 +613,29 @@ public class ELispGlobals {
     }
     //#endregion editfns.c
     //#region emacs.c
-    public static ELispSymbol.Value.Forwarded commandLineArgs = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded systemType = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded systemConfiguration = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded systemConfigurationOptions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded systemConfigurationFeatures = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool noninteractive1 = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded killEmacsHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded pathSeparator = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded invocationName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded invocationDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded installationDirectory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded systemMessagesLocale = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded systemTimeLocale = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded beforeInitTime = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded afterInitTime = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitXResources = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded emacsCopyright = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded emacsVersion = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded reportEmacsBugAddress = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded dumpMode = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded dynamicLibraryAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded commandLineArgs = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded systemType = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded systemConfiguration = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded systemConfigurationOptions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded systemConfigurationFeatures = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool noninteractive1 = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded killEmacsHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded pathSeparator = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded invocationName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded invocationDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded installationDirectory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded systemMessagesLocale = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded systemTimeLocale = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded beforeInitTime = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded afterInitTime = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitXResources = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded emacsCopyright = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded emacsVersion = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded reportEmacsBugAddress = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded dumpMode = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded dynamicLibraryAlist = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded previousSystemTimeLocale = new ELispSymbol.Value.Forwarded(false);
 
     private static void emacsVars() {
         COMMAND_LINE_ARGS.initForwardTo(commandLineArgs);
@@ -657,8 +681,8 @@ public class ELispGlobals {
     }
     //#endregion emacs.c
     //#region search.c
-    public static ELispSymbol.Value.Forwarded searchSpacesRegexp = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitChangingMatchData = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded searchSpacesRegexp = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitChangingMatchData = new ELispSymbol.Value.Forwarded(false);
 
     private static void searchVars() {
         SEARCH_SPACES_REGEXP.initForwardTo(searchSpacesRegexp);
@@ -674,22 +698,22 @@ public class ELispGlobals {
     }
     //#endregion search.c
     //#region buffer.c
-    public static ELispSymbol.Value.Forwarded beforeChangeFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded afterChangeFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded firstChangeHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded transientMarkMode = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitReadOnly = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded killBufferQueryFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded changeMajorModeHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded bufferListUpdateHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool killBufferDeleteAutoSaveFiles = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool deleteAutoSaveFiles = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded caseFoldSearch = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded cloneIndirectBufferHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded longLineThreshold = new ELispSymbol.Value.Forwarded((Object) 50000);
-    public static ELispSymbol.Value.ForwardedLong longLineOptimizationsRegionSize = new ELispSymbol.Value.ForwardedLong((long) 500_000);
-    public static ELispSymbol.Value.ForwardedLong longLineOptimizationsBolSearchLimit = new ELispSymbol.Value.ForwardedLong((long) 128);
-    public static ELispSymbol.Value.ForwardedLong largeHscrollThreshold = new ELispSymbol.Value.ForwardedLong((long) 10_000);
+    public static final ELispSymbol.Value.Forwarded beforeChangeFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded afterChangeFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded firstChangeHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded transientMarkMode = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitReadOnly = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded killBufferQueryFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded changeMajorModeHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded bufferListUpdateHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool killBufferDeleteAutoSaveFiles = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool deleteAutoSaveFiles = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded caseFoldSearch = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded cloneIndirectBufferHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded longLineThreshold = new ELispSymbol.Value.Forwarded((Object) 50000);
+    public static final ELispSymbol.Value.ForwardedLong longLineOptimizationsRegionSize = new ELispSymbol.Value.ForwardedLong((long) 500_000);
+    public static final ELispSymbol.Value.ForwardedLong longLineOptimizationsBolSearchLimit = new ELispSymbol.Value.ForwardedLong((long) 128);
+    public static final ELispSymbol.Value.ForwardedLong largeHscrollThreshold = new ELispSymbol.Value.ForwardedLong((long) 10_000);
 
     private static void bufferVars() {
         BEFORE_CHANGE_FUNCTIONS.initForwardTo(beforeChangeFunctions);
@@ -722,12 +746,14 @@ public class ELispGlobals {
     }
     //#endregion buffer.c
     //#region keymap.c
-    public static ELispSymbol.Value.Forwarded minibufferLocalMap = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minorModeMapAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minorModeOverridingMapAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded emulationModeMapAlists = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded whereIsPreferredModifier = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded describeBindingsCheckShadowingInRanges = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferLocalMap = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minorModeMapAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minorModeOverridingMapAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded emulationModeMapAlists = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded whereIsPreferredModifier = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded describeBindingsCheckShadowingInRanges = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded mouseEvents = new ELispSymbol.Value.Forwarded(false);
 
     private static void keymapVars() {
         MINIBUFFER_LOCAL_MAP.initForwardTo(minibufferLocalMap);
@@ -741,27 +767,29 @@ public class ELispGlobals {
         KEYMAP.putProperty(CHAR_TABLE_EXTRA_SLOTS, (long) (0));
         var minibufferLocalMapJInit = FMakeSparseKeymap.makeSparseKeymap(NIL);
         minibufferLocalMap.setValue(minibufferLocalMapJInit);
+        var mouseEventsJInit = ELispCons.listOf(MENU_BAR, TAB_BAR, TOOL_BAR, TAB_LINE, HEADER_LINE, MODE_LINE, ELispContext.intern("mouse-1"), ELispContext.intern("mouse-2"), ELispContext.intern("mouse-3"), ELispContext.intern("mouse-4"), ELispContext.intern("mouse-5"));
+        mouseEvents.setValue(mouseEventsJInit);
     }
     //#endregion keymap.c
     //#region print.c
-    public static ELispSymbol.Value.Forwarded standardOutput = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded floatOutputFormat = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool printIntegersAsCharacters = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded printLength = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printLevel = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool printEscapeNewlines = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool printEscapeControlCharacters = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool printEscapeNonascii = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool printEscapeMultibyte = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool printQuoted = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded printGensym = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printCircle = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printContinuousNumbering = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printNumberTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printCharsetTextProperty = new ELispSymbol.Value.Forwarded((Object) DEFAULT);
-    public static ELispSymbol.Value.ForwardedBool printSymbolsBare = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded printUnreadableFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printUnreadableCallbackBuffer = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded standardOutput = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded floatOutputFormat = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool printIntegersAsCharacters = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded printLength = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printLevel = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool printEscapeNewlines = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool printEscapeControlCharacters = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool printEscapeNonascii = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool printEscapeMultibyte = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool printQuoted = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded printGensym = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printCircle = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printContinuousNumbering = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printNumberTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printCharsetTextProperty = new ELispSymbol.Value.Forwarded((Object) DEFAULT);
+    public static final ELispSymbol.Value.ForwardedBool printSymbolsBare = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded printUnreadableFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printUnreadableCallbackBuffer = new ELispSymbol.Value.Forwarded(false);
 
     private static void printVars() {
         STANDARD_OUTPUT.initForwardTo(standardOutput);
@@ -788,16 +816,20 @@ public class ELispGlobals {
     }
     //#endregion print.c
     //#region xfaces.c
-    public static ELispSymbol.Value.ForwardedBool faceFiltersAlwaysMatch = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded faceNewFrameDefaults = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded faceDefaultStipple = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded ttyDefinedColorAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded scalableFontsAllowed = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded faceIgnoredFonts = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded faceRemappingAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded faceFontRescaleAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong faceNearSameColorThreshold = new ELispSymbol.Value.ForwardedLong((long) 30_000);
-    public static ELispSymbol.Value.Forwarded faceFontLaxMatchedAttributes = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool faceFiltersAlwaysMatch = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded faceNewFrameDefaults = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded faceDefaultStipple = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded ttyDefinedColorAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded scalableFontsAllowed = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded faceIgnoredFonts = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded faceRemappingAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded faceFontRescaleAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong faceNearSameColorThreshold = new ELispSymbol.Value.ForwardedLong((long) 30_000);
+    public static final ELispSymbol.Value.Forwarded faceFontLaxMatchedAttributes = new ELispSymbol.Value.Forwarded((Object) T);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded faceAlternativeFontFamilyAlist = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded faceAlternativeFontRegistryAlist = new ELispSymbol.Value.Forwarded(false);
 
     private static void xfacesVars() {
         FACE_FILTERS_ALWAYS_MATCH.initForwardTo(faceFiltersAlwaysMatch);
@@ -819,7 +851,7 @@ public class ELispGlobals {
     }
     //#endregion xfaces.c
     //#region timefns.c
-    public static ELispSymbol.Value.ForwardedBool currentTimeList = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool currentTimeList = new ELispSymbol.Value.ForwardedBool(true);
 
     private static void timefnsVars() {
         CURRENT_TIME_LIST.initForwardTo(currentTimeList);
@@ -838,7 +870,7 @@ public class ELispGlobals {
     }
     //#endregion casetab.c
     //#region cmds.c
-    public static ELispSymbol.Value.Forwarded postSelfInsertHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded postSelfInsertHook = new ELispSymbol.Value.Forwarded(false);
 
     private static void cmdsVars() {
         POST_SELF_INSERT_HOOK.initForwardTo(postSelfInsertHook);
@@ -848,90 +880,92 @@ public class ELispGlobals {
     }
     //#endregion cmds.c
     //#region keyboard.c
-    public static ELispSymbol.Value.Forwarded internalTopLevelMessage = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lastCommandEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded lastNonmenuEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded lastInputEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded unreadCommandEvents = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded unreadPostInputMethodEvents = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded unreadInputMethodEvents = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded metaPrefixChar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lastCommand = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded realLastCommand = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded lastRepeatableCommand = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded thisCommand = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded realThisCommand = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded currentMinibufferCommand = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded thisCommandKeysShiftTranslated = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded thisOriginalCommand = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong autoSaveInterval = new ELispSymbol.Value.ForwardedLong((long) 300);
-    public static ELispSymbol.Value.ForwardedBool autoSaveNoMessage = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded autoSaveTimeout = new ELispSymbol.Value.Forwarded((Object) 30);
-    public static ELispSymbol.Value.Forwarded echoKeystrokes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool echoKeystrokesHelp = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded pollingPeriod = new ELispSymbol.Value.Forwarded((Object) 2.0);
-    public static ELispSymbol.Value.Forwarded doubleClickTime = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong doubleClickFuzz = new ELispSymbol.Value.ForwardedLong((long) 3);
-    public static ELispSymbol.Value.ForwardedLong numInputKeys = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong numNonmacroInputEvents = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded lastEventFrame = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lastEventDevice = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded ttyEraseChar = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded helpChar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded helpEventList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded helpForm = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded prefixHelpCommand = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded topLevel = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded keyboardTranslateTable = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.ForwardedBool cannotSuspend = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool menuPrompting = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded menuPromptMoreChar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong extraKeyboardModifiers = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded deactivateMark = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded preCommandHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded postCommandHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool lucidMenuGrabKeyboard = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded menuBarFinalItems = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded tabBarSeparatorImageExpression = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded toolBarSeparatorImageExpression = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded overridingTerminalLocalMap = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded overridingLocalMap = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded overridingLocalMapMenuFlag = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded specialEventMap = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded trackMouse = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded systemKeyAlist = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded localFunctionKeyMap = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded inputDecodeMap = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded functionKeyMap = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded keyTranslationMap = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded delayedWarningsList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded timerList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded timerIdleList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inputMethodFunction = new ELispSymbol.Value.Forwarded((Object) LIST);
-    public static ELispSymbol.Value.Forwarded inputMethodPreviousMessage = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded showHelpFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded disablePointAdjustment = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded globalDisablePointAdjustment = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferMessageTimeout = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded throwOnInput = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded commandErrorFunction = new ELispSymbol.Value.Forwarded((Object) COMMAND_ERROR_DEFAULT_FUNCTION);
-    public static ELispSymbol.Value.Forwarded enableDisabledMenusAndButtons = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded selectActiveRegions = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded savedRegionSelection = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded selectionInhibitUpdateCommands = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugOnEvent = new ELispSymbol.Value.Forwarded((Object) SIGUSR2);
-    public static ELispSymbol.Value.ForwardedBool attemptStackOverflowRecovery = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool attemptOrderlyShutdownOnFatalSignal = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded whileNoInputIgnoreEvents = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool translateUpperCaseKeyBindings = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool inputPendingPFilterEvents = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool mwheelCoalesceScrollEvents = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded displayMonitorsChangedFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitRecordChar = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool recordAllKeys = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded postSelectRegionHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool disableInhibitTextConversion = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded currentKeyRemapSequence = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded internalTopLevelMessage = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lastCommandEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded lastNonmenuEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded lastInputEvent = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded unreadCommandEvents = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded unreadPostInputMethodEvents = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded unreadInputMethodEvents = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded metaPrefixChar = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lastCommand = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded realLastCommand = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded lastRepeatableCommand = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded thisCommand = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded realThisCommand = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded currentMinibufferCommand = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded thisCommandKeysShiftTranslated = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded thisOriginalCommand = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong autoSaveInterval = new ELispSymbol.Value.ForwardedLong((long) 300);
+    public static final ELispSymbol.Value.ForwardedBool autoSaveNoMessage = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded autoSaveTimeout = new ELispSymbol.Value.Forwarded((Object) 30);
+    public static final ELispSymbol.Value.Forwarded echoKeystrokes = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool echoKeystrokesHelp = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded pollingPeriod = new ELispSymbol.Value.Forwarded((Object) 2.0);
+    public static final ELispSymbol.Value.Forwarded doubleClickTime = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong doubleClickFuzz = new ELispSymbol.Value.ForwardedLong((long) 3);
+    public static final ELispSymbol.Value.ForwardedLong numInputKeys = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong numNonmacroInputEvents = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded lastEventFrame = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lastEventDevice = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded ttyEraseChar = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded helpChar = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded helpEventList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded helpForm = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded prefixHelpCommand = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded topLevel = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded keyboardTranslateTable = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.ForwardedBool cannotSuspend = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool menuPrompting = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded menuPromptMoreChar = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong extraKeyboardModifiers = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded deactivateMark = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded preCommandHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded postCommandHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool lucidMenuGrabKeyboard = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded menuBarFinalItems = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded tabBarSeparatorImageExpression = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded toolBarSeparatorImageExpression = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded overridingTerminalLocalMap = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded overridingLocalMap = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded overridingLocalMapMenuFlag = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded specialEventMap = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded trackMouse = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded systemKeyAlist = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded localFunctionKeyMap = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded inputDecodeMap = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded functionKeyMap = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded keyTranslationMap = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded delayedWarningsList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded timerList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded timerIdleList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inputMethodFunction = new ELispSymbol.Value.Forwarded((Object) LIST);
+    public static final ELispSymbol.Value.Forwarded inputMethodPreviousMessage = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded showHelpFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded disablePointAdjustment = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded globalDisablePointAdjustment = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferMessageTimeout = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded throwOnInput = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded commandErrorFunction = new ELispSymbol.Value.Forwarded((Object) COMMAND_ERROR_DEFAULT_FUNCTION);
+    public static final ELispSymbol.Value.Forwarded enableDisabledMenusAndButtons = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded selectActiveRegions = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded savedRegionSelection = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded selectionInhibitUpdateCommands = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded debugOnEvent = new ELispSymbol.Value.Forwarded((Object) SIGUSR2);
+    public static final ELispSymbol.Value.ForwardedBool attemptStackOverflowRecovery = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool attemptOrderlyShutdownOnFatalSignal = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded whileNoInputIgnoreEvents = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool translateUpperCaseKeyBindings = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool inputPendingPFilterEvents = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool mwheelCoalesceScrollEvents = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded displayMonitorsChangedFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitRecordChar = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool recordAllKeys = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded postSelectRegionHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool disableInhibitTextConversion = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded currentKeyRemapSequence = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded lispyMouseStem = new ELispSymbol.Value.Forwarded(false);
 
     private static void keyboardVars() {
         INTERNAL__TOP_LEVEL_MESSAGE.initForwardTo(internalTopLevelMessage);
@@ -1020,6 +1054,8 @@ public class ELispGlobals {
         CURRENT_KEY_REMAP_SEQUENCE.initForwardTo(currentKeyRemapSequence);
     }
     private static void keyboardPostInitVars() {
+        var lispyMouseStemJInit = new ELispString("mouse");
+        lispyMouseStem.setValue(lispyMouseStemJInit);
         var internalTopLevelMessageJInit = new ELispString("Back to top level");
         internalTopLevelMessage.setValue(internalTopLevelMessageJInit);
         INPUT_METHOD_EXIT_ON_FIRST_CHAR.setValue(NIL);
@@ -1050,14 +1086,14 @@ public class ELispGlobals {
     }
     //#endregion keyboard.c
     //#region callint.c
-    public static ELispSymbol.Value.Forwarded prefixArg = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded lastPrefixArg = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded currentPrefixArg = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded commandHistory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded commandDebugStatus = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded markEvenIfInactive = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded mouseLeaveBufferHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitMouseEventCheck = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded prefixArg = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded lastPrefixArg = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded currentPrefixArg = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded commandHistory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded commandDebugStatus = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded markEvenIfInactive = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded mouseLeaveBufferHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitMouseEventCheck = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void callintVars() {
         PREFIX_ARG.initForwardTo(prefixArg);
@@ -1074,8 +1110,8 @@ public class ELispGlobals {
     }
     //#endregion callint.c
     //#region casefiddle.c
-    public static ELispSymbol.Value.Forwarded regionExtractFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool caseSymbolsAsWords = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded regionExtractFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool caseSymbolsAsWords = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void casefiddleVars() {
         REGION_EXTRACT_FUNCTION.initForwardTo(regionExtractFunction);
@@ -1086,35 +1122,47 @@ public class ELispGlobals {
     }
     //#endregion casefiddle.c
     //#region coding.c
-    public static ELispSymbol.Value.Forwarded codingSystemList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded codingSystemAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded codingCategoryList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded codingSystemForRead = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded codingSystemForWrite = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lastCodingSystemUsed = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded lastCodeConversionError = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitEolConversion = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inheritProcessCodingSystem = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded fileCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded processCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded networkCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded localeCodingSystem = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded eolMnemonicUnix = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded eolMnemonicDos = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded eolMnemonicMac = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded eolMnemonicUndecided = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded enableCharacterTranslation = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded standardTranslationTableForDecode = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded standardTranslationTableForEncode = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded charsetRevisionTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded defaultProcessCodingSystem = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded latinExtraCodeTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded selectSafeCodingSystemFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool codingSystemRequireWarning = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitIsoEscapeDetection = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitNullByteDetection = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool disableAsciiOptimization = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded translationTableForInput = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded codingSystemList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded codingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded codingCategoryList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded codingSystemForRead = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded codingSystemForWrite = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lastCodingSystemUsed = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded lastCodeConversionError = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitEolConversion = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inheritProcessCodingSystem = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded fileCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded processCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded networkCodingSystemAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded localeCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded eolMnemonicUnix = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded eolMnemonicDos = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded eolMnemonicMac = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded eolMnemonicUndecided = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded enableCharacterTranslation = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded standardTranslationTableForDecode = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded standardTranslationTableForEncode = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded charsetRevisionTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded defaultProcessCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded latinExtraCodeTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded selectSafeCodingSystemFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool codingSystemRequireWarning = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitIsoEscapeDetection = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitNullByteDetection = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool disableAsciiOptimization = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded translationTableForInput = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded codingSystemHashTable = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded sjisCodingSystem = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded big5CodingSystem = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded codeConversionReusedWorkbuf = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded codeConversionWorkbufName = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded codingCategoryTable = new ELispSymbol.Value.Forwarded(false);
 
     private static void codingVars() {
         CODING_SYSTEM_LIST.initForwardTo(codingSystemList);
@@ -1148,6 +1196,10 @@ public class ELispGlobals {
         TRANSLATION_TABLE_FOR_INPUT.initForwardTo(translationTableForInput);
     }
     private static void codingPostInitVars() {
+        var codingSystemHashTableJInit = FMakeHashTable.makeHashTable(new Object[]{CTEST, EQ});
+        codingSystemHashTable.setValue(codingSystemHashTableJInit);
+        var codeConversionWorkbufNameJInit = new ELispString(" *code-conversion-work*");
+        codeConversionWorkbufName.setValue(codeConversionWorkbufNameJInit);
         CODING_SYSTEM_HISTORY.setValue(NIL);
         INSERT_FILE_CONTENTS.putProperty(TARGET_IDX, (long) (0));
         WRITE_REGION.putProperty(TARGET_IDX, (long) (2));
@@ -1158,28 +1210,29 @@ public class ELispGlobals {
         CODING_SYSTEM_ERROR.putProperty(ERROR_CONDITIONS, ELispCons.listOf(CODING_SYSTEM_ERROR, ERROR));
         CODING_SYSTEM_ERROR.putProperty(ERROR_MESSAGE, new ELispString("Invalid coding system"));
         TRANSLATION_TABLE.putProperty(CHAR_TABLE_EXTRA_SLOTS, (long) (2));
-        ELispVector codingCategoryTable = new ELispVector(Collections.nCopies(CODING_CATEGORY_MAX, false));
-        codingCategoryTable.set(CODING_CATEGORY_ISO_7, ELispContext.intern("coding-category-iso-7"));
-        codingCategoryTable.set(CODING_CATEGORY_ISO_7_TIGHT, ELispContext.intern("coding-category-iso-7-tight"));
-        codingCategoryTable.set(CODING_CATEGORY_ISO_8_1, ELispContext.intern("coding-category-iso-8-1"));
-        codingCategoryTable.set(CODING_CATEGORY_ISO_8_2, ELispContext.intern("coding-category-iso-8-2"));
-        codingCategoryTable.set(CODING_CATEGORY_ISO_7_ELSE, ELispContext.intern("coding-category-iso-7-else"));
-        codingCategoryTable.set(CODING_CATEGORY_ISO_8_ELSE, ELispContext.intern("coding-category-iso-8-else"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_8_AUTO, ELispContext.intern("coding-category-utf-8-auto"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_8_NOSIG, ELispContext.intern("coding-category-utf-8"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_8_SIG, ELispContext.intern("coding-category-utf-8-sig"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_16_BE, ELispContext.intern("coding-category-utf-16-be"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_16_AUTO, ELispContext.intern("coding-category-utf-16-auto"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_16_LE, ELispContext.intern("coding-category-utf-16-le"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_16_BE_NOSIG, ELispContext.intern("coding-category-utf-16-be-nosig"));
-        codingCategoryTable.set(CODING_CATEGORY_UTF_16_LE_NOSIG, ELispContext.intern("coding-category-utf-16-le-nosig"));
-        codingCategoryTable.set(CODING_CATEGORY_CHARSET, ELispContext.intern("coding-category-charset"));
-        codingCategoryTable.set(CODING_CATEGORY_SJIS, ELispContext.intern("coding-category-sjis"));
-        codingCategoryTable.set(CODING_CATEGORY_BIG5, ELispContext.intern("coding-category-big5"));
-        codingCategoryTable.set(CODING_CATEGORY_CCL, ELispContext.intern("coding-category-ccl"));
-        codingCategoryTable.set(CODING_CATEGORY_EMACS_MULE, ELispContext.intern("coding-category-emacs-mule"));
-        codingCategoryTable.set(CODING_CATEGORY_RAW_TEXT, ELispContext.intern("coding-category-raw-text"));
-        codingCategoryTable.set(CODING_CATEGORY_UNDECIDED, ELispContext.intern("coding-category-undecided"));
+        var codingCategoryTableJInit = new ELispVector(Collections.nCopies(CODING_CATEGORY_MAX, false));
+        codingCategoryTable.setValue(codingCategoryTableJInit);
+        codingCategoryTableJInit.set(CODING_CATEGORY_ISO_7, ELispContext.intern("coding-category-iso-7"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_ISO_7_TIGHT, ELispContext.intern("coding-category-iso-7-tight"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_ISO_8_1, ELispContext.intern("coding-category-iso-8-1"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_ISO_8_2, ELispContext.intern("coding-category-iso-8-2"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_ISO_7_ELSE, ELispContext.intern("coding-category-iso-7-else"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_ISO_8_ELSE, ELispContext.intern("coding-category-iso-8-else"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_8_AUTO, ELispContext.intern("coding-category-utf-8-auto"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_8_NOSIG, ELispContext.intern("coding-category-utf-8"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_8_SIG, ELispContext.intern("coding-category-utf-8-sig"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_16_BE, ELispContext.intern("coding-category-utf-16-be"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_16_AUTO, ELispContext.intern("coding-category-utf-16-auto"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_16_LE, ELispContext.intern("coding-category-utf-16-le"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_16_BE_NOSIG, ELispContext.intern("coding-category-utf-16-be-nosig"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UTF_16_LE_NOSIG, ELispContext.intern("coding-category-utf-16-le-nosig"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_CHARSET, ELispContext.intern("coding-category-charset"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_SJIS, ELispContext.intern("coding-category-sjis"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_BIG5, ELispContext.intern("coding-category-big5"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_CCL, ELispContext.intern("coding-category-ccl"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_EMACS_MULE, ELispContext.intern("coding-category-emacs-mule"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_RAW_TEXT, ELispContext.intern("coding-category-raw-text"));
+        codingCategoryTableJInit.set(CODING_CATEGORY_UNDECIDED, ELispContext.intern("coding-category-undecided"));
         var codingCategoryListJInit = false /* TODO */;
         codingCategoryList.setValue(codingCategoryListJInit);
         var eolMnemonicUnixJInit = new ELispString(":");
@@ -1196,14 +1249,16 @@ public class ELispGlobals {
     }
     //#endregion coding.c
     //#region character.c
-    public static ELispSymbol.Value.Forwarded translationTableVector = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoFillChars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded charWidthTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded ambiguousWidthChars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded printableChars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded charScriptTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded scriptRepresentativeChars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded unicodeCategoryTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded translationTableVector = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded autoFillChars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded charWidthTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded ambiguousWidthChars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded printableChars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded charScriptTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded scriptRepresentativeChars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded unicodeCategoryTable = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded charUnifyTable = new ELispSymbol.Value.Forwarded(false);
 
     private static void characterVars() {
         TRANSLATION_TABLE_VECTOR.initForwardTo(translationTableVector);
@@ -1238,29 +1293,29 @@ public class ELispGlobals {
     }
     //#endregion character.c
     //#region window.c
-    public static ELispSymbol.Value.Forwarded tempBufferShowFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufScrollWindow = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool modeLineInNonSelectedWindows = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded otherWindowScrollBuffer = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded otherWindowScrollDefault = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool autoWindowVscrollP = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedLong nextScreenContextLines = new ELispSymbol.Value.ForwardedLong((long) 2);
-    public static ELispSymbol.Value.Forwarded scrollPreserveScreenPosition = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowPointInsertionType = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowBufferChangeFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowSizeChangeFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowSelectionChangeFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowStateChangeFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowStateChangeHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowConfigurationChangeHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowRestoreKilledBufferWindows = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded recenterRedisplay = new ELispSymbol.Value.Forwarded((Object) TTY);
-    public static ELispSymbol.Value.Forwarded windowCombinationResize = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowCombinationLimit = new ELispSymbol.Value.Forwarded((Object) WINDOW_SIZE);
-    public static ELispSymbol.Value.Forwarded windowPersistentParameters = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool windowResizePixelwise = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool fastButImpreciseScrolling = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded windowDeadWindowsTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded tempBufferShowFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufScrollWindow = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool modeLineInNonSelectedWindows = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded otherWindowScrollBuffer = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded otherWindowScrollDefault = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool autoWindowVscrollP = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedLong nextScreenContextLines = new ELispSymbol.Value.ForwardedLong((long) 2);
+    public static final ELispSymbol.Value.Forwarded scrollPreserveScreenPosition = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowPointInsertionType = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowBufferChangeFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowSizeChangeFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowSelectionChangeFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowStateChangeFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowStateChangeHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowConfigurationChangeHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowRestoreKilledBufferWindows = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded recenterRedisplay = new ELispSymbol.Value.Forwarded((Object) TTY);
+    public static final ELispSymbol.Value.Forwarded windowCombinationResize = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowCombinationLimit = new ELispSymbol.Value.Forwarded((Object) WINDOW_SIZE);
+    public static final ELispSymbol.Value.Forwarded windowPersistentParameters = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool windowResizePixelwise = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool fastButImpreciseScrolling = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded windowDeadWindowsTable = new ELispSymbol.Value.Forwarded(false);
 
     private static void windowVars() {
         TEMP_BUFFER_SHOW_FUNCTION.initForwardTo(tempBufferShowFunction);
@@ -1297,32 +1352,32 @@ public class ELispGlobals {
     }
     //#endregion window.c
     //#region frame.c
-    public static ELispSymbol.Value.Forwarded xResourceName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded xResourceClass = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded frameAlphaLowerLimit = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded defaultFrameAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded defaultFrameScrollBars = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool scrollBarAdjustThumbPortionP = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded terminalFrame = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded mousePositionFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded mouseHighlight = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded makePointerInvisible = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded moveFrameFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded deleteFrameFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded afterDeleteFrameFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded menuBarMode = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded tabBarMode = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded toolBarMode = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded defaultMinibufferFrame = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded resizeMiniFrames = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded focusFollowsMouse = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool frameResizePixelwise = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded frameInhibitImpliedResize = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded frameSizeHistory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool tooltipReuseHiddenFrame = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool useSystemTooltips = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded iconifyChildFrame = new ELispSymbol.Value.Forwarded((Object) ICONIFY_TOP_LEVEL);
-    public static ELispSymbol.Value.Forwarded frameInternalParameters = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded xResourceName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded xResourceClass = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded frameAlphaLowerLimit = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded defaultFrameAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded defaultFrameScrollBars = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool scrollBarAdjustThumbPortionP = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded terminalFrame = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded mousePositionFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded mouseHighlight = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded makePointerInvisible = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded moveFrameFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded deleteFrameFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded afterDeleteFrameFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded menuBarMode = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded tabBarMode = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded toolBarMode = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded defaultMinibufferFrame = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded resizeMiniFrames = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded focusFollowsMouse = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool frameResizePixelwise = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded frameInhibitImpliedResize = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded frameSizeHistory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool tooltipReuseHiddenFrame = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool useSystemTooltips = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded iconifyChildFrame = new ELispSymbol.Value.Forwarded((Object) ICONIFY_TOP_LEVEL);
+    public static final ELispSymbol.Value.Forwarded frameInternalParameters = new ELispSymbol.Value.Forwarded(false);
 
     private static void frameVars() {
         X_RESOURCE_NAME.initForwardTo(xResourceName);
@@ -1408,10 +1463,10 @@ public class ELispGlobals {
     }
     //#endregion frame.c
     //#region textprop.c
-    public static ELispSymbol.Value.Forwarded defaultTextProperties = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded charPropertyAliasAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded inhibitPointMotionHooks = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded textPropertyDefaultNonsticky = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded defaultTextProperties = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded charPropertyAliasAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded inhibitPointMotionHooks = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded textPropertyDefaultNonsticky = new ELispSymbol.Value.Forwarded(false);
 
     private static void textpropVars() {
         DEFAULT_TEXT_PROPERTIES.initForwardTo(defaultTextProperties);
@@ -1425,15 +1480,15 @@ public class ELispGlobals {
     }
     //#endregion textprop.c
     //#region syntax.c
-    public static ELispSymbol.Value.Forwarded commentUseSyntaxPpss = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool parseSexpIgnoreComments = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool parseSexpLookupProperties = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedLong syntaxPropertizeDone = new ELispSymbol.Value.ForwardedLong((long) -1);
-    public static ELispSymbol.Value.ForwardedBool wordsIncludeEscapes = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool multibyteSyntaxAsSymbol = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool openParenInColumn0IsDefunStart = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded findWordBoundaryFunctionTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool commentEndCanBeEscaped = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded commentUseSyntaxPpss = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool parseSexpIgnoreComments = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool parseSexpLookupProperties = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedLong syntaxPropertizeDone = new ELispSymbol.Value.ForwardedLong((long) -1);
+    public static final ELispSymbol.Value.ForwardedBool wordsIncludeEscapes = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool multibyteSyntaxAsSymbol = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool openParenInColumn0IsDefunStart = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded findWordBoundaryFunctionTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool commentEndCanBeEscaped = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void syntaxVars() {
         COMMENT_USE_SYNTAX_PPSS.initForwardTo(commentUseSyntaxPpss);
@@ -1456,102 +1511,108 @@ public class ELispGlobals {
     }
     //#endregion syntax.c
     //#region xdisp.c
-    public static ELispSymbol.Value.ForwardedBool scrollMinibufferConservatively = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool inhibitMessage = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded messagesBufferName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool xStretchCursorP = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded showTrailingWhitespace = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded modeLineCompact = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded nobreakCharDisplay = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool nobreakCharAsciiDisplay = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded voidTextAreaPointer = new ELispSymbol.Value.Forwarded((Object) ARROW);
-    public static ELispSymbol.Value.Forwarded inhibitRedisplay = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded globalModeString = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded overlayArrowPosition = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded overlayArrowString = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded overlayArrowVariableList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong emacsScrollStep = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong scrollConservatively = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong scrollMargin = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded maximumScrollMargin = new ELispSymbol.Value.Forwarded((Object) 0.25);
-    public static ELispSymbol.Value.Forwarded displayPixelsPerInch = new ELispSymbol.Value.Forwarded((Object) 72.0);
-    public static ELispSymbol.Value.ForwardedLong debugEndPos = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded truncatePartialWidthWindows = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool wordWrapByCategory = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded lineNumberDisplayLimit = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong lineNumberDisplayLimitWidth = new ELispSymbol.Value.ForwardedLong((long) 200);
-    public static ELispSymbol.Value.ForwardedBool highlightNonselectedWindows = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool multipleFrames = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded frameTitleFormat = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded iconTitleFormat = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded messageLogMax = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded windowScrollFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded mouseAutoselectWindow = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded autoResizeTabBars = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool autoRaiseTabBarButtonsP = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded autoResizeToolBars = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool autoRaiseToolBarButtonsP = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded makeCursorLineFullyVisible = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool makeWindowStartVisible = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded tabBarBorder = new ELispSymbol.Value.Forwarded((Object) INTERNAL_BORDER_WIDTH);
-    public static ELispSymbol.Value.Forwarded tabBarButtonMargin = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong tabBarButtonRelief = new ELispSymbol.Value.ForwardedLong((long) 1);
-    public static ELispSymbol.Value.Forwarded toolBarBorder = new ELispSymbol.Value.Forwarded((Object) INTERNAL_BORDER_WIDTH);
-    public static ELispSymbol.Value.Forwarded toolBarButtonMargin = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong toolBarButtonRelief = new ELispSymbol.Value.ForwardedLong((long) 1);
-    public static ELispSymbol.Value.Forwarded toolBarStyle = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong toolBarMaxLabelSize = new ELispSymbol.Value.ForwardedLong((long) 14);
-    public static ELispSymbol.Value.Forwarded fontificationFunctions = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool unibyteDisplayViaLanguageEnvironment = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded maxMiniWindowHeight = new ELispSymbol.Value.Forwarded((Object) 0.25);
-    public static ELispSymbol.Value.Forwarded resizeMiniWindows = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded blinkCursorAlist = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded automaticHscrolling = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedLong hscrollMargin = new ELispSymbol.Value.ForwardedLong((long) 5);
-    public static ELispSymbol.Value.Forwarded hscrollStep = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool messageTruncateLines = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded menuBarUpdateHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded menuUpdatingFrame = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitMenubarUpdate = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded wrapPrefix = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded linePrefix = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded displayLineNumbers = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded displayLineNumbersWidth = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded displayLineNumbersCurrentAbsolute = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool displayLineNumbersWiden = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedLong displayLineNumbersOffset = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedBool displayFillColumnIndicator = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded displayFillColumnIndicatorColumn = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.Forwarded displayFillColumnIndicatorCharacter = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedLong displayLineNumbersMajorTick = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedLong displayLineNumbersMinorTick = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.ForwardedBool inhibitEvalDuringRedisplay = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitFreeRealizedFaces = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitBidiMirroring = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool bidiInhibitBpa = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitTryWindowId = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitTryWindowReusing = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitTryCursorMovement = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedLong overlineMargin = new ELispSymbol.Value.ForwardedLong((long) 2);
-    public static ELispSymbol.Value.ForwardedLong underlineMinimumOffset = new ELispSymbol.Value.ForwardedLong((long) 1);
-    public static ELispSymbol.Value.ForwardedBool displayHourglassP = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.Forwarded hourglassDelay = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded preRedisplayFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded glyphlessCharDisplay = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded debugOnMessage = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded setMessageFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded clearMessageFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded redisplayAllWindowsCause = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded redisplayModeLinesCause = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool redisplayInhibitBidi = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool displayRawBytesAsHex = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool mouseFineGrainedTracking = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool tabBarDraggingInProgress = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool redisplaySkipInitialFrame = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool redisplaySkipFontificationOnInput = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool redisplayAdhocScrollInResizeMiniWindows = new ELispSymbol.Value.ForwardedBool(true);
-    public static ELispSymbol.Value.ForwardedBool compositionBreakAtPoint = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedLong maxRedisplayTicks = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedBool scrollMinibufferConservatively = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool inhibitMessage = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded messagesBufferName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool xStretchCursorP = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded showTrailingWhitespace = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded modeLineCompact = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded nobreakCharDisplay = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool nobreakCharAsciiDisplay = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded voidTextAreaPointer = new ELispSymbol.Value.Forwarded((Object) ARROW);
+    public static final ELispSymbol.Value.Forwarded inhibitRedisplay = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded globalModeString = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded overlayArrowPosition = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded overlayArrowString = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded overlayArrowVariableList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong emacsScrollStep = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong scrollConservatively = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong scrollMargin = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded maximumScrollMargin = new ELispSymbol.Value.Forwarded((Object) 0.25);
+    public static final ELispSymbol.Value.Forwarded displayPixelsPerInch = new ELispSymbol.Value.Forwarded((Object) 72.0);
+    public static final ELispSymbol.Value.ForwardedLong debugEndPos = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded truncatePartialWidthWindows = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool wordWrapByCategory = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded lineNumberDisplayLimit = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong lineNumberDisplayLimitWidth = new ELispSymbol.Value.ForwardedLong((long) 200);
+    public static final ELispSymbol.Value.ForwardedBool highlightNonselectedWindows = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool multipleFrames = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded frameTitleFormat = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded iconTitleFormat = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded messageLogMax = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded windowScrollFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded mouseAutoselectWindow = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded autoResizeTabBars = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool autoRaiseTabBarButtonsP = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded autoResizeToolBars = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool autoRaiseToolBarButtonsP = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded makeCursorLineFullyVisible = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool makeWindowStartVisible = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded tabBarBorder = new ELispSymbol.Value.Forwarded((Object) INTERNAL_BORDER_WIDTH);
+    public static final ELispSymbol.Value.Forwarded tabBarButtonMargin = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong tabBarButtonRelief = new ELispSymbol.Value.ForwardedLong((long) 1);
+    public static final ELispSymbol.Value.Forwarded toolBarBorder = new ELispSymbol.Value.Forwarded((Object) INTERNAL_BORDER_WIDTH);
+    public static final ELispSymbol.Value.Forwarded toolBarButtonMargin = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong toolBarButtonRelief = new ELispSymbol.Value.ForwardedLong((long) 1);
+    public static final ELispSymbol.Value.Forwarded toolBarStyle = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong toolBarMaxLabelSize = new ELispSymbol.Value.ForwardedLong((long) 14);
+    public static final ELispSymbol.Value.Forwarded fontificationFunctions = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool unibyteDisplayViaLanguageEnvironment = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded maxMiniWindowHeight = new ELispSymbol.Value.Forwarded((Object) 0.25);
+    public static final ELispSymbol.Value.Forwarded resizeMiniWindows = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded blinkCursorAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded automaticHscrolling = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedLong hscrollMargin = new ELispSymbol.Value.ForwardedLong((long) 5);
+    public static final ELispSymbol.Value.Forwarded hscrollStep = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool messageTruncateLines = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded menuBarUpdateHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded menuUpdatingFrame = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitMenubarUpdate = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded wrapPrefix = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded linePrefix = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded displayLineNumbers = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded displayLineNumbersWidth = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded displayLineNumbersCurrentAbsolute = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool displayLineNumbersWiden = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedLong displayLineNumbersOffset = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedBool displayFillColumnIndicator = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded displayFillColumnIndicatorColumn = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.Forwarded displayFillColumnIndicatorCharacter = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedLong displayLineNumbersMajorTick = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedLong displayLineNumbersMinorTick = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.ForwardedBool inhibitEvalDuringRedisplay = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitFreeRealizedFaces = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitBidiMirroring = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool bidiInhibitBpa = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitTryWindowId = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitTryWindowReusing = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitTryCursorMovement = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedLong overlineMargin = new ELispSymbol.Value.ForwardedLong((long) 2);
+    public static final ELispSymbol.Value.ForwardedLong underlineMinimumOffset = new ELispSymbol.Value.ForwardedLong((long) 1);
+    public static final ELispSymbol.Value.ForwardedBool displayHourglassP = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded hourglassDelay = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded preRedisplayFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded glyphlessCharDisplay = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded debugOnMessage = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded setMessageFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded clearMessageFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded redisplayAllWindowsCause = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded redisplayModeLinesCause = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool redisplayInhibitBidi = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool displayRawBytesAsHex = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool mouseFineGrainedTracking = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool tabBarDraggingInProgress = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool redisplaySkipInitialFrame = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool redisplaySkipFontificationOnInput = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool redisplayAdhocScrollInResizeMiniWindows = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.ForwardedBool compositionBreakAtPoint = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedLong maxRedisplayTicks = new ELispSymbol.Value.ForwardedLong((long) 0);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded withEchoAreaSaveVector = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded messageStack = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded modeLineUnwindVector = new ELispSymbol.Value.Forwarded(false);
 
     private static void xdispVars() {
         SCROLL_MINIBUFFER_CONSERVATIVELY.initForwardTo(scrollMinibufferConservatively);
@@ -1698,8 +1759,8 @@ public class ELispGlobals {
     }
     //#endregion xdisp.c
     //#region category.c
-    public static ELispSymbol.Value.Forwarded wordCombiningCategories = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded wordSeparatingCategories = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded wordCombiningCategories = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded wordSeparatingCategories = new ELispSymbol.Value.Forwarded(false);
 
     private static void categoryVars() {
         WORD_COMBINING_CATEGORIES.initForwardTo(wordCombiningCategories);
@@ -1710,10 +1771,10 @@ public class ELispGlobals {
     }
     //#endregion category.c
     //#region doc.c
-    public static ELispSymbol.Value.Forwarded docFileName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded buildFiles = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded textQuotingStyle = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool textQuotingFlag = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded docFileName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded buildFiles = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded textQuotingStyle = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool textQuotingFlag = new ELispSymbol.Value.ForwardedBool(false);
 
     private static void docVars() {
         INTERNAL_DOC_FILE_NAME.initForwardTo(docFileName);
@@ -1726,31 +1787,31 @@ public class ELispGlobals {
     }
     //#endregion doc.c
     //#region minibuf.c
-    public static ELispSymbol.Value.Forwarded readExpressionHistory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded readBufferFunction = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferFollowsSelectedFrame = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool readBufferCompletionIgnoreCase = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded minibufferSetupHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferExitHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded historyLength = new ELispSymbol.Value.Forwarded((Object) 100);
-    public static ELispSymbol.Value.ForwardedBool historyDeleteDuplicates = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded historyAddNewInput = new ELispSymbol.Value.Forwarded((Object) T);
-    public static ELispSymbol.Value.ForwardedBool completionIgnoreCase = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool enableRecursiveMinibuffers = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded minibufferCompletionTable = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferCompletionPredicate = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferCompletionConfirm = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferCompletingFileName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferHelpForm = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded minibufferHistoryVariable = new ELispSymbol.Value.Forwarded((Object) 0);
-    public static ELispSymbol.Value.Forwarded minibufferHistoryPosition = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool minibufferAutoRaise = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded completionRegexpList = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool minibufferAllowTextProperties = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.Forwarded minibufferPromptProperties = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded readHideChar = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.ForwardedBool inhibitInteraction = new ELispSymbol.Value.ForwardedBool(false);
-    public static ELispSymbol.Value.ForwardedBool readMinibufferRestoreWindows = new ELispSymbol.Value.ForwardedBool(true);
+    public static final ELispSymbol.Value.Forwarded readExpressionHistory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded readBufferFunction = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferFollowsSelectedFrame = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool readBufferCompletionIgnoreCase = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded minibufferSetupHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferExitHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded historyLength = new ELispSymbol.Value.Forwarded((Object) 100);
+    public static final ELispSymbol.Value.ForwardedBool historyDeleteDuplicates = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded historyAddNewInput = new ELispSymbol.Value.Forwarded((Object) T);
+    public static final ELispSymbol.Value.ForwardedBool completionIgnoreCase = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool enableRecursiveMinibuffers = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded minibufferCompletionTable = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferCompletionPredicate = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferCompletionConfirm = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferCompletingFileName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferHelpForm = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded minibufferHistoryVariable = new ELispSymbol.Value.Forwarded((Object) 0);
+    public static final ELispSymbol.Value.Forwarded minibufferHistoryPosition = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool minibufferAutoRaise = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded completionRegexpList = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool minibufferAllowTextProperties = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.Forwarded minibufferPromptProperties = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded readHideChar = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.ForwardedBool inhibitInteraction = new ELispSymbol.Value.ForwardedBool(false);
+    public static final ELispSymbol.Value.ForwardedBool readMinibufferRestoreWindows = new ELispSymbol.Value.ForwardedBool(true);
 
     private static void minibufVars() {
         READ_EXPRESSION_HISTORY.initForwardTo(readExpressionHistory);
@@ -1788,23 +1849,25 @@ public class ELispGlobals {
     }
     //#endregion minibuf.c
     //#region callproc.c
-    public static ELispSymbol.Value.Forwarded shellFileName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded execPath = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded execSuffixes = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded execDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded dataDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded docDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded configureInfoDirectory = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded sharedGameScoreDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.Forwarded initialEnvironment = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded processEnvironment = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded ctagsProgramName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded etagsProgramName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded hexlProgramName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded emacsclientProgramName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded movemailProgramName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded ebrowseProgramName = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded rcs2logProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded shellFileName = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded execPath = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded execSuffixes = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded execDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded dataDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded docDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded configureInfoDirectory = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded sharedGameScoreDirectory = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.Forwarded initialEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded processEnvironment = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded ctagsProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded etagsProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded hexlProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded emacsclientProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded movemailProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded ebrowseProgramName = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded rcs2logProgramName = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded tempFileNamePattern = new ELispSymbol.Value.Forwarded(false);
 
     private static void callprocVars() {
         SHELL_FILE_NAME.initForwardTo(shellFileName);
@@ -1826,6 +1889,8 @@ public class ELispGlobals {
         RCS2LOG_PROGRAM_NAME.initForwardTo(rcs2logProgramName);
     }
     private static void callprocPostInitVars() {
+        var tempFileNamePatternJInit = new ELispString("emacsXXXXXX");
+        tempFileNamePattern.setValue(tempFileNamePatternJInit);
         var configureInfoDirectoryJInit = new ELispString("/usr/share/info");
         configureInfoDirectory.setValue(configureInfoDirectoryJInit);
         var ctagsProgramNameJInit = new ELispString("ctags");
@@ -1845,11 +1910,11 @@ public class ELispGlobals {
     }
     //#endregion callproc.c
     //#region macros.c
-    public static ELispSymbol.Value.Forwarded kbdMacroTerminationHook = new ELispSymbol.Value.Forwarded(false);
-    public static ELispSymbol.Value.Forwarded definingKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
-    public static ELispSymbol.Value.Forwarded executingKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
-    public static ELispSymbol.Value.ForwardedLong executingKbdMacroIndex = new ELispSymbol.Value.ForwardedLong((long) 0);
-    public static ELispSymbol.Value.Forwarded lastKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded kbdMacroTerminationHook = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded definingKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
+    public static final ELispSymbol.Value.Forwarded executingKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* uninitialized */);
+    public static final ELispSymbol.Value.ForwardedLong executingKbdMacroIndex = new ELispSymbol.Value.ForwardedLong((long) 0);
+    public static final ELispSymbol.Value.Forwarded lastKbdMacro = new ELispSymbol.Value.Forwarded((Object) false /* TODO */);
 
     private static void macrosVars() {
         KBD_MACRO_TERMINATION_HOOK.initForwardTo(kbdMacroTerminationHook);
@@ -1871,4 +1936,23 @@ public class ELispGlobals {
 
     }
     //#endregion floatfns.c
+    //#region ccl.c
+    public static final ELispSymbol.Value.Forwarded codeConversionMapVector = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded fontCclEncoderAlist = new ELispSymbol.Value.Forwarded(false);
+    public static final ELispSymbol.Value.Forwarded translationHashTableVector = new ELispSymbol.Value.Forwarded(false);
+    /// A local C variable not exported to any Lisp vars
+    public static final ELispSymbol.Value.Forwarded cclProgramTable = new ELispSymbol.Value.Forwarded(false);
+
+    private static void cclVars() {
+        CODE_CONVERSION_MAP_VECTOR.initForwardTo(codeConversionMapVector);
+        FONT_CCL_ENCODER_ALIST.initForwardTo(fontCclEncoderAlist);
+        TRANSLATION_HASH_TABLE_VECTOR.initForwardTo(translationHashTableVector);
+    }
+    private static void cclPostInitVars() {
+        var cclProgramTableJInit = new ELispVector(Collections.nCopies(32, false));
+        cclProgramTable.setValue(cclProgramTableJInit);
+        var codeConversionMapVectorJInit = new ELispVector(Collections.nCopies(16, false));
+        codeConversionMapVector.setValue(codeConversionMapVectorJInit);
+    }
+    //#endregion ccl.c
 }

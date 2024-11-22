@@ -41,6 +41,11 @@ class Variable:
         else:
             return 'Object', 'false /* TODO */'
 
+    def prefix(self):
+        if self.name == '':
+            return '/// A local C variable not exported to any Lisp vars\n    '
+        return ''
+
     def format(self):
         t, default_v = self.jtype()
         v = self.init_value
@@ -219,8 +224,6 @@ def exec_init_func(stem: str, contents: str):
         },
         'coding': {
             'extra_replaces': {
-                r'Vcoding_category_table = make_nil_vector \(coding_category_max\);':
-                    'py_def_var("ELispVector", "codingCategoryTable", make_nil_vector (coding_category_max))',
                 r'\{\s+int i;\s+Vcoding_category_list = Qnil;[^}]+?\}':
                     'Vcoding_category_list = py_init_coding_category_list(Vcoding_category_table);',
                 r'Lisp_Object args\[coding_arg_undecided_max\];[^}]+?\}[^}]+'
@@ -426,7 +429,11 @@ def exec_init_func(stem: str, contents: str):
         nonlocal c_globals, variable_map
         c_globals[key] = value
         if key not in variable_map:
-            return value
+            if not key.startswith('V'):
+                return value
+            assert f'Lisp_Object {key}' in contents
+            variable_map[key] = Variable('', key, 'LISP', None)
+            matches.append(('LISP', '', key))
         if (
             isinstance(value, int)
             or isinstance(value, float)
