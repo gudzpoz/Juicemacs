@@ -2054,7 +2054,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static Object aref(Object array, long idx) {
             return switch (array) {
                 case ELispVector vec -> vec.get((int) idx);
-                case ELispString str -> str.codepointAt((int) idx);
+                case ELispString str -> str.codePointAt((int) idx);
                 case ELispCharTable charTable -> charTable.getChar((int) idx);
                 case ELispBoolVector boolVec -> boolVec.get((int) idx);
                 case ELispRecord record -> record.get((int) idx);

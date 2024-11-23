@@ -3,8 +3,13 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asInt;
 
 public class BuiltInCharacter extends ELispBuiltIns {
     @Override
@@ -45,8 +50,7 @@ public class BuiltInCharacter extends ELispBuiltIns {
             if (unicode) {
                 return Character.MAX_CODE_POINT;
             }
-            // TODO
-            return 0x3FFFFF;
+            return ELispTypeSystem.MAX_CHAR;
         }
     }
 
@@ -144,8 +148,12 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void string(Object[] characters) {
-            throw new UnsupportedOperationException();
+        public static ELispString string(Object[] characters) {
+            MuleStringBuffer builder = new MuleStringBuffer();
+            for (Object c : characters) {
+                builder.append(asInt(c));
+            }
+            return new ELispString(builder.build());
         }
     }
 

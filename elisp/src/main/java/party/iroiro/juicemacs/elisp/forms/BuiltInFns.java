@@ -991,8 +991,18 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMemql extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void memql(Object elt, Object list) {
-            throw new UnsupportedOperationException();
+        public static Object memql(Object elt, Object list) {
+            if (isNil(list)) {
+                return false;
+            }
+            ELispCons.ConsIterator i = asCons(list).consIterator(0);
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (FEql.eql(current.car(), elt)) {
+                    return current;
+                }
+            }
+            return false;
         }
     }
 

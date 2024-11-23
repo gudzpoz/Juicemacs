@@ -71,7 +71,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public ELispFunctionObject getFunction() {
         ELispFunctionObject f = function;
         if (f == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             ELispClosureCallNode node = new ELispClosureCallNode();
             ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                     node, node.args.requiredArgCount(), node.args.maxArgCount()
@@ -169,7 +169,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Nullable
         @CompilerDirectives.TruffleBoundary
         private static LexicalEnvironment initializeLexical(Object env) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             if (env instanceof LexicalEnvironment l) {
                 return l;
             }

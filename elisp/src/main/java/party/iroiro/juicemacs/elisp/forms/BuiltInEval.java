@@ -518,9 +518,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     ELispLexical.@Nullable LexicalReference lexical,
                     ELispFrameSlotNode.@Nullable ELispFrameSlotWriteNode write
             ) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 int newIndex = lexical == null ? ELispFrameSlotNode.BYPASS : lexical.index();
                 if (write == null || write.getSlot() != newIndex) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (lexical == null) {
                         top = DYNAMIC;
                         write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
@@ -1696,7 +1696,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSignal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void signal(ELispSymbol errorSymbol, Object data) {
+        public static RuntimeException signal(ELispSymbol errorSymbol, Object data) {
             throw new ELispSignals.ELispSignalException(errorSymbol, data);
         }
     }

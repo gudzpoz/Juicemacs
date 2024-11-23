@@ -76,7 +76,6 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             try {
                 return function.executeGeneric(frame);
             } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
-                CompilerDirectives.transferToInterpreter();
                 throw remapException(e, this.function);
             }
         }

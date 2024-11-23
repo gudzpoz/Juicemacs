@@ -263,7 +263,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             )) {
                 return readNode;
             }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(currentFrame);
             ELispLexical.LexicalReference lexical = lexicalFrame == null
                     ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
@@ -271,6 +270,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 top = DYNAMIC;
                 return null;
             } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ELispFrameSlotNode.ELispFrameSlotReadNode reader =
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
                 readNode = reader;
@@ -525,16 +525,15 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         @Specialization
-        public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+        public Object call(VirtualFrame frame) {
             try {
-                return updateGenerated(frame, dispatchNode).executeGeneric(frame);
+                return updateGenerated(frame).executeGeneric(frame);
             } catch (ELispSignals.ELispSignalException e) {
-                CompilerDirectives.transferToInterpreter();
                 throw ELispSignals.remapException(e, this);
             }
         }
 
-        public ELispExpressionNode updateGenerated(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+        public ELispExpressionNode updateGenerated(VirtualFrame frame) {
             ELispExpressionNode inner = generatedNode;
             if (inner != null) {
                 return inner;
@@ -546,7 +545,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 if (inlineLambdaNode != null) {
                     function = inlineLambdaNode.executeGeneric(frame);
                 }
-                Object o = dispatchNode.executeDispatch(this, getFunctionObject(function), evalArgs(frame));
+                Object o = getFunctionObject(function).callTarget().call(evalArgs(frame));
                 if (o instanceof ELispCons debuggable) {
                     debuggable.setSourceLocation(
                             cons.getStartLine(),

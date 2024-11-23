@@ -4,6 +4,8 @@ import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.util.Collections;
+
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
 
@@ -57,6 +59,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
 })
 public abstract class ELispTypeSystem {
 
+    public static final int MAX_CHAR = 0x3FFFFF;
+
     @ImplicitCast
     public static ELispSymbol castBooleanToSymbol(boolean bool) {
         return bool ? T : NIL;
@@ -107,11 +111,19 @@ public abstract class ELispTypeSystem {
         return i;
     }
 
+    public static long asChar(Object value) {
+        return asRanged(value, 0, MAX_CHAR);
+    }
+
     public static long asLong(Object value) {
         if (value instanceof Long l) {
             return l;
         }
         throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
+    }
+
+    public static long asNat(Object value) {
+        return asRanged(value, 0, Long.MAX_VALUE);
     }
 
     public static long consToUnsigned(Object value, long max) {
@@ -179,7 +191,27 @@ public abstract class ELispTypeSystem {
         throw ELispSignals.wrongTypeArgument(ELispContext.CONSP, value);
     }
 
+    public static Iterable<Object> asConsOrNil(Object value) {
+        if (isNil(value)) {
+            return Collections.emptyList();
+        }
+        return asCons(value);
+    }
+
+    public static Object asList(Object value) {
+        if (isNil(value)) {
+            return false;
+        }
+        return asCons(value);
+    }
+
     public static ELispSymbol asSym(Object value) {
+        if (isNil(value)) {
+            return ELispContext.NIL;
+        }
+        if (isT(value)) {
+            return ELispContext.T;
+        }
         if (value instanceof ELispSymbol s) {
             return s;
         }
@@ -191,6 +223,13 @@ public abstract class ELispTypeSystem {
             return str;
         }
         throw ELispSignals.wrongTypeArgument(ELispContext.STRINGP, s);
+    }
+
+    public static ELispVector asVector(Object value) {
+        if (value instanceof ELispVector v) {
+            return v;
+        }
+        throw ELispSignals.wrongTypeArgument(ELispContext.VECTORP, value);
     }
 
     public static ELispBuffer asBuffer(Object buffer) {
