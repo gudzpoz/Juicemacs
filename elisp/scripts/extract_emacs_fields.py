@@ -57,6 +57,7 @@ EMACS_ENUMS = [
 ]
 EMACS_DEFINES = [
     ('coding.c', r'CODING_ISO_FLAG_\w+'),
+    ('coding.h', r'CODING_\w+_MASK'),
 ]
 
 

@@ -95,6 +95,80 @@ DEFVAR_BUF_REGEX = re.compile(
 DEFVAR_DETECT = re.compile(r'DEFVAR_\w+\s*\("(\S+?)"')
 
 
+def py_setup_coding_system(post_inits: list[str]):
+    def replacer(match: re.Match[str]):
+        replaced = []
+        src = match.group().strip()
+        ARGS_RE = re.compile(
+            r'Lisp_Object args\[coding_arg_undecided_max\];\s+memclear \(args, sizeof args\);',
+        )
+
+        args_match = ARGS_RE.match(src)
+        assert args_match, src
+        replaced.append(
+            'py_post_init("var args = new Object[CODING_ARG_UNDECIDED_MAX];");',
+        )
+        replaced.append(
+            'py_post_init("Arrays.fill(args, false);");',
+        )
+
+        src = src[len(args_match.group(0)):].strip()
+        PLIST_RE = re.compile(r'Lisp_Object plist\[\] =\s+\{([^}]+)\};')
+        plist_match = PLIST_RE.match(src)
+        assert plist_match, src
+        plist_inner = plist_match.group(1)
+        plist_inner_liner = []
+        PLIST_INNER_ARG_RE = re.compile(r'^args\[(\w+)\] = (.+?),$')
+        for line in plist_inner.splitlines():
+            if line.strip() == '':
+                continue
+            if '=' in line:
+                inner_match = PLIST_INNER_ARG_RE.match(line)
+                assert inner_match, line
+                prefix = f'args[{inner_match.group(1).upper()}] = '
+                replaced.append(f'''py_post_init({json.dumps(prefix)}, {
+                    inner_match.group(2)
+                }, ";");''')
+                line = inner_match.group(2) + ','
+            plist_inner_liner.append(line)
+        replaced.append(f'plist_init = [{' '.join(plist_inner_liner)}];')
+        replaced.append(f'''py_post_init({
+            json.dumps('var plist = new Object[]{')
+        }, *(f'\\n            {{init}},' for init in plist_init), "\\n        }};");''')
+
+        src = src[len(plist_match.group(0)):].strip()
+        src = re.sub(r'/\*.*?\*/', '', src, flags=re.DOTALL)
+        src = re.sub(r'([^;])\n', r'\1 ', src)
+        for line in src.splitlines():
+            if line.startswith('for'):
+                assert re.match(
+                    r'for \(int i = 0; i < coding_category_max; i\+\+\)\s+'
+                    r'Fset \(AREF \(Vcoding_category_table, i\), Qno_conversion\);',
+                    line,
+                ), line
+                replaced.append('py_post_init("Collections.fill(codingCategoryTableJInit, NO_CONVERSION);");')
+                continue
+            if line.startswith('setup'):
+                assert re.match(
+                    r'setup_coding_system \(Qno_conversion, &safe_terminal_coding\);',
+                    line,
+                ), line
+                replaced.append(
+                    'py_post_init("safeTerminalCoding = '
+                    'setupCodingSystem(NO_CONVERSION, safeTerminalCoding);");'
+                )
+                continue
+            if '=' in line:
+                line = re.sub(r'\[[^]]+\]', lambda m: m.group().upper(), line)
+                i = line.rindex('=')
+                replaced.append(f'''py_post_init({json.dumps(line[:i+1].strip())}, " ", {
+                    line[i+1:].strip(';')
+                }, ";");''')
+            else:
+                replaced.append(line)
+        return '\n'.join(replaced)
+    return replacer
+
 def exec_init_func(stem: str, contents: str):
     contents = re.sub(r'#if 0\n.*?\n#endif', '', contents, flags=re.DOTALL)
     detected = DEFVAR_DETECT.findall(contents)
@@ -114,7 +188,7 @@ def exec_init_func(stem: str, contents: str):
     def STR(s):
         return f'new ELispString({json.dumps(s)})'
     def LONG(i):
-        return f'(long) ({i})'
+        return f"(long) '{i}'" if isinstance(i, str) else f'(long) ({i})'
     def Fadd_variable_watcher(var, val):
         ignored = [
             'GC_CONS_PERCENTAGE',
@@ -137,6 +211,8 @@ def exec_init_func(stem: str, contents: str):
         'MOST_NEGATIVE_FIXNUM': 'Long.MIN_VALUE',
 
         'CALLN': lambda f, *args: f(len(args), args),
+        'CALLMANY': lambda f, args: f(args),
+        'py_post_init': lambda *s: post_inits.append(''.join(s)),
 
         'make_float': ID,
         'make_fixnum': LONG,
@@ -174,6 +250,7 @@ def exec_init_func(stem: str, contents: str):
         'Fmake_var_non_special': lambda sym: post_inits.append(f'{sym}.setSpecial(false);'),
         'Fmake_variable_buffer_local': lambda sym: post_inits.append(f'{sym}.setBufferLocal(true);'),
         'Fmake_sparse_keymap': lambda s: f'FMakeSparseKeymap.makeSparseKeymap({s})',
+        'Flist': lambda args: f'FList.list({args})',
         'Fset': lambda sym, value: post_inits.append(f'{sym}.setValue({value});'),
         'Fput': lambda sym, prop, v: post_inits.append(f'{sym}.putProperty({prop}, {v});'),
         'Fprovide': lambda sym, version: post_inits.append(f'FProvide.provide({sym}, {version});'),
@@ -226,11 +303,13 @@ def exec_init_func(stem: str, contents: str):
             'extra_replaces': {
                 r'\{\s+int i;\s+Vcoding_category_list = Qnil;[^}]+?\}':
                     'Vcoding_category_list = py_init_coding_category_list(Vcoding_category_table);',
-                r'Lisp_Object args\[coding_arg_undecided_max\];[^}]+?\}[^}]+'
-                r'Fset \(AREF \(Vcoding_category_table, i\), Qno_conversion\);':
-                    'py_setup_coding_system("""\1""")',
+                r'(Lisp_Object args\[coding_arg_undecided_max\];[^}]+?\}[^}]+'
+                r'Fset \(AREF \(Vcoding_category_table, i\), Qno_conversion\);)':
+                    py_setup_coding_system(post_inits),
             },
             'globals': {
+                'args': 'args',
+                'plist': 'plist',
                 'Vcoding_category_table': 'codingCategoryTable',
                 'coding_category_iso_7': 'CODING_CATEGORY_ISO_7',
                 'coding_category_iso_7_tight': 'CODING_CATEGORY_ISO_7_TIGHT',
@@ -254,9 +333,13 @@ def exec_init_func(stem: str, contents: str):
                 'coding_category_raw_text': 'CODING_CATEGORY_RAW_TEXT',
                 'coding_category_undecided': 'CODING_CATEGORY_UNDECIDED',
                 'coding_category_max': 'CODING_CATEGORY_MAX',
+                'coding_arg_max': 'CODING_ARG_MAX',
+                'coding_arg_undecided_max': 'CODING_ARG_UNDECIDED_MAX',
                 'py_def_var': lambda t, name, v: post_inits.append(f'{t} {name} = {v};'),
-                'py_init_coding_category_list': lambda table: f'false /* TODO */',
-                'py_setup_coding_system': lambda s: post_inits.append('// TODO: setup coding system'),
+                'py_init_coding_category_list': lambda table: f'ELispCons.listOf((Object[]) {table}.toArray())',
+                'Fdefine_coding_system_internal': lambda _, args: post_inits.append(
+                    f'FDefineCodingSystemInternal.defineCodingSystemInternal({args});'
+                ),
             },
         },
         'comp': {

@@ -204,4 +204,16 @@ public abstract class ELispBuiltInConstants {
     public final static int CODING_ISO_FLAG_LEVEL_4 = 0x20000;
     public final static int CODING_ISO_FLAG_FULL_SUPPORT = 0x100000;
     //#endregion define CODING_ISO_FLAG_\w+
+    //#region define CODING_\w+_MASK
+    public final static int CODING_ANNOTATION_MASK = 0x00FF;
+    public final static int CODING_ANNOTATE_COMPOSITION_MASK = 0x0001;
+    public final static int CODING_ANNOTATE_DIRECTION_MASK = 0x0002;
+    public final static int CODING_ANNOTATE_CHARSET_MASK = 0x0003;
+    public final static int CODING_FOR_UNIBYTE_MASK = 0x0100;
+    public final static int CODING_REQUIRE_FLUSHING_MASK = 0x0200;
+    public final static int CODING_REQUIRE_DECODING_MASK = 0x0400;
+    public final static int CODING_REQUIRE_ENCODING_MASK = 0x0800;
+    public final static int CODING_REQUIRE_DETECTION_MASK = 0x1000;
+    public final static int CODING_RESET_AT_BOL_MASK = 0x2000;
+    //#endregion define CODING_\w+_MASK
 }

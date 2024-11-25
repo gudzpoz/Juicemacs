@@ -6,9 +6,11 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInKeymap.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.defineCharsetInternal;
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.*;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
@@ -1233,7 +1235,7 @@ public class ELispGlobals {
         codingCategoryTableJInit.set(CODING_CATEGORY_EMACS_MULE, ELispContext.intern("coding-category-emacs-mule"));
         codingCategoryTableJInit.set(CODING_CATEGORY_RAW_TEXT, ELispContext.intern("coding-category-raw-text"));
         codingCategoryTableJInit.set(CODING_CATEGORY_UNDECIDED, ELispContext.intern("coding-category-undecided"));
-        var codingCategoryListJInit = false /* TODO */;
+        var codingCategoryListJInit = ELispCons.listOf((Object[]) codingCategoryTableJInit.toArray());
         codingCategoryList.setValue(codingCategoryListJInit);
         var eolMnemonicUnixJInit = new ELispString(":");
         eolMnemonicUnix.setValue(eolMnemonicUnixJInit);
@@ -1245,7 +1247,49 @@ public class ELispGlobals {
         eolMnemonicUndecided.setValue(eolMnemonicUndecidedJInit);
         var latinExtraCodeTableJInit = new ELispVector(Collections.nCopies(256, false));
         latinExtraCodeTable.setValue(latinExtraCodeTableJInit);
-        // TODO: setup coding system
+        var args = new Object[CODING_ARG_UNDECIDED_MAX];
+        Arrays.fill(args, false);
+        args[CODING_ARG_NAME] = NO_CONVERSION;
+        args[CODING_ARG_MNEMONIC] = (long) '=';
+        args[CODING_ARG_CODING_TYPE] = RAW_TEXT;
+        args[CODING_ARG_ASCII_COMPATIBLE_P] = T;
+        args[CODING_ARG_DEFAULT_CHAR] = (long) (0);
+        args[CODING_ARG_FOR_UNIBYTE] = T;
+        args[CODING_ARG_EOL_TYPE] = UNIX;
+        var plist = new Object[]{
+            CNAME,
+            NO_CONVERSION,
+            CMNEMONIC,
+            (long) '=',
+            ELispContext.intern(":coding-type"),
+            RAW_TEXT,
+            CASCII_COMPATIBLE_P,
+            T,
+            CDEFAULT_CHAR,
+            (long) (0),
+            ELispContext.intern(":for-unibyte"),
+            T,
+            ELispContext.intern(":docstring"),
+            new ELispString("Do no conversion.\n\nWhen you visit a file with this coding, the file is read into a\nunibyte buffer as is, thus each byte of a file is treated as a\ncharacter."),
+            ELispContext.intern(":eol-type"),
+            UNIX,
+        };
+        args[CODING_ARG_PLIST] = FList.list(plist);
+        FDefineCodingSystemInternal.defineCodingSystemInternal(args);
+        plist[1] = args[CODING_ARG_NAME] = UNDECIDED;
+        plist[3] = args[CODING_ARG_MNEMONIC] = (long) '-';
+        plist[5] = args[CODING_ARG_CODING_TYPE] = UNDECIDED;
+        plist[8] = ELispContext.intern(":charset-list");
+        plist[9] = args[CODING_ARG_CHARSET_LIST] = new ELispCons(ASCII);
+        plist[11] = args[CODING_ARG_FOR_UNIBYTE] = NIL;
+        plist[13] = new ELispString("No conversion on encoding, automatic conversion on decoding.");
+        plist[15] = args[CODING_ARG_EOL_TYPE] = NIL;
+        args[CODING_ARG_PLIST] = FList.list(plist);
+        args[CODING_ARG_UNDECIDED_INHIBIT_NULL_BYTE_DETECTION] = (long) (0);
+        args[CODING_ARG_UNDECIDED_INHIBIT_ISO_ESCAPE_DETECTION] = (long) (0);
+        FDefineCodingSystemInternal.defineCodingSystemInternal(args);
+        safeTerminalCoding = setupCodingSystem(NO_CONVERSION, safeTerminalCoding);
+        Collections.fill(codingCategoryTableJInit, NO_CONVERSION);
     }
     //#endregion coding.c
     //#region character.c
