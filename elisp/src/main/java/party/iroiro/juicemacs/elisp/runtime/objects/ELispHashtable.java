@@ -9,29 +9,43 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
-public final class ELispHashtable extends AbstractELispIdentityObject {
+public sealed class ELispHashtable extends AbstractELispIdentityObject {
 
-    private final EconomicMap<Object, Object> inner;
+    protected final EconomicMap<Object, Object> inner;
+    protected final Object weak;
     private final Object eqSymbol;
 
     public ELispHashtable() {
-        this(EQ);
+        this(EQ, false);
     }
 
-    public ELispHashtable(Object testSym) {
+    public ELispHashtable(Object testSym, Object weak) {
+        this(getEquivalence(testSym), testSym, weak);
+    }
+
+    protected ELispHashtable(Equivalence equivalence, Object testSym, Object weak) {
+        this.inner = EconomicMap.create(equivalence);
         this.eqSymbol = testSym;
+        this.weak = weak;
+    }
+
+    protected static Equivalence getEquivalence(Object testSym) {
         Equivalence test;
-        if (testSym == EQL) {
+        if (testSym == EQ) {
             test = new Equivalence() {
                 @Override
                 public boolean equals(Object a, Object b) {
-                    return BuiltInFns.FEql.eql(a, b);
+                    return BuiltInData.FEq.eq(a, b);
                 }
                 @Override
                 public int hashCode(Object o) {
@@ -50,18 +64,22 @@ public final class ELispHashtable extends AbstractELispIdentityObject {
                 }
             };
         } else {
+            // Default: eql
             test = new Equivalence() {
                 @Override
                 public boolean equals(Object a, Object b) {
-                    return BuiltInData.FEq.eq(a, b);
+                    return BuiltInFns.FEql.eql(a, b);
                 }
                 @Override
                 public int hashCode(Object o) {
+                    if (o instanceof Double d) {
+                        return Long.hashCode(Double.doubleToRawLongBits(d));
+                    }
                     return o.hashCode();
                 }
             };
         }
-        this.inner = EconomicMap.create(test);
+        return test;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -106,29 +124,41 @@ public final class ELispHashtable extends AbstractELispIdentityObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static ELispHashtable hashTableFromPlist(List<Object> list) {
+    public static ELispHashtable hashTableFromPlist(List<Object> list, boolean readSyntax) {
+        // (make-hash-table :size 65 :test eql :weakness t)
         // #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data ())
-        Object testSym = getFromPseudoPlist(list, TEST);
-        ELispHashtable table = new ELispHashtable(Objects.requireNonNullElse(testSym, false));
-        Object data = getFromPseudoPlist(list, DATA);
-        if (data != null && !isNil(data)) {
-            ELispCons cons = (ELispCons) data;
-            Iterator<Object> iterator = cons.iterator();
-            while (iterator.hasNext()) {
-                Object key = iterator.next();
-                if (!iterator.hasNext()) {
-                    throw ELispSignals.error("Hash table data is not a list of even length");
+        int plistStart = readSyntax ? 1 : 0;
+        Object testSym = getFromPseudoPlist(list, readSyntax ? TEST : CTEST, plistStart);
+        testSym = testSym == null ? false : testSym;
+        Object weak = getFromPseudoPlist(list, readSyntax ? WEAKNESS : CWEAKNESS, plistStart);
+        weak = weak == null ? false : weak;
+        ELispHashtable table;
+        if (isNil(weak)) {
+            table = new ELispHashtable(testSym, false);
+        } else {
+            table = new ELispWeakHashtable(testSym, weak);
+        }
+        if (readSyntax) {
+            Object data = getFromPseudoPlist(list, DATA, plistStart);
+            if (data != null && !isNil(data)) {
+                ELispCons cons = (ELispCons) data;
+                Iterator<Object> iterator = cons.iterator();
+                while (iterator.hasNext()) {
+                    Object key = iterator.next();
+                    if (!iterator.hasNext()) {
+                        throw ELispSignals.error("Hash table data is not a list of even length");
+                    }
+                    Object value = iterator.next();
+                    table.put(key, value);
                 }
-                Object value = iterator.next();
-                table.put(key, value);
             }
         }
         return table;
     }
 
     @Nullable
-    private static Object getFromPseudoPlist(List<Object> list, Object key) {
-        for (int i = 1; i < list.size() - 1; i += 2) {
+    private static Object getFromPseudoPlist(List<Object> list, Object key, int start) {
+        for (int i = start; i < list.size() - 1; i += 2) {
             if (list.get(i) == key) {
                 return list.get(i + 1);
             }
@@ -140,6 +170,9 @@ public final class ELispHashtable extends AbstractELispIdentityObject {
     public String toString() {
         StringBuilder builder = new StringBuilder("#s(hash-table");
         builder.append(" size ").append(size());
+        if (!isNil(weak)) {
+            builder.append(" weakness ").append(weak);
+        }
         builder.append(" test ").append(eqSymbol);
         builder.append(" data (");
         forEach((k, v) -> builder.append(ELispValue.display(k)).append(' ').append(ELispValue.display(v)).append(' '));
@@ -148,5 +181,143 @@ public final class ELispHashtable extends AbstractELispIdentityObject {
         }
         builder.append("))");
         return builder.toString();
+    }
+
+    private static final class ELispWeakHashtable extends ELispHashtable {
+        private final boolean weakKey;
+        private final boolean weakValue;
+        private final ReferenceQueue<Object> queue = new ReferenceQueue<>();
+
+        public ELispWeakHashtable(Object testSym, Object weak) {
+            super(wrapEquivalence(getEquivalence(testSym)), testSym, isT(weak) ? KEY_AND_VALUE : weak);
+            weak = super.weak;
+            // Treat KEY_AND_VALUE like KEY
+            weakKey = weak == KEY_AND_VALUE || weak == KEY_OR_VALUE || weak == KEY;
+            weakValue = weak == KEY_OR_VALUE || weak == VALUE;
+            if (!weakKey && !weakValue) {
+                throw ELispSignals.error("Invalid weakness argument: " + weak);
+            }
+        }
+
+        private static Equivalence wrapEquivalence(Equivalence inner) {
+            return new Equivalence() {
+                @Override
+                public boolean equals(Object a, Object b) {
+                    if (a == b) {
+                        return true;
+                    }
+                    if (a instanceof WeakKey key) {
+                        a = key.get();
+                    }
+                    if (b instanceof WeakKey key) {
+                        b = key.get();
+                    }
+                    return a != null && b != null && inner.equals(a, b);
+                }
+
+                @Override
+                public int hashCode(Object o) {
+                    return o instanceof WeakKey key ? key.innerHash : inner.hashCode(o);
+                }
+            };
+        }
+
+        @Override
+        public Object get(Object key) {
+            purge();
+            Object value = super.get(key);
+            if (value instanceof WeakReference<?> reference) {
+                value = reference.get();
+                if (value == null) {
+                    purge();
+                    return false;
+                }
+                return value;
+            }
+            return value;
+        }
+
+        @Override
+        public Object get(Object k, Object defaultValue) {
+            Object o = super.get(k, defaultValue);
+            if (o instanceof WeakValue v) {
+                o = v.get();
+            }
+            return Objects.requireNonNullElse(o, defaultValue);
+        }
+
+        @Override
+        public void put(Object key, Object value) {
+            purge();
+            if (weakKey) {
+                key = new WeakKey(key, queue, inner.getEquivalenceStrategy().hashCode(key));
+            }
+            if (weakValue) {
+                value = new WeakValue(value, key, queue);
+            }
+            super.put(key, value);
+        }
+
+        @Override
+        public int size() {
+            purge();
+            return super.size();
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Override
+        public void forEach(BiConsumer<Object, Object> action) {
+            MapCursor<Object, Object> cursor = inner.getEntries();
+            while (cursor.advance()) {
+                Object key = cursor.getKey();
+                Object value = cursor.getValue();
+                if (key instanceof WeakKey reference) {
+                    key = reference.get();
+                }
+                if (value instanceof WeakValue reference) {
+                    value = reference.get();
+                }
+                if (key != null && value != null) {
+                    action.accept(key, value);
+                } else {
+                    cursor.remove();
+                }
+            }
+        }
+
+        private void purge() {
+            Reference<?> poll = queue.poll();
+            while (poll != null) {
+                if (poll instanceof WeakKey key) {
+                    super.remove(key);
+                } else {
+                    super.remove(((WeakValue) poll).key);
+                }
+                poll = queue.poll();
+            }
+        }
+
+        private static final class WeakKey extends WeakReference<Object> {
+            private final int innerHash;
+
+            public WeakKey(Object referent, ReferenceQueue<Object> queue, int innerHash) {
+                super(referent, queue);
+                this.innerHash = innerHash;
+            }
+
+            @Override
+            public int hashCode() {
+                return innerHash;
+            }
+        }
+
+        private static final class WeakValue extends WeakReference<Object> {
+            private final Object key;
+
+            public WeakValue(Object referent, Object key, ReferenceQueue<Object> queue) {
+                super(referent, queue);
+                this.key = key;
+            }
+        }
     }
 }

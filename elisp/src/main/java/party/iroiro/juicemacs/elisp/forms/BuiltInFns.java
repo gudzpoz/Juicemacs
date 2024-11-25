@@ -2280,8 +2280,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FMakeHashTable extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispHashtable makeHashTable(Object[] keywordArgs) {
-            // TODO
-            return new ELispHashtable();
+            return ELispHashtable.hashTableFromPlist(Arrays.asList(keywordArgs), false);
         }
     }
 

@@ -163,7 +163,7 @@ public class ELispParser {
                 List<Object> list = readList();
                 Object type = list.getFirst();
                 if (type instanceof ELispSymbol sym && sym == HASH_TABLE) {
-                    yield ELispHashtable.hashTableFromPlist(list);
+                    yield ELispHashtable.hashTableFromPlist(list, true);
                 }
                 yield new ELispRecord(list);
             }
