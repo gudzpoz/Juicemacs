@@ -23,7 +23,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
         BuiltInFns.FPut.put(SYNTAX_TABLE, CHAR_TABLE_EXTRA_SLOTS, 0L);
         //noinspection SequencedCollectionMethodCanBeUsed
         Object whitespace = SYNTAX_CODE_OBJECT.get(SWHITESPACE);
-        ELispCharTable standardSyntaxTable = BuiltInCharTab.FMakeCharTable.makeCharTable(SYNTAX_TABLE, whitespace);
+        standardSyntaxTable = BuiltInCharTab.FMakeCharTable.makeCharTable(SYNTAX_TABLE, whitespace);
         ELispBuffer.DEFAULT_VALUES.setSyntaxTable(standardSyntaxTable);
 
         // Control characters
@@ -79,6 +79,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
         return BuiltInSyntaxFactory.getFactories();
     }
 
+    private static ELispCharTable standardSyntaxTable;
+
     private final static ELispVector SYNTAX_CODE_OBJECT = new ELispVector(Collections.nCopies(SMAX, false));
 
     /**
@@ -121,8 +123,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStandardSyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void standardSyntaxTable() {
-            throw new UnsupportedOperationException();
+        public static ELispCharTable standardSyntaxTable() {
+            return standardSyntaxTable;
         }
     }
 

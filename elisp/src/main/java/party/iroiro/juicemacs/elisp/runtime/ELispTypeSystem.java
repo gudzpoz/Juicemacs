@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.TypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Collections;
+import java.util.NoSuchElementException;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
@@ -111,7 +112,15 @@ public abstract class ELispTypeSystem {
         return i;
     }
 
-    public static long asChar(Object value) {
+    public static int asRanged(Object value, int left, int right) {
+        int i = asInt(value);
+        if (i < left || i > right) {
+            throw ELispSignals.argsOutOfRange(value, left, right);
+        }
+        return i;
+    }
+
+    public static int asChar(Object value) {
         return asRanged(value, 0, MAX_CHAR);
     }
 
@@ -124,6 +133,10 @@ public abstract class ELispTypeSystem {
 
     public static long asNat(Object value) {
         return asRanged(value, 0, Long.MAX_VALUE);
+    }
+
+    public static int asNatInt(Object value) {
+        return asRanged(value, 0, Integer.MAX_VALUE);
     }
 
     public static long consToUnsigned(Object value, long max) {
@@ -198,6 +211,23 @@ public abstract class ELispTypeSystem {
         return asCons(value);
     }
 
+    public static ELispCons.ConsIterator asConsIter(Object value) {
+        if (isNil(value)) {
+            return new ELispCons.ConsIterator() {
+                @Override
+                public boolean hasNextCons() {
+                    return false;
+                }
+
+                @Override
+                public ELispCons nextCons() {
+                    throw new NoSuchElementException();
+                }
+            };
+        }
+        return asCons(value).consIterator(0);
+    }
+
     public static Object asList(Object value) {
         if (isNil(value)) {
             return false;
@@ -230,6 +260,20 @@ public abstract class ELispTypeSystem {
             return v;
         }
         throw ELispSignals.wrongTypeArgument(ELispContext.VECTORP, value);
+    }
+
+    public static ELispBoolVector asBoolVec(Object value) {
+        if (value instanceof ELispBoolVector v) {
+            return v;
+        }
+        throw ELispSignals.wrongTypeArgument(ELispContext.BOOL_VECTOR_P, value);
+    }
+
+    public static ELispHashtable asHashtable(Object value) {
+        if (value instanceof ELispHashtable h) {
+            return h;
+        }
+        throw ELispSignals.wrongTypeArgument(ELispContext.HASH_TABLE_P, value);
     }
 
     public static ELispBuffer asBuffer(Object buffer) {

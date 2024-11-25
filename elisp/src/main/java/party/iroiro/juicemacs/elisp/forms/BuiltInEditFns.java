@@ -1578,8 +1578,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentMessage extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void currentMessage() {
-            throw new UnsupportedOperationException();
+        public static boolean currentMessage() {
+            // TODO
+            return false;
         }
     }
 

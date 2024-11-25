@@ -8,6 +8,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.HashMap;
 import java.util.List;
@@ -22,15 +24,15 @@ public class BuiltInBuffer extends ELispBuiltIns {
         return BuiltInBufferFactory.getFactories();
     }
 
-    public final static HashMap<String, ELispBuffer> BUFFERS = new HashMap<>();
+    public final static HashMap<MuleString, ELispBuffer> BUFFERS = new HashMap<>();
     @CompilerDirectives.TruffleBoundary
     @Nullable
-    private static ELispBuffer getBuffer(String name) {
+    private static ELispBuffer getBuffer(MuleString name) {
         // TODO: Handle name changes?
         return BUFFERS.get(name);
     }
     @CompilerDirectives.TruffleBoundary
-    private static void putBuffer(String name, ELispBuffer buffer) {
+    private static void putBuffer(MuleString name, ELispBuffer buffer) {
         BUFFERS.put(name, buffer);
     }
 
@@ -97,7 +99,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
             if (bufferOrName instanceof ELispBuffer) {
                 return bufferOrName;
             }
-            ELispBuffer buffer = BuiltInBuffer.getBuffer(asStr(bufferOrName).toString());
+            ELispBuffer buffer = BuiltInBuffer.getBuffer(asStr(bufferOrName).value());
             return buffer == null ? false : buffer;
         }
     }
@@ -178,7 +180,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
             if (object instanceof ELispBuffer buffer) {
                 return buffer;
             }
-            String name = asStr(bufferOrName).toString();
+            MuleString name = asStr(bufferOrName).value();
             ELispBuffer buffer = new ELispBuffer(!isNil(inhibitBufferHooks));
             buffer.setWidthTable(false);
             // TODO: Texts
@@ -248,16 +250,23 @@ public class BuiltInBuffer extends ELispBuiltIns {
             if (BuiltInFns.FStringEqual.stringEqual(name, ignore)) {
                 return name;
             }
-            String base = name.toString();
+            MuleString base = name.value();
             if (base.startsWith(" ")) {
                 int i = new Random().nextInt(1_000_000);
-                base += "-" + i;
+                base = new MuleStringBuffer().append(base)
+                        .append('-').append(MuleString.fromString(Integer.toString(i)))
+                        .build();
                 if (getBuffer(base) != null) {
                     return new ELispString(base);
                 }
             }
             for (int i = 2; i < Integer.MAX_VALUE; i++) {
-                String gen = base + "<" + i + ">";
+                MuleString gen = new MuleStringBuffer()
+                        .append(base)
+                        .append('<')
+                        .append(MuleString.fromString(Integer.toString(i)))
+                        .append('>')
+                        .build();
                 ELispString wrap = new ELispString(gen);
                 if (BuiltInFns.FStringEqual.stringEqual(wrap, ignore) || getBuffer(gen) == null) {
                     return wrap;
@@ -396,8 +405,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FForceModeLineUpdate extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void forceModeLineUpdate(Object all) {
-            throw new UnsupportedOperationException();
+        public static boolean forceModeLineUpdate(Object all) {
+            // TODO: Until we get a rendering engine
+            return false;
         }
     }
 

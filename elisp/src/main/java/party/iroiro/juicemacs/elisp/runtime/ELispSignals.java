@@ -169,6 +169,12 @@ public abstract class ELispSignals {
     }
     //#endregion Object operations
 
+    //#region emacs_abort
+    public static ELispSignalException fatal() {
+        return signal(ELispContext.intern("fatal"));
+    }
+    //#endregion emacs_abort
+
     //#region Remap
     private final static Pattern CLASS_CAST_GUESS =
             Pattern.compile("(?=class )?(\\S+) cannot be cast to (=?class )?(\\S+)");

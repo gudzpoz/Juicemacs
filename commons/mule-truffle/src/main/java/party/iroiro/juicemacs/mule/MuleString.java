@@ -9,6 +9,33 @@ import java.util.Spliterators;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
+/// A string-like object
+///
+/// ## Implementation
+///
+/// Basically, it implements [the Emacs string representation](https://www.gnu.org/software/emacs/manual/html_node/elisp/Text-Representations.html)
+/// that extends the range of code points to `#x3FFFFF`. (Actually, with [MuleString],
+/// we can now go up to [Integer#MAX_VALUE].)
+///
+/// Instead of encoding code points in UTF-8-ish fashion, we follow the string compression
+/// method used by HotSpot [String] and [TruffleString]: we transparently switch between the
+/// following three representations:
+/// - Latin-1: 1-byte per code point, only for code points in the range `#x0000` to `#x00FF`.
+/// - 16-bit: 2-bytes per code point, only for code points in the range `#x0000` to `#xFFFF`.
+/// - 32-bit: 4-bytes per code point, for all other code points.
+///
+/// We also offer a [StringBuilder]-like API to build strings - [MuleStringBuffer], which is
+/// itself a [MuleString].
+///
+/// ## Naming
+///
+/// No, it actually has very little to do with MULE (MUlti-Lingual Emacs) or
+/// the MULE encoding.
+///
+/// ## Performance
+///
+/// The performance is considered bad since it was written with no optimization in mind.
+/// So this is a TODO: optimize [#equals(Object)], [#hashCode()] and [#compareTo(MuleString)].
 public sealed interface MuleString
         extends Comparable<MuleString>
         permits MuleByteArrayString, MuleIntArrayString, MuleStringBuffer, MuleTruffleString {

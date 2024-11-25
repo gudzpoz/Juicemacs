@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.mule.utils;
 
 import java.util.Arrays;
 
+/// An append-only list of integers
 public final class IntArrayList {
     private static final int[] EMPTY_INT_ARRAY = new int[0];
 
@@ -10,6 +11,11 @@ public final class IntArrayList {
 
     public IntArrayList() {
         array = EMPTY_INT_ARRAY;
+        size = 0;
+    }
+
+    public IntArrayList(int capacity) {
+        array = new int[capacity];
         size = 0;
     }
 

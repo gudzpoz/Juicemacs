@@ -44,7 +44,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Unquote;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.UnquoteSplicing;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -343,7 +343,7 @@ public class ELispLexerTest {
                 new EOF()
         ), lex("#[a]"));
         assertEquals(Arrays.asList(
-                new BoolVec(10, ELispString.from("test")),
+                new BoolVec(10, MuleString.fromString("test")),
                 new EOF()
         ), lex("#&10\"test\""));
         assertEquals(Arrays.asList(
@@ -422,27 +422,27 @@ public class ELispLexerTest {
     @Test
     public void testStr() throws IOException {
         assertEquals(Arrays.asList(
-                new Str(ELispString.from("test")),
+                new Str(MuleString.fromString("test")),
                 new EOF()
         ), lex("\"test\""));
         assertEquals(Arrays.asList(
-                new Str(ELispString.from("\n")),
+                new Str(MuleString.fromString("\n")),
                 new EOF()
         ), lex("\"\\n\\ \\\n\""));
         assertEquals(Arrays.asList(
-                new Str(ELispString.from("±")),
+                new Str(MuleString.fromString("±")),
                 new EOF()
         ), lex("\"\\M-1\""));
         assertEquals(Arrays.asList(
-                new Str(ELispString.from("8@8[8`8{")),
+                new Str(MuleString.fromString("8@8[8`8{")),
                 new EOF()
         ), lex("\"\\70@\\70[\\70`\\70{\""));
         assertEquals(Arrays.asList(
-                new Str(ELispString.from("\u001b")),
+                new Str(MuleString.fromString("\u001b")),
                 new EOF()
         ), lex("\"\\C-[\""));
         assertEquals(Arrays.asList(
-                new Str(ELispString.from(" ")),
+                new Str(MuleString.fromString(" ")),
                 new EOF()
         ), lex("\"\\s\""));
     }

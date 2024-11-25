@@ -8,6 +8,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.Iterator;
@@ -769,8 +770,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKeyDescription extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void keyDescription(Object keys, Object prefix) {
-            throw new UnsupportedOperationException();
+        public static ELispString keyDescription(Object keys, Object prefix) {
+            // TODO
+            return new ELispString("<todo>");
         }
     }
 

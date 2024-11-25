@@ -1835,6 +1835,11 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private Object evalForm(Object form, boolean lexical, FunctionDispatchNode dispatchNode) {
+            ELispRootNode root = getEvalRoot(this, form, lexical);
+            return dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
+        }
+
+        public static ELispRootNode getEvalRoot(@Nullable Node node, Object form, boolean lexical) {
             ELispExpressionNode expr = ELispInterpretedNode.create(new Object[]{form}, lexical);
             SourceSection callerSource = getCallerSource();
             SourceSection sourceSection;
@@ -1849,8 +1854,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 Source source = callerSource.getSource();
                 sourceSection = form instanceof ELispCons cons ? cons.getSourceSection(source) : callerSource;
             }
-            ELispRootNode root = new ELispRootNode(ELispLanguage.get(this), expr, sourceSection);
-            return dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
+            return new ELispRootNode(node == null ? null : ELispLanguage.get(node), expr, sourceSection);
         }
     }
 

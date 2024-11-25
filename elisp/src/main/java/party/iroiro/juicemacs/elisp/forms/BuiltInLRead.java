@@ -76,7 +76,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             // Emacs: Copy FILENAME's data to FN but remove starting /: if any.
             // TODO: Why?
-            if (name.toString().startsWith("/:")) {
+            if (name.value().startsWith("/:")) {
                 name = BuiltInFns.FSubstring.substring(name, 2L, false);
             }
             for (Object suffix : suffixList) {

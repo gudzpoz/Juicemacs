@@ -60,7 +60,7 @@ public final class MuleByteArrayString implements MuleString {
         return SWITCH_ENCODING.execute(FROM_BYTE_ARRAY.execute(bytes, ISO_8859_1), UTF_32);
     }
 
-    byte[] bytes() {
+    public byte[] bytes() {
         return bytes;
     }
 }

@@ -612,6 +612,9 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
             Boolean typeCheck(Object o) {
                 return isNil(o) ? Boolean.FALSE : Boolean.TRUE;
             }
+            public boolean getBoolean() {
+                return value;
+            }
         }
 
         final class ForwardedPerBuffer extends AbstractForwarded<Object> {
