@@ -136,7 +136,9 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (stem.endsWith(".el") || stem.endsWith(".elc")) {
                 target = directory.resolve(stem);
             } else {
-                target = directory.resolve(stem + ".elc");
+                // TODO: Support bytecode before trying to load bytecode files
+                // target = directory.resolve(stem + ".elc");
+                target = directory.resolve(stem + ".el");
                 if (!target.toFile().isFile()) {
                     target = directory.resolve(stem + ".el");
                 }
