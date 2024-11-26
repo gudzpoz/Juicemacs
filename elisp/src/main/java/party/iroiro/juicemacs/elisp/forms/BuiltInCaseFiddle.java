@@ -5,8 +5,14 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.apache.commons.text.WordUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
+import java.util.PrimitiveIterator;
+
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCharTable;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.notNilOr;
 
 public class BuiltInCaseFiddle extends ELispBuiltIns {
     @Override
@@ -31,8 +37,18 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUpcase extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void upcase(Object obj) {
-            throw new UnsupportedOperationException();
+        public static long upcaseChar(long obj) {
+            Object upcase = asCharTable(currentBuffer().getUpcaseTable()).getChar(Math.toIntExact(obj));
+            return notNilOr(upcase, obj);
+        }
+        @Specialization
+        public static ELispString upcaseString(ELispString obj) {
+            MuleStringBuffer builder = new MuleStringBuffer();
+            PrimitiveIterator.OfInt iterator = obj.value().iterator(0);
+            while (iterator.hasNext()) {
+                builder.append(Math.toIntExact(upcaseChar(iterator.nextInt())));
+            }
+            return new ELispString(builder.build());
         }
     }
 

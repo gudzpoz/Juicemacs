@@ -3,16 +3,17 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.PrimitiveIterator;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSyntax extends ELispBuiltIns {
     @Override
@@ -246,8 +247,39 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringToSyntax extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringToSyntax(Object string) {
-            throw new UnsupportedOperationException();
+        public static Object stringToSyntax(ELispString string) {
+            PrimitiveIterator.OfInt iterator = string.value().iterator(0);
+            // char 1: syntax char
+            long syntax = checkSyntaxChar(iterator.nextInt());
+            if (syntax == SINHERIT) {
+                return false;
+            }
+            // (optional) char 2: matching char
+            long match = -1;
+            if (iterator.hasNext()) {
+                match = iterator.nextInt();
+                if (match == ' ') {
+                    match = -1;
+                }
+            }
+            // (optional) flags
+            while (iterator.hasNext()) {
+                int shift = switch (iterator.nextInt()) {
+                    case '1' -> 16;
+                    case '2' -> 17;
+                    case '3' -> 18;
+                    case '4' -> 19;
+                    case 'p' -> 20;
+                    case 'b' -> 21;
+                    case 'n' -> 22;
+                    case 'c' -> 23;
+                    default -> 0;
+                };
+                if (shift != 0) {
+                    syntax |= 1 << shift;
+                }
+            }
+            return new ELispCons(syntax, match == -1 ? false : match);
         }
     }
 
@@ -298,8 +330,15 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FModifySyntaxEntry extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void modifySyntaxEntry(Object char_, Object newentry, Object syntaxTable) {
-            throw new UnsupportedOperationException();
+        public static boolean modifySyntaxEntry(Object char_, Object newentry, Object syntaxTable) {
+            ELispCharTable table = asCharTable(isNil(syntaxTable) ? currentBuffer().getSyntaxTable() : syntaxTable);
+            newentry = FStringToSyntax.stringToSyntax(asStr(newentry));
+            if (char_ instanceof ELispCons cons) {
+                BuiltInCharTab.FSetCharTableRange.setCharTableRange(table, cons, newentry);
+            } else {
+                table.setChar(asChar(char_), newentry);
+            }
+            return false;
         }
     }
 

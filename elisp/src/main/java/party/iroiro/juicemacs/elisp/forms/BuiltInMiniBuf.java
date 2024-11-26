@@ -3,8 +3,14 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInMiniBuf extends ELispBuiltIns {
     @Override
@@ -564,8 +570,33 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAssocString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void assocString(Object key, Object list, Object caseFold) {
-            throw new UnsupportedOperationException();
+        public static Object assocString(Object key, Object list, Object caseFold) {
+            MuleString keyString = key instanceof ELispSymbol sym ? sym.name() : asStr(key).value();
+            boolean upcase = !isNil(caseFold);
+            if (upcase) {
+                keyString = asStr(BuiltInCaseFiddle.FUpcase.upcaseString(new ELispString(keyString))).value();
+            }
+            for (Object entry : asConsOrNil(list)) {
+                Object target = entry;
+                if (target instanceof ELispCons cons) {
+                    target = cons.car();
+                }
+                MuleString rhs;
+                if (target instanceof ELispSymbol sym) {
+                    rhs = sym.name();
+                } else if (target instanceof ELispString str) {
+                    rhs = str.value();
+                } else {
+                    continue;
+                }
+                if (upcase) {
+                    rhs = asStr(BuiltInCaseFiddle.FUpcase.upcaseString(new ELispString(rhs))).value();
+                }
+                if (keyString.equals(rhs)) {
+                    return entry;
+                }
+            }
+            return false;
         }
     }
 

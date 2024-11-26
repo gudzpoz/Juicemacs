@@ -3,25 +3,63 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBoolVector;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCategory extends ELispBuiltIns {
-    @Override
-    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
+    public BuiltInCategory() {
         BuiltInFns.FPut.put(CATEGORY_TABLE, CHAR_TABLE_EXTRA_SLOTS, 2L);
         ELispCharTable standardCategoryTable = BuiltInCharTab.FMakeCharTable.makeCharTable(CATEGORY_TABLE, false);
         ELispBuffer.DEFAULT_VALUES.setCategoryTable(standardCategoryTable);
         ELispBoolVector categorySet = BuiltInAlloc.FMakeBoolVector.makeBoolVector(128, false);
         standardCategoryTable.setDefault(categorySet);
         standardCategoryTable.setExtra(0, BuiltInAlloc.FMakeVector.makeVector(95, false));
+    }
 
+    @Override
+    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCategoryFactory.getFactories();
+    }
+
+    private static long checkCategory(Object category) {
+        return asRanged(category, ' ', '~');
+    }
+
+    private static ELispCharTable checkCategoryTable(Object table) {
+        if (isNil(table)) {
+            return asCharTable(currentBuffer().getCategoryTable());
+        }
+        if (!FCategoryTableP.categoryTableP(table)) {
+            throw ELispSignals.wrongTypeArgument(CATEGORY_TABLE_P, table);
+        }
+        return asCharTable(table);
+    }
+
+    private static Object getCategoryDocstring(ELispCharTable table, long category) {
+        return BuiltInData.FAref.aref(table.getExtra(0), category - ' ');
+    }
+
+    private static void setCategoryDocstring(ELispCharTable table, long category, Object docstring) {
+        BuiltInData.FAset.aset(asVector(table.getExtra(0)), category - ' ', docstring);
+    }
+
+    private static ELispBoolVector hashGetCategorySet(ELispCharTable table, ELispBoolVector categorySet) {
+        if (isNil(table.getExtra(1))) {
+            table.setExtra(1, new ELispHashtable(EQUAL, false));
+        }
+        ELispHashtable hashtable = asHashtable(table.getExtra(1));
+        Object set = hashtable.get(categorySet);
+        if (!isNil(set)) {
+            return asBoolVec(set);
+        }
+        hashtable.put(categorySet, false);
+        return categorySet;
     }
 
     /**
@@ -56,8 +94,14 @@ public class BuiltInCategory extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefineCategory extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defineCategory(Object category, Object docstring, Object table) {
-            throw new UnsupportedOperationException();
+        public static boolean defineCategory(Object category, ELispString docstring, Object table) {
+            long cat= checkCategory(category);
+            ELispCharTable categoryTable = checkCategoryTable(table);
+            if (!isNil(getCategoryDocstring(categoryTable, cat))) {
+                throw ELispSignals.error("Category already defined");
+            }
+            setCategoryDocstring(categoryTable, cat, docstring);
+            return false;
         }
     }
 
@@ -103,8 +147,8 @@ public class BuiltInCategory extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCategoryTableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void categoryTableP(Object arg) {
-            throw new UnsupportedOperationException();
+        public static boolean categoryTableP(Object arg) {
+            return arg instanceof ELispCharTable table && table.getPurpose() == CATEGORY_TABLE;
         }
     }
 
@@ -231,8 +275,34 @@ public class BuiltInCategory extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FModifyCategoryEntry extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void modifyCategoryEntry(Object character, Object category, Object table, Object reset) {
-            throw new UnsupportedOperationException();
+        public static boolean modifyCategoryEntry(Object character, Object category, Object table, Object reset) {
+            int start, end;
+            if (character instanceof ELispCons cons) {
+                start = asChar(cons.car());
+                end = asChar(cons.cdr());
+            } else {
+                start = end = asChar(character);
+            }
+            int cat = (int) checkCategory(category);
+            ELispCharTable categoryTable = checkCategoryTable(table);
+            if (isNil(getCategoryDocstring(categoryTable, cat))) {
+                throw ELispSignals.error("Undefined category");
+            }
+            boolean setValue = isNil(reset);
+
+            while (start <= end) {
+                ELispCharTable.RefRangeResult range = categoryTable.refRange(start, start, end);
+                ELispBoolVector categorySet = asBoolVec(range.value());
+                if (!categorySet.get(cat).equals(setValue)) {
+                    categorySet = BuiltInFns.FCopySequence.copySequenceBoolVec(categorySet);
+                    categorySet.set(cat, setValue);
+                    categorySet = hashGetCategorySet(categoryTable, categorySet);
+                    categoryTable.setRange(range.start(), range.end(), categorySet);
+                }
+                start = range.end() + 1;
+            }
+
+            return false;
         }
     }
 }
