@@ -613,7 +613,19 @@ class ELispLexer {
                             unicodeName.appendCodePoint(u);
                         }
                     }
-                    yield Character.codePointOf(unicodeName.toString());
+                    String unicode = unicodeName.toString();
+                    try {
+                        if (unicode.startsWith("U+")) {
+                            int codepoint = Integer.parseInt(unicode, 2, unicode.length(), 16);
+                            if (codepoint > Character.MAX_CODE_POINT) {
+                                throw ELispSignals.invalidReadSyntax("Invalid Unicode codepoint");
+                            }
+                            yield codepoint;
+                        }
+                        yield Character.codePointOf(unicode);
+                    } catch (IllegalArgumentException e) {
+                        throw ELispSignals.invalidReadSyntax("Invalid Unicode name");
+                    }
                 }
                 yield escaped;
             }
