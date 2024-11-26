@@ -41,10 +41,12 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         );
     }
 
+    /// @return 1-based index of the current editing point
     public long getPoint() {
         return point;
     }
 
+    /// @param point 1-based index of the new editing point
     public void setPoint(long point) {
         this.point = point;
     }

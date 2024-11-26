@@ -241,7 +241,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                         || (sp > start && getChar(frame, input, sp - 1) == '\n');
                 case OP$LINE_END -> success = sp == end
                         || (sp < end && getChar(frame, input, sp) == '\n');
-                case OP$BUFFER_POINT -> throw new UnsupportedOperationException();
+                case OP$BUFFER_POINT -> success = input instanceof ELispBuffer in && in.getPoint() - 1 == sp;
                 case OP$WORD_START, OP$WORD_END, OP$WORD_BOUND -> {
                     boolean hasWordBefore = sp != start && isWord(buffer, getChar(frame, input, sp - 1));
                     boolean hasWordAfter = sp != end && isWord(buffer, getChar(frame, input, sp));
