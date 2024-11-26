@@ -3,12 +3,13 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset.CharsetMethod;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.*;
 
@@ -16,10 +17,65 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
+/// Charset-related operations, basically following `charset.c` from Emacs
+///
+/// ## What On Earth Is A Charset?
+///
+/// I really had a hard time understanding what Emacs is doing here. It seems
+/// to me that I18N support in GNU Emacs largely comes from other Emacs variants,
+/// and the documentation of XEmacs actually better describes what GNU Emacs tries
+/// to achieve with its charsets.
+///
+/// Following [XEmacs' documentation on MULE (MUlti-Lingual Emacs)](http://www.xemacs.org/Documentation/21.5/html/lispref_64.html#Charsets),
+/// there are a few key definitions to note:
+///
+/// - "A **character set** is essentially a set of related characters."
+///
+/// - "The definition of a character set will implicitly or explicitly give it an *ordering*,
+///   a way of assigning a number to each character in the set. ...
+///   The number assigned to any particular character is called the character’s **code point**."
+///
+/// - "Sometimes, a code point is not a single number, but instead a group of numbers,
+///   called **position codes**. In such cases, the number of position codes required to index
+///   a particular character in a character set is called the **dimension** of the character set."
+///
+/// - "An **encoding** is a way of numerically representing characters from one or more
+///   character sets into a stream of like-sized numerical values called words – typically
+///   8-bit bytes, but sometimes 16-bit or 32-bit quantities."
+///
+/// - "A general method of handling text using multiple character sets ... is defined
+///   in the international standard **ISO 2022**."
+///
+/// - "Encodings are classified as either *modal* or *non-modal*."
+///   - "In a **modal encoding**, there are multiple states that the encoding can be in,
+///     and the interpretation of the values in the stream depends on the current global state
+///     of the encoding."
+///   - "Special values in the encoding, called **escape sequences**, are used to change the global state."
+///   - "A **non-modal encoding** has no global state that extends past the character currently
+///     being interpreted."
+///   - "Non-modal encodings are further divided into *fixed-width* and *variable-width* formats."
+///
+/// - "The bytes in an 8-bit encoding are often referred to as *octets* rather than simply as bytes."
+///
+/// ### Personal Comments
+///
+/// - *Position codes*: To store human-readable characters on computer, there are usually two
+///   layers of abstractions involved:
+///
+///   1. Charsets (`charset.c`): Numbering each character in the charset;
+///   2. Encoding (`coding.c`): Design a way of encoding a said number into bytes.
+///
+///   For example, Unicode is the first layer and UTF-8/16/32(-BE/LE) is the second layer.
+///   However, position codes, in my understanding, are ways of encodings that somehow combine
+///   the two layers: the number assigned to a character *is* (more or less) the encoded bytes.
 public class BuiltInCharSet extends ELispBuiltIns {
+
     public BuiltInCharSet() {
         CHARSET_HASH_TABLE.clear();
         CHARSET_LIST.clear();
+
+        // Emacs initializes this in unify-charset, but we move it here.
+        ELispGlobals.charUnifyTable.setValue(new ELispCharTable(false, 0));
     }
 
     @Override
@@ -27,70 +83,18 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return BuiltInCharSetFactory.getFactories();
     }
 
-    private enum CharsetMethod {
-        OFFSET,
-        MAP,
-        SUBSET,
-        SUPERSET
-    }
+    private static final ArrayList<ELispCharset> CHARSET_LIST = new ArrayList<>();
+    private static final HashMap<ELispSymbol, ELispVector> CHARSET_HASH_TABLE = new HashMap<>();
 
-    private record ELispCharset(
-            int id,
-            ELispVector attributes,
-            int dimension,
-            byte[] codeSpaceMask,
-            int[] codeSpace,
-            boolean codeLinearP,
-            boolean isoChars96,
-            boolean asciiCompatibleP,
-            boolean supplementaryP,
-            boolean compactCodesP,
-            boolean unifiedP,
-            int isoFinal,
-            int isoRevision,
-            int emacsMuleId,
-            CharsetMethod method,
-            long minCode,
-            long maxCode,
-            long charIndexOffset,
-            long minChar,
-            long maxChar,
-            long invalidCode,
-            byte[] fastMap,
-            long codeOffset
-    ) {
-        public static long codepointToIndex(
-                long codepoint,
-                boolean codeLinearP, long minCode,
-                byte[] codeSpaceMask, int[] codeSpace, long charIndexOffset
-        ) {
-            if (codeLinearP) {
-                return codepoint - minCode;
-            }
-            if (
-                    (codeSpaceMask[Math.toIntExact(codepoint >> 24)] & 0x8) == 0
-                            || (codeSpaceMask[Math.toIntExact((codepoint >> 16) & 0xFF)] & 0x4) == 0
-                            || (codeSpaceMask[Math.toIntExact((codepoint >> 8) & 0xFF)] & 0x2) == 0
-                            || (codeSpaceMask[Math.toIntExact(codepoint & 0xFF)] & 0x1) == 0
-            ) {
-                return -1;
-            }
-            return ((((codepoint >> 24) & 0xFF) - codeSpace[12]) * codeSpace[11])
-                    + (((codepoint >> 16) & 0xFF) - codeSpace[8]) * codeSpace[7]
-                    + (((codepoint >> 8) & 0xFF) - codeSpace[4]) * codeSpace[3]
-                    + ((codepoint & 0xFF) - codeSpace[0])
-                    - charIndexOffset;
-        }
-    }
-
-    private final static ArrayList<ELispCharset> CHARSET_LIST = new ArrayList<>();
-    private final static HashMap<ELispSymbol, ELispVector> CHARSET_HASH_TABLE = new HashMap<>();
-
-    private static ELispCharset getCharset(Object symbol) {
+    public static ELispCharset getCharset(Object symbol) {
         ELispVector vec = getCharsetAttr(symbol);
         //noinspection SequencedCollectionMethodCanBeUsed
         int index = asInt(vec.get(CHARSET_ID));
         return CHARSET_LIST.get(index);
+    }
+
+    public static ELispCharset getCharsetFromId(int id) {
+        return CHARSET_LIST.get(id);
     }
 
     private static ELispVector getCharsetAttr(Object symbol) {
@@ -185,8 +189,14 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapCharsetChars extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapCharsetChars(Object function, Object charset, Object arg, Object fromCode, Object toCode) {
-            throw new UnsupportedOperationException();
+        public static boolean mapCharsetChars(Object function, ELispSymbol charset, Object arg, Object fromCode, Object toCode) {
+            ELispCharset cs = getCharset(charset);
+            int from = (int) notNilOr(fromCode, cs.minCode);
+            int to = (int) notNilOr(toCode, cs.maxCode);
+            cs.mapChars((range) -> BuiltInEval.FFuncall.funcall(function, new Object[]{
+                    range, arg,
+            }), from, to);
+            return false;
         }
     }
 
@@ -215,8 +225,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
             int dimension = 1;
             for (int i = 0, nchars = 1; true; i++) {
                 // TODO: codeSpaceVal can be any sequence?
-                long minByte = asRanged(BuiltInData.FAref.aref(codeSpaceVal, i * 2L), 0, 255);
-                long maxByte = asRanged(BuiltInData.FAref.aref(codeSpaceVal, i * 2L + 1), minByte, 255);
+                int minByte = asRanged(BuiltInData.FAref.aref(codeSpaceVal, i * 2L), 0, 255);
+                int maxByte = asRanged(BuiltInData.FAref.aref(codeSpaceVal, i * 2L + 1), minByte, 255);
                 codeSpace[i * 4] = Math.toIntExact(minByte);
                 codeSpace[i * 4 + 1] = Math.toIntExact(maxByte);
                 codeSpace[i * 4 + 2] = Math.toIntExact(maxByte - minByte + 1);
@@ -232,7 +242,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
 
             Object dimensionVal = args[CHARSET_ARG_DIMENSION];
             if (!isNil(dimensionVal)) {
-                dimension = (int) asRanged(dimensionVal, 1, 4);
+                dimension = asRanged(dimensionVal, 1, 4);
             }
 
             boolean dim3Linear = dimension == 3 || codeSpace[10] == 256;
@@ -245,7 +255,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             } else {
                 codeSpaceMask = new byte[256];
                 for (int i = 0; i < 4; i++) {
-                    for (int j = codeSpace[i * 4]; j < codeSpace[i * 4 + 1]; j++) {
+                    for (int j = codeSpace[i * 4]; j <= codeSpace[i * 4 + 1]; j++) {
                         codeSpaceMask[j] |= (byte) (1 << i);
                     }
                 }
@@ -270,7 +280,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             Object minCodeVal = args[CHARSET_ARG_MIN_CODE];
             if (!isNil(minCodeVal)) {
                 long code = asRanged(consToUnsigned(minCodeVal, maxCode), minCode, maxCode);
-                charIndexOffset = ELispCharset.codepointToIndex(code, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
+                charIndexOffset = ELispCharset.codePointToIndex(code, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
                 minCode = code;
             }
             Object maxCodeVal = args[CHARSET_ARG_MAX_CODE];
@@ -297,11 +307,11 @@ public class BuiltInCharSet extends ELispBuiltIns {
             if (isNil(isoFinalVal)) {
                 isoFinal = -1;
             } else {
-                isoFinal = (int) asRanged(isoFinalVal, '0', 127);
+                isoFinal = asRanged(isoFinalVal, '0', 127);
             }
 
             Object isoRevisionVal = args[CHARSET_ARG_ISO_REVISION];
-            int isoRevision = isNil(isoRevisionVal) ? -1 : (int) asRanged(isoRevisionVal, -1, 63);
+            int isoRevision = isNil(isoRevisionVal) ? -1 : asRanged(isoRevisionVal, -1, 63);
 
             Object emacsMuleVal = args[CHARSET_ARG_EMACS_MULE_ID];
             int emacsMule;
@@ -326,8 +336,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 method = CharsetMethod.OFFSET;
                 codeOffset = c;
 
-                minChar = codeOffset + ELispCharset.codepointToIndex(minCode, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
-                maxChar = codeOffset + ELispCharset.codepointToIndex(maxCode, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
+                minChar = codeOffset + ELispCharset.codePointToIndex(minCode, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
+                maxChar = codeOffset + ELispCharset.codePointToIndex(maxCode, codeLinearP, minCode, codeSpaceMask, codeSpace, charIndexOffset);
 
                 int i;
                 for (i = Math.toIntExact((minChar >> 7) << 7); i < 0x10000 && i <= maxChar; i += 128) {
@@ -347,14 +357,14 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 Object[] array = asCons(args[CHARSET_ARG_SUBSET]).toArray();
                 Object parent = array[0];
                 ELispCharset parentCharset = getCharset(parent);
-                int parentMinCode = asInt(array[1]);
-                int parentMaxCode = asInt(array[2]);
-                int parentCodeOffset = asInt(array[3]);
+                long parentMinCode = asLong(array[1]);
+                long parentMaxCode = asLong(array[2]);
+                long parentCodeOffset = asLong(array[3]);
                 attrs.set(CHARSET_SUBSET, new ELispVector(new Object[]{
                         (long) parentCharset.id,
-                        (long) parentMinCode,
-                        (long) parentMaxCode,
-                        (long) parentCodeOffset
+                        parentMinCode,
+                        parentMaxCode,
+                        parentCodeOffset
                 }));
                 method = CharsetMethod.SUBSET;
                 fastMap = Arrays.copyOf(parentCharset.fastMap, parentCharset.fastMap.length);
@@ -440,6 +450,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             attrs.set(CHARSET_ID, (long) id);
 
             if (method == CharsetMethod.MAP) {
+                charset.load();
                 // TODO
                 // load_charset (&charset, 0);
                 // charset_table[id] = charset;
@@ -447,15 +458,47 @@ public class BuiltInCharSet extends ELispBuiltIns {
 
             if (isoFinal >= 0) {
                 // TODO
+                if (newDefinitionP) {
+                    ELispGlobals.iso2022CharsetList.setValue(BuiltInFns.FNconc.nconc(
+                            new Object[]{ELispGlobals.iso2022CharsetList.getValue(), new ELispCons((long) id)}
+                    ));
+                }
             }
 
             if (emacsMule >= 0) {
                 // TODO
+                if (newDefinitionP) {
+                    ELispGlobals.emacsMuleCharsetList.setValue(BuiltInFns.FNconc.nconc(
+                            new Object[]{ELispGlobals.emacsMuleCharsetList.getValue(), new ELispCons((long) id)}
+                    ));
+                }
             }
 
             if (newDefinitionP) {
-                ELispContext.CHARSET_LIST.setValue(new ELispCons(name, ELispContext.CHARSET_LIST.getValue()));
-                // TODO: Vcharset_ordered_list
+                ELispGlobals.charsetList.setValue(new ELispCons(name, ELispGlobals.charsetList.getValue()));
+                Object charsetOrderedList = ELispGlobals.charsetOrderedList.getValue();
+                if (charset.supplementaryP) {
+                    ELispGlobals.charsetOrderedList.setValue(BuiltInFns.FNconc.nconc(new Object[]{
+                            charsetOrderedList,
+                            new ELispCons((long) id),
+                    }));
+                } else {
+                    @Nullable ELispCons prev = null;
+                    ELispCons.ConsIterator i = asConsIter(charsetOrderedList);
+                    while (i.hasNextCons()) {
+                        ELispCons cons = i.nextCons();
+                        ELispCharset cs = getCharsetFromId(asInt(cons.car()));
+                        if (cs.supplementaryP) {
+                            break;
+                        }
+                        prev = cons;
+                    }
+                    if (prev == null) {
+                        ELispGlobals.charsetOrderedList.setValue(new ELispCons((long) id, charsetOrderedList));
+                    } else {
+                        prev.insertAfter((long) id);
+                    }
+                }
             }
 
             return false;
@@ -620,8 +663,13 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDecodeChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void decodeChar(Object charset, Object codePoint) {
-            throw new UnsupportedOperationException();
+        public static long decodeChar(Object charset, long codePoint) {
+            ELispCharset cs = getCharset(charset);
+            return cs.decodeChar(codePoint);
+        }
+        @Specialization
+        public static long decodeCharCons(Object charset, ELispCons codePoint) {
+            return decodeChar(charset, (long) asInt(codePoint.car()) << 16 | asInt(codePoint.cdr()));
         }
     }
 
@@ -636,8 +684,10 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEncodeChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void encodeChar(Object ch, Object charset) {
-            throw new UnsupportedOperationException();
+        public static Object encodeChar(long ch, Object charset) {
+            ELispCharset cs = getCharset(charset);
+            long code = cs.encodeChar(ch);
+            return code == -1 ? false : code;
         }
     }
 
@@ -772,8 +822,24 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetCharsetPriority extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setCharsetPriority(Object charsets, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean setCharsetPriority(ELispSymbol charsets, Object[] args) {
+            Object oldList = ELispGlobals.charsetOrderedList.getValue();
+            oldList = isNil(oldList) ? false : BuiltInFns.FCopySequence.copySequenceList(asCons(oldList));
+            ELispCons.ListBuilder newBuilder = new ELispCons.ListBuilder();
+
+            long id = getCharset(charsets).id;
+            newBuilder.add(id);
+            oldList = BuiltInFns.FDelq.delq(id, oldList);
+            for (Object arg : args) {
+                id = getCharset(arg).id;
+                if (!isNil(BuiltInFns.FMemq.memq(id, oldList))) {
+                    oldList = BuiltInFns.FDelq.delq(id, oldList);
+                    newBuilder.add(id);
+                }
+            }
+            ELispGlobals.charsetOrderedList.setValue(newBuilder.buildWithCdr(oldList));
+            // TODO: Set other global variables
+            return false;
         }
     }
 
