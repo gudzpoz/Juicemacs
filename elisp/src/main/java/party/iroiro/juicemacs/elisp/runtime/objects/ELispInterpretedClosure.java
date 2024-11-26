@@ -71,7 +71,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public ELispFunctionObject getFunction() {
         ELispFunctionObject f = function;
         if (f == null) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispClosureCallNode node = new ELispClosureCallNode();
             ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                     node, node.args.requiredArgCount(), node.args.maxArgCount()

@@ -1,59 +1,18 @@
 #+title: TODO
 
-* TODO [#A] Strings & Buffers
+* TODO [#A] =let/let*= Buffer Local Logic
 
-For string processing in any language, I suppose there are always at least two
-kinds of offsets: char offsets & code point offsets. Emacs basically uses byte
-offsets and codepoint offsets, but Java uses UTF-16 char offsets and codepoint
-offsets. So to correctly handle strings in Juicemacs, we need to incorporate all
-these three kinds of offsets.
+So, old Emacs had a bug:
 
-It could be easier if we could just follow Emacs. (And Truffle actually provides
-a byte-offset based =TruffleString= to free us of the trouble!) But,
-unfortunately, we can't. There is one indispensible Java API we need to use:
-Java =Pattern= regex, which, of course, is based on UTF-16 char offsets.
+#+begin_src elisp
+  (let ((buffer-file-name "/home/rms/.emacs"))
+    ;; ...
+    (set-buffer other-buffer)
+    ;; ...
+    )
+#+end_src
 
-** TODO [#A] RegExp
-
-Well, the conclusion is that we need to implement a new RegExp runtime. :)
-
-*** Thoughts
-
-Truffle also provides a JIT-compiling RegExp runtime (TRegex). But we still need
-to experiment whether it is compatible with Emacs Lisp RegExps.
-
-| RegExp Features   | ELisp               | Java        | TRegex |
-|-------------------+---------------------+-------------+--------|
-| Named capture     | No                  | Yes         |        |
-| =.=               | Codepoint           | Codepoint   |        |
-| =*=, =*?=         | /well-known/        | ✅          |        |
-| =+=, =+?=         | /well-known/        | ✅          |        |
-| =?=, =??=         | /well-known/        | ✅          |        |
-| =[...]=, =[^...]= | Char classes        | ✅          |        |
-| =[:char-class:]=  | Named char classes  | =\p{class}= |        |
-| =^=               | Start of line       | ✅          |        |
-| =$=               | End of line         | ✅          |        |
-| =\\vert=          | Alternation         | ✅          |        |
-| =\{m,n\}=         | Postfix operator    | ✅          |        |
-| =\(...\)=         | Capturing group     | ✅          |        |
-| =\(?:...\)=       | Non-capturing       | ✅          |        |
-| =\(?num:...\)=    | Explicitly numbered | ❌          |        |
-| =\digit=          | Back-reference      | ✅          |        |
-| =\w=              | Word constituent    | ✅          |        |
-| =\W=              | Non word            | ✅          |        |
-| =\scode=          | Char syntax         | ❌          |        |
-| =\Scode=          | Not char syntax     | ❌          |        |
-| =\ccode=          | Char category       | ❌          |        |
-| =\Ccode=          | Not char category   | ❌          |        |
-| =\`=              | Start of string     | =\A=        |        |
-| =\'=              | End of string       | =\z=        |        |
-| =\==              | Buffer point        | ❌          |        |
-| =\b=              | Word boundary       | ✅          |        |
-| =\B=              | Not word boundary   | ✅          |        |
-| =\<=              | Start of word       | ❌          |        |
-| =\>=              | End of word         | ❌          |        |
-| =\_<=             | Start of symbol     | ❌          |        |
-| =\_>=             | End of symbol       | ❌          |        |
+It seems... we also have this bug.
 
 * TODO [#A] Initialization logic & ordering
 
@@ -117,26 +76,22 @@ does not slow down too much.
 
 I hope we can make all symbols bare.
 
-* TODO [#B] =obarray=
-
-Oh no. It looks like a data structure with its internal structure /fully
-exposed/ as a vector. It probably means we will /have to/ exactly follow the GNU
-Emacs implementation.
-
-Edit: No, it is not fully exposed. (See keymaps for what is fully exposed...
-Sigh.) It is a hash-table-ish thing. And actually, I do think we can make all
-/hashes/ zeros and use our own =HashMap= instead.
-
 * TODO [#B] Autoload
 
 So basically one can have autoload functions as well as autoload strings
 (docstrings). What else?
 
+- [ ] So we now handles autoload functions. However, the generated =loaddefs.el=
+  seems to invoke =rx= before its autoload definition. How does Emacs even
+  support this?
+- [ ] Emacs autoload reads and sets several variables and supports undoing the
+  loaded changes... How? (It seems related to feature unloading.)
+
 * TODO [#B] Threading preparations
 
 - Limit =jdk.virtualThreadScheduler.parallelism= to =1=.
 
-* TODO [#C] Charsets & Coding
+* TODO [#B] Charsets & Coding
 
 Emacs MULE.
 
@@ -169,7 +124,8 @@ index by character codes most of the time. However, I have seen it indexed with
 Edit: See comments in =BuiltInKeymap.java= for what keymap is about.
 
 - [ ] Default values
-- [X] =map-keymap=
+- [ ] Auto-convert a sparse one to a dense one like Emacs (when?)
+- [-] =map-keymap=
   - [X] =map-char-table=
 
 * TODO [#C] =module-info.java=
@@ -178,41 +134,15 @@ IntelliJ always complains about =org.graalvm.truffle= not being read by
 =module-info.java=, despite the fact that the =require= line the line is there.
 ([[https://youtrack.jetbrains.com/issue/IDEA-362046/Multi-release-module-info.class-causes-false-positive-errors][IDEA-362046]])
 
-* TODO [#C] Code conventions
-
-- Maybe set =ELispContext.NIL= to =Boolean.FALSE= (and =T= to =Boolean.TRUE=).
-
-- [X] =elisp/scripts/extract-emacs-src.py=
-
-  - Auto-detect types
-  - Avoid java keywords
-  - Auto-update existing ones
-  - Set generated return types to =Void=
-
-- Analyze =null= values during initialization
-
 * TODO Buffers
 
 It is still a long long way to go... But at least we have a piece table now. I
 might still need to look into CRDTs and the new Eg-walker if we want to merge
 buffers from different (virtual) threads.
 
-* TODO Syntax tables & case tables
-
-It seems basically a char table. However, in order to use it with RegExp, we will need to
-maintain a character set for each syntax class, which might take quite some memory if unoptimized.
-
-* PENDING Conforming RegExp
-
-It depends on:
-
-- Syntax tables
-- Case tables
-- Buffers (to match the pointer position)
-
 * Trackers
 
-** Language [3/6]
+** Language [4/6]
 
 - [X] Emacs Lisp reader (lexer & parser)
 
@@ -229,7 +159,7 @@ It depends on:
 
   - [X] Handle default values
 
-- [ ] All special forms
+- [X] All special forms
 
 - [ ] Bootstrap =loadup.el=
 
@@ -268,7 +198,7 @@ interop, but otherwise simply using some classes with public member should do.
 
 - [X] =Lisp_String=
 
-- [-] =Lisp_Vectorlike= [10/36]
+- [-] =Lisp_Vectorlike= [12/36]
 
   - [X] =PVEC_NORMAL_VECTOR=
   - [ ] =PVEC_FREE=
@@ -283,9 +213,9 @@ interop, but otherwise simply using some classes with public member should do.
   - [ ] =PVEC_FRAME=
   - [ ] =PVEC_WINDOW=
   - [X] =PVEC_BOOL_VECTOR=
-  - [ ] =PVEC_BUFFER=
+  - [X] =PVEC_BUFFER=
   - [X] =PVEC_HASH_TABLE=
-  - [ ] =PVEC_OBARRAY=
+  - [X] =PVEC_OBARRAY=
   - [ ] =PVEC_TERMINAL=
   - [ ] =PVEC_WINDOW_CONFIGURATION=
   - [X] =PVEC_SUBR=
@@ -313,6 +243,100 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#A] Strings & Buffers (Step 1)
+
+For string processing in any language, I suppose there are always at least two
+kinds of offsets: char offsets & code point offsets. Emacs basically uses byte
+offsets and codepoint offsets, but Java uses UTF-16 char offsets and codepoint
+offsets. So to correctly handle strings in Juicemacs, we need to incorporate all
+these three kinds of offsets.
+
+It could be easier if we could just follow Emacs. (And Truffle actually provides
+a byte-offset based =TruffleString= to free us of the trouble!) But,
+unfortunately, we can't. There is one indispensible Java API we need to use:
+Java =Pattern= regex, which, of course, is based on UTF-16 char offsets.
+
+Edit: In order to support the widened code point range in Emacs, we are now
+rolling out our own string implementation. The good news is that, many Emacs
+string operations actually involves case tables and all, requiring a
+reimplementation of most of the =java.lang.String= API anyway. So why not?
+
+*** DONE [#A] RegExp
+
+Well, the conclusion is that we need to implement a new RegExp runtime. :) See
+=ELispRegExp.java=.
+
+**** Thoughts
+
+Truffle also provides a JIT-compiling RegExp runtime (TRegex). But we still need
+to experiment whether it is compatible with Emacs Lisp RegExps.
+
+| RegExp Features   | ELisp               | Java        | TRegex |
+|-------------------+---------------------+-------------+--------|
+| Named capture     | No                  | Yes         |        |
+| =.=               | Codepoint           | Codepoint   |        |
+| =*=, =*?=         | /well-known/        | ✅          |        |
+| =+=, =+?=         | /well-known/        | ✅          |        |
+| =?=, =??=         | /well-known/        | ✅          |        |
+| =[...]=, =[^...]= | Char classes        | ✅          |        |
+| =[:char-class:]=  | Named char classes  | =\p{class}= |        |
+| =^=               | Start of line       | ✅          |        |
+| =$=               | End of line         | ✅          |        |
+| =\\vert=          | Alternation         | ✅          |        |
+| =\{m,n\}=         | Postfix operator    | ✅          |        |
+| =\(...\)=         | Capturing group     | ✅          |        |
+| =\(?:...\)=       | Non-capturing       | ✅          |        |
+| =\(?num:...\)=    | Explicitly numbered | ❌          |        |
+| =\digit=          | Back-reference      | ✅          |        |
+| =\w=              | Word constituent    | ✅          |        |
+| =\W=              | Non word            | ✅          |        |
+| =\scode=          | Char syntax         | ❌          |        |
+| =\Scode=          | Not char syntax     | ❌          |        |
+| =\ccode=          | Char category       | ❌          |        |
+| =\Ccode=          | Not char category   | ❌          |        |
+| =\`=              | Start of string     | =\A=        |        |
+| =\'=              | End of string       | =\z=        |        |
+| =\==              | Buffer point        | ❌          |        |
+| =\b=              | Word boundary       | ✅          |        |
+| =\B=              | Not word boundary   | ✅          |        |
+| =\<=              | Start of word       | ❌          |        |
+| =\>=              | End of word         | ❌          |        |
+| =\_<=             | Start of symbol     | ❌          |        |
+| =\_>=             | End of symbol       | ❌          |        |
+
+Now that we have our own =MuleString=, I don't think using TRegex is worth the
+cost any more.
+
+** DONE [#B] =obarray=
+
+Oh no. It looks like a data structure with its internal structure /fully
+exposed/ as a vector. It probably means we will /have to/ exactly follow the GNU
+Emacs implementation.
+
+Edit: No, it is not fully exposed. (See keymaps for what is fully exposed...
+Sigh.) It is a hash-table-ish thing. And actually, I do think we can make all
+/hashes/ zeros and use our own =HashMap= instead.
+
+** CANCELLED Syntax tables & case tables
+
+It seems basically a char table. However, in order to use it with RegExp, we will need to
+maintain a character set for each syntax class, which might take quite some memory if unoptimized.
+
+Edit: task cancelled now that we have a dedicated regex engine.
+
+** DONE [#C] Code conventions
+
+- Maybe set =ELispContext.NIL= to =Boolean.FALSE= (and =T= to =Boolean.TRUE=).
+
+- [X] =elisp/scripts/extract-emacs-src.py=
+
+  - Auto-detect types
+  - Avoid java keywords
+  - Auto-update existing ones
+  - Set generated return types to =Void=
+
+- Analyze =null= values during initialization
 
 ** DONE [#A] Signals
 

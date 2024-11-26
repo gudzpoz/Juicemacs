@@ -21,8 +21,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.*;
 
+import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -72,6 +72,13 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             return dispatchNode.executeDispatch(this, FFuncall.getFunctionObject(f), args);
         }
+    }
+
+    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
+    private abstract sealed static class MakeScopeNode extends ELispExpressionNode
+            permits FLet.LetMakeScopeNode, FLetx.LetxMakeScopeNode {
+        @Override
+        public abstract ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame);
     }
 
     /**
@@ -987,7 +994,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return new LetxNode(varlist, body);
         }
 
-        private final static class LetxMakeScopeNode extends FLet.MakeScopeNode {
+        private final static class LetxMakeScopeNode extends MakeScopeNode {
             private final ELispSymbol[] symbols;
             @SuppressWarnings("FieldMayBeFinal")
             @Children
@@ -1051,7 +1058,7 @@ public class BuiltInEval extends ELispBuiltIns {
         private static class LetxNode extends ELispExpressionNode {
             @SuppressWarnings("FieldMayBeFinal")
             @Child
-            FLet.MakeScopeNode scopeNode;
+            MakeScopeNode scopeNode;
             @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode bodyNode;
@@ -1101,11 +1108,6 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "let", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FLet extends ELispBuiltInBaseNode {
-        private abstract sealed static class MakeScopeNode extends ELispExpressionNode {
-            @Override
-            public abstract ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame);
-        }
-
         private final static class LetMakeScopeNode extends MakeScopeNode {
             private final ELispSymbol[] symbols;
             @SuppressWarnings("FieldMayBeFinal")
@@ -1756,7 +1758,6 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FAutoload extends ELispBuiltInBaseNode {
         @Specialization
         public static Object autoload(ELispSymbol function, ELispString file, Object docstring, Object interactive, Object type) {
-            // TODO: Add support in evalSub
             if (!isNil(function.getFunction())) {
                 return false;
             }

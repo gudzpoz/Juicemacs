@@ -4,6 +4,21 @@ This subproject holds the Emacs Lisp interpreter (to be) used by Juicemacs. This
 document tries to provide a brief introduction of its implementation and several
 behaviors different from GNU Emacs Lisp.
 
+* Running
+
+The build process of GNU Emacs generates a bunch of file that are crucial to the
+interpreter and you will need to first build a GNU Emacs if you want this
+project to do anything useful. (For example, Unicode properties and charset
+mappings in Emacs are all loaded from generated =.el= or mapping files.)
+However, currently you will need to delete/rename the generated =loaddefs.el=
+because it uses some autoloaded functions before their autoload definitions
+(=rx=).
+
+Currently, the project still cannot fully run through the Emacs =loadup.el=, the
+execution of which is required for an Emacs-like ELisp environment. You may try
+out a partially initialized environment with [[file:~/Workspaces/Java/JVMacs/app/][../app]], which contains a simple
+ELisp REPL.
+
 * Structure
 
 Juicemacs.elisp is written with the [[https://github.com/oracle/graal/tree/master/truffle][Truffle Language Implementation Framework]]

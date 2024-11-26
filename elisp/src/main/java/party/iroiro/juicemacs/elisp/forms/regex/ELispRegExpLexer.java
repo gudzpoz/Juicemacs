@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInSyntax;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -79,7 +80,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             }
             case 's', 'S' -> {
                 hasPreviousPattern = true;
-                yield new REToken.SyntaxChar(checkSyntaxChar(reader.next()), c == 'S');
+                yield new REToken.SyntaxChar(BuiltInSyntax.checkSyntaxChar(reader.next()), c == 'S');
             }
             case 'c', 'C' -> {
                 hasPreviousPattern = true;
@@ -131,28 +132,6 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             throw ELispSignals.error("Invalid category character");
         }
         return (byte) next;
-    }
-
-    private byte checkSyntaxChar(int next) {
-        return switch (next) {
-            case ' ', '-' -> SWHITESPACE; // Whitespace
-            case '.' -> SPUNCT; // Punctuation
-            case 'w' -> SWORD; // Word
-            case '_' -> SSYMBOL; // Symbol
-            case '(' -> SOPEN; // Open paren
-            case ')' -> SCLOSE; // Close paren
-            case '\'' -> SQUOTE; // Expression prefix
-            case '"' -> SSTRING; // String quote
-            case '$' -> SMATH; // Paired delim
-            case '\\' -> SESCAPE; // Escape
-            case '/' -> SCHARQUOTE; // Character quote
-            case '<' -> SCOMMENT; // Comment start
-            case '>' -> SENDCOMMENT; // Comment end
-            case '@' -> SINHERIT; // Inherit standard syntax
-            case '!' -> SCOMMENT_FENCE; // Generic comment delimiters
-            case '|' -> SSTRING_FENCE; // Generic string delimiters
-            default -> throw ELispSignals.error("Invalid syntax character");
-        };
     }
 
     private REToken quantifier() {

@@ -99,7 +99,7 @@ public abstract class ELispTypeSystem {
 
     public static int asInt(Object value) {
         if (value instanceof Long l) {
-            return l.intValue();
+            return Math.toIntExact(l);
         }
         throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
     }

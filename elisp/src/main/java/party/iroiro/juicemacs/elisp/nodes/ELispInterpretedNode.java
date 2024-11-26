@@ -266,11 +266,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(currentFrame);
             ELispLexical.LexicalReference lexical = lexicalFrame == null
                     ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (lexical == null) {
                 top = DYNAMIC;
                 return null;
             } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ELispFrameSlotNode.ELispFrameSlotReadNode reader =
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
                 readNode = reader;

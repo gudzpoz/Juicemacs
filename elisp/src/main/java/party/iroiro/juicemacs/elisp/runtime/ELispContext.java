@@ -36,14 +36,17 @@ public final class ELispContext {
     public final static ELispVector PSEUDO_OBARRAY = new ELispVector(List.of(false));
     private final static HashMap<MuleString, ELispSymbol> INTERN_MAP = new HashMap<>();
 
+    @CompilerDirectives.TruffleBoundary
     public static ELispSymbol intern(String symbol) {
         return intern(MuleString.fromString(symbol), INTERN_MAP);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static ELispSymbol intern(MuleString symbol) {
         return intern(symbol, INTERN_MAP);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static ELispSymbol intern(MuleString symbol, @Nullable ELispVector obarray) {
         if (obarray == null) {
             obarray = PSEUDO_OBARRAY;
@@ -76,6 +79,7 @@ public final class ELispContext {
         return getObarrayInner(obarray == null ? PSEUDO_OBARRAY : obarray).get(symbol);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static void unintern(ELispSymbol symbol) {
         unintern(symbol, PSEUDO_OBARRAY);
     }

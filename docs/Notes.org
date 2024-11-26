@@ -5,6 +5,52 @@ i.e., How To Implement Your Own Shitty Emacs.
 
 * Notes
 
+** Emacs MULE
+
+I know little about the history behind Emacs. But according to [[http://www.xemacs.org/Documentation/21.5/html/lispref_64.html][XEmacs Lisp
+Reference Manual: 63. MULE]] and [[https://flex.phys.tohoku.ac.jp/texi/faq/faq_85.html][Frequently Asked Questions about Emacs - Question
+27 (What variants of GNU Emacs exist?)]], MULE comes from Japanese forks of Emacs,
+which I do think are some Emacs variants (besides XEmacs) that should be
+remembered.
+
+These days, Emacs can handle multilingual text and can (seemingly) losslessly
+convert between Unicode and other charsets, even for some charsets not yet
+mapped to Unicode. Emacs achieves this by extending the code point range of its
+internal UTF-8-like string representation to =0 - #x3FFFFF=: The =0 - #x10FFFF=
+range is for Unicode, and the remaining is for lossless storage of
+non-convertible characters.
+
+The following example is inspired by [[https://scrapbox.io/shimizukawa/Unicode$(A$K%^%C%T%s%0$5$l$F$$$J$$NDWV(B][Unicode$(A$K%^%C%T%s%0$5$l$F$$$J$$NDWV(B - $(AGeK.(B
+$(A4($N(BScrapbox]] ("Characters that are not yet mapped to Unicode" in English):
+
+#+begin_src elisp
+  (let* (;; $(AV^(B%G﨑%@$(AIqIg(B if the text were convertible to Unicode
+         (jis-encoded-bytes  "\x1b$B='yu?@<R\x1b(B")
+         ;; Losslessly decoding to Emacs strings
+         (lossless-string    (decode-coding-string jis-encoded-bytes 'iso-2022-jp))
+         (convertible-char-1 (aref lossless-string 0))
+         (non-convertible    (aref lossless-string 1))
+         (re-encoded-bytes   (encode-coding-string lossless-string 'iso-2022-jp)))
+    (format "Converted string: %s
+  Original bytes:   %s
+  Re-encoded bytes: %s
+  Convertible char: %c (#x%x < #x10FFFF)
+  Non-convertible:     (#x%x > #x10FFFF)"
+            ;; Replace non-Unicode chars so that the outputs won't disrupt the coding of this file.
+            (replace-regexp-in-string "[^\0-\U0010FFFF]" "?" lossless-string)
+            jis-encoded-bytes
+            re-encoded-bytes
+            convertible-char-1 convertible-char-1
+            non-convertible non-convertible))
+#+end_src
+
+#+RESULTS:
+: Converted string: $(AV^(B?$(AIqIg(B
+: Original bytes:   $B='yu?@<R(B
+: Re-encoded bytes: $B='yu?@<R(B
+: Convertible char: $(AV^(B (#x6d32 < #x10FFFF)
+: Non-convertible:     (#x1420a4 > #x10FFFF)
+
 ** Truffle Options
 
 During performance testing, I found the following options (supplied to =Context=
@@ -207,8 +253,8 @@ Its approach is quite similar to the previous tutorial:
 There are quite a lot Emacs forks or re-implementations out there, with helpful
 comments and discussions.
 
-- [[https://www.cliki.net/cl-emacs][CL-Emacs]]: “Various people have proposed an emacs-like editor written in Common
-  Lisp. This page collects together a few possibilities.”
+- [[https://www.cliki.net/cl-emacs][CL-Emacs]]: $(A!0(BVarious people have proposed an emacs-like editor written in Common
+  Lisp. This page collects together a few possibilities.$(A!1(B
 
 - [[https://jemacs.sourceforge.net/][JEmacs]]: The Java/Scheme-based Emacs Text Editor (source @ [[https://gitlab.com/kashell/Kawa/-/tree/master/gnu/jemacs?ref_type=heads][GNU Kawa]])
 
@@ -222,7 +268,7 @@ comments and discussions.
 
 - [[https://github.com/remacs/remacs/wiki/Emacs-Types][Emacs Types - remacs Wiki]]
 
-- [[https://blog.csdn.net/ftuc5dn/article/details/135421777][emacs 源码分析（二）]]: Contains a pretty diagram for some structs
+- [[https://blog.csdn.net/ftuc5dn/article/details/135421777][emacs $(AT4Bk7VNv#(6~#)(B]]: Contains a pretty diagram for some structs
 
 - [[https://github.com/remacs/remacs/issues/499][Emacs internal string encoding - remacs Issue #499]]
 
@@ -242,7 +288,7 @@ comments and discussions.
 
 ** GraalVM / Truffle
 
-[[https://www.graalvm.org/][GraalVM]]: “An advanced JDK with ahead-of-time Native Image compilation”
+[[https://www.graalvm.org/][GraalVM]]: $(A!0(BAn advanced JDK with ahead-of-time Native Image compilation$(A!1(B
 
 - [[https://github.com/oracle/graalpython][GraalPy, the GraalVM Implementation of Python]]
 
@@ -262,7 +308,7 @@ comments and discussions.
 
   - [[https://cesquivias.github.io/blog/2015/01/15/writing-a-language-in-truffle-part-4-adding-features-the-truffle-way/][Writing a Language in Truffle. Part 4: Adding Features the Truffle Way]] (tail-call optimization)
 
-- [[https://www.endoflineblog.com/graal-truffle-tutorial-part-0-what-is-truffle][Graal Truffle tutorial part 0 – what is Truffle?]]: A series of Truffle tutorial on a JS-like language
+- [[https://www.endoflineblog.com/graal-truffle-tutorial-part-0-what-is-truffle][Graal Truffle tutorial part 0 %G–%@ what is Truffle?]]: A series of Truffle tutorial on a JS-like language
 
 - [[https://github.com/arvyy/islisp-truffle][Truffle ISLISP]]: A Lisp-variant language implemented with Truffle
 

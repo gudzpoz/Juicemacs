@@ -7,7 +7,7 @@ import java.util.Objects;
 public final class ELispMarker extends Number implements ELispValue {
     @Nullable
     private ELispBuffer buffer;
-    private int position;
+    private long position;
 
     @Override
     public boolean lispEquals(Object other) {
@@ -21,7 +21,7 @@ public final class ELispMarker extends Number implements ELispValue {
     //#region Number
     @Override
     public int intValue() {
-        return position;
+        return (int) position;
     }
     @Override
     public long longValue() {

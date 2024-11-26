@@ -83,6 +83,28 @@ public class BuiltInSyntax extends ELispBuiltIns {
 
     private final static ELispVector SYNTAX_CODE_OBJECT = new ELispVector(Collections.nCopies(SMAX, false));
 
+    public static byte checkSyntaxChar(int next) {
+        return switch (next) {
+            case ' ', '-' -> SWHITESPACE; // Whitespace
+            case '.' -> SPUNCT; // Punctuation
+            case 'w' -> SWORD; // Word
+            case '_' -> SSYMBOL; // Symbol
+            case '(' -> SOPEN; // Open paren
+            case ')' -> SCLOSE; // Close paren
+            case '\'' -> SQUOTE; // Expression prefix
+            case '"' -> SSTRING; // String quote
+            case '$' -> SMATH; // Paired delim
+            case '\\' -> SESCAPE; // Escape
+            case '/' -> SCHARQUOTE; // Character quote
+            case '<' -> SCOMMENT; // Comment start
+            case '>' -> SENDCOMMENT; // Comment end
+            case '@' -> SINHERIT; // Inherit standard syntax
+            case '!' -> SCOMMENT_FENCE; // Generic comment delimiters
+            case '|' -> SSTRING_FENCE; // Generic string delimiters
+            default -> throw ELispSignals.error("Invalid syntax character");
+        };
+    }
+
     /**
      * <pre>
      * Return t if OBJECT is a syntax table.

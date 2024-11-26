@@ -33,6 +33,7 @@ public abstract class AbstractELispVector extends ELispVectorLike<Object> {
         return inner.length;
     }
 
+    @SuppressWarnings("PMD.TruffleNoDirectRecursion")
     @Override
     public boolean lispEquals(Object other) {
         if (this == other) {
@@ -44,6 +45,7 @@ public abstract class AbstractELispVector extends ELispVectorLike<Object> {
         return getClass() == vector.getClass() && lispEquals(inner, vector.inner);
     }
 
+    @SuppressWarnings("PMD.TruffleNoDirectRecursion")
     @Override
     public int lispHashCode() {
         return lispHashCode(inner);

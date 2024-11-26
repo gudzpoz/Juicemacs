@@ -15,6 +15,7 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 
 @SuppressWarnings({
+        "PMD.FieldNamingConventions",
         "PMD.UnnecessaryCast",
         "PMD.UseExplicitTypes",
         "PMD.UseUnderscoresInNumericLiterals",
