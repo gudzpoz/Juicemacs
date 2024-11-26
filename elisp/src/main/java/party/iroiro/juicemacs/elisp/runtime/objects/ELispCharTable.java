@@ -1,12 +1,16 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 
 import java.util.*;
-import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 /**
  * Char table object
@@ -117,6 +121,10 @@ public final class ELispCharTable extends AbstractELispVector {
         return new ELispCharTable(Arrays.asList(inner));
     }
 
+    private Object notNilOrDefault(Object value) {
+        return isNil(value) ? inner[DEFAULT_VALUT_SLOT] : value;
+    }
+
     public void setDefault(Object value) {
         inner[DEFAULT_VALUT_SLOT] = value;
     }
@@ -179,15 +187,21 @@ public final class ELispCharTable extends AbstractELispVector {
     public Object getChar(int codepoint) {
         // TODO: When does Emacs fetch from parent tables?
         if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
-            return ascii.getChar(codepoint);
+            return notNilOrDefault(ascii.getChar(codepoint));
         }
         int i = charTableIndex(codepoint, 0, 0);
-        return getSubTable(i).getChar(codepoint);
+        return notNilOrDefault(getSubTable(i).getChar(codepoint));
     }
 
     @Override
     public Object get(int index) {
         return getChar(index);
+    }
+
+    @Override
+    public Object set(int index, Object element) {
+        setChar(index, element);
+        return element;
     }
 
     @Override
@@ -237,16 +251,58 @@ public final class ELispCharTable extends AbstractELispVector {
         }
     }
 
-    public void map(BiConsumer<Long, Object> callback) {
+    @Nullable
+    public <T> T map(MapConsumer<T> callback, int startingChar) {
+        int i = charTableIndex(startingChar, 0, 0);
+        Object defaultValue = inner[DEFAULT_VALUT_SLOT];
+        for (; i < (1 << CHARTAB_SIZE_BITS_0); i++) {
+            Object slot = getContentSlot(i);
+            T result;
+            if (slot instanceof SubTable sub) {
+                result = sub.map(callback, defaultValue, startingChar);
+            } else {
+                int c = i << CHARTAB_BITS[0];
+                result = callback.accept(c, notNilOrDefault(slot));
+            }
+            if (result != null) {
+                return result;
+            }
+        }
+        return callback.accept(ELispTypeSystem.MAX_CHAR + 1, false);
+    }
+
+    public void optimize(BiPredicate<Object, Object> eq) {
         for (int i = 0; i < (1 << CHARTAB_SIZE_BITS_0); i++) {
             Object slot = getContentSlot(i);
             if (slot instanceof SubTable sub) {
-                sub.map(callback);
-            } else {
-                int c = i << CHARTAB_BITS[0];
-                callback.accept((long) c, slot);
+                setContentSlot(i, sub.optimize(eq));
             }
         }
+    }
+
+    public RefRangeResult refRange(int from, int target, int to) {
+        return Objects.requireNonNull(map(new MapConsumer<>() {
+            int last = from;
+            Object value = false;
+
+            @Override
+            @Nullable
+            public RefRangeResult accept(int codepoint, Object value) {
+                if (codepoint > to) {
+                    return new RefRangeResult(last, to, this.value);
+                }
+                if (BuiltInData.FEq.eq(this.value, value)) {
+                    return null;
+                }
+                if (codepoint <= target) {
+                    last = codepoint;
+                    this.value = value;
+                    return null;
+                } else {
+                    return new RefRangeResult(last, codepoint - 1, this.value);
+                }
+            }
+        }, from));
     }
 
     public void setAll(Object value) {
@@ -275,6 +331,10 @@ public final class ELispCharTable extends AbstractELispVector {
             throw new ArrayIndexOutOfBoundsException();
         }
         inner[n + CHARTAB_STANDARD_SLOTS] = value;
+    }
+
+    public int extraSlots() {
+        return inner.length - CHARTAB_STANDARD_SLOTS;
     }
 
     @Override
@@ -407,25 +467,79 @@ public final class ELispCharTable extends AbstractELispVector {
             }
         }
 
-        public void map(BiConsumer<Long, Object> callback) {
+        @Nullable
+        @CompilerDirectives.TruffleBoundary
+        public <T> T map(MapConsumer<T> callback, Object defaultValue, int startingChar) {
             int minChar = getMinChar();
             int depth = getDepth();
             int limit = getSlots(depth);
             int step = 1 << CHARTAB_BITS[depth];
-            for (int i = 0; i < limit; i++) {
+            int i = Math.max(charTableIndex(startingChar, depth, minChar), 0);
+            for (; i < limit; i++) {
                 Object slot = getContentSlot(i);
+                T result;
                 if (slot instanceof SubTable sub) {
-                    sub.map(callback);
+                    result = sub.map(callback, defaultValue, startingChar);
                 } else {
                     int c = minChar + i * step;
-                    callback.accept((long) c, slot);
+                    result = callback.accept(c, isNil(slot) ? defaultValue : slot);
+                }
+                if (result != null) {
+                    return result;
                 }
             }
+            return null;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        public Object optimize(BiPredicate<Object, Object> eq) {
+            boolean optimizable = true;
+            @Nullable Object value = null;
+            int slots = getSlots(getDepth());
+            for (int i = 0; i < slots; i++) {
+                Object slot = getContentSlot(i);
+                if (slot instanceof SubTable sub) {
+                    slot = sub.optimize(eq);
+                }
+                if (slot instanceof SubTable) {
+                    optimizable = false;
+                } else {
+                    if (value != null) {
+                        if (eq.test(value, slot)) {
+                            slot = value;
+                        } else {
+                            optimizable = false;
+                            value = slot;
+                        }
+                    } else {
+                        value = slot;
+                    }
+                }
+                setContentSlot(i, slot);
+            }
+            return optimizable ? Objects.requireNonNull(value) : this;
         }
 
         @Override
         public String toString() {
             return toStringHelper("#^^[", "]");
         }
+    }
+
+    public record RefRangeResult(int start, int end, Object value) {
+    }
+
+    /// Used by [#map(MapConsumer)]
+    public interface MapConsumer<T> {
+        /// Gets called with the individual values the char table records
+        ///
+        /// Note that the table only calls the function with the *starting codepoint*
+        /// of each interval of the same value.
+        ///
+        /// @param codepoint the starting codepoint
+        /// @param value the associated value
+        /// @return non-null to exit early
+        @Nullable
+        T accept(int codepoint, Object value);
     }
 }

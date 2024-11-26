@@ -2085,6 +2085,11 @@ public class BuiltInData extends ELispBuiltIns {
             array.set((int) idx, newelt);
             return newelt;
         }
+        @Specialization
+        public static Object asetCharTable(ELispCharTable array, long idx, Object newelt) {
+            array.setChar(Math.toIntExact(idx), newelt);
+            return newelt;
+        }
     }
 
     /**

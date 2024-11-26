@@ -3,15 +3,17 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_TABLE_EXTRA_SLOTS;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCharTab extends ELispBuiltIns {
@@ -21,26 +23,27 @@ public class BuiltInCharTab extends ELispBuiltIns {
     }
 
     public static void charTableMap(ELispCharTable table, BiConsumer<Object, Object> callback) {
-        table.map(new BiConsumer<>() {
-            Long prevChar = 0L;
+        table.map(new ELispCharTable.MapConsumer<Void>() {
+            long prevChar = 0L;
             Object prev = false;
 
             @Override
-            public void accept(Long l, Object o) {
+            public Void accept(int codepoint, Object o) {
                 if (BuiltInData.FEq.eq(prev, o)) {
-                    return;
+                    return null; // NOPMD
                 }
                 if (!isNil(prev)) {
-                    if (prevChar == l - 1) {
+                    if (prevChar == codepoint - 1) {
                         callback.accept(prevChar, prev);
                     } else {
-                        callback.accept(new ELispCons(prevChar, l - 1), prev);
+                        callback.accept(new ELispCons(prevChar, (long) codepoint - 1), prev);
                     }
                 }
-                prevChar = l;
+                prevChar = codepoint;
                 prev = o;
+                return null; // NOPMD
             }
-        });
+        }, 0);
     }
 
     /**
@@ -204,8 +207,15 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOptimizeCharTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void optimizeCharTable(Object charTable, Object test) {
-            throw new UnsupportedOperationException();
+        public static boolean optimizeCharTable(ELispCharTable charTable, Object test) {
+            charTable.optimize(
+                    (isNil(test) || test == EQUAL)
+                            ? BuiltInFns.FEqual::equal
+                            : (test == EQ
+                            ? BuiltInData.FEq::eq
+                            : (a, b) -> !isNil(BuiltInEval.FFuncall.funcall(test, new Object[]{a, b})))
+            );
+            return false;
         }
     }
 
