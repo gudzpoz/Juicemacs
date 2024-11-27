@@ -455,4 +455,4 @@ depending on a single missing parameter?)
 Dynamic binding not handled yet. Also, still need to handle "special == true"
 symbols under lexical scoping.
 
-Wait. Does "special == true" also applies to function arguments?
+Wait. Does "special == true" also applies to function arguments? (No.)
