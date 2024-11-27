@@ -1,21 +1,136 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import com.oracle.truffle.api.nodes.Node;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
+import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.PrimitiveIterator;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LAMBDA;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInMiniBuf extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInMiniBufFactory.getFactories();
+    }
+
+    static abstract sealed class CompletionMatcher implements Consumer<Object>, BiConsumer<Object, Object> {
+        protected final MuleString target;
+        protected final boolean ignoreCase;
+        private final Object predicate;
+        private final FunctionDispatchNode dispatchNode;
+        private final Node node;
+        private final ELispRegExp.CompiledRegExp[] regExps;
+
+        CompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
+            this.predicate = predicate;
+            this.dispatchNode = dispatchNode;
+            this.node = node;
+            this.ignoreCase = !isNil(ELispGlobals.completionIgnoreCase.getValue());
+            this.regExps = getRegExps(node);
+            this.target = (this.ignoreCase ? BuiltInCaseFiddle.FUpcase.upcaseString(target) : target).value();
+        }
+
+        public static ELispRegExp.CompiledRegExp[] getRegExps(Node node) {
+            ArrayList<ELispRegExp.CompiledRegExp> compiledRegExps = new ArrayList<>();
+            ELispLanguage language = ELispLanguage.get(node);
+            for (Object regExp : asConsOrNil(ELispGlobals.completionRegexpList.getValue())) {
+                if (regExp instanceof ELispString s) {
+                    ELispRegExp.CompiledRegExp compiledRegExp = BuiltInSearch.compileRegExp(language, s, null);
+                    compiledRegExps.add(compiledRegExp);
+                }
+            }
+            return compiledRegExps.toArray(new ELispRegExp.CompiledRegExp[0]);
+        }
+
+        @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+        public boolean forEachInCollection(Object collection) {
+            switch (collection) {
+                case ELispCons assocList -> assocList.forEach(this);
+                case ELispHashtable hashtable -> hashtable.forEach(this);
+                case ELispVector obarray -> ELispContext.getObarrayInner(obarray).forEach(this);
+                default -> {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public void accept(Object key) {
+            Object s = key instanceof ELispCons cons ? cons.car() : key;
+            tryMatch(getString(s), key, false);
+        }
+
+        @Override
+        public void accept(Object key, Object value) {
+            if (key instanceof MuleString s) {
+                // obarray
+                tryMatch(s, value, false);
+            }
+            // hashtable
+            tryMatch(getString(key), key, value);
+        }
+
+        public void tryMatch(@Nullable MuleString s, Object key, Object value) {
+            if (s == null) {
+                return;
+            }
+            if (s.length() < target.length()) {
+                return;
+            }
+            PrimitiveIterator.OfInt expected = target.iterator(0);
+            PrimitiveIterator.OfInt actual = s.iterator(0);
+            while (expected.hasNext()) {
+                int e = expected.nextInt();
+                int a = actual.nextInt();
+                if (ignoreCase) {
+                    a = Math.toIntExact(BuiltInCaseFiddle.FUpcase.upcaseChar(a));
+                }
+                if (e != a) {
+                    return;
+                }
+            }
+            if (!isNil(predicate)) {
+                if (isNil(dispatchNode.executeDispatch(node, predicate, new Object[]{key, value}))) {
+                    return;
+                }
+            }
+            ELispBuffer buffer = currentBuffer();
+            for (ELispRegExp.CompiledRegExp regExp : regExps) {
+                if (isNil(regExp.call(s, true, 0, -1, buffer))) {
+                    return;
+                }
+            }
+            record(s, key);
+        }
+
+        protected abstract void record(MuleString string, Object key);
+
+        private static @Nullable MuleString getString(Object o) {
+            return switch (o) {
+                case ELispString eStr -> eStr.value();
+                case ELispSymbol symbol -> symbol.name();
+                default -> null;
+            };
+        }
     }
 
     /**
@@ -382,9 +497,65 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTryCompletion extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void tryCompletion(Object string, Object collection, Object predicate) {
-            throw new UnsupportedOperationException();
+        public Object tryCompletion(ELispString string, Object collection, Object predicate,
+                                    @Cached FunctionDispatchNode dispatchNode) {
+            if (isNil(collection)) {
+                return false;
+            }
+            TryCompletionMatcher matcher = new TryCompletionMatcher(string, predicate, dispatchNode, this);
+            if (!matcher.forEachInCollection(collection)) {
+                return BuiltInEval.FFuncall.funcall(collection, new Object[]{string, predicate, false});
+            }
+            return matcher.reduce();
         }
+
+        private static final class TryCompletionMatcher extends CompletionMatcher {
+            private final ArrayList<MuleString> matches = new ArrayList<>();
+
+            TryCompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
+                super(target, predicate, dispatchNode, node);
+            }
+
+            @Override
+            protected void record(MuleString string, Object key) {
+                matches.add(string);
+            }
+
+            public Object reduce() {
+                if (matches.isEmpty()) {
+                    return false;
+                }
+                if (matches.size() == 1) {
+                    return true;
+                }
+                MuleStringBuffer buffer = new MuleStringBuffer();
+                int index = target.length();
+                MuleString first = matches.getFirst();
+                buffer.appendMuleString(first, 0, index);
+                appendCommonChar:
+                while (index < first.length()) {
+                    int originalChar = first.charAt(index);
+                    int upper = ignoreCase ? Math.toIntExact(BuiltInCaseFiddle.FUpcase.upcaseChar(originalChar)) : originalChar;
+                    for (int i = 1; i < matches.size(); i++) {
+                        MuleString matched = matches.get(i);
+                        if (index >= matched.length()) {
+                            break appendCommonChar;
+                        }
+                        int c = matched.charAt(index);
+                        if (ignoreCase) {
+                            c = Math.toIntExact(BuiltInCaseFiddle.FUpcase.upcaseChar(c));
+                        }
+                        if (c != upper) {
+                            break appendCommonChar;
+                        }
+                    }
+                    buffer.append(originalChar);
+                    index++;
+                }
+                return new ELispString(buffer.build());
+            }
+        }
+
     }
 
     /**
@@ -432,8 +603,40 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAllCompletions extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void allCompletions(Object string, Object collection, Object predicate, Object hideSpaces) {
-            throw new UnsupportedOperationException();
+        public Object allCompletions(ELispString string, Object collection, Object predicate, Object hideSpaces,
+                                     @Cached FunctionDispatchNode dispatchNode) {
+            if (!isNil(hideSpaces)) {
+                throw new UnsupportedOperationException("all-completions: HIDE-SPACES is not supported");
+            }
+            if (isNil(collection)) {
+                return false;
+            }
+            AllCompletionMatcher matcher = new AllCompletionMatcher(string, predicate, dispatchNode, this);
+            if (!matcher.forEachInCollection(collection)) {
+                return BuiltInEval.FFuncall.funcall(collection, new Object[]{string, predicate, true});
+            }
+            return matcher.reduce();
+        }
+
+        private static final class AllCompletionMatcher extends CompletionMatcher {
+            private final ArrayList<Object> matches = new ArrayList<>();
+
+            AllCompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
+                super(target, predicate, dispatchNode, node);
+            }
+
+            @Override
+            protected void record(MuleString string, Object key) {
+                matches.add(key);
+            }
+
+            public Object reduce() {
+                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+                for (Object match : matches) {
+                    builder.add(match);
+                }
+                return builder.build();
+            }
         }
     }
 
@@ -528,8 +731,32 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTestCompletion extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void testCompletion(Object string, Object collection, Object predicate) {
-            throw new UnsupportedOperationException();
+        public Object testCompletion(ELispString string, Object collection, Object predicate,
+                                     @Cached FunctionDispatchNode dispatchNode) {
+            if (isNil(collection)) {
+                return false;
+            }
+            // TODO: Does Emacs work like this?
+            //   "STRING is a valid completion if it appears in the list and PREDICATE is satisfied."
+            //   No ignore case, no regexp or anything?
+            TestCompletionMatcher matcher = new TestCompletionMatcher(string, predicate, dispatchNode, this);
+            if (!matcher.forEachInCollection(collection)) {
+                return BuiltInEval.FFuncall.funcall(collection, new Object[]{string, predicate, LAMBDA});
+            }
+            return matcher.matched;
+        }
+
+        private static final class TestCompletionMatcher extends CompletionMatcher {
+            boolean matched = false;
+
+            TestCompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
+                super(target, predicate, dispatchNode, node);
+            }
+
+            @Override
+            protected void record(MuleString string, Object key) {
+                matched = true;
+            }
         }
     }
 

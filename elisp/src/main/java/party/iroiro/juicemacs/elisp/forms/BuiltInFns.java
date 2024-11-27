@@ -812,8 +812,17 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSubstringNoProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void substringNoProperties(Object string, Object from, Object to) {
-            throw new UnsupportedOperationException();
+        public static ELispString substringNoProperties(ELispString string, Object from, Object to) {
+            int length = string.value().length();
+            long start = notNilOr(from, 0);
+            long end = notNilOr(to, length);
+            if (start < 0) {
+                start = length + start;
+            }
+            if (end < 0) {
+                end = length + end;
+            }
+            return new ELispString(string.value().subSequence(Math.toIntExact(start), Math.toIntExact(end)));
         }
     }
 

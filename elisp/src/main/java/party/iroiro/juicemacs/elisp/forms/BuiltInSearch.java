@@ -75,7 +75,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     private static final RegexpCache COMPILED_REGEXPS = new RegexpCache();
 
     @CompilerDirectives.TruffleBoundary
-    private static ELispRegExp.CompiledRegExp compileRegExp(
+    public static ELispRegExp.CompiledRegExp compileRegExp(
             ELispLanguage language,
             ELispString regexp,
             @Nullable MuleString whitespaceRegExp

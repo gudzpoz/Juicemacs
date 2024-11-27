@@ -68,8 +68,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringToChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringToChar(Object string) {
-            throw new UnsupportedOperationException();
+        public static long stringToChar(ELispString string) {
+            return string.codePointAt(0);
         }
     }
 
@@ -1692,8 +1692,11 @@ public class BuiltInEditFns extends ELispBuiltIns {
         public static ELispString format(ELispString string, Object[] objects) {
             // TODO
             String s = string.toString();
-            if (objects.length == 1 && objects[0] instanceof Long l && s.contains("%c")) {
-                objects = new Object[]{Math.toIntExact(l)}; // NOPMD
+            for (int i = 0; i < objects.length; i++) {
+                Object o = objects[i];
+                if (o instanceof Long l && 0 <= l && l <= MAX_CHAR) {
+                    objects[i] = l.intValue(); // NOPMD
+                }
             }
             return new ELispString(String.format(s, objects));
         }

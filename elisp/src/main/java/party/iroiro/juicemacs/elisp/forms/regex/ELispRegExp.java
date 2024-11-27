@@ -50,7 +50,7 @@ public abstract class ELispRegExp {
             return callTarget.call(value, search, from, end, buffer); // NOPMD
         }
         public Object call(ELispBuffer value, boolean search, int from, int end) {
-        return callTarget.call(value, search, from, end, value); // NOPMD
+            return callTarget.call(value, search, from, end, value); // NOPMD
         }
     }
 
