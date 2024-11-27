@@ -75,7 +75,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         CHARSET_LIST.clear();
 
         // Emacs initializes this in unify-charset, but we move it here.
-        ELispGlobals.charUnifyTable.setValue(new ELispCharTable(false, 0));
+        ELispGlobals.charUnifyTable.setValue(ELispCharTable.create(false, NIL, 0));
     }
 
     @Override

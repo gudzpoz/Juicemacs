@@ -173,6 +173,9 @@ public abstract class ELispSignals {
     public static ELispSignalException fatal() {
         return signal(ELispContext.intern("fatal"));
     }
+    public static ELispSignalException fatal(String message) {
+        return signal(ELispContext.intern("fatal"), message);
+    }
     //#endregion emacs_abort
 
     //#region Remap

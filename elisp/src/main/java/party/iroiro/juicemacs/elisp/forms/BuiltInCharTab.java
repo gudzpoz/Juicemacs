@@ -3,12 +3,16 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -67,9 +71,8 @@ public class BuiltInCharTab extends ELispBuiltIns {
             if (extraSlots < 0 || 10 < extraSlots) {
                 throw ELispSignals.argsOutOfRange(extraSlots);
             }
-            ELispCharTable table = new ELispCharTable(init, extraSlots);
+            ELispCharTable table = ELispCharTable.create(init, purpose, extraSlots);
             table.setParent(false);
-            table.setPurpose(purpose);
             return table;
         }
     }
@@ -250,8 +253,36 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnicodePropertyTableInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void unicodePropertyTableInternal(Object prop) {
-            throw new UnsupportedOperationException();
+        public Object unicodePropertyTableInternal(Object prop) {
+            Object val = BuiltInFns.FAssq.assq(prop, ELispGlobals.charCodePropertyAlist.getValue());
+            if (!(val instanceof ELispCons cons)) {
+                return false;
+            }
+            if (cons.cdr() instanceof ELispString path) {
+                // TODO: Uniprop decoder
+                @Nullable ELispRootNode rootNode = BuiltInLRead.loadFile(
+                        ELispLanguage.get(this),
+                        new ELispString(MuleString.concat(
+                                MuleString.fromString("international/"),
+                                path.value())),
+                        false
+                );
+                if (rootNode == null) {
+                    return false;
+                }
+                rootNode.getCallTarget().call();
+            }
+            if (!(cons.cdr() instanceof ELispCharTable table)
+                    || table.getPurpose() != CHAR_CODE_PROPERTY_TABLE || table.extraSlots() != 5) {
+                return false;
+            }
+            Object count = table.getExtra(1);
+            if (count instanceof Long l
+                    ? l < 0 || l > 1
+                    : !isNil(count)) {
+                return false;
+            }
+            return table;
         }
     }
 

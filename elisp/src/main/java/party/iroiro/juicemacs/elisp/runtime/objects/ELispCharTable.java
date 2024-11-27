@@ -9,6 +9,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import java.util.*;
 import java.util.function.BiPredicate;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_CODE_PROPERTY_TABLE;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -109,16 +110,35 @@ public final class ELispCharTable extends AbstractELispVector {
     public final static int CHARTAB_STANDARD_SLOTS = CONTENT_BASE_SLOT + (1 << CHARTAB_SIZE_BITS_0);
     public final static int SUB_CONTENT_BASE_SLOT = 2;
 
-    private ELispCharTable(List<Object> inner) {
-        super(inner instanceof ELispCharTable charTable ? charTable.inner.clone() : inner.toArray());
+    private ELispCharTable(Object[] inner) {
+        super(inner);
+        setAsciiSlot(getAsciiValue());
+        checkCompression(inner);
     }
 
-    public ELispCharTable(Object init, int extraSlots) {
-        this(Collections.nCopies(CHARTAB_STANDARD_SLOTS + extraSlots, init));
+    private void checkCompression(Object[] inner) {
+        // TODO: Decide whether to handle this when setPurpose is called
+        if (isUnipropTable()) {
+            for (Object slot : inner) {
+                if (slot instanceof SubTable subTable) {
+                    Object[] objects = subTable.inner;
+                    for (int j = 0; j < objects.length; j++) {
+                        Object depth2 = objects[j];
+                        if (depth2 instanceof SubTable maybeCompressed) {
+                            objects[j] = new CompressedUnipropSubTable(maybeCompressed);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isUnipropTable() {
+        return getPurpose() == CHAR_CODE_PROPERTY_TABLE && extraSlots() == 5;
     }
 
     public ELispCharTable copy() {
-        return new ELispCharTable(Arrays.asList(inner));
+        return new ELispCharTable(inner.clone());
     }
 
     private Object notNilOrDefault(Object value) {
@@ -346,15 +366,29 @@ public final class ELispCharTable extends AbstractELispVector {
         if (objects.size() < CHARTAB_STANDARD_SLOTS) {
             throw ELispSignals.invalidReadSyntax("Invalid size char-table");
         }
-        return new ELispCharTable(objects);
+        return new ELispCharTable(objects.toArray());
     }
 
-    public static final class SubTable extends AbstractELispVector {
+    public static ELispCharTable create(Object init, ELispSymbol purpose, int extraSlots) {
+        Object[] inner = new Object[CHARTAB_STANDARD_SLOTS + extraSlots];
+        inner[DEFAULT_VALUT_SLOT] = init;
+        inner[PARENT_SLOT] = false;
+        inner[PURPOSE_SLOT] = purpose;
+        Arrays.fill(inner, CONTENT_BASE_SLOT, CHARTAB_STANDARD_SLOTS, init);
+        Arrays.fill(inner, CHARTAB_STANDARD_SLOTS, inner.length, false);
+        return new ELispCharTable(inner);
+    }
+
+    public static sealed class SubTable extends AbstractELispVector {
         public final static int DEPTH_SLOT = 0;
         public final static int MIN_CHAR_SLOT = 1;
 
         private SubTable(List<Object> inner) {
             super(inner.toArray());
+        }
+
+        protected SubTable(Object[] inner) {
+            super(inner);
         }
 
         public SubTable(int depth, int minChar, Object defaultValue) {
@@ -523,6 +557,74 @@ public final class ELispCharTable extends AbstractELispVector {
         @Override
         public String toString() {
             return toStringHelper("#^^[", "]");
+        }
+    }
+
+    private static final class CompressedUnipropSubTable extends SubTable {
+        public CompressedUnipropSubTable(SubTable wrapped) {
+            super(wrapped.inner);
+            if (getDepth() != 2) {
+                throw ELispSignals.fatal("Invalid uniprop table");
+            }
+        }
+
+        @Override
+        public Object getContentSlot(int tableIndex) {
+            Object slot = super.getContentSlot(tableIndex);
+            if (slot instanceof ELispString compressed && compressed.length() != 0) {
+                long start = compressed.codePointAt(0);
+                if (start == 1 || start == 2) {
+                    int minChar = getMinChar() + tableIndex * SubTable.getSlots(3);
+                    slot = decompressTable(compressed, minChar);
+                    setContentSlot(tableIndex, slot);
+                }
+            }
+            return slot;
+        }
+
+        private SubTable decompressTable(ELispString compressed, int minChar) {
+            PrimitiveIterator.OfInt i = compressed.value().iterator(0);
+            int type = i.nextInt();
+            SubTable table = new SubTable(3, minChar, false);
+            if (type == 1) {
+                // Simple
+                int index = i.nextInt();
+                int endIndex = SubTable.getSlots(3);
+                while (i.hasNext() && index < endIndex) {
+                    int v = i.nextInt();
+                    table.setContentSlot(index, v > 0 ? (long) v : false);
+                    index++;
+                }
+            } else if (type == 2) {
+                // Run-length
+                int index = 0;
+                while (i.hasNext()) {
+                    int v = i.nextInt();
+                    do {
+                        int count = 1;
+                        if (i.hasNext()) {
+                            count = i.nextInt();
+                            if (count < 128) {
+                                table.setContentSlot(index, (long) v);
+                                index++;
+                                v = count;
+                                // A dirty way to "peek" the run-length encoding
+                                continue;
+                            } else {
+                                count -= 128;
+                            }
+                        }
+                        while (count-- > 0) {
+                            table.setContentSlot(index, v > 0 ? (long) v : false);
+                            index++;
+                        }
+                        break;
+                    } while (true);
+                }
+            } else {
+                throw ELispSignals.fatal("Invalid uniprop table");
+            }
+            return table;
         }
     }
 

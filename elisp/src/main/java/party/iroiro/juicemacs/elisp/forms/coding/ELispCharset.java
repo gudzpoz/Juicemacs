@@ -19,6 +19,7 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /// ### Implementation Notes
@@ -388,7 +389,7 @@ public final class ELispCharset {
                 unifyTable.setRange(Math.toIntExact(minChar), Math.toIntExact(maxChar), false);
             }
             // Encoding
-            encodingTable = new ELispCharTable(false, 0);
+            encodingTable = ELispCharTable.create(false, NIL, 0);
             attributes.set(method == CharsetMethod.MAP ? CHARSET_ENCODER : CHARSET_DEUNIFIER, encodingTable);
         }
         long minChar = charsetMap.value.get(0);

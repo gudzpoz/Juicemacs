@@ -103,6 +103,9 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
     @Override
     public String toString() {
+        if (getEnv() instanceof LexicalEnvironment) {
+            return vectorToStringHelper("(lambda ", ")", subList(0, CLOSURE_CONSTANTS).iterator());
+        }
         return toStringHelper("(lambda ", ")");
     }
 
