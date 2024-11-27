@@ -25,6 +25,9 @@ public class ELispLanguageTest {
             ELispGlobals.loadPath.setValue(new ELispCons(new ELispString(
                     Path.of(".", "emacs", "lisp").toAbsolutePath().toString()
             )));
+            ELispGlobals.charsetMapPath.setValue(new ELispCons(new ELispString(
+                    Path.of(".", "emacs", "etc", "charsets").toAbsolutePath().toString()
+            )));
             ELispContext.COMMAND_LINE_ARGS.setValue(NIL);
             context.eval("elisp", "(load \"loadup\")");
         }

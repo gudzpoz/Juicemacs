@@ -443,7 +443,6 @@ public class BuiltInEditFns extends ELispBuiltIns {
 
             public SaveExcursionNode(Object[] body) {
                 bodyNode = BuiltInEval.FProgn.progn(body);
-                adoptChildren();
             }
 
             @Override
@@ -499,7 +498,6 @@ public class BuiltInEditFns extends ELispBuiltIns {
 
             public SaveCurrentBufferNode(Object[] body) {
                 bodyNode = BuiltInEval.FProgn.progn(body);
-                adoptChildren();
             }
 
             @Override

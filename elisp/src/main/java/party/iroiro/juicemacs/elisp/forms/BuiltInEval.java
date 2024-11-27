@@ -59,7 +59,6 @@ public class BuiltInEval extends ELispBuiltIns {
         InlinedFuncall(ELispExpressionNode function, ELispExpressionNode[] arguments) {
             this.function = function;
             this.arguments = arguments;
-            adoptChildren();
         }
 
         @ExplodeLoop
@@ -105,7 +104,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
             public OrNode(Object[] conditions) {
                 nodes = ELispInterpretedNode.create(conditions);
-                adoptChildren();
             }
 
             @Override
@@ -152,7 +150,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
             public AndNode(Object[] conditions) {
                 nodes = ELispInterpretedNode.create(conditions);
-                adoptChildren();
             }
 
             @Override
@@ -210,7 +207,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 condition = ELispInterpretedNode.create(cond);
                 thenBranch = ELispInterpretedNode.create(then);
                 elseBranch = FProgn.progn(else_);
-                adoptChildren();
             }
 
             @Override
@@ -277,7 +273,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
                 conditions = conditionNodes.toArray(new ELispExpressionNode[0]);
                 thenCases = cases.toArray(new ELispExpressionNode[0]);
-                adoptChildren();
             }
 
             @Override
@@ -335,8 +330,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
             public PrognBlockNode(ELispExpressionNode[] body) {
                 block = BlockNode.create(body, this);
-                adoptChildren();
-                block.adoptChildren();
             }
 
             @Override
@@ -409,7 +402,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public Prog1Node(Object first, Object[] body) {
                 firstNode = ELispInterpretedNode.create(first);
                 others = FProgn.progn(body);
-                adoptChildren();
             }
 
             @Override
@@ -530,20 +522,20 @@ public class BuiltInEval extends ELispBuiltIns {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (lexical == null) {
                         top = DYNAMIC;
-                        write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
-                                newIndex,
-                                null, // PMD: Null
-                                inner
-                        );
-                        writeNode = write;
-                        adoptChildren();
+                        ELispFrameSlotNode.ELispFrameSlotWriteNode newChild =
+                                ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
+                                        newIndex,
+                                        null, // PMD: Null
+                                        inner
+                                );
+                        writeNode = insertOrReplace(newChild, write);
                         return true;
                     } else {
-                        write = ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
-                                newIndex, lexical.frame(), inner
-                        );
-                        writeNode = write;
-                        adoptChildren();
+                        ELispFrameSlotNode.ELispFrameSlotWriteNode newChild =
+                                ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
+                                        newIndex, lexical.frame(), inner
+                                );
+                        writeNode = insertOrReplace(newChild, write);
                     }
                 }
                 return false;
@@ -693,10 +685,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode doc = finalDocString;
-
-                {
-                    adoptChildren();
-                }
 
                 @Override
                 public void executeVoid(VirtualFrame frame) {
@@ -852,7 +840,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 this.symbol = symbol;
                 this.initValueMissing = initValueMissing;
                 init = ELispInterpretedNode.create(initvalue);
-                adoptChildren();
             }
 
             @Override
@@ -926,7 +913,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public DefConstNode(Object symbol, Object initvalue) {
                 this.symbol = symbol;
                 init = ELispInterpretedNode.create(initvalue);
-                adoptChildren();
             }
 
             @Override
@@ -1003,7 +989,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public LetxMakeScopeNode(ELispInterpretedNode[] values, ELispSymbol[] symbols) {
                 this.symbols = symbols;
                 valueNodes = values;
-                adoptChildren();
             }
 
             @Override
@@ -1066,7 +1051,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public LetxNode(Object varlist, Object[] body) {
                 scopeNode = FLet.makeScope(varlist, LetxMakeScopeNode::new);
                 bodyNode = new FProgn.PrognBlockNode(ELispInterpretedNode.create(body));
-                adoptChildren();
             }
 
             @Override
@@ -1117,7 +1101,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public LetMakeScopeNode(ELispInterpretedNode[] values, ELispSymbol[] symbols) {
                 this.symbols = symbols;
                 valueNodes = values;
-                adoptChildren();
             }
 
             @Override
@@ -1171,7 +1154,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object varlist,
                 BiFunction<ELispInterpretedNode[], ELispSymbol[], T> scopeConstructor
         ) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             List<ELispSymbol> symbolList = new ArrayList<>();
             List<ELispInterpretedNode> values = new ArrayList<>();
             for (Object assignment : ELispCons.iterate(varlist)) {
@@ -1226,7 +1208,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public LetNode(Object varlist, Object[] body) {
                 scopeNode = FLet.makeScope(varlist, LetMakeScopeNode::new);
                 bodyNode = FProgn.progn(body);
-                adoptChildren();
             }
 
             @Override
@@ -1286,7 +1267,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public RepeatingBodyNode(Object test, Object[] body) {
                 condition = ELispInterpretedNode.create(test);
                 bodyNode = FProgn.progn(body);
-                adoptChildren();
             }
 
             @Override
@@ -1307,7 +1287,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
             public WhileNode(Object test, Object[] body) {
                 loopNode = Truffle.getRuntime().createLoopNode(new RepeatingBodyNode(test, body));
-                adoptChildren();
             }
 
             @Override
@@ -1394,7 +1373,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public CatchNode(Object tag, Object[] body) {
                 tagNode = ELispInterpretedNode.create(tag);
                 bodyNodes = FProgn.progn(body);
-                adoptChildren();
             }
 
             @Override
@@ -1463,7 +1441,6 @@ public class BuiltInEval extends ELispBuiltIns {
             public UnwindProtectNode(Object bodyform, Object[] unwindforms) {
                 body = ELispInterpretedNode.create(bodyform);
                 unwind = FProgn.progn(unwindforms);
-                adoptChildren();
             }
 
             @Override
@@ -1577,7 +1554,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 this.conditionNames = conditionNames;
                 this.var = var;
                 body = ELispInterpretedNode.create(bodyform);
-                adoptChildren();
             }
 
             private static boolean matches(ELispSymbol conditionName, Object tag) {
@@ -1855,7 +1831,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 Source source = callerSource.getSource();
                 sourceSection = form instanceof ELispCons cons ? cons.getSourceSection(source) : callerSource;
             }
-            return new ELispRootNode(node == null ? null : ELispLanguage.get(node), expr, sourceSection);
+            return new ELispRootNode(
+                    node == null ? ELispLanguage.getLanguageSlow() : ELispLanguage.get(node),
+                    expr, sourceSection
+            );
         }
     }
 

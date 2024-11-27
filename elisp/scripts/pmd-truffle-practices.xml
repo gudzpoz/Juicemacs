@@ -10,22 +10,47 @@
     </description>
 
     <rule
-            name="TruffleNodeShouldAdoptChildren"
+            name="TruffleNodeDeprecateAdoptChildren"
             language="java"
-            message="Remember to call adoptChildren()."
+            message="Do not call adoptChildren() manually."
             class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <description>
-            Truffle AST nodes have a parent field, which is only filled in when
-            adoptChildren() is called.
+            The adoptChildren() method will eventually be called automatically by Truffle
+            when creating a CallTarget for the RootNode. Even if you are updating nodes manually
+            outside the constructor, consider call insert() instead of adoptChildren().
         </description>
         <priority>3</priority>
         <properties>
             <property name="xpath">
                 <value><![CDATA[
-                //FieldDeclaration[
-                    pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Child")
-                    or pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.Node.Children")
-                ]/../..[count(.//MethodCall[@MethodName="adoptChildren"]) = 0]
+                //MethodCall[@MethodName="adoptChildren"]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
+            name="TruffleNodeUseInsertToAdoptDynamicChildren"
+            language="java"
+            message="When update @Child/@Children fields dynamically, call insert to adopt them."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Nodes have a hidden parent field that many methods (source location, etc.) rely on.
+            When creating nodes dynamically, you will need to manually call insert() to adopt the child nodes.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //MethodDeclaration[@Static=false()]
+                //AssignmentExpression/*[2]
+                [not(self::NullLiteral)]
+                [pmd-java:typeIs("com.oracle.truffle.api.nodes.Node")]
+                [
+                 not(@MethodName="insertOrReplace")
+                 and not(@MethodName="insert")
+                 and not(@MethodName="replace")
+                ]
                 ]]></value>
             </property>
         </properties>

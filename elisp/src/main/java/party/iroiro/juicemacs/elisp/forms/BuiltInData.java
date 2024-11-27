@@ -39,7 +39,6 @@ public class BuiltInData extends ELispBuiltIns {
 
         public NumberAsIsUnary(ELispExpressionNode argument) {
             arg = argument;
-            adoptChildren();
         }
 
         @Override
@@ -60,7 +59,6 @@ public class BuiltInData extends ELispBuiltIns {
 
         public BitAsIsUnary(ELispExpressionNode argument) {
             arg = argument;
-            adoptChildren();
         }
 
         @Override
@@ -73,7 +71,6 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    @SuppressWarnings("PMD.TruffleNodeShouldAdoptChildren")
     @NodeChild(value = "value", type = ELispExpressionNode.class)
     public abstract static class FMinusUnary extends ELispExpressionNode {
         @Specialization(rewriteOn = ArithmeticException.class)
@@ -94,7 +91,6 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    @SuppressWarnings("PMD.TruffleNodeShouldAdoptChildren")
     @NodeChild(value = "value", type = ELispExpressionNode.class)
     public abstract static class FQuoUnary extends ELispExpressionNode {
         @Specialization
@@ -123,7 +119,6 @@ public class BuiltInData extends ELispBuiltIns {
         protected BinaryArithmeticNode(ELispExpressionNode left, ELispExpressionNode right) {
             this.left = left;
             this.right = right;
-            adoptChildren();
         }
 
         public abstract long longs(long left, long right);
@@ -313,7 +308,6 @@ public class BuiltInData extends ELispBuiltIns {
         protected BinaryBitwiseNode(ELispExpressionNode left, ELispExpressionNode right) {
             this.left = left;
             this.right = right;
-            adoptChildren();
         }
 
         public abstract long longs(long left, long right);
@@ -409,7 +403,6 @@ public class BuiltInData extends ELispBuiltIns {
         protected BinaryCompareNode(ELispExpressionNode left, ELispExpressionNode right) {
             this.left = left;
             this.right = right;
-            adoptChildren();
         }
 
         public abstract boolean longs(long left, long right);
@@ -2450,9 +2443,7 @@ public class BuiltInData extends ELispBuiltIns {
                 return ELispInterpretedNode.literal(0L);
             }
             if (arguments.length == 1) {
-                FMinusUnary fMinusUnary = BuiltInDataFactory.FMinusUnaryNodeGen.create(arguments[0]);
-                fMinusUnary.adoptChildren();
-                return fMinusUnary;
+                return BuiltInDataFactory.FMinusUnaryNodeGen.create(arguments[0]);
             }
             return varArgsToBinary(arguments, 0, BuiltInDataFactory.FMinusBinaryNodeGen::create);
         }
@@ -2598,9 +2589,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
             if (arguments.length == 1) {
-                FQuoUnary fQuoUnary = BuiltInDataFactory.FQuoUnaryNodeGen.create(arguments[0]);
-                fQuoUnary.adoptChildren();
-                return fQuoUnary;
+                return BuiltInDataFactory.FQuoUnaryNodeGen.create(arguments[0]);
             }
             if (arguments.length == 2) {
                 return BuiltInDataFactory.FQuoBinaryNodeGen.create(arguments[0], arguments[1]);

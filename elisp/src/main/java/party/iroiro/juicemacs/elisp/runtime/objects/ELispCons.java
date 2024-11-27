@@ -99,7 +99,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 );
                 return;
             }
-            parent = parent.getParent();
+            parent = parent.getParent(); // NOPMD
         }
     }
 

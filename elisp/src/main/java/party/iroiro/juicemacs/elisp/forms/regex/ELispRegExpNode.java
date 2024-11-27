@@ -69,7 +69,6 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         this.caseFold = caseFold;
         lengthNode = ELispRegExpInputNodesFactory.InputLengthNodeGen.create();
         getCharNode = ELispRegExpInputNodesFactory.InputGetCharNodeGen.create();
-        adoptChildren();
     }
 
     public Object execute(VirtualFrame frame) {

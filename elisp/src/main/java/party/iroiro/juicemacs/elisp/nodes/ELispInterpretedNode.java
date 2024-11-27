@@ -85,7 +85,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public ELispRootExpressions(Object[] expressions, boolean lexical) {
             this.node = BuiltInEval.FProgn.progn(expressions);
             this.lexical = lexical;
-            adoptChildren();
         }
 
         @Override
@@ -257,6 +256,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (top == DYNAMIC) {
                 return null;
             }
+            ELispFrameSlotNode.ELispFrameSlotReadNode readNode = this.readNode;
             if (CompilerDirectives.injectBranchProbability(
                     CompilerDirectives.FASTPATH_PROBABILITY,
                     readNode != null && readNode.isFrameTopValid(currentFrame, top)
@@ -273,12 +273,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             } else {
                 ELispFrameSlotNode.ELispFrameSlotReadNode reader =
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
-                readNode = reader;
-                adoptChildren();
-                reader.adoptChildren();
+                this.readNode = insertOrReplace(reader, readNode);
                 top = reader.getValidFrameTop(currentFrame);
+                return reader;
             }
-            return readNode;
         }
     }
 
@@ -291,7 +289,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         protected ConsCallNode(Object function, @Nullable ELispCons cons, boolean special) {
             this.function = function;
             this.args = cons == null ? null : initChildren(cons, special);
-            adoptChildren();
         }
 
         @ExplodeLoop
@@ -340,7 +337,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (function instanceof ELispCons lambda && lambda.car() == LAMBDA) {
                 inlineLambdaNode = BuiltInEval.FFunction.function(lambda);
             }
-            adoptChildren();
         }
 
         @Specialization
@@ -361,7 +357,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             super(function, cons, false);
             ELispSubroutine subroutine = (ELispSubroutine) function;
             inlinedNode = generateInlineNode(cons, Objects.requireNonNull(subroutine.inline()));
-            adoptChildren();
         }
 
         private static ELispExpressionNode generateInlineNode(ELispCons cons, ELispSubroutine.InlineInfo inline) {
@@ -392,10 +387,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     @SuppressWarnings("FieldMayBeFinal")
                     @Children
                     private ELispExpressionNode[] restArgs = restNodes.toArray(ELispExpressionNode[]::new);
-
-                    {
-                        adoptChildren();
-                    }
 
                     @Override
                     public void executeVoid(VirtualFrame frame) {
@@ -459,52 +450,39 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
     }
 
-    private final static class ConsSpecialCallNode extends ConsCallNode {
-        @Nullable
+    private static final class ConsSpecialCallNode extends ConsCallNode {
         @Child
         private ELispExpressionNode generated = null;
 
         ConsSpecialCallNode(Object function, ELispCons cons) {
             super(function, cons, true);
+            generated = (ELispExpressionNode) getFunctionObject(function)
+                    .callTarget()
+                    .call(this, evalArgs(null));
         }
 
         @Override
         public void executeVoid(VirtualFrame frame) {
-            ELispExpressionNode form = updateNode(frame);
-            form.executeVoid(frame);
+            generated.executeVoid(frame);
         }
 
         @Override
         public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-            ELispExpressionNode form = updateNode(frame);
-            return form.executeLong(frame);
+            return generated.executeLong(frame);
         }
 
         @Override
         public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-            ELispExpressionNode form = updateNode(frame);
-            return form.executeDouble(frame);
+            return generated.executeDouble(frame);
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            ELispExpressionNode form = updateNode(frame);
-            return form.executeGeneric(frame);
-        }
-
-        private ELispExpressionNode updateNode(VirtualFrame frame) {
-            ELispExpressionNode form = generated;
-            if (form == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                form = (ELispExpressionNode) getFunctionObject(function).callTarget().call(this, evalArgs(frame));
-                generated = form;
-                adoptChildren();
-            }
-            return form;
+            return generated.executeGeneric(frame);
         }
     }
 
-    abstract static class ConsMacroCallNode extends ConsCallNode {
+    private static final class ConsMacroCallNode extends ConsCallNode {
         private final ELispCons cons;
 
         @Child
@@ -521,11 +499,19 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (this.function instanceof ELispCons lambda && lambda.car() == LAMBDA) {
                 inlineLambdaNode = BuiltInEval.FFunction.function(lambda);
             }
-            adoptChildren();
         }
 
-        @Specialization
-        public Object call(VirtualFrame frame) {
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            try {
+                updateGenerated(frame).executeVoid(frame);
+            } catch (ELispSignals.ELispSignalException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
             try {
                 return updateGenerated(frame).executeGeneric(frame);
             } catch (ELispSignals.ELispSignalException e) {
@@ -554,11 +540,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                             cons.getEndColumn()
                     );
                 }
-                inner = ELispInterpretedNode.create(o);
-                this.generatedNode = inner;
-                adoptChildren();
+                return generatedNode = insert(ELispInterpretedNode.create(o));
             }
-            return inner;
         }
 
         @Override
@@ -567,7 +550,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
     }
 
-    public final static class ELispConsExpressionNode extends ELispInterpretedNode {
+    public static final class ELispConsExpressionNode extends ELispInterpretedNode {
         public final static int FORM_FUNCTION = 0;
         public final static int FORM_SPECIAL = 1;
         public final static int FORM_MACRO = 2;
@@ -652,17 +635,17 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             };
             if (node == null || type != newType || node.getFunction() != function) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                node = switch (newType) {
+                ConsCallNode created = switch (newType) {
                     case FORM_SPECIAL -> new ConsSpecialCallNode(function, cons);
                     case FORM_INLINED -> new ConsInlinedAstNode(function, cons);
                     case FORM_FUNCTION -> ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
-                    case FORM_MACRO -> ELispInterpretedNodeFactory.ConsMacroCallNodeGen.create(function, cons);
+                    case FORM_MACRO -> new ConsMacroCallNode(function, cons);
                     default -> throw CompilerDirectives.shouldNotReachHere();
                 };
                 type = newType;
-                callNode = node;
-                adoptChildren();
+                callNode = insertOrReplace(created, node);
                 cons.fillDebugInfo(getParent());
+                return created;
             }
             return node;
         }

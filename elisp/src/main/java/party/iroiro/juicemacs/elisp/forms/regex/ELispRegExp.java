@@ -27,7 +27,6 @@ public abstract class ELispRegExp {
             super(language, ELispRegExpNode.REGEXP_FRAME_DESCRIPTOR);
             this.node = node;
             this.regexp = regexp;
-            adoptChildren();
         }
 
         @Override

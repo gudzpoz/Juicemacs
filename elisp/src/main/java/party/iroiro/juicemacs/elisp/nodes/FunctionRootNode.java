@@ -23,7 +23,6 @@ public final class FunctionRootNode extends RootNode {
         super(language, descriptor);
         this.lispFunction = lispFunction;
         this.functionBody = functionBody;
-        adoptChildren();
     }
 
     @Override

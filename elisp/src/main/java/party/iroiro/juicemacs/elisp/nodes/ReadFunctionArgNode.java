@@ -42,7 +42,6 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             this.function = function;
             this.minArgs = minArgs;
             this.maxArgs = maxArgs;
-            adoptChildren();
         }
 
         @CompilerDirectives.TruffleBoundary

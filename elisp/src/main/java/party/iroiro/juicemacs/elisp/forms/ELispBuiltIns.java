@@ -78,7 +78,6 @@ public abstract class ELispBuiltIns {
                     args.add(new ReadFunctionArgNode.ReadFunctionRestArgsNode(builtIn.maxArgs()));
                 }
                 ELispExpressionNode function = factory.createNode((Object) args.toArray(ReadFunctionArgNode[]::new));
-                function.adoptChildren();
                 ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                         function,
                         builtIn.minArgs(),

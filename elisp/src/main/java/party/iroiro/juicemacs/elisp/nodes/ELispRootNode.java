@@ -19,8 +19,6 @@ public class ELispRootNode extends RootNode {
 
         this.expression = expression;
         this.sourceSection = sourceSection;
-
-        adoptChildren();
     }
 
     @Override

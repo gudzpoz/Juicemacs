@@ -83,7 +83,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                     ELispLexical.frameDescriptor(!isNil(getEnv()))
             );
             f = new ELispFunctionObject(root.getCallTarget());
-            functionRootNode = root;
+            functionRootNode = root; // NOPMD
             function = f;
         }
         return f;
@@ -166,7 +166,6 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                 ));
             }
             this.optionalRestArgs = argNodes.toArray(new ReadFunctionArgNode[0]);
-            adoptChildren();
         }
 
         @Nullable
