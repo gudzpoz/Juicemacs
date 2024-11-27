@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class MuleStringTest {
     @Test
     public void latin1SimpleTest() {
-        MuleByteArrayString string = new MuleByteArrayString(new byte[] { 'a', (byte) 128, 'c' });
+        MuleByteArrayString string = MuleString.fromLatin1(new byte[] { 'a', (byte) 128, 'c' });
         assertEquals(3, string.length());
         assertEquals("a\u0080c", string.toString());
         assertEquals('a', string.codePointAt(0));
@@ -53,7 +53,7 @@ public class MuleStringTest {
         int[] array = {'a', '文', Character.MAX_CODE_POINT + 1};
         MuleIntArrayString string = new MuleIntArrayString(array);
         assertEquals(3, string.length());
-        assertEquals("a文\\u00110000", string.toString());
+        assertEquals("a文\\U00110000", string.toString());
         assertEquals('a', string.codePointAt(0));
         assertEquals('文', string.codePointAt(1));
         assertEquals(Character.MAX_CODE_POINT + 1, string.codePointAt(2));
@@ -68,7 +68,7 @@ public class MuleStringTest {
 
     @Test
     public void codePointsTest() {
-        MuleByteArrayString string1 = new MuleByteArrayString(new byte[] { 'a', 'b', 'c' });
+        MuleByteArrayString string1 = MuleString.fromLatin1(new byte[] { 'a', 'b', 'c' });
         MuleTruffleString string2 = new MuleTruffleString(TruffleString.fromJavaStringUncached("abc", UTF_32));
         MuleIntArrayString string3 = new MuleIntArrayString(new int[]{ 'a', 'b', 'c' });
         for (MuleString s : new MuleString[] {string1, string2, string3}) {

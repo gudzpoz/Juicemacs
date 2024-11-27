@@ -2,10 +2,7 @@ package party.iroiro.juicemacs.mule;
 
 import com.oracle.truffle.api.strings.TruffleString;
 
-import java.util.NoSuchElementException;
-import java.util.PrimitiveIterator;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
@@ -94,8 +91,12 @@ public sealed interface MuleString
         return new CodePointIterator();
     }
 
-    static MuleString fromLatin1(byte[] bytes) {
-        return new MuleByteArrayString(bytes);
+    static MuleByteArrayString fromLatin1(byte[] bytes) {
+        int min = 0;
+        for (byte b : bytes) {
+            min |= b;
+        }
+        return new MuleByteArrayString(bytes, min < 0 ? MuleStringBuffer.BUILDING_LATIN_1 : MuleStringBuffer.BUILDING_ASCII);
     }
 
     static MuleString fromString(String string) {
@@ -103,9 +104,17 @@ public sealed interface MuleString
         int bytes = truffleString.byteLength(TruffleString.Encoding.UTF_32);
         if (bytes == string.length()) {
             // Latin1
-            return new MuleByteArrayString(MuleTruffleString.toLatin1(truffleString));
+            return fromLatin1(MuleTruffleString.toLatin1(truffleString));
         }
         return new MuleTruffleString(truffleString);
+    }
+
+    static MuleString concat(MuleString... strings) {
+        MuleStringBuffer buffer = new MuleStringBuffer();
+        for (MuleString s : strings) {
+            buffer.append(s);
+        }
+        return buffer.build();
     }
 
     static boolean equals(MuleString a, MuleString b) {

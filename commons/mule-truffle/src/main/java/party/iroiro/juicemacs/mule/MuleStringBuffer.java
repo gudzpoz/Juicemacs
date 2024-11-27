@@ -14,8 +14,6 @@ import java.util.Spliterators;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
-import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
-
 public final class MuleStringBuffer implements MuleString {
     private static final TruffleString.FromIntArrayUTF32Node FROM_INT_ARRAY_UTF_32 =
             TruffleString.FromIntArrayUTF32Node.create();
@@ -31,23 +29,37 @@ public final class MuleStringBuffer implements MuleString {
     private final ArrayList<MuleString> strings;
 
     /// State of the building array list
-    /// @see #BUILDING_BYTES
+    ///
+    /// ## State Changes
+    ///
+    /// ```
+    /// 0 --> 1 --> 3 --> 4
+    ///  \               /|\
+    ///   \----> 2 --->---|
+    /// ```
+    ///
+    /// @see #BUILDING_ASCII
+    /// @see #BUILDING_LATIN_1
+    /// @see #BUILDING_UNI_BYTES
     /// @see #BUILDING_UNICODE
     /// @see #BUILDING_MULE
     private int state;
-    /// State `0`: byte string, chars stored in [#buildingBytes]
-    /// @see #state
-    private static final int BUILDING_BYTES = 0;
-    /// State `1`: Unicode with code points outside Latin1, stored in [#buildingCodePoints]
-    /// @see #state
-    private static final int BUILDING_UNICODE = 1;
-    /// State `2`: Like `1`, but with non-Unicode code points over [Character#MAX_CODE_POINT]
-    /// @see #state
-    private static final int BUILDING_MULE = 2;
+    /// State `0`: byte string, chars (`0 ~ 0x7F`) stored in [#buildingBytes]
+    static final int BUILDING_ASCII = MuleByteArrayString.STATE_ASCII;
+    /// State `1`: byte string, including non-ASCII Latin-1 chars, stored in [#buildingBytes]
+    static final int BUILDING_LATIN_1 = MuleByteArrayString.STATE_LATIN_1;
+    /// State `2`: byte string, including non-ASCII raw bytes, stored in [#buildingBytes]
+    static final int BUILDING_UNI_BYTES = MuleByteArrayString.STATE_UNI_BYTES;
+    /// Nota valid state, but used to check if the buffer is byte-based (if `state < IS_BUILDING_BYTES`)
+    private static final int IS_BUILDING_BYTES = 4;
+    /// State `10`: Unicode with code points outside Latin1, stored in [#buildingCodePoints]
+    private static final int BUILDING_UNICODE = 8;
+    /// State `11`: Like `3`, but with non-Unicode code points over [Character#MAX_CODE_POINT]
+    private static final int BUILDING_MULE = 16;
     /// Not a valid state but a flag
     ///
     /// Used in [#appendMuleString(MuleString, int, int)] when trying to copy over [#MAX_COPY_LIMIT]
-    private static final int BUILDING_COMMIT_NOW = 1 << 16;
+    private static final int IS_BUILDING_COMMIT_NOW = 1 << 16;
     private final ByteArrayList buildingBytes;
     private final IntArrayList buildingCodePoints;
 
@@ -61,7 +73,7 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     private void reset() {
-        state = BUILDING_BYTES;
+        state = BUILDING_ASCII;
         buildingBytes.clear();
         buildingCodePoints.clear();
     }
@@ -74,7 +86,7 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     private int buildingLength() {
-        return state == BUILDING_BYTES ? buildingBytes.size() : buildingCodePoints.size();
+        return state < IS_BUILDING_BYTES ? buildingBytes.size() : buildingCodePoints.size();
     }
 
     @Override
@@ -83,7 +95,7 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     private int getBuildingCodePoint(int relIndex) {
-        return state == BUILDING_BYTES ? buildingBytes.get(relIndex) : buildingCodePoints.get(relIndex);
+        return state < IS_BUILDING_BYTES ? buildingBytes.get(relIndex) : buildingCodePoints.get(relIndex);
     }
 
     private int offsetToStringIndex(int index) {
@@ -126,15 +138,42 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     private MuleString getBuildingString() {
-        return switch (state) {
-            case BUILDING_BYTES -> new MuleByteArrayString(buildingBytes.toArray());
-            case BUILDING_UNICODE -> new MuleTruffleString(FROM_INT_ARRAY_UTF_32.execute(buildingCodePoints.toArray()));
-            default -> new MuleIntArrayString(buildingCodePoints.toArray());
-        };
+        if (state < IS_BUILDING_BYTES) {
+            return new MuleByteArrayString(buildingBytes.toArray(), state);
+        } else if (state == BUILDING_UNICODE) {
+            return new MuleTruffleString(FROM_INT_ARRAY_UTF_32.execute(buildingCodePoints.toArray()));
+        }
+        return new MuleIntArrayString(buildingCodePoints.toArray());
+    }
+
+    public MuleStringBuffer appendRawByte(byte rawByte) {
+        if (state == BUILDING_ASCII || state == BUILDING_UNI_BYTES) {
+            buildingBytes.add(rawByte);
+            return this;
+        }
+        finalizeCurrent();
+        state = BUILDING_UNI_BYTES;
+        buildingBytes.add(rawByte);
+        return this;
     }
 
     public MuleStringBuffer appendCodePoint(int codePoint) {
-        if (state == BUILDING_BYTES) {
+        if (state == BUILDING_ASCII) {
+            if (codePoint <= 0x7F) {
+                buildingBytes.add((byte) codePoint);
+                return this;
+            }
+            state = BUILDING_LATIN_1;
+        }
+        if (state == BUILDING_UNI_BYTES) {
+            if (codePoint <= 0x7F) {
+                buildingBytes.add((byte) codePoint);
+                return this;
+            }
+            finalizeCurrent();
+            state = BUILDING_LATIN_1;
+        }
+        if (state == BUILDING_LATIN_1) {
             if (codePoint <= 0xFF) {
                 buildingBytes.add((byte) codePoint);
                 return this;
@@ -176,11 +215,14 @@ public final class MuleStringBuffer implements MuleString {
             return this;
         }
         if (addLength > MAX_COPY_LIMIT && !(string instanceof MuleStringBuffer)) {
-            state |= BUILDING_COMMIT_NOW;
+            state |= IS_BUILDING_COMMIT_NOW;
         }
         switch (string) {
-            case MuleByteArrayString bytes when state == BUILDING_BYTES ->
-                    buildingBytes.addAll(bytes.bytes(), start, addLength);
+            case MuleByteArrayString bytes when state < IS_BUILDING_BYTES
+                    && (state | bytes.getState()) != (BUILDING_LATIN_1 | BUILDING_UNI_BYTES) -> {
+                buildingBytes.addAll(bytes.bytes(), start, addLength);
+                state |= bytes.getState();
+            }
             case MuleTruffleString tString when state == BUILDING_UNICODE -> {
                 PrimitiveIterator.OfInt codePoints = tString.codePoints(start).iterator();
                 for (int i = 0; i < addLength; i++) {
@@ -210,7 +252,7 @@ public final class MuleStringBuffer implements MuleString {
         byte[] trailingBytes = null;
         int[] trailingCodePoints = null;
         if (endI == -1 && end != last) {
-            if (bufferState == BUILDING_BYTES) {
+            if (bufferState < IS_BUILDING_BYTES) {
                 trailingBytes = buffer.buildingBytes.toArray();
             } else {
                 trailingCodePoints = buffer.buildingCodePoints.toArray();
@@ -262,7 +304,7 @@ public final class MuleStringBuffer implements MuleString {
         int length = 0;
         for (MuleString string : strings) {
             overallState |= switch (string) {
-                case MuleByteArrayString _ -> BUILDING_BYTES;
+                case MuleByteArrayString s -> s.getState();
                 case MuleIntArrayString _ -> BUILDING_MULE;
                 case MuleTruffleString _ -> BUILDING_UNICODE;
                 case MuleStringBuffer _ -> throw CompilerDirectives.shouldNotReachHere();
@@ -270,7 +312,7 @@ public final class MuleStringBuffer implements MuleString {
             length += string.length();
         }
         length += buildingLength();
-        if (overallState == BUILDING_BYTES) {
+        if (overallState <= BUILDING_UNI_BYTES) { // ASCII + Latin1 or ASCII + Uni-byte
             byte[] bytes = new byte[length];
             int start = 0;
             for (MuleString string : strings) {
@@ -279,8 +321,8 @@ public final class MuleStringBuffer implements MuleString {
                 start += latin1.length();
             }
             System.arraycopy(buildingBytes.inner(), 0, bytes, start, buildingBytes.size());
-            return new MuleByteArrayString(bytes);
-        } else if (overallState == BUILDING_UNICODE) {
+            return new MuleByteArrayString(bytes, overallState);
+        } else if (overallState <= (BUILDING_UNICODE | BUILDING_LATIN_1)) { // Unicode + Latin1 + ASCII but no uni-byte
             TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32(length * 2);
             for (MuleString string : strings) {
                 if (string instanceof MuleByteArrayString latin1) {
@@ -291,7 +333,7 @@ public final class MuleStringBuffer implements MuleString {
                 }
             }
             if (buildingLength() != 0) {
-                if (state == BUILDING_BYTES) {
+                if (state <= IS_BUILDING_BYTES) {
                     APPEND_STRING_LATIN1.execute(builder, ((MuleByteArrayString) getBuildingString()).toTruffleString());
                 } else {
                     APPEND_STRING_TRUFFLE.execute(builder, ((MuleTruffleString) getBuildingString()).truffleString());

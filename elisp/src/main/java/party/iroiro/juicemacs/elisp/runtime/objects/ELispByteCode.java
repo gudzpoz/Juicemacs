@@ -27,7 +27,8 @@ public final class ELispByteCode extends AbstractELispVector {
         }
         if (inner.size() >= 5) {
             Object doc = inner.get(4);
-            if (!(doc instanceof ELispString)) {
+            if (!(doc instanceof ELispString || doc instanceof ELispCons)) {
+                // Not string or autoload string
                 throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
             }
         }

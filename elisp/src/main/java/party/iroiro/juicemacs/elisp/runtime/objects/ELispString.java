@@ -12,6 +12,7 @@ import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.mule.MuleByteArrayString;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.Iterator;
@@ -76,7 +77,7 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
 
     public boolean isMultibyte() {
-        return true;
+        return value instanceof MuleByteArrayString s && s.getState() != MuleByteArrayString.STATE_LATIN_1;
     }
 
     public int intervals() {

@@ -12,10 +12,20 @@ public final class MuleByteArrayString implements MuleString {
     private static final TruffleString.SwitchEncodingNode SWITCH_ENCODING = TruffleString.SwitchEncodingNode.create();
     private static final TruffleString.ToJavaStringNode TO_JAVA_STRING = TruffleString.ToJavaStringNode.create();
 
-    private final byte[] bytes;
+    public static final int STATE_ASCII = 0;
+    public static final int STATE_LATIN_1 = 0b01;
+    public static final int STATE_UNI_BYTES = 0b10;
 
-    MuleByteArrayString(byte[] bytes) {
+    private final byte[] bytes;
+    private final int state;
+
+    MuleByteArrayString(byte[] bytes, int state) {
         this.bytes = bytes;
+        this.state = state;
+    }
+
+    public int getState() {
+        return state;
     }
 
     @Override
@@ -32,12 +42,29 @@ public final class MuleByteArrayString implements MuleString {
     public MuleString subSequence(int start, int end) {
         byte[] bytes = new byte[end - start];
         System.arraycopy(this.bytes, start, bytes, 0, bytes.length);
-        return new MuleByteArrayString(bytes);
+        return new MuleByteArrayString(bytes, state);
     }
 
     @Override
     public String toString() {
+        if (state == MuleStringBuffer.BUILDING_UNI_BYTES) {
+            return rawByteToString();
+        }
         return TO_JAVA_STRING.execute(toTruffleString());
+    }
+
+    private String rawByteToString() {
+        byte[] bytes = bytes();
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            int i = Byte.toUnsignedInt(b);
+            if (i < 0x80) {
+                builder.append((char) i);
+            } else {
+                builder.append("\\").append(Integer.toOctalString(i));
+            }
+        }
+        return builder.toString();
     }
 
     @Override

@@ -41,7 +41,7 @@ public class MuleStringBufferTest {
     }
 
     private MuleByteArrayString fromAsciiString(String string) {
-        return new MuleByteArrayString(string.getBytes(StandardCharsets.UTF_8));
+        return MuleString.fromLatin1(string.getBytes(StandardCharsets.UTF_8));
     }
 
     private MuleTruffleString fromJavaString(String string) {

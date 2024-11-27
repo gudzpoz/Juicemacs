@@ -93,6 +93,8 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 ///
 class ELispLexer {
 
+    public static final int LINE_CONTINUATION = Integer.MIN_VALUE;
+
     sealed interface NumberVariant {
 
         record BigNum(BigInteger value) implements NumberVariant {
@@ -307,6 +309,7 @@ class ELispLexer {
     public ELispLexer(Source source) {
         if (source.hasBytes()) {
             // TODO: Support other encodings
+            // TODO: Emacs actually handles invalid UTF-8 sequences?
             this.byteReader = new ByteSequenceReader(source.getBytes(), StandardCharsets.UTF_8);
             this.charReader = null;
         } else {
@@ -512,7 +515,7 @@ class ELispLexer {
 
     private int readControlChar(boolean inString) throws IOException {
         if (peekCodepoint() == -1) {
-            return -1;
+            throw ELispSignals.invalidReadSyntax("Invalid modifier");
         }
         int c = readChar(inString);
         int modifier = c & MODIFIER_MASK;
@@ -524,7 +527,7 @@ class ELispLexer {
         } else {
             modifier |= CHAR_CTL;
         }
-        return c | modifier;
+        return maybeRawByte(c | modifier, inString);
     }
 
     private void assertNoSymbolBehindChar() throws IOException {
@@ -536,6 +539,16 @@ class ELispLexer {
             return;
         }
         throw ELispSignals.invalidReadSyntax("Invalid char");
+    }
+
+    private int maybeRawByte(int c, boolean inString) {
+        if (!inString) {
+            return c;
+        }
+        if (0x80 <= c && c <= 0xFF) {
+            return -c;
+        }
+        return c;
     }
 
     /**
@@ -551,13 +564,13 @@ class ELispLexer {
         int escaped = noEOF(peekCodepoint());
         // Octal escape: ?\001 => '\001', ?\1 => '\001'
         if ('0' <= escaped && escaped <= '7') {
-            return readEscapedCodepoint(8, 3, true);
+            return maybeRawByte(readEscapedCodepoint(8, 3, true), inString);
         }
         readCodepoint();
         if (inString) {
             // Line continuation, ignored.
             if (escaped == ' ' || escaped == '\n') {
-                return -1;
+                return LINE_CONTINUATION;
             }
         } else {
             if (escaped == '\n') {
@@ -572,7 +585,7 @@ class ELispLexer {
                 if (inString && meta > 0x80) {
                     throw ELispSignals.invalidReadSyntax("Invalid modifier in string");
                 }
-                return meta | readChar(inString);
+                return maybeRawByte(meta | readChar(inString), inString);
             } else if (escaped != 's') {
                 throw ELispSignals.invalidReadSyntax("Invalid modifier");
             }
@@ -593,7 +606,7 @@ class ELispLexer {
                     throw ELispSignals.invalidReadSyntax("Invalid modifier");
                 }
             }
-            case 'x' -> readEscapedCodepoint(16, -1, true);
+            case 'x' -> maybeRawByte(readEscapedCodepoint(16, -1, true), inString);
             case 'u' -> readEscapedCodepoint(16, 4, false);
             case 'U' -> readEscapedCodepoint(16, 8, false);
             case 'N' -> {
@@ -647,7 +660,12 @@ class ELispLexer {
                 }
                 case '\\' -> {
                     c = readChar(true);
-                    if (c != -1) {
+                    if (c == LINE_CONTINUATION) {
+                        continue;
+                    }
+                    if (c < 0) {
+                        sb.appendRawByte((byte) -c);
+                    } else {
                         sb.appendCodePoint(c);
                     }
                 }
