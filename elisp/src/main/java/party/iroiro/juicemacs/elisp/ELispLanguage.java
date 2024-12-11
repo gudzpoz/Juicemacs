@@ -15,6 +15,9 @@ import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 @TruffleLanguage.Registration(
     id = ELispLanguage.ID,
     name = "ELisp",
@@ -30,6 +33,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final String MIME_TYPE = "text/x-elisp";
 
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
+    private static final ConcurrentHashMap<String, String> ENV = new ConcurrentHashMap<>();
 
     public static ELispLanguage get(Node node) {
         return REFERENCE.get(node);
@@ -67,11 +71,18 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     @Override
     protected ELispContext createContext(Env env) {
+        ENV.clear();
+        ENV.putAll(System.getenv());
+        ENV.putAll(env.getEnvironment());
         return ELispContext.getInstance();
     }
 
     @Override
     protected void initializeContext(ELispContext context) {
         context.initGlobal(this);
+    }
+
+    public static Map<String, String> getEnv() {
+        return ENV;
     }
 }

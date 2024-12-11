@@ -621,7 +621,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     env,
                     docstring,
                     iform,
-                    getRootNode()
+                    this.getRootNode()
             );
         }
     }
@@ -1616,9 +1616,13 @@ public class BuiltInEval extends ELispBuiltIns {
 
             private Object handle(VirtualFrame frame, Object data, Object handler) {
                 CompilerDirectives.transferToInterpreter();
+                Object[] body = asCons(handler).toArray();
+                if (isNil(var)) {
+                    return FProgn.progn(body).executeGeneric(frame);
+                }
                 return FLet.let(
                         new ELispCons(ELispCons.listOf(var, ELispCons.listOf(ELispContext.QUOTE, data))),
-                        asCons(handler).toArray()
+                        body
                 ).executeGeneric(frame);
             }
         }

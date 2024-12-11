@@ -7,7 +7,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -25,6 +27,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     }
 
     public final static HashMap<MuleString, ELispBuffer> BUFFERS = new HashMap<>();
+    public final static ELispSymbol.Value.Forwarded MINIBUFFER_LIST = new ELispSymbol.Value.Forwarded();
     @CompilerDirectives.TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(MuleString name) {
@@ -49,6 +52,25 @@ public class BuiltInBuffer extends ELispBuiltIns {
     }
     public static boolean lowerCaseP(int c, ELispBuffer buffer) {
         return !upperCaseP(c, buffer) && upCase(c, buffer) != c;
+    }
+
+    public static ELispBuffer getMiniBuffer(int depth) {
+        Object tail = BuiltInFns.FNthcdr.nthcdr(depth, MINIBUFFER_LIST.getValue());
+        if (isNil(tail)) {
+            tail = new ELispCons(false);
+            MINIBUFFER_LIST.setValue(BuiltInFns.FNconc.nconc(new Object[]{MINIBUFFER_LIST.getValue(), tail}));
+        }
+        Object buffer = BuiltInData.FCar.car(tail);
+        if (!(buffer instanceof ELispBuffer buf) || !buf.isLive()) {
+            ELispBuffer newBuffer = FGetBufferCreate.getBufferCreate(new ELispString(" *Minibuf-" + depth + "*"), false);
+            BuiltInData.FSetcar.setcar(asCons(tail), newBuffer);
+            FBufferEnableUndo.bufferEnableUndo(newBuffer);
+            return newBuffer;
+        } else {
+            // TODO: reset
+            buf.resetLocalVariables(true);
+            return buf;
+        }
     }
 
     /**
@@ -562,8 +584,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferEnableUndo extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferEnableUndo(Object buffer) {
-            throw new UnsupportedOperationException();
+        public static boolean bufferEnableUndo(Object buffer) {
+            // TODO
+            return false;
         }
     }
 
@@ -638,7 +661,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void currentBuffer() {
+        public static Void getCurrentBuffer() {
             throw new UnsupportedOperationException();
         }
     }

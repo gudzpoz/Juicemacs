@@ -5,7 +5,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -18,7 +17,9 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.CHAR_UNIFY_TABLE;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHARSET_MAP_PATH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -327,7 +328,7 @@ public final class ELispCharset {
 
     private CharsetMap loadMapFromFile(ELispString file) {
         ELispString path = BuiltInLRead.locateOpenP(
-                ELispGlobals.charsetMapPath.getValue(),
+                CHARSET_MAP_PATH.getValue(),
                 file,
                 ELispCons.listOf(new ELispString(".map"), new ELispString(".txt")),
                 false,
@@ -377,7 +378,7 @@ public final class ELispCharset {
         }
         // TODO: Support lazy loading of charset maps
         @Nullable ELispVector decodingMap = null;
-        ELispCharTable unifyTable = asCharTable(ELispGlobals.charUnifyTable.getValue());
+        ELispCharTable unifyTable = asCharTable(CHAR_UNIFY_TABLE.getValue());
         ELispCharTable encodingTable;
         {
             // Decoding
@@ -466,7 +467,7 @@ public final class ELispCharset {
                 }
                 long c = index + charset.codeOffset;
                 if (charset.unifiedP && Character.MAX_CODE_POINT < c && c <= MAX_CHAR) {
-                    Object result = asCharTable(ELispGlobals.charUnifyTable.getValue()).getChar(Math.toIntExact(c));
+                    Object result = asCharTable(CHAR_UNIFY_TABLE.getValue()).getChar(Math.toIntExact(c));
                     return notNilOr(result, c);
                 }
                 return c;

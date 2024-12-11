@@ -12,6 +12,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asStr;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInFileIO extends ELispBuiltIns {
@@ -37,7 +38,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFindFileNameHandler extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean findFileNameHandler(Object filename, Object operation) {
+        public static Object findFileNameHandler(Object filename, Object operation) {
             // TODO
             return false;
         }
@@ -114,8 +115,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileNameAsDirectory extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileNameAsDirectory(Object file) {
-            throw new UnsupportedOperationException();
+        public static ELispString fileNameAsDirectory(Object file) {
+            return new ELispString(Path.of(asStr(file).toString()) + File.separator);
         }
     }
 
@@ -146,8 +147,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDirectoryFileName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void directoryFileName(Object directory) {
-            throw new UnsupportedOperationException();
+        public static ELispString directoryFileName(ELispString directory) {
+            return new ELispString(Path.of(directory.toString()).getFileName().toString());
         }
     }
 

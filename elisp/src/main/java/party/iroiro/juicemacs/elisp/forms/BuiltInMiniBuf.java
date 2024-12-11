@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -22,7 +21,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LAMBDA;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInMiniBuf extends ELispBuiltIns {
@@ -43,7 +42,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             this.predicate = predicate;
             this.dispatchNode = dispatchNode;
             this.node = node;
-            this.ignoreCase = !isNil(ELispGlobals.completionIgnoreCase.getValue());
+            this.ignoreCase = !isNil(COMPLETION_IGNORE_CASE.getValue());
             this.regExps = getRegExps(node);
             this.target = (this.ignoreCase ? BuiltInCaseFiddle.FUpcase.upcaseString(target) : target).value();
         }
@@ -51,7 +50,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         public static ELispRegExp.CompiledRegExp[] getRegExps(Node node) {
             ArrayList<ELispRegExp.CompiledRegExp> compiledRegExps = new ArrayList<>();
             ELispLanguage language = ELispLanguage.get(node);
-            for (Object regExp : asConsOrNil(ELispGlobals.completionRegexpList.getValue())) {
+            for (Object regExp : asConsOrNil(COMPLETION_REGEXP_LIST.getValue())) {
                 if (regExp instanceof ELispString s) {
                     ELispRegExp.CompiledRegExp compiledRegExp = BuiltInSearch.compileRegExp(language, s, null);
                     compiledRegExps.add(compiledRegExp);

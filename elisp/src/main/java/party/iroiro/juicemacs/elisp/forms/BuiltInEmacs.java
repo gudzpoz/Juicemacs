@@ -3,13 +3,53 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.io.File;
 import java.util.List;
+import java.util.Objects;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SAFE_MAGIC;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInEmacs extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEmacsFactory.getFactories();
+    }
+
+    /// Reads an env variable that is list of paths separated by the platform's path separator,
+    /// and converts it into a list of strings
+    ///
+    /// @param envVarName the name of the environment variable to decode
+    /// @param defaultValue default value to use if the environment variable is not set
+    /// @param empty when `true`, returns `nil` for empty paths; ".", otherwise
+    /// @return a list of strings
+    public static ELispCons decodeEnvPath(@Nullable String envVarName, String defaultValue, boolean empty) {
+        @Nullable ELispString emptyElement = empty ? null : new ELispString(".");
+        String path = Objects.requireNonNullElse(envVarName == null ? null : ELispLanguage.getEnv().get(envVarName), defaultValue);
+        ELispCons.ListBuilder paths = new ELispCons.ListBuilder();
+        for (String element : path.split(File.pathSeparator)) {
+            ELispString current = element.isEmpty() ? emptyElement : new ELispString(element);
+            if (current != null) {
+                Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(current, true);
+                if (handler instanceof ELispSymbol symbol) {
+                    if (!isNil(symbol.getProperty(SAFE_MAGIC))) {
+                        handler = false;
+                    }
+                }
+                if (!isNil(handler)) {
+                    current = BuiltInFns.FConcat.concat(new Object[]{new ELispString("/:"), current});
+                }
+            }
+            paths.add(Objects.requireNonNullElse(current, false));
+        }
+        return asCons(paths.build());
     }
 
     /**

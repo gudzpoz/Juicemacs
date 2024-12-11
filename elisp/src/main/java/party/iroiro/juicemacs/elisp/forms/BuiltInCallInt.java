@@ -98,11 +98,11 @@ public class BuiltInCallInt extends ELispBuiltIns {
      * usage: (interactive &amp;optional ARG-DESCRIPTOR &amp;rest MODES)
      * </pre>
      */
-    @ELispBuiltIn(name = "interactive", minArgs = 0, maxArgs = 1, varArgs = false, rawArg = true)
+    @ELispBuiltIn(name = "interactive", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FInteractive extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void interactiveBailout(Object argDescriptor) {
+        public static Void interactiveBailout(Object[] args) {
             CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             throw new UnsupportedOperationException();
         }

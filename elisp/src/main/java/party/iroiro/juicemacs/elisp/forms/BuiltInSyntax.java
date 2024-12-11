@@ -16,8 +16,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSyntax extends ELispBuiltIns {
-    @Override
-    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
+    public static void initSyntaxOnce() {
         for (int i = 0; i < SMAX; i++) {
             SYNTAX_CODE_OBJECT.set(i, new ELispCons((long) i));
         }
@@ -76,7 +75,10 @@ public class BuiltInSyntax extends ELispBuiltIns {
         }
 
         standardSyntaxTable.setRange(0x80, ELispCharTable.MAX_CHAR, word);
+    }
 
+    @Override
+    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInSyntaxFactory.getFactories();
     }
 

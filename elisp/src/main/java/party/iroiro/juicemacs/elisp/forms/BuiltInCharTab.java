@@ -6,7 +6,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -254,7 +253,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
     public abstract static class FUnicodePropertyTableInternal extends ELispBuiltInBaseNode {
         @Specialization
         public Object unicodePropertyTableInternal(Object prop) {
-            Object val = BuiltInFns.FAssq.assq(prop, ELispGlobals.charCodePropertyAlist.getValue());
+            Object val = BuiltInFns.FAssq.assq(prop, CHAR_CODE_PROPERTY_ALIST.getValue());
             if (!(val instanceof ELispCons cons)) {
                 return false;
             }

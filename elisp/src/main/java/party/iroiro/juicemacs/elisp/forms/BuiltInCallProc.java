@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import java.util.List;
@@ -142,7 +143,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
                 // TODO: process-environment?
                 throw new UnsupportedOperationException();
             }
-            String value = System.getenv(variable.asString());
+            String value = ELispLanguage.getEnv().get(variable.asString());
             return value == null ? false : new ELispString(value);
         }
     }

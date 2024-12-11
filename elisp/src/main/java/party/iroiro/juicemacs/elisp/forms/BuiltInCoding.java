@@ -8,7 +8,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -18,19 +17,23 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.EMACS_MULE_CHARSET_LIST;
+import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.ISO2022_CHARSET_LIST;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystemType.shortArgs;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCoding extends ELispBuiltIns {
-    @Override
-    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
+    public BuiltInCoding() {
         CODING_SYSTEM_HASH_TABLE.clear();
         for (int i = 0; i < CODING_CATEGORIES.length; i++) {
             CODING_CATEGORIES[i] = new CodingSystemCategory.RawText();
         }
+    }
 
+    @Override
+    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCodingFactory.getFactories();
     }
 
@@ -64,13 +67,13 @@ public class BuiltInCoding extends ELispBuiltIns {
 
     private static void addCodingSystem(ELispSymbol name, CodingSystemCategory.CodingSystem system) {
         CODING_SYSTEM_HASH_TABLE.put(name, system);
-        ELispGlobals.codingSystemList.setValue(new ELispCons(name, ELispGlobals.codingSystemList.getValue()));
+        CODING_SYSTEM_LIST.setValue(new ELispCons(name, CODING_SYSTEM_LIST.getValue()));
         ELispString nameString = new ELispString(name.name());
-        Object assoc = BuiltInFns.FAssoc.assoc(nameString, ELispGlobals.codingSystemAlist.getValue(), false);
+        Object assoc = BuiltInFns.FAssoc.assoc(nameString, CODING_SYSTEM_ALIST.getValue(), false);
         if (isNil(assoc)) {
-            ELispGlobals.codingSystemAlist.setValue(new ELispCons(
+            CODING_SYSTEM_ALIST.setValue(new ELispCons(
                     new ELispCons(nameString),
-                    ELispGlobals.codingSystemAlist.getValue()
+                    CODING_SYSTEM_ALIST.getValue()
             ));
         }
     }
@@ -107,7 +110,7 @@ public class BuiltInCoding extends ELispBuiltIns {
         checkCodingSystem(codingSystemName);
         CodingSystemCategory.CodingSystem codingSystem = Objects.requireNonNull(getCodingSystem(codingSystemName));
         ELispVector attrs = codingSystem.attrs();
-        Object eolType = ELispGlobals.inhibitEolConversion.isT() ? UNIX : codingSystem.eolType();
+        Object eolType = !isNil(INHIBIT_EOL_CONVERSION.getValue()) ? UNIX : codingSystem.eolType();
 
         if (eolType instanceof ELispVector) {
             coding.commonFlags |= CODING_REQUIRE_DECODING_MASK | CODING_REQUIRE_DETECTION_MASK;
@@ -833,12 +836,12 @@ public class BuiltInCoding extends ELispBuiltIns {
                     if (codingType != ISO_2022) {
                         throw ELispSignals.error("Invalid charset-list");
                     }
-                    list = asCons(ELispGlobals.iso2022CharsetList.getValue());
+                    list = asCons(ISO2022_CHARSET_LIST.getValue());
                 } else if (symbol == EMACS_MULE) {
                     if (codingType != EMACS_MULE) {
                         throw ELispSignals.error("Invalid charset-list");
                     }
-                    list = asCons(ELispGlobals.emacsMuleCharsetList.getValue());
+                    list = asCons(EMACS_MULE_CHARSET_LIST.getValue());
                 } else {
                     throw ELispSignals.error("Invalid charset-list");
                 }

@@ -6,7 +6,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -18,6 +17,7 @@ import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SYSTEM_NAME;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInEditFns extends ELispBuiltIns {
@@ -934,7 +934,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FSystemName extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString systemName() {
-            Object value = ELispGlobals.systemName.getValue();
+            Object value = SYSTEM_NAME.getValue();
             if (value instanceof ELispString s) {
                 return s;
             }
@@ -945,7 +945,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             } catch (UnknownHostException e) {
                 s = new ELispString("jvm-" + System.getProperty("java.vm.version", "unknown"));
             }
-            ELispGlobals.systemName.setValue(s);
+            SYSTEM_NAME.setValue(s);
             return s;
         }
     }

@@ -16,8 +16,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCaseTab extends ELispBuiltIns {
-    @Override
-    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
+    public static void initCasetabOnce() {
         BuiltInFns.FPut.put(CASE_TABLE, CHAR_TABLE_EXTRA_SLOTS, 3L);
 
         ELispCharTable asciiDownCase = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
@@ -38,7 +37,10 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         asciiUpcaseTable = asciiUpCase;
         asciiEqvTable = asciiEqv;
         setCaseTable(asciiDownCase, true);
+    }
 
+    @Override
+    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCaseTabFactory.getFactories();
     }
 

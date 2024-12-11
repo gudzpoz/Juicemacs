@@ -584,7 +584,10 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         }
 
         final class ForwardedLong extends AbstractForwarded<Long> {
-            public ForwardedLong(Long o) {
+            public ForwardedLong() {
+                super();
+            }
+            public ForwardedLong(long o) {
                 super(o);
             }
             @Override
@@ -601,6 +604,9 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         }
 
         final class ForwardedBool extends AbstractForwarded<Boolean> {
+            public ForwardedBool() {
+                super();
+            }
             public ForwardedBool(Boolean o) {
                 super(o);
             }
