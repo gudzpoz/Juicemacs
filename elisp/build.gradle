@@ -50,7 +50,24 @@ test {
     ]
 }
 
+var emacsSrc = file('emacs/src')
+var extractorDir = 'scripts/emacs-extractor'
+var extractionConfig = file("${extractorDir}/extraction_config.py")
+var extractionFinalizer = file("${extractorDir}/extraction_java.py")
+var base = 'src/main/java/party/iroiro/juicemacs/elisp'
+
 // One huge task to generate all sources
 tasks.register("emacsGen") {
     description = 'Generate symbol/function definitions from Emacs source'
+    doLast {
+        exec {
+            commandLine "${extractorDir}/.venv/bin/emacs-extractor", emacsSrc, '-o', 'extraction.json',
+                    '-c', extractionConfig, '-f', extractionFinalizer,
+                    '-s', file("${base}/runtime/ELispContext.java"),
+                    '-g', file("${base}/runtime/ELispGlobals.java"),
+                    '-b', file("${base}/runtime/objects/ELispBuffer.java"),
+                    '-C', file("${base}/forms/ELispBuiltInConstants.java"),
+                    '-d', file("${base}/forms")
+        }
+    }
 }

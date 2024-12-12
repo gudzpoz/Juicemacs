@@ -7,6 +7,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import java.util.Collections;
 import java.util.NoSuchElementException;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
 
@@ -59,8 +60,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
         ELispSymbol.class,
 })
 public abstract class ELispTypeSystem {
-
-    public static final int MAX_CHAR = 0x3FFFFF;
 
     @ImplicitCast
     public static ELispSymbol castBooleanToSymbol(boolean bool) {

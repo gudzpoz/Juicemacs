@@ -79,7 +79,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         @Override
         public Object get(Object key, boolean parent) {
             Object result = false;
-            if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR) {
+            if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR_INDEX) {
                 result = charTable.getChar(asInt(l));
             }
             if (isNil(result)) {
@@ -90,7 +90,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
 
         @Override
         public void set(Object key, Object value, boolean remove) {
-            if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR) {
+            if (key instanceof Long l && l <= ELispCharTable.MAX_CHAR_INDEX) {
                 charTable.setChar(asInt(l), remove ? false : value);
             } else {
                 tail.set(key, value, remove);

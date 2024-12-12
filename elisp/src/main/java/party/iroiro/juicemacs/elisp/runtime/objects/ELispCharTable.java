@@ -4,11 +4,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 
 import java.util.*;
 import java.util.function.BiPredicate;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_CODE_PROPERTY_TABLE;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
@@ -90,24 +90,19 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
  * </p>
  */
 public final class ELispCharTable extends AbstractELispVector {
-    public final static int CHARTAB_SIZE_BITS_0 = 6;
-    public final static int CHARTAB_SIZE_BITS_1 = 4;
-    public final static int CHARTAB_SIZE_BITS_2 = 5;
-    public final static int CHARTAB_SIZE_BITS_3 = 7;
-    private final static int[] CHARTAB_BITS = {
+    private final static int[] CHARTAB_BITS       = {
             CHARTAB_SIZE_BITS_3 + CHARTAB_SIZE_BITS_2 + CHARTAB_SIZE_BITS_1,
             CHARTAB_SIZE_BITS_3 + CHARTAB_SIZE_BITS_2,
             CHARTAB_SIZE_BITS_3,
             0,
     };
-    public final static int MAX_CHAR =
+    public final static int MAX_CHAR_INDEX =
             (1 << (CHARTAB_SIZE_BITS_3 + CHARTAB_SIZE_BITS_2 + CHARTAB_SIZE_BITS_1 + CHARTAB_SIZE_BITS_0)) - 1;
     public final static int DEFAULT_VALUT_SLOT = 0;
     public final static int PARENT_SLOT = 1;
     public final static int PURPOSE_SLOT = 2;
     public final static int ASCII_SLOT = 3;
     public final static int CONTENT_BASE_SLOT = 4;
-    public final static int CHARTAB_STANDARD_SLOTS = CONTENT_BASE_SLOT + (1 << CHARTAB_SIZE_BITS_0);
     public final static int SUB_CONTENT_BASE_SLOT = 2;
 
     private ELispCharTable(Object[] inner) {
@@ -231,7 +226,7 @@ public final class ELispCharTable extends AbstractELispVector {
 
     @Override
     public int size() {
-        return MAX_CHAR + 1;
+        return MAX_CHAR_INDEX + 1;
     }
 
     public int slots() {
@@ -288,7 +283,7 @@ public final class ELispCharTable extends AbstractELispVector {
                 return result;
             }
         }
-        return callback.accept(ELispTypeSystem.MAX_CHAR + 1, false);
+        return callback.accept(MAX_CHAR_INDEX + 1, false);
     }
 
     public void optimize(BiPredicate<Object, Object> eq) {
@@ -343,18 +338,18 @@ public final class ELispCharTable extends AbstractELispVector {
         if (n < 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        return inner[n + CHARTAB_STANDARD_SLOTS];
+        return inner[n + CHAR_TABLE_STANDARD_SLOTS];
     }
 
     public void setExtra(int n, Object value) {
         if (n < 0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        inner[n + CHARTAB_STANDARD_SLOTS] = value;
+        inner[n + CHAR_TABLE_STANDARD_SLOTS] = value;
     }
 
     public int extraSlots() {
-        return inner.length - CHARTAB_STANDARD_SLOTS;
+        return inner.length - CHAR_TABLE_STANDARD_SLOTS;
     }
 
     @Override
@@ -363,19 +358,19 @@ public final class ELispCharTable extends AbstractELispVector {
     }
 
     public static ELispCharTable create(List<Object> objects) {
-        if (objects.size() < CHARTAB_STANDARD_SLOTS) {
+        if (objects.size() < CHAR_TABLE_STANDARD_SLOTS) {
             throw ELispSignals.invalidReadSyntax("Invalid size char-table");
         }
         return new ELispCharTable(objects.toArray());
     }
 
     public static ELispCharTable create(Object init, ELispSymbol purpose, int extraSlots) {
-        Object[] inner = new Object[CHARTAB_STANDARD_SLOTS + extraSlots];
+        Object[] inner = new Object[CHAR_TABLE_STANDARD_SLOTS + extraSlots];
         inner[DEFAULT_VALUT_SLOT] = init;
         inner[PARENT_SLOT] = false;
         inner[PURPOSE_SLOT] = purpose;
-        Arrays.fill(inner, CONTENT_BASE_SLOT, CHARTAB_STANDARD_SLOTS, init);
-        Arrays.fill(inner, CHARTAB_STANDARD_SLOTS, inner.length, false);
+        Arrays.fill(inner, CONTENT_BASE_SLOT, CHAR_TABLE_STANDARD_SLOTS, init);
+        Arrays.fill(inner, CHAR_TABLE_STANDARD_SLOTS, inner.length, false);
         return new ELispCharTable(inner);
     }
 

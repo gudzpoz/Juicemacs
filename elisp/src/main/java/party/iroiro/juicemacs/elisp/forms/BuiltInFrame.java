@@ -948,8 +948,8 @@ public class BuiltInFrame extends ELispBuiltIns {
     /**
      * <pre>
      * Return width of FRAME's child-frame border in pixels.
-     *  If FRAME's `child-frame-border-width' parameter is nil, return FRAME's
-     *  internal border width instead.
+     * If FRAME's `child-frame-border-width' parameter is nil, return FRAME's
+     * internal border width instead.
      * </pre>
      */
     @ELispBuiltIn(name = "frame-child-frame-border-width", minArgs = 0, maxArgs = 1)

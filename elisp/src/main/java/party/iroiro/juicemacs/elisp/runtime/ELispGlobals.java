@@ -20,6 +20,7 @@ import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.*;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.FDefineCodingSystemInternal.defineCodingSystemInternal;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEmacs.decodeEnvPath;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInSyntax.initSyntaxOnce;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -1465,7 +1466,8 @@ public class ELispGlobals {
         selectionInhibitUpdateCommands.setValue(selectionInhibitUpdateCommandsJInit);
         var debugOnEventJInit = SIGUSR2;
         debugOnEvent.setValue(debugOnEventJInit);
-        var events = ELispCons.listOf(SELECT_WINDOW,
+        var events = ELispCons.listOf(
+            SELECT_WINDOW,
             HELP_ECHO,
             MOVE_FRAME,
             ICONIFY_FRAME,
@@ -1582,7 +1584,8 @@ public class ELispGlobals {
         memorySignalData.setValue(memorySignalDataJInit);
     }
     private static void symsOfCharset() {
-        var charsetAscii = defineCharsetInternal(ASCII,
+        var charsetAscii = defineCharsetInternal(
+            ASCII,
             1,
             "\u0000\u007f\u0000\u0000\u0000\u0000\u0000",
             0,
@@ -1594,7 +1597,8 @@ public class ELispGlobals {
             0,
             0
         );
-        var charsetIso88591 = defineCharsetInternal(ISO_8859_1,
+        var charsetIso88591 = defineCharsetInternal(
+            ISO_8859_1,
             1,
             "\u0000\u00ff\u0000\u0000\u0000\u0000\u0000",
             0,
@@ -1606,7 +1610,8 @@ public class ELispGlobals {
             0,
             0
         );
-        var charsetUnicode = defineCharsetInternal(UNICODE,
+        var charsetUnicode = defineCharsetInternal(
+            UNICODE,
             3,
             "\u0000\u00ff\u0000\u00ff\u0000\u0010\u0000",
             0,
@@ -1618,11 +1623,12 @@ public class ELispGlobals {
             0,
             0
         );
-        var charsetEmacs = defineCharsetInternal(EMACS,
+        var charsetEmacs = defineCharsetInternal(
+            EMACS,
             3,
             "\u0000\u00ff\u0000\u00ff\u0000?\u0000",
             0,
-            4194175,
+            MAX_5_BYTE_CHAR,
             -1,
             0,
             -1,
@@ -1630,7 +1636,8 @@ public class ELispGlobals {
             1,
             0
         );
-        var charsetEightBit = defineCharsetInternal(EIGHT_BIT,
+        var charsetEightBit = defineCharsetInternal(
+            EIGHT_BIT,
             1,
             "\u0080\u00ff\u0000\u0000\u0000\u0000\u0000",
             128,
@@ -1655,28 +1662,28 @@ public class ELispGlobals {
         FPut.put(CODING_SYSTEM_ERROR, ERROR_CONDITIONS, ELispCons.listOf(CODING_SYSTEM_ERROR, ERROR));
         FPut.put(CODING_SYSTEM_ERROR, ERROR_MESSAGE, new ELispString("Invalid coding system"));
         FPut.put(TRANSLATION_TABLE, CHAR_TABLE_EXTRA_SLOTS, (long) (2));
-        var codingCategoryTable = new ELispVector(21, false);
-        codingCategoryTable.set(0, intern("coding-category-iso-7"));
-        codingCategoryTable.set(1, intern("coding-category-iso-7-tight"));
-        codingCategoryTable.set(2, intern("coding-category-iso-8-1"));
-        codingCategoryTable.set(3, intern("coding-category-iso-8-2"));
-        codingCategoryTable.set(4, intern("coding-category-iso-7-else"));
-        codingCategoryTable.set(5, intern("coding-category-iso-8-else"));
-        codingCategoryTable.set(6, intern("coding-category-utf-8-auto"));
-        codingCategoryTable.set(7, intern("coding-category-utf-8"));
-        codingCategoryTable.set(8, intern("coding-category-utf-8-sig"));
-        codingCategoryTable.set(10, intern("coding-category-utf-16-be"));
-        codingCategoryTable.set(9, intern("coding-category-utf-16-auto"));
-        codingCategoryTable.set(11, intern("coding-category-utf-16-le"));
-        codingCategoryTable.set(12, intern("coding-category-utf-16-be-nosig"));
-        codingCategoryTable.set(13, intern("coding-category-utf-16-le-nosig"));
-        codingCategoryTable.set(14, intern("coding-category-charset"));
-        codingCategoryTable.set(15, intern("coding-category-sjis"));
-        codingCategoryTable.set(16, intern("coding-category-big5"));
-        codingCategoryTable.set(17, intern("coding-category-ccl"));
-        codingCategoryTable.set(18, intern("coding-category-emacs-mule"));
-        codingCategoryTable.set(19, intern("coding-category-raw-text"));
-        codingCategoryTable.set(20, intern("coding-category-undecided"));
+        var codingCategoryTable = new ELispVector(CODING_CATEGORY_MAX, false);
+        codingCategoryTable.set(CODING_CATEGORY_ISO_7, intern("coding-category-iso-7"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_7_TIGHT, intern("coding-category-iso-7-tight"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_8_1, intern("coding-category-iso-8-1"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_8_2, intern("coding-category-iso-8-2"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_7_ELSE, intern("coding-category-iso-7-else"));
+        codingCategoryTable.set(CODING_CATEGORY_ISO_8_ELSE, intern("coding-category-iso-8-else"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_8_AUTO, intern("coding-category-utf-8-auto"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_8_NOSIG, intern("coding-category-utf-8"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_8_SIG, intern("coding-category-utf-8-sig"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_BE, intern("coding-category-utf-16-be"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_AUTO, intern("coding-category-utf-16-auto"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_LE, intern("coding-category-utf-16-le"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_BE_NOSIG, intern("coding-category-utf-16-be-nosig"));
+        codingCategoryTable.set(CODING_CATEGORY_UTF_16_LE_NOSIG, intern("coding-category-utf-16-le-nosig"));
+        codingCategoryTable.set(CODING_CATEGORY_CHARSET, intern("coding-category-charset"));
+        codingCategoryTable.set(CODING_CATEGORY_SJIS, intern("coding-category-sjis"));
+        codingCategoryTable.set(CODING_CATEGORY_BIG5, intern("coding-category-big5"));
+        codingCategoryTable.set(CODING_CATEGORY_CCL, intern("coding-category-ccl"));
+        codingCategoryTable.set(CODING_CATEGORY_EMACS_MULE, intern("coding-category-emacs-mule"));
+        codingCategoryTable.set(CODING_CATEGORY_RAW_TEXT, intern("coding-category-raw-text"));
+        codingCategoryTable.set(CODING_CATEGORY_UNDECIDED, intern("coding-category-undecided"));
         var codingCategoryListJInit = FCons.cons(codingCategoryTable.get(20), codingCategoryList.getValue());
         codingCategoryList.setValue(codingCategoryListJInit);
         var codingCategoryListJInit1 = FCons.cons(codingCategoryTable.get(19), codingCategoryListJInit);
@@ -1721,45 +1728,48 @@ public class ELispGlobals {
         codingCategoryList.setValue(codingCategoryListJInit20);
         var latinExtraCodeTableJInit = new ELispVector(256, false);
         latinExtraCodeTable.setValue(latinExtraCodeTableJInit);
-        defineCodingSystemInternal(new Object[]{NO_CONVERSION,
-            (long) (61),
-            RAW_TEXT,
-            false,
-            T,
-            false,
-            false,
-            false,
-            false,
-            (long) (0),
-            T,
-            ELispCons.listOf(CNAME,
+        defineCodingSystemInternal(new Object[]{
             NO_CONVERSION,
-            CMNEMONIC,
             (long) (61),
-            intern(":coding-type"),
             RAW_TEXT,
-            CASCII_COMPATIBLE_P,
+            false,
             T,
-            CDEFAULT_CHAR,
+            false,
+            false,
+            false,
+            false,
             (long) (0),
-            intern(":for-unibyte"),
             T,
-            intern(":docstring"),
-            new ELispString("""
+            ELispCons.listOf(
+                CNAME,
+                NO_CONVERSION,
+                CMNEMONIC,
+                (long) (61),
+                intern(":coding-type"),
+                RAW_TEXT,
+                CASCII_COMPATIBLE_P,
+                T,
+                CDEFAULT_CHAR,
+                (long) (0),
+                intern(":for-unibyte"),
+                T,
+                intern(":docstring"),
+                new ELispString("""
 Do no conversion.
 
 When you visit a file with this coding, the file is read into a
 unibyte buffer as is, thus each byte of a file is treated as a
 character."""),
-            intern(":eol-type"),
-            UNIX
-        ),
+                intern(":eol-type"),
+                UNIX
+            ),
             UNIX,
             false,
             false,
             false
         });
-        defineCodingSystemInternal(new Object[]{UNDECIDED,
+        defineCodingSystemInternal(new Object[]{
+            UNDECIDED,
             (long) (45),
             UNDECIDED,
             ELispCons.listOf(ASCII),
@@ -1770,23 +1780,24 @@ character."""),
             false,
             (long) (0),
             NIL,
-            ELispCons.listOf(CNAME,
-            UNDECIDED,
-            CMNEMONIC,
-            (long) (45),
-            intern(":coding-type"),
-            UNDECIDED,
-            CASCII_COMPATIBLE_P,
-            T,
-            intern(":charset-list"),
-            ELispCons.listOf(ASCII),
-            intern(":for-unibyte"),
-            NIL,
-            intern(":docstring"),
-            new ELispString("No conversion on encoding, automatic conversion on decoding."),
-            intern(":eol-type"),
-            NIL
-        ),
+            ELispCons.listOf(
+                CNAME,
+                UNDECIDED,
+                CMNEMONIC,
+                (long) (45),
+                intern(":coding-type"),
+                UNDECIDED,
+                CASCII_COMPATIBLE_P,
+                T,
+                intern(":charset-list"),
+                ELispCons.listOf(ASCII),
+                intern(":for-unibyte"),
+                NIL,
+                intern(":docstring"),
+                new ELispString("No conversion on encoding, automatic conversion on decoding."),
+                intern(":eol-type"),
+                NIL
+            ),
             NIL,
             (long) (0),
             (long) (0),
@@ -1928,7 +1939,7 @@ character."""),
         var printableCharsJInit = FMakeCharTable.makeCharTable(NIL, NIL);
         printableChars.setValue(printableCharsJInit);
         FSetCharTableRange.setCharTableRange(printableCharsJInit, FCons.cons((long) (32), (long) (126)), T);
-        FSetCharTableRange.setCharTableRange(printableCharsJInit, FCons.cons((long) (160), (long) (4194175)), T);
+        FSetCharTableRange.setCharTableRange(printableCharsJInit, FCons.cons((long) (160), (long) (MAX_5_BYTE_CHAR)), T);
         FPut.put(CHAR_SCRIPT_TABLE, CHAR_TABLE_EXTRA_SLOTS, (long) (1));
         var charScriptTableJInit = FMakeCharTable.makeCharTable(CHAR_SCRIPT_TABLE, NIL);
         charScriptTable.setValue(charScriptTableJInit);

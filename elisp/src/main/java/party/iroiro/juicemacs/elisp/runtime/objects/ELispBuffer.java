@@ -378,8 +378,8 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public final static int BVAR_FILE_TRUENAME = 51;
     /**
      * Invisibility spec of this buffer.
-     * t => any non-nil `invisible' property means invisible.
-     * A list => `invisible' property means invisible
+     * t =&gt; any non-nil `invisible' property means invisible.
+     * A list =&gt; `invisible' property means invisible
      * if it is memq in that list.
      */
     public final static int BVAR_INVISIBILITY_SPEC = 52;
@@ -458,7 +458,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
      */
     public final static int BVAR_CURSOR_TYPE = 71;
     /**
-     * An integer > 0 means put that number of pixels below text lines
+     * An integer &gt; 0 means put that number of pixels below text lines
      * in the display of this buffer.
      */
     public final static int BVAR_EXTRA_LINE_SPACING = 72;

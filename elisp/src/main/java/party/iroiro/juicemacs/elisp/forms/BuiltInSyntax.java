@@ -74,7 +74,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
             standardSyntaxTable.setChar(c, punctuation);
         }
 
-        standardSyntaxTable.setRange(0x80, ELispCharTable.MAX_CHAR, word);
+        standardSyntaxTable.setRange(0x80, ELispCharTable.MAX_CHAR_INDEX, word);
     }
 
     @Override

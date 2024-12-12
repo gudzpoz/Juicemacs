@@ -16,6 +16,7 @@ import java.net.UnknownHostException;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
 import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SYSTEM_NAME;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;

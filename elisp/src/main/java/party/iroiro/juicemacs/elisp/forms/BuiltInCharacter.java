@@ -3,12 +3,12 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asInt;
 
 public class BuiltInCharacter extends ELispBuiltIns {
@@ -50,7 +50,7 @@ public class BuiltInCharacter extends ELispBuiltIns {
             if (unicode) {
                 return Character.MAX_CODE_POINT;
             }
-            return ELispTypeSystem.MAX_CHAR;
+            return MAX_CHAR;
         }
     }
 

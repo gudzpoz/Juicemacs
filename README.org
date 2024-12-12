@@ -1,12 +1,12 @@
 #+title: Juicemacs - An absolutely-not-solid Emacs implementation
 
 #+begin_html
-<a href="https://justforfunnoreally.dev">
-  <img src="https://img.shields.io/badge/justforfunnoreally-dev-9ff" alt="justforfunnoreally.dev badge" />
-</a>
-<a href="https://openjdk.org/projects/jdk/23/">
-  <img src="https://img.shields.io/badge/Java-23-orange?logo=openjdk" alt="Java 23 with OpenJDK icon" />
-</a>
+<a href="https://justforfunnoreally.dev"><img
+  src="https://img.shields.io/badge/justforfunnoreally-dev-9ff" alt="justforfunnoreally.dev badge"
+/></a>
+<a href="https://openjdk.org/projects/jdk/23/"><img
+  src="https://img.shields.io/badge/Java-23-orange?logo=openjdk" alt="Java 23 with OpenJDK icon"
+/></a>
 #+end_html
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+

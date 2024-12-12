@@ -282,7 +282,6 @@ public class BuiltInXFaces extends ELispBuiltIns {
 
     /**
      * <pre>
-
      * </pre>
      */
     @ELispBuiltIn(name = "internal-set-lisp-face-attribute-from-resource", minArgs = 3, maxArgs = 4)
@@ -615,7 +614,6 @@ public class BuiltInXFaces extends ELispBuiltIns {
 
     /**
      * <pre>
-
      * </pre>
      */
     @ELispBuiltIn(name = "dump-face", minArgs = 0, maxArgs = 1)
@@ -629,7 +627,6 @@ public class BuiltInXFaces extends ELispBuiltIns {
 
     /**
      * <pre>
-
      * </pre>
      */
     @ELispBuiltIn(name = "show-face-resources", minArgs = 0, maxArgs = 0)

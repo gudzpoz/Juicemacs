@@ -1,3 +1,6 @@
+# emacs-extractor output
+elisp/extraction.json
+
 # Ignore Gradle project-specific cache directory
 .gradle
 
