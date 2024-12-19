@@ -5,6 +5,54 @@ i.e., How To Implement Your Own Shitty Emacs.
 
 * Notes
 
+** Display Engine
+
+There've been some discussions:
+
+- [[https://lists.gnu.org/archive/html/emacs-devel/2021-12/msg02652.html]]
+- [[https://lists.gnu.org/archive/html/emacs-devel/2024-12/msg00455.html]]
+- https://github.com/CeleritasCelery/rune/issues/61
+
+However, I don't think I should start designing it before fully understanding
+what =redisplay= does (maybe by digging into my centaur-tabs crashes).
+
+Also: there are other Emacs re-implementations and the best we can get is to
+work together towards a new display backend that hopefully can also work on GNU
+Emacs.
+
+*** Personal Preferences
+
+Despite the usual complaints about how Electron bloats, I actually think it is
+good to simply embed the rendering engine of any browser:
+
+1. They should support BIDI out of the box. (Well, since Emacs also supports
+   turning off BIDI, this might not be as good after all.)
+2. Decent performance.
+3. Multi-media support.
+
+Any of the above will take significant effort if we are to implement them
+ourselves (correctly). Of course we can offload the work to some UI frameworks,
+but I believe BIDI support will rule out /most/ of the so-called modern
+GPU-powered ones.
+
+** Obarrays
+
+So I was testing on Emacs 29 because it was what the official Arch repo offers.
+Recently I have switched to Emacs 30 since it is what we aim to support, and it
+turns out... I should have switched much much earlier.
+
+The single change: obarrays are now opaque types.
+
+In Emacs 29, obarrays are vectors with symbols (or 0) as their elements. It is
+basically a hash table with the internal linked list stored directly in its
+symbols. So when we =(aset ob1 0 (aref ob2 0))=, I have no idea what might
+happen, but it /is/ a behavior that we can observe and reproduce, and thus a
+thing that we need to support by making symbols part of the obarray, if we were
+targeting Emacs 29. With opaque obarrays, we can now make symbols /immutable/,
+and separate symbols and value containers.
+
+So, thank goodnees for making more things opaque, Emacs developers!
+
 ** Emacs MULE
 
 I know little about the history behind Emacs. But according to [[http://www.xemacs.org/Documentation/21.5/html/lispref_64.html][XEmacs Lisp
@@ -48,7 +96,7 @@ The following example is inspired by [[https://scrapbox.io/shimizukawa/Unicode%E
 | Convertible char | 洲 (#x006d32 < #x10FFFF) |
 | Non-convertible  | __ (#x1420a4 > #x10FFFF) |
 
-** Truffle Options
+** Truffle Debugging
 
 During performance testing, I found the following options (supplied to =Context=
 builders) quite useful:
@@ -61,6 +109,9 @@ builders) quite useful:
   .option("compiler.TraceMethodExpansion", "truffleTier")
 #+end_src
 
+To look into GraalVM compiler graphs, one may use Ideal Graph Visualizer or
+[[https://github.com/Shopify/seafoam][Seafoam]].
+
 - =SpecializationStatistics= requires something like:
 
   #+begin_src groovy
@@ -69,9 +120,7 @@ builders) quite useful:
     }
   #+end_src
 
-** Emacs
-
-*** Emacs Lisp Problems
+** Dynamic ELisp & Truffle
 
 So special forms in Emacs Lisp is actually "special" ordinary functions,
 which means... one can overwrite them or assign them to other symbols.
@@ -91,7 +140,7 @@ P.S. The current interpreted AST node =ELispInterpretedNode.java= somehow
 manages to produce an AST-ish thing for Truffle to JIT-compile. It is probably
 not that efficient though. Read the code and comments for more details.
 
-**** Efficient local variable lookup
+*** Efficient local variable lookup
 
 Most Truffle languages store local variables on frames (=VirtualFrame=). There
 are some optimizations with this approach:
@@ -320,3 +369,24 @@ comments and discussions.
       However, we will need a concrete way to handle parallelized buffer edits.
 
   - [[https://arxiv.org/abs/2409.14252][Collaborative Text Editing with Eg-walker: Better, Faster, Smaller]]
+
+  More thoughts: To allow automatic concurrentization, we will need to deal with
+  concurrent buffer access. Some ways I can think of:
+
+  1. No handling at all. So, for example, when the user requests completion at
+     =prefix<cursor>= and moves the cursor to elsewhere before the scripts
+     actually inserts any content, this will most likely lead to the content
+     inserted at a wrong position.
+     - Can the user correctly interpret this behavior? Sometimes, if the delay
+       is not too long.
+     - Can undo help? Yes. If the user is not satisfied by the insersion, they
+       can simply revert it.
+     - Thread safety? If access to a buffer does not block (or leads to green
+       threads switching contexts), yes.
+  2. Use locks.
+     - Caveat: It leads to automatic deadlocks.
+  3. CRDT: After the reasoning above, CRDT actually seems the same (at least to
+     the user): interpretable if the delay is short; the user should be able to
+     undo; thread safe (albeit maybe safer). But it does allow the user to move
+     the cursor elsewhere while waiting for completion.
+  4. OT. Simpler than CRDT.

@@ -16,6 +16,106 @@ It seems... we also have this bug.
 
 * TODO [#A] More robust code generation
 
+* TODO [#A] Re-consider whether to stay =static= everywhere
+
+Currently, we heavily use =static= variables and basically everything is
+global. This is the Emacs way: single threaded, globally dynamically bound.
+However, this has already posed a few challenges:
+
+- Truffle assumes the language allows several parallel contexts, that is, we can
+  execute =i = 1; print(i)= and =i = 2; print(i)= concurrently without them
+  interfering with each other. Apparently, our "global state for everything"
+  approach can be problematic.
+  - Previously, before we auto-gen the giant mess of initialization code, since
+    JUnit tests are not concurrent, we are mostly fine, as long as we clean
+    things up when creating a new context.
+  - Now that we have convoluted init logic, with global variables scattered
+    around the place, it becomes harder to properly "clean things up". (The
+    tests are now failing with tons of =(fatal)= errors, probably due to charset
+    initialization.)
+
+- Although we plan to follow JavaScript's model of concurrency:
+  single-OS-threaded green threads, it will be nice to have real thread APIs,
+  similar to the Web Worker API. Then, it will be necessary to separate the
+  dynamic variable scope of different "workers".
+
+** Considerations
+
+- Web Worker API: The more intuitive way is to have multiple instances of the
+  ELisp interpreter. However, we need to think twice before doing so:
+
+  We want, for example, =defun= and others to be available to the worker. If we
+  use multiple interpreters, we will need to =(load "loadup.el")= every time a
+  worker is created. This won't be realistic before we can do pdump in Java.
+
+- Sharing anything between workers: unwise. Consider the following function:
+
+  #+begin_src emacs-lisp :tangle yes
+    (defun self-modifying-f (value)
+      (let ((inner '(nil)))
+        (setcar inner value)))
+  #+end_src
+
+  Concurrent calls to it will results in race conditions. Rune handles it by
+  copying and marking the whole AST immutable, which results in behavioural
+  discrepancies.
+
+- Actually, if we ignore the rare case that the AST is directly mutated, we
+  might be able to use a auto-copying =ELispObjectLiteralNode= for this: when it
+  is accessed, it copies the original value and use it for further access for
+  the current OS thread.
+
+  If we are to prevent the user from modifying the AST, we can also copy the AST
+  tree for internal usage, and ignore any modification to the original object.
+
+** Multi-context, multi-worker, multi-threaded ELisp refactor
+
+Scopes:
+- =TruffleLanguage=
+  - Multiple context objects
+    - Multiple workers
+      - Multiple virtual threads mounted on a single carrier thread
+
+Shared objects:
+- Symbols: shared across contexts, stored in =ELispLanguage=, following what
+  TruffleRuby is doing.
+- Functions: across workers, but not contexts. Shallow-copied when shared.
+- Values: across workers, but not contexts. Deep-copied when shared.
+
+Since symbols are shared across contexts, to get its corresponding
+value/function, we must look it up in a context/worker-local map. This has
+notable performance penalty: we don't want to look up a map for every variable
+access. A usual mitigation to this is to cache the value container objects, but,
+..., it can be hard to do so since we have multiple workers sharing the same
+function.
+
+*** Why sharing symbols & functions?
+
+**** Symbols
+
+We heavily use ==== comparisons for symbols in our builtin functions, and it
+would be a pain if we switch from =if (sym == EQ)= to =if (isInterned(sym) &&
+sym.name().equals(new MuleString("eq")))= (and the latter also has poor
+performance).
+
+**** Functions
+
+A huge part of the ELisp we are familiar with are implemented in ELisp. For
+example, both =defun= and =defmacro= are written in ELisp code. If we don't
+share functions, each worker must run =loadup.el= independently, which is slow.
+
+Also, under Truffle, since functions are JIT-compiled, starting anew means
+having to JIT-compile the functions again every time a new worker is started.
+
+An alternative to consider is to not support workers at all, but it is really
+/nice-to-have/.
+
+*** Value container caching in shared functions
+
+To make shared functions possible, we need automatical deep-copies of shared
+values, including function objects as well as all kinds of global objects and
+literals.
+
 * TODO [#A] Initialization logic & ordering
 
 The initialization logic of Emacs is quite complex. Basically:
