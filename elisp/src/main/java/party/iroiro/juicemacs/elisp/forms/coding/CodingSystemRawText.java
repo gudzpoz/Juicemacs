@@ -5,7 +5,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_ATTR_ASCII_COMPAT;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_RAW_TEXT;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.RAW_TEXT;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.RAW_TEXT;
 
 public final class CodingSystemRawText implements ELispCodingSystemType {
     @Override

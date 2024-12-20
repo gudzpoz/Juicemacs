@@ -7,7 +7,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.ISO_2022;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.ISO_2022;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public final class CodingSystemIso2022 implements ELispCodingSystemType {

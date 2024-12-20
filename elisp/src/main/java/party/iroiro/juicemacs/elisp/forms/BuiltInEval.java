@@ -27,7 +27,7 @@ import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**

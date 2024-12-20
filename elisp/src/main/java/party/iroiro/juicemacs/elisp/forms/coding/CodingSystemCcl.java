@@ -9,7 +9,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_CCL;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CCL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CCL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asRanged;
 

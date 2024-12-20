@@ -7,7 +7,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHARSET;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CHARSET;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 

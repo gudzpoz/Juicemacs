@@ -5,7 +5,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_UNDECIDED;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.UNDECIDED;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.UNDECIDED;
 
 public final class CodingSystemUndecided implements ELispCodingSystemType {
     @Override

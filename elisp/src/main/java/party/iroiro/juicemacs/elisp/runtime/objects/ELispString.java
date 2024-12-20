@@ -21,7 +21,7 @@ import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)

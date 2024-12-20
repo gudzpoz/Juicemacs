@@ -19,8 +19,8 @@ import java.util.regex.Pattern;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.CHAR_UNIFY_TABLE;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHARSET_MAP_PATH;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CHARSET_MAP_PATH;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /// ### Implementation Notes

@@ -11,12 +11,11 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 /**
@@ -32,7 +31,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
     public ELispCons(Object car) {
         this.car = Objects.requireNonNull(car);
-        this.cdr = NIL;
+        this.cdr = false;
     }
 
     public ELispCons(Object car, Object cdr) {
@@ -243,7 +242,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             } else if (isNil(tail)) {
                 throw new NoSuchElementException();
             } else {
-                throw ELispSignals.wrongTypeArgument(ELispContext.LISTP, ELispCons.this);
+                throw ELispSignals.wrongTypeArgument(LISTP, ELispCons.this);
             }
             // The following ensures the tortoise *occasionally* teleports.
             // Code modified from Emacs' src/lisp.h (FOR_EACH_TAIL_INTERNAL).

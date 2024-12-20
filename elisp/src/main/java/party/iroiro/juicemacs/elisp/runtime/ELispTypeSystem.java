@@ -8,8 +8,7 @@ import java.util.Collections;
 import java.util.NoSuchElementException;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.T;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 
 /**
  * Type system for ELisp
@@ -82,11 +81,11 @@ public abstract class ELispTypeSystem {
     }
 
     public static boolean isNil(Object nil) {
-        return nil == ELispContext.NIL || nil == Boolean.FALSE;
+        return nil == NIL || nil == Boolean.FALSE;
     }
 
     public static boolean isT(Object nil) {
-        return nil == ELispContext.T || nil == Boolean.TRUE;
+        return nil == T || nil == Boolean.TRUE;
     }
 
     public static long notNilOr(Object maybeNil, long defaultValue) {
@@ -100,7 +99,7 @@ public abstract class ELispTypeSystem {
         if (value instanceof Long l) {
             return Math.toIntExact(l);
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
+        throw ELispSignals.wrongTypeArgument(INTEGERP, value);
     }
 
     public static long asRanged(Object value, long left, long right) {
@@ -127,7 +126,7 @@ public abstract class ELispTypeSystem {
         if (value instanceof Long l) {
             return l;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
+        throw ELispSignals.wrongTypeArgument(INTEGERP, value);
     }
 
     public static long asNat(Object value) {
@@ -157,7 +156,7 @@ public abstract class ELispTypeSystem {
                     yield hi << 16 | asLong(rest instanceof ELispCons restCons ? restCons.car() : rest);
                 }
             }
-            default -> throw ELispSignals.wrongTypeArgument(ELispContext.INTEGERP, value);
+            default -> throw ELispSignals.wrongTypeArgument(INTEGERP, value);
         };
         if (v < 0 || max < v) {
             throw ELispSignals.argsOutOfRange(value, 0, max);
@@ -169,7 +168,7 @@ public abstract class ELispTypeSystem {
         if (value instanceof Double d) {
             return d;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.FLOATP, value);
+        throw ELispSignals.wrongTypeArgument(FLOATP, value);
     }
 
     public static double toDouble(double value) {
@@ -186,21 +185,21 @@ public abstract class ELispTypeSystem {
         if (isNil(value)) {
             return false;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.BOOLEANP, value);
+        throw ELispSignals.wrongTypeArgument(BOOLEANP, value);
     }
 
     public static Number asNum(Object value) {
         if (value instanceof Number n) {
             return n;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.NUMBERP, value);
+        throw ELispSignals.wrongTypeArgument(NUMBERP, value);
     }
 
     public static ELispCons asCons(Object value) {
         if (value instanceof ELispCons c) {
             return c;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.CONSP, value);
+        throw ELispSignals.wrongTypeArgument(CONSP, value);
     }
 
     public static Iterable<Object> asConsOrNil(Object value) {
@@ -236,56 +235,63 @@ public abstract class ELispTypeSystem {
 
     public static ELispSymbol asSym(Object value) {
         if (isNil(value)) {
-            return ELispContext.NIL;
+            return NIL;
         }
         if (isT(value)) {
-            return ELispContext.T;
+            return T;
         }
         if (value instanceof ELispSymbol s) {
             return s;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.SYMBOLP, value);
+        throw ELispSignals.wrongTypeArgument(SYMBOLP, value);
     }
 
     public static ELispString asStr(Object s) {
         if (s instanceof ELispString str) {
             return str;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.STRINGP, s);
+        throw ELispSignals.wrongTypeArgument(STRINGP, s);
     }
 
     public static ELispVector asVector(Object value) {
         if (value instanceof ELispVector v) {
             return v;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.VECTORP, value);
+        throw ELispSignals.wrongTypeArgument(VECTORP, value);
     }
 
     public static ELispBoolVector asBoolVec(Object value) {
         if (value instanceof ELispBoolVector v) {
             return v;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.BOOL_VECTOR_P, value);
+        throw ELispSignals.wrongTypeArgument(BOOL_VECTOR_P, value);
     }
 
     public static ELispHashtable asHashtable(Object value) {
         if (value instanceof ELispHashtable h) {
             return h;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.HASH_TABLE_P, value);
+        throw ELispSignals.wrongTypeArgument(HASH_TABLE_P, value);
+    }
+
+    public static ELispObarray asObarray(Object value) {
+        if (value instanceof ELispObarray o) {
+            return o;
+        }
+        throw ELispSignals.wrongTypeArgument(OBARRAYP, value);
     }
 
     public static ELispBuffer asBuffer(Object buffer) {
         if (buffer instanceof ELispBuffer b) {
             return b;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.BUFFERP, buffer);
+        throw ELispSignals.wrongTypeArgument(BUFFERP, buffer);
     }
 
     public static ELispCharTable asCharTable(Object table) {
         if (table instanceof ELispCharTable t) {
             return t;
         }
-        throw ELispSignals.wrongTypeArgument(ELispContext.CHAR_TABLE_P, table);
+        throw ELispSignals.wrongTypeArgument(CHAR_TABLE_P, table);
     }
 }

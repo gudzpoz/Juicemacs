@@ -5,7 +5,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.UTF_8;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.UTF_8;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public final class CodingSystemUtf8 implements ELispCodingSystemType {

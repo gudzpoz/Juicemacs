@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.function.BiPredicate;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CHAR_CODE_PROPERTY_TABLE;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CHAR_CODE_PROPERTY_TABLE;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -369,8 +369,7 @@ public final class ELispCharTable extends AbstractELispVector {
         inner[DEFAULT_VALUT_SLOT] = init;
         inner[PARENT_SLOT] = false;
         inner[PURPOSE_SLOT] = purpose;
-        Arrays.fill(inner, CONTENT_BASE_SLOT, CHAR_TABLE_STANDARD_SLOTS, init);
-        Arrays.fill(inner, CHAR_TABLE_STANDARD_SLOTS, inner.length, false);
+        Arrays.fill(inner, CONTENT_BASE_SLOT, inner.length, init);
         return new ELispCharTable(inner);
     }
 

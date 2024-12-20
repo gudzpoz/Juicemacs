@@ -1,14 +1,12 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.BIG;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.UTF_16;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -31,8 +29,8 @@ public final class CodingSystemUtf16 implements ELispCodingSystemType {
         Object endian = args[CODING_ARG_UTF16_ENDIAN];
         ELispSymbol endianSym = asSym(endian);
         if (isNil(endianSym)) {
-            endianSym = ELispContext.BIG;
-        } else if (endianSym != ELispContext.BIG && endianSym != ELispContext.LITTLE) {
+            endianSym = BIG;
+        } else if (endianSym != BIG && endianSym != LITTLE) {
             throw ELispSignals.error("Invalid endian");
         }
         attrs.set(CODING_ATTR_UTF_16_ENDIAN, endianSym);

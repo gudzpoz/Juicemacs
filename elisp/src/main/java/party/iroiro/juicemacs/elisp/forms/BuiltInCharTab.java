@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -16,7 +17,7 @@ import party.iroiro.juicemacs.mule.MuleString;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCharTab extends ELispBuiltIns {
@@ -253,7 +254,8 @@ public class BuiltInCharTab extends ELispBuiltIns {
     public abstract static class FUnicodePropertyTableInternal extends ELispBuiltInBaseNode {
         @Specialization
         public Object unicodePropertyTableInternal(Object prop) {
-            Object val = BuiltInFns.FAssq.assq(prop, CHAR_CODE_PROPERTY_ALIST.getValue());
+            ELispContext context = getContext();
+            Object val = BuiltInFns.FAssq.assq(prop, context.getValue(CHAR_CODE_PROPERTY_ALIST));
             if (!(val instanceof ELispCons cons)) {
                 return false;
             }

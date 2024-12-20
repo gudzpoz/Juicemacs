@@ -5,7 +5,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_EMACS_MULE;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.EMACS_MULE;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.EMACS_MULE;
 
 public final class CodingSystemEmacsMule implements ELispCodingSystemType {
     @Override

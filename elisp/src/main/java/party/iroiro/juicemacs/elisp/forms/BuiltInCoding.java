@@ -21,7 +21,7 @@ import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.EMACS_MULE_CHARS
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.ISO2022_CHARSET_LIST;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystemType.shortArgs;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCoding extends ELispBuiltIns {

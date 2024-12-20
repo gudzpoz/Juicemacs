@@ -20,7 +20,8 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispContext.valueToExpression;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 
 /**
  * A ELisp parser and reader

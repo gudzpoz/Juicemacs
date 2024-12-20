@@ -10,7 +10,7 @@ import java.util.Iterator;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_ATTR_ASCII_COMPAT;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_BIG5;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.BIG5;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.BIG5;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asInt;
 

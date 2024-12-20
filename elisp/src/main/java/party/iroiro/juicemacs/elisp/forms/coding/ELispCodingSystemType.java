@@ -9,6 +9,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.checkCodingSystem;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.DEFINE_CODING_SYSTEM_INTERNAL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public sealed interface ELispCodingSystemType
@@ -41,7 +42,7 @@ public sealed interface ELispCodingSystemType
     int initExtraAttrs(ELispVector attrs, Object[] args, Object charsetListObject);
 
     static ELispSignals.ELispSignalException shortArgs(long length) {
-        return ELispSignals.wrongNumberOfArguments(ELispContext.DEFINE_CODING_SYSTEM_INTERNAL, length);
+        return ELispSignals.wrongNumberOfArguments(DEFINE_CODING_SYSTEM_INTERNAL, length);
     }
 
     static void checkBom(Object bom) {

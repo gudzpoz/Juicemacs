@@ -15,7 +15,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import java.util.ArrayList;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.LEXICAL_BINDING;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LEXICAL_BINDING;
 
 /// Basically our implementation of GNU Emacs' `internal-interpreter-environment`
 ///

@@ -20,7 +20,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**
@@ -1449,7 +1449,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
             }
-            ELispSymbol eq = isNil(predicate) ? ELispContext.EQ : asSym(predicate);
+            ELispSymbol eq = isNil(predicate) ? EQ : asSym(predicate);
             Iterator<Object> iterator = cons.iterator();
             try {
                 Object[] args = new Object[2];
@@ -1898,7 +1898,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FFeaturep extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean featurep(ELispSymbol feature, Object subfeature) {
-            Object isMem = FMemq.memq(feature, ELispContext.FEATURES.getValue());
+            Object isMem = FMemq.memq(feature, FEATURES.getValue());
             if (isNil(isMem)) {
                 return !isNil(isMem);
             }

@@ -15,7 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInFns.iterateSequence;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInKeymap extends ELispBuiltIns {

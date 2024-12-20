@@ -15,7 +15,7 @@ import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.function.BiConsumer;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 

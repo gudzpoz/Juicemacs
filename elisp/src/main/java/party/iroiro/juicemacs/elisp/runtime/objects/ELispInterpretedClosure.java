@@ -18,7 +18,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AND_OPTIONAL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AND_REST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class ELispInterpretedClosure extends AbstractELispVector {

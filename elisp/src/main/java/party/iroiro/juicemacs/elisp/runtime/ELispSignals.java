@@ -20,8 +20,12 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
+
 /// Internal presentations of `catch/throw` and `condition-case/signal`
 public abstract class ELispSignals {
+    private static final ELispSymbol FATAL = new ELispSymbol("fatal");
+
     @ExportLibrary(InteropLibrary.class)
     abstract sealed static class ELispNonLocalExitException extends AbstractTruffleException {
         private final Object tag;
@@ -100,81 +104,81 @@ public abstract class ELispSignals {
     }
 
     public static ELispSignalException error(String message) {
-        return signal(ELispContext.ERROR, message);
+        return signal(ERROR, message);
     }
 
     //#region Symbol operations
     public static ELispSignalException cyclicVariableIndirection(ELispSymbol symbol) {
-        return signal(ELispContext.CYCLIC_VARIABLE_INDIRECTION, symbol);
+        return signal(CYCLIC_VARIABLE_INDIRECTION, symbol);
     }
     public static ELispSignalException settingConstant(ELispSymbol symbol) {
-        return signal(ELispContext.SETTING_CONSTANT, symbol);
+        return signal(SETTING_CONSTANT, symbol);
     }
     public static ELispSignalException voidVariable(ELispSymbol symbol) {
-        return signal(ELispContext.VOID_VARIABLE, symbol);
+        return signal(VOID_VARIABLE, symbol);
     }
     //#endregion Symbol operations
 
     //#region Function operations
     public static ELispSignalException argsOutOfRange(long index) {
-        return signal(ELispContext.ARGS_OUT_OF_RANGE, index, false);
+        return signal(ARGS_OUT_OF_RANGE, index, false);
     }
     public static ELispSignalException argsOutOfRange(Object object, long index) {
-        return signal(ELispContext.ARGS_OUT_OF_RANGE, object, index);
+        return signal(ARGS_OUT_OF_RANGE, object, index);
     }
     public static ELispSignalException argsOutOfRange(Object object, long left, long right) {
-        return signal(ELispContext.ARGS_OUT_OF_RANGE, object, left, right);
+        return signal(ARGS_OUT_OF_RANGE, object, left, right);
     }
     public static ELispSignalException wrongNumberOfArguments(Object function, long actual) {
-        return signal(ELispContext.WRONG_NUMBER_OF_ARGUMENTS, function, actual);
+        return signal(WRONG_NUMBER_OF_ARGUMENTS, function, actual);
     }
     public static ELispSignalException wrongTypeArgument(ELispSymbol predicate, Object actual) {
-        return signal(ELispContext.WRONG_TYPE_ARGUMENT, predicate, actual);
+        return signal(WRONG_TYPE_ARGUMENT, predicate, actual);
     }
     public static ELispSignalException invalidFunction(Object function) {
-        return signal(ELispContext.INVALID_FUNCTION, function);
+        return signal(INVALID_FUNCTION, function);
     }
     public static ELispSignalException voidFunction(Object function) {
-        return signal(ELispContext.VOID_FUNCTION, function);
+        return signal(VOID_FUNCTION, function);
     }
     //#endregion Function operations
 
     //#region File operations
     public static ELispSignalException fileMissing(FileNotFoundException e, Object file) {
-        return signal(ELispContext.FILE_MISSING, e.getClass().getSimpleName(), e.getMessage(), file);
+        return signal(FILE_MISSING, e.getClass().getSimpleName(), e.getMessage(), file);
     }
     public static ELispSignalException endOfFile() {
-        return signal(ELispContext.END_OF_FILE);
+        return signal(END_OF_FILE);
     }
     public static ELispSignalException endOfFile(Object file) {
-        return signal(ELispContext.END_OF_FILE, file);
+        return signal(END_OF_FILE, file);
     }
     //#endregion File operations
 
     //#region Lisp parsing
     public static ELispSignalException invalidReadSyntax(String message) {
-        return signal(ELispContext.INVALID_READ_SYNTAX, message);
+        return signal(INVALID_READ_SYNTAX, message);
     }
     //#endregion Lisp parsing
 
     //#region Object operations
     public static ELispSignalException circularList(Object list) {
-        return signal(ELispContext.CIRCULAR_LIST, list);
+        return signal(CIRCULAR_LIST, list);
     }
     public static ELispSignalException invalidRegexp(String message) {
-        return signal(ELispContext.INVALID_REGEXP, message);
+        return signal(INVALID_REGEXP, message);
     }
     public static ELispSignalException searchFailed() {
-        return signal(ELispContext.SEARCH_FAILED);
+        return signal(SEARCH_FAILED);
     }
     //#endregion Object operations
 
     //#region emacs_abort
     public static ELispSignalException fatal() {
-        return signal(ELispContext.intern("fatal"));
+        return signal(FATAL);
     }
     public static ELispSignalException fatal(String message) {
-        return signal(ELispContext.intern("fatal"), message);
+        return signal(FATAL, message);
     }
     //#endregion emacs_abort
 
@@ -187,15 +191,15 @@ public abstract class ELispSignals {
     static {
         CLASS_CAST_MAP = Map.of(
                 "party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol",
-                ELispContext.SYMBOLP,
+                SYMBOLP,
                 "party.iroiro.juicemacs.elisp.runtime.objects.ELispCons",
-                ELispContext.CONSP,
+                CONSP,
                 "party.iroiro.juicemacs.elisp.runtime.objects.ELispString",
-                ELispContext.STRINGP,
+                STRINGP,
                 "java.lang.Long",
-                ELispContext.INTEGERP,
+                INTEGERP,
                 "java.lang.Double",
-                ELispContext.FLOATP
+                FLOATP
         );
     }
 
@@ -213,10 +217,10 @@ public abstract class ELispSignals {
                     }
                     yield ELispSignals.wrongTypeArgument(predicate, actual);
                 }
-                yield ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
+                yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
             }
             case UnsupportedSpecializationException _ ->
-                    ELispSignals.wrongTypeArgument(ELispContext.UNSPECIFIED, e.getMessage());
+                    ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
             case ELispSignals.ELispSignalException signal -> ELispSignals.attachLocation(signal, location);
             default -> null;
         };
