@@ -4,7 +4,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -13,7 +13,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Objects;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SAFE_MAGIC;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SAFE_MAGIC;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -32,7 +32,10 @@ public class BuiltInEmacs extends ELispBuiltIns {
     /// @return a list of strings
     public static ELispCons decodeEnvPath(@Nullable String envVarName, String defaultValue, boolean empty) {
         @Nullable ELispString emptyElement = empty ? null : new ELispString(".");
-        String path = Objects.requireNonNullElse(envVarName == null ? null : ELispLanguage.getEnv().get(envVarName), defaultValue);
+        String path = Objects.requireNonNullElse(
+                envVarName == null ? null : ELispContext.get(null).getEnv(envVarName),
+                defaultValue
+        );
         ELispCons.ListBuilder paths = new ELispCons.ListBuilder();
         for (String element : path.split(File.pathSeparator)) {
             ELispString current = element.isEmpty() ? emptyElement : new ELispString(element);

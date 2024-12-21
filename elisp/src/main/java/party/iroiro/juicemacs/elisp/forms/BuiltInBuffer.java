@@ -5,11 +5,12 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -17,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInBuffer extends ELispBuiltIns {
@@ -27,7 +27,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     }
 
     public final static HashMap<MuleString, ELispBuffer> BUFFERS = new HashMap<>();
-    public final static ELispSymbol.Value.Forwarded MINIBUFFER_LIST = new ELispSymbol.Value.Forwarded();
+    public final static ValueStorage.Forwarded MINIBUFFER_LIST = new ValueStorage.Forwarded();
     @CompilerDirectives.TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(MuleString name) {
@@ -202,8 +202,12 @@ public class BuiltInBuffer extends ELispBuiltIns {
             if (object instanceof ELispBuffer buffer) {
                 return buffer;
             }
+
+            ELispContext context = ELispContext.get(null);
+            ELispBuffer bufferDefaults = context.globals().getBufferDefaults();
+
             MuleString name = asStr(bufferOrName).value();
-            ELispBuffer buffer = new ELispBuffer(!isNil(inhibitBufferHooks));
+            ELispBuffer buffer = new ELispBuffer(bufferDefaults, !isNil(inhibitBufferHooks));
             buffer.setWidthTable(false);
             // TODO: Texts
             buffer.setName(new ELispString(name));
@@ -683,10 +687,11 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @Specialization
         public static Object setBuffer(Object bufferOrName) {
             // TODO: Real buffers
+            ELispContext context = ELispContext.get(null);
             if (bufferOrName instanceof ELispBuffer buffer) {
-                CURRENT_BUFFER.setValue(buffer);
+                context.currentBuffer.setValue(buffer);
             }
-            return CURRENT_BUFFER.getValue();
+            return context.currentBuffer();
         }
     }
 

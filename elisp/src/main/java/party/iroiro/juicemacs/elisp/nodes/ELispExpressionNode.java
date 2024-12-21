@@ -2,18 +2,12 @@ package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 
 @TypeSystemReference(ELispTypeSystem.class)
-public abstract class ELispExpressionNode extends Node {
-
-    protected final <T extends Node> T insertOrReplace(T node, @Nullable T old) {
-        return old == null ? insert(node) : old.replace(node);
-    }
+public abstract class ELispExpressionNode extends ELispBaseNode {
 
     public void executeVoid(VirtualFrame frame) {
         executeGeneric(frame);

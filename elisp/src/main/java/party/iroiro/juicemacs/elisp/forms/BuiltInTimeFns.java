@@ -3,12 +3,12 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.time.Instant;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CURRENT_TIME_LIST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInTimeFns extends ELispBuiltIns {
@@ -333,7 +333,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     public abstract static class FCurrentTime extends ELispBuiltInBaseNode {
         @Specialization
         public static Object currentTime() {
-            if (isNil(ELispContext.CURRENT_TIME_LIST.getValue())) {
+            if (isNil(CURRENT_TIME_LIST.getValue())) {
                 return new ELispCons(System.currentTimeMillis(), 1000L);
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();

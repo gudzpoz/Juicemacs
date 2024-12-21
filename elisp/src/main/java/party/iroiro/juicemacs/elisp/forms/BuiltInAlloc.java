@@ -250,7 +250,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FMakeSymbol extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispSymbol makeSymbol(ELispString name) {
-            return new ELispSymbol(name.toString());
+            return new ELispSymbol(name.toString(), false);
         }
     }
 

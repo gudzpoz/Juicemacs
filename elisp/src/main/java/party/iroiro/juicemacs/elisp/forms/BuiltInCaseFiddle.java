@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCharTable;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.notNilOr;
 

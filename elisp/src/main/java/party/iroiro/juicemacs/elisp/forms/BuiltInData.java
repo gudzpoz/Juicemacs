@@ -6,6 +6,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -15,7 +16,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /**
@@ -2279,7 +2280,7 @@ public class BuiltInData extends ELispBuiltIns {
                 s = "#" + b + "r" + s;
             }
             try {
-                Object read = ELispParser.read(s);
+                Object read = ELispParser.read(ELispContext.get(null), s);
                 if (read instanceof Long || read instanceof Double || read instanceof ELispBigNum) {
                     return read;
                 }

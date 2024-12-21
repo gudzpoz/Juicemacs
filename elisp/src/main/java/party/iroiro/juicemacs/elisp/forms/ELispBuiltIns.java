@@ -8,8 +8,8 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -57,7 +57,7 @@ public abstract class ELispBuiltIns {
 
     private final boolean inline;
 
-    public final void initialize(ELispLanguage language, ELispContext context) {
+    public final void initialize(ELispLanguage language, ELispGlobals globals) {
         Source javaSource = Source.newBuilder(
                 "java", "", this.getClass().getSimpleName() + ".java"
         )
@@ -83,7 +83,7 @@ public abstract class ELispBuiltIns {
                         builtIn.minArgs(),
                         varArgs ? -1 : builtIn.maxArgs()
                 );
-                ELispSymbol symbol = ELispContext.intern(builtIn.name());
+                ELispSymbol symbol = globals.intern(builtIn.name());
                 FunctionRootNode rootNode = new FunctionRootNode(language, symbol, wrapper, null); // NOPMD
                 ELispSubroutine.@Nullable InlineInfo inlineInfo = null;
                 @Nullable Object inliner = null;
@@ -99,7 +99,7 @@ public abstract class ELispBuiltIns {
                             Truffle.getRuntime().createAssumption()
                     );
                 }
-                context.registerFunction(
+                globals.registerFunction(
                         symbol,
                         new ELispSubroutine(
                                 new ELispFunctionObject(rootNode.getCallTarget()),

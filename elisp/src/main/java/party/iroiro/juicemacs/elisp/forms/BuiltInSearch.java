@@ -7,15 +7,17 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CASE_FOLD_SEARCH;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSearch extends ELispBuiltIns {
@@ -29,8 +31,8 @@ public class BuiltInSearch extends ELispBuiltIns {
         return BuiltInSearchFactory.getFactories();
     }
 
-    private static final ELispSymbol.ThreadLocalValue MATCH_DATA = new ELispSymbol.ThreadLocalValue();
-    private static final ELispSymbol.ThreadLocalValue MATCHED_STR = new ELispSymbol.ThreadLocalValue();
+    private static final ThreadLocalStorage MATCH_DATA = new ThreadLocalStorage(false);
+    private static final ThreadLocalStorage MATCHED_STR = new ThreadLocalStorage(false);
 
     private record RegExpKey(MuleString regExp, @Nullable MuleString whitespaceRegExp, @Nullable ELispCharTable canon) {
     }
@@ -80,8 +82,9 @@ public class BuiltInSearch extends ELispBuiltIns {
             ELispString regexp,
             @Nullable MuleString whitespaceRegExp
     ) {
-        boolean caseSensitive = isNil(CASE_FOLD_SEARCH.getValue());
-        ELispCharTable canon = caseSensitive ? null : asCharTable(currentBuffer().getCaseCanonTable());
+        ELispContext context = ELispContext.get(null);
+        boolean caseSensitive = isNil(context.getValue(CASE_FOLD_SEARCH));
+        ELispCharTable canon = caseSensitive ? null : asCharTable(context.currentBuffer().getCaseCanonTable());
         RegExpKey key = new RegExpKey(
                 regexp.value(),
                 whitespaceRegExp,
@@ -160,7 +163,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
             int from = isNil(start) ? 0 : asInt(start);
-            Object buffer = CURRENT_BUFFER.getValue();
+            Object buffer = getContext().currentBuffer();
             Object result = pattern.call(string.value(), true, from, -1, buffer);
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
@@ -281,7 +284,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         @Specialization
         public boolean reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
             long limit = notNilOr(bound, Long.MAX_VALUE);
-            ELispBuffer buffer = asBuffer(CURRENT_BUFFER.getValue());
+            ELispBuffer buffer = getContext().currentBuffer();
             ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
             int from = Math.toIntExact(buffer.getPoint());
             int repeat = Math.toIntExact(notNilOr(count, 1));

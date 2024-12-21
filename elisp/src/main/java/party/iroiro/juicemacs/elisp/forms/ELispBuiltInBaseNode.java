@@ -4,6 +4,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 
 @NodeChild(value = "arguments", type = ELispExpressionNode[].class)
 public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
@@ -11,6 +13,10 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
             .content(Source.CONTENT_NONE)
             .internal(true)
             .build();
+
+    public static ELispBuffer currentBuffer() {
+        return ELispContext.get(null).currentBuffer();
+    }
 
     @Override
     public SourceSection getSourceSection() {

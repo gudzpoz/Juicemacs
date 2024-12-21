@@ -1,22 +1,18 @@
 package party.iroiro.juicemacs.elisp;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.*;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 @TruffleLanguage.Registration(
     id = ELispLanguage.ID,
@@ -33,7 +29,41 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final String MIME_TYPE = "text/x-elisp";
 
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
-    private static final ConcurrentHashMap<String, String> ENV = new ConcurrentHashMap<>();
+
+    public final SharedIndicesMap globalVariablesMap = new SharedIndicesMap();
+    public final SharedIndicesMap globalFunctionsMap = new SharedIndicesMap();
+
+    @Override
+    protected CallTarget parse(ParsingRequest request) throws Exception {
+        ELispRootNode root = ELispParser.parse(this, ELispContext.get(null), request.getSource());
+        return root.getCallTarget();
+    }
+
+    @Override
+    protected ELispContext createContext(Env env) {
+        return new ELispContext(this, env);
+    }
+
+    @Override
+    protected void initializeContext(ELispContext context) {
+        context.initGlobal(this);
+    }
+
+    public int tryGetGlobalVariableIndex(ELispSymbol symbol) {
+        return globalVariablesMap.tryLookup(symbol);
+    }
+
+    public int getGlobalVariableIndex(ELispSymbol symbol) {
+        return globalVariablesMap.lookup(symbol);
+    }
+
+    public int tryGetGlobalFunctionIndex(ELispSymbol symbol) {
+        return globalFunctionsMap.tryLookup(symbol);
+    }
+
+    public int getGlobalFunctionIndex(ELispSymbol name) {
+        return globalFunctionsMap.lookup(name);
+    }
 
     public static ELispLanguage get(Node node) {
         return REFERENCE.get(node);
@@ -61,28 +91,5 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             return null;
         });
         return get(node);
-    }
-
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        ELispRootNode root = ELispParser.parse(this, request.getSource());
-        return root.getCallTarget();
-    }
-
-    @Override
-    protected ELispContext createContext(Env env) {
-        ENV.clear();
-        ENV.putAll(System.getenv());
-        ENV.putAll(env.getEnvironment());
-        return ELispContext.getInstance();
-    }
-
-    @Override
-    protected void initializeContext(ELispContext context) {
-        context.initGlobal(this);
-    }
-
-    public static Map<String, String> getEnv() {
-        return ENV;
     }
 }

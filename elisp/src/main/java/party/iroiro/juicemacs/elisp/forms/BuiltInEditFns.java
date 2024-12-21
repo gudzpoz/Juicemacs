@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -17,18 +18,13 @@ import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.CURRENT_BUFFER;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.SYSTEM_NAME;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SYSTEM_NAME;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInEditFns extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEditFnsFactory.getFactories();
-    }
-
-    public static ELispBuffer currentBuffer() {
-        return asBuffer(CURRENT_BUFFER.getValue());
     }
 
     /**
@@ -448,29 +444,25 @@ public class BuiltInEditFns extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Object prevBuffer = CURRENT_BUFFER.getValue();
-                long point = prevBuffer instanceof ELispBuffer buffer ? buffer.getPoint() : -1;
+                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
+                long point = prevBuffer.getPoint();
                 try {
                     bodyNode.executeVoid(frame);
                 } finally {
-                    CURRENT_BUFFER.setValue(prevBuffer);
-                    if (prevBuffer instanceof ELispBuffer buffer) {
-                        buffer.setPoint(point);
-                    }
+                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
+                    prevBuffer.setPoint(point);
                 }
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                Object prevBuffer = CURRENT_BUFFER.getValue();
-                long point = prevBuffer instanceof ELispBuffer buffer ? buffer.getPoint() : -1;
+                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
+                long point = prevBuffer.getPoint();
                 try {
                     return bodyNode.executeGeneric(frame);
                 } finally {
-                    CURRENT_BUFFER.setValue(prevBuffer);
-                    if (prevBuffer instanceof ELispBuffer buffer) {
-                        buffer.setPoint(point);
-                    }
+                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
+                    prevBuffer.setPoint(point);
                 }
             }
         }
@@ -503,21 +495,21 @@ public class BuiltInEditFns extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Object prevBuffer = CURRENT_BUFFER.getValue();
+                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
                 try {
                     bodyNode.executeVoid(frame);
                 } finally {
-                    CURRENT_BUFFER.setValue(prevBuffer);
+                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
                 }
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                Object prevBuffer = CURRENT_BUFFER.getValue();
+                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
                 try {
                     return bodyNode.executeGeneric(frame);
                 } finally {
-                    CURRENT_BUFFER.setValue(prevBuffer);
+                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
                 }
             }
         }

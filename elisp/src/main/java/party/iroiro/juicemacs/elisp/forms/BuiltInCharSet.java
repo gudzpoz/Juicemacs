@@ -7,13 +7,15 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset.CharsetMethod;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /// Charset-related operations, basically following `charset.c` from Emacs
@@ -71,7 +73,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
 
     public BuiltInCharSet() {
         CHARSET_HASH_TABLE.clear();
-        CHARSET_LIST.clear();
+        INTERNAL_CHARSET_LIST.clear();
 
         // Emacs initializes this in unify-charset, but we move it here.
         CHAR_UNIFY_TABLE.setValue(ELispCharTable.create(false, NIL, 0));
@@ -82,22 +84,22 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return BuiltInCharSetFactory.getFactories();
     }
 
-    private static final ArrayList<ELispCharset> CHARSET_LIST = new ArrayList<>();
+    private static final ArrayList<ELispCharset> INTERNAL_CHARSET_LIST = new ArrayList<>();
     private static final HashMap<ELispSymbol, ELispVector> CHARSET_HASH_TABLE = new HashMap<>();
-    public static final ELispSymbol.Value.Forwarded CHAR_UNIFY_TABLE = new ELispSymbol.Value.Forwarded();
-    public static final ELispSymbol.Value.Forwarded CHARSET_ORDERED_LIST = new ELispSymbol.Value.Forwarded();
-    public static final ELispSymbol.Value.Forwarded ISO2022_CHARSET_LIST = new ELispSymbol.Value.Forwarded();
-    public static final ELispSymbol.Value.Forwarded EMACS_MULE_CHARSET_LIST = new ELispSymbol.Value.Forwarded();
+    public static final ValueStorage.Forwarded CHAR_UNIFY_TABLE = new ValueStorage.Forwarded();
+    public static final ValueStorage.Forwarded CHARSET_ORDERED_LIST = new ValueStorage.Forwarded();
+    public static final ValueStorage.Forwarded ISO2022_CHARSET_LIST = new ValueStorage.Forwarded();
+    public static final ValueStorage.Forwarded EMACS_MULE_CHARSET_LIST = new ValueStorage.Forwarded();
 
     public static ELispCharset getCharset(Object symbol) {
         ELispVector vec = getCharsetAttr(symbol);
         //noinspection SequencedCollectionMethodCanBeUsed
         int index = asInt(vec.get(CHARSET_ID));
-        return CHARSET_LIST.get(index);
+        return INTERNAL_CHARSET_LIST.get(index);
     }
 
     public static ELispCharset getCharsetFromId(int id) {
-        return CHARSET_LIST.get(id);
+        return INTERNAL_CHARSET_LIST.get(id);
     }
 
     private static ELispVector getCharsetAttr(Object symbol) {
@@ -110,6 +112,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     }
 
     public static Object defineCharsetInternal(
+            ELispGlobals globals,
             ELispSymbol name,
             int dimension,
             String codeSpaceChars,
@@ -137,17 +140,17 @@ public class BuiltInCharSet extends ELispBuiltIns {
         args[CHARSET_ARG_PLIST] = ELispCons.listOf(
                 CNAME,
                 args[CHARSET_ARG_NAME],
-                intern(":dimension"),
+                globals.intern(":dimension"),
                 args[CHARSET_ARG_DIMENSION],
-                intern(":code-space"),
+                globals.intern(":code-space"),
                 args[CHARSET_ARG_CODE_SPACE],
-                intern(":iso-final-char"),
+                globals.intern(":iso-final-char"),
                 args[CHARSET_ARG_ISO_FINAL],
-                intern(":emacs-mule-id"),
+                globals.intern(":emacs-mule-id"),
                 args[CHARSET_ARG_EMACS_MULE_ID],
-                intern(":ascii-compatible-p"),
+                globals.intern(":ascii-compatible-p"),
                 args[CHARSET_ARG_ASCII_COMPATIBLE_P],
-                intern(":code-offset"),
+                globals.intern(":code-offset"),
                 args[CHARSET_ARG_CODE_OFFSET]
         );
 
@@ -217,6 +220,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
             if (args.length != CHARSET_ARG_MAX) {
                 throw ELispSignals.wrongNumberOfArguments(DEFINE_CHARSET_INTERNAL, args.length);
             }
+
+            ELispContext context = ELispContext.get(null);
 
             ELispVector attrs = new ELispVector(Collections.nCopies(CHARSET_ATTR_MAX, false));
 
@@ -414,7 +419,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             CHARSET_HASH_TABLE.put(name, attrs);
             int id;
             if (newDefinitionP) {
-                id = CHARSET_LIST.size();
+                id = INTERNAL_CHARSET_LIST.size();
             } else {
                 id = getCharset(name).id;
             }
@@ -446,9 +451,9 @@ public class BuiltInCharSet extends ELispBuiltIns {
                     codeOffset
             );
             if (newDefinitionP) {
-                CHARSET_LIST.add(charset);
+                INTERNAL_CHARSET_LIST.add(charset);
             } else {
-                CHARSET_LIST.set(id, charset);
+                INTERNAL_CHARSET_LIST.set(id, charset);
             }
             attrs.set(CHARSET_ID, (long) id);
 
@@ -478,7 +483,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             }
 
             if (newDefinitionP) {
-                ELispContext.CHARSET_LIST.setValue(new ELispCons(name, ELispContext.CHARSET_LIST.getValue()));
+                context.setValue(CHARSET_LIST, new ELispCons(name, context.getValue(CHARSET_LIST)));
                 Object charsetOrderedList = CHARSET_ORDERED_LIST.getValue();
                 if (charset.supplementaryP) {
                     CHARSET_ORDERED_LIST.setValue(BuiltInFns.FNconc.nconc(new Object[]{
@@ -520,7 +525,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
         public static boolean defineCharsetAlias(ELispSymbol alias, Object charset) {
             ELispVector attr = getCharsetAttr(charset);
             CHARSET_HASH_TABLE.put(alias, attr);
-            ELispContext.CHARSET_LIST.setValue(new ELispCons(alias, ELispContext.CHARSET_LIST.getValue()));
+            ELispContext context = ELispContext.get(null);
+            context.setValue(CHARSET_LIST, new ELispCons(alias, context.getValue(CHARSET_LIST)));
             return false;
         }
     }

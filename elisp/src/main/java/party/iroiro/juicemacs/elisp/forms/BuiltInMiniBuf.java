@@ -20,8 +20,7 @@ import java.util.PrimitiveIterator;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInMiniBuf extends ELispBuiltIns {
@@ -64,7 +63,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             switch (collection) {
                 case ELispCons assocList -> assocList.forEach(this);
                 case ELispHashtable hashtable -> hashtable.forEach(this);
-                case ELispVector obarray -> ELispContext.getObarrayInner(obarray).forEach(this);
+                case ELispObarray obarray -> obarray.symbols().forEach(this);
                 default -> {
                     return false;
                 }
@@ -112,7 +111,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                     return;
                 }
             }
-            ELispBuffer buffer = currentBuffer();
+            ELispBuffer buffer = ELispContext.get(null).currentBuffer();
             for (ELispRegExp.CompiledRegExp regExp : regExps) {
                 if (isNil(regExp.call(s, true, 0, -1, buffer))) {
                     return;

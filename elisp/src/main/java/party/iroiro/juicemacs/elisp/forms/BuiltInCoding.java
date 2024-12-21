@@ -8,6 +8,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -821,7 +822,7 @@ public class BuiltInCoding extends ELispBuiltIns {
                         .append(base)
                         .append(MuleString.fromString(suffix))
                         .build();
-                symbols[i] = intern(name.toString());
+                symbols[i] = ELispContext.get(null).globals().intern(name);
             }
             return symbols;
         }

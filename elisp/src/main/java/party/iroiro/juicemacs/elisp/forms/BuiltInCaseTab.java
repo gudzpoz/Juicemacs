@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
@@ -12,11 +13,11 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharTab.charTableMap;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCaseTab extends ELispBuiltIns {
-    public static void initCasetabOnce() {
+    public static void initCasetabOnce(ELispContext context) {
         BuiltInFns.FPut.put(CASE_TABLE, CHAR_TABLE_EXTRA_SLOTS, 3L);
 
         ELispCharTable asciiDownCase = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
@@ -36,7 +37,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         asciiDowncaseTable = asciiDownCase;
         asciiUpcaseTable = asciiUpCase;
         asciiEqvTable = asciiEqv;
-        setCaseTable(asciiDownCase, true);
+        setCaseTable(context, asciiDownCase, true);
     }
 
     @Override
@@ -111,7 +112,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         }
     }
 
-    private static ELispCharTable setCaseTable(ELispCharTable caseTable, boolean standard) {
+    public static ELispCharTable setCaseTable(ELispContext context, ELispCharTable caseTable, boolean standard) {
         if (!FCaseTableP.caseTableP(caseTable)) {
             throw ELispSignals.wrongTypeArgument(CASE_TABLE_P, caseTable);
         }
@@ -145,7 +146,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
             asciiEqvTable = asCharTable(eqv);
             asciiCanonTable = asCharTable(canon);
         } else {
-            ELispBuffer buffer = asBuffer(CURRENT_BUFFER.getValue());
+            ELispBuffer buffer = asBuffer(context.currentBuffer());
             buffer.setDowncaseTable(caseTable);
             buffer.setUpcaseTable(up);
             buffer.setCaseCanonTable(canon);
@@ -250,7 +251,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
     public abstract static class FSetStandardCaseTable extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispCharTable setStandardCaseTable(ELispCharTable table) {
-            return setCaseTable(table, true);
+            return setCaseTable(ELispContext.get(null), table, true);
         }
     }
 }

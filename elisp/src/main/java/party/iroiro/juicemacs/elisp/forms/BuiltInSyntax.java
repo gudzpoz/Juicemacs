@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -10,13 +11,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSyntax extends ELispBuiltIns {
-    public static void initSyntaxOnce() {
+    public static void initSyntaxOnce(ELispContext context) {
         for (int i = 0; i < SMAX; i++) {
             SYNTAX_CODE_OBJECT.set(i, new ELispCons((long) i));
         }
@@ -24,7 +24,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
         //noinspection SequencedCollectionMethodCanBeUsed
         Object whitespace = SYNTAX_CODE_OBJECT.get(SWHITESPACE);
         standardSyntaxTable = BuiltInCharTab.FMakeCharTable.makeCharTable(SYNTAX_TABLE, whitespace);
-        ELispBuffer.DEFAULT_VALUES.setSyntaxTable(standardSyntaxTable);
+        context.globals().getBufferDefaults().setSyntaxTable(standardSyntaxTable);
 
         // Control characters
         Object punctuation = SYNTAX_CODE_OBJECT.get(SPUNCT);

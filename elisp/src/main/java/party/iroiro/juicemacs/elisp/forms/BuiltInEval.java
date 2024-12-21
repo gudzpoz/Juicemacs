@@ -1520,7 +1520,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 if (handler instanceof ELispCons cons) {
                     Object conditionName = cons.car();
                     conditionNames[i] = conditionName;
-                    if (conditionName == ELispContext.CSUCCESS) {
+                    if (conditionName == CSUCCESS) {
                         successIndex = i;
                     }
                     Object body = cons.cdr();
@@ -1557,7 +1557,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
 
             private static boolean matches(ELispSymbol conditionName, Object tag) {
-                Object property = asSym(tag).getProperty(ELispContext.ERROR_CONDITIONS);
+                Object property = asSym(tag).getProperty(ERROR_CONDITIONS);
                 if (property instanceof ELispCons list) {
                     return list.contains(conditionName);
                 }
@@ -1621,7 +1621,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     return FProgn.progn(body).executeGeneric(frame);
                 }
                 return FLet.let(
-                        new ELispCons(ELispCons.listOf(var, ELispCons.listOf(ELispContext.QUOTE, data))),
+                        new ELispCons(ELispCons.listOf(var, ELispCons.listOf(QUOTE, data))),
                         body
                 ).executeGeneric(frame);
             }

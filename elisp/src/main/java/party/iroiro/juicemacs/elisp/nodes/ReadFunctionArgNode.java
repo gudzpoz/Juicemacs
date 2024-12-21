@@ -6,7 +6,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
@@ -50,7 +49,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             if (function instanceof ELispBuiltInBaseNode) {
                 ELispBuiltIn annotation = function.getClass().getSuperclass().getAnnotation(ELispBuiltIn.class);
                 if (annotation != null) {
-                    functionInfo = ELispContext.intern(annotation.name());
+                    functionInfo = getContext().intern(annotation.name());
                 }
             } else if (function instanceof ELispInterpretedClosure.ELispClosureCallNode closure) {
                 functionInfo = closure.getClosure().getName();

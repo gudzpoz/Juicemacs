@@ -3,25 +3,16 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCategory extends ELispBuiltIns {
-    public BuiltInCategory() {
-        BuiltInFns.FPut.put(CATEGORY_TABLE, CHAR_TABLE_EXTRA_SLOTS, 2L);
-        ELispCharTable standardCategoryTable = BuiltInCharTab.FMakeCharTable.makeCharTable(CATEGORY_TABLE, false);
-        ELispBuffer.DEFAULT_VALUES.setCategoryTable(standardCategoryTable);
-        ELispBoolVector categorySet = BuiltInAlloc.FMakeBoolVector.makeBoolVector(128, false);
-        standardCategoryTable.setDefault(categorySet);
-        standardCategoryTable.setExtra(0, BuiltInAlloc.FMakeVector.makeVector(95, false));
-    }
-
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCategoryFactory.getFactories();
@@ -32,8 +23,9 @@ public class BuiltInCategory extends ELispBuiltIns {
     }
 
     private static ELispCharTable checkCategoryTable(Object table) {
+        ELispContext context = ELispContext.get(null);
         if (isNil(table)) {
-            return asCharTable(currentBuffer().getCategoryTable());
+            return asCharTable(context.currentBuffer().getCategoryTable());
         }
         if (!FCategoryTableP.categoryTableP(table)) {
             throw ELispSignals.wrongTypeArgument(CATEGORY_TABLE_P, table);

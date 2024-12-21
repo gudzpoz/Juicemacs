@@ -13,7 +13,6 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -1922,7 +1921,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FProvide extends ELispBuiltInBaseNode {
         @Specialization
         public static Object provide(ELispSymbol feature, Object subfeatures) {
-            ELispSymbol features = ELispContext.FEATURES;
+            ELispSymbol features = FEATURES;
             Object isMem = FMemq.memq(feature, features.getValue());
             if (isNil(isMem)) {
                 features.setValue(new ELispCons(feature, features.getValue()));

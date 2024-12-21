@@ -143,7 +143,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
                 // TODO: process-environment?
                 throw new UnsupportedOperationException();
             }
-            String value = ELispLanguage.getEnv().get(variable.asString());
+            String value = ELispContext.get(null).getEnv(variable.asString());
             return value == null ? false : new ELispString(value);
         }
     }

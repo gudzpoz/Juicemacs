@@ -34,10 +34,12 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
  */
 public class ELispParser {
 
+    private final ELispContext context;
     private final ELispLexer lexer;
     private boolean lexicalBinding;
 
-    public ELispParser(Source source) {
+    public ELispParser(ELispContext context, Source source) {
+        this.context = context;
         this.lexer = new ELispLexer(source);
         try {
             if (peek() instanceof SetLexicalBindingMode(boolean value)) {
@@ -92,7 +94,7 @@ public class ELispParser {
                     symbol = ELispContext.applyShorthands(symbol);
                 }
                 if (intern) {
-                    yield ELispContext.intern(symbol);
+                    yield context.intern(symbol);
                 }
                 yield new ELispSymbol(symbol);
             }
@@ -119,7 +121,7 @@ public class ELispParser {
             case BackQuote() -> quote(BACKQUOTE); // `a -> (` a)
             case Unquote() -> quote(COMMA); // ,a -> (, a)
             case UnquoteSplicing() -> quote(COMMA_AT); // ,@a -> (,@ a)
-            case Dot() -> ELispContext.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
+            case Dot() -> context.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
             case ParenOpen() -> {
                 int line = lexer.getLine();
                 int column = Math.max(lexer.getColumn() - 1, 1); // get to the position before the '('
@@ -139,7 +141,7 @@ public class ELispParser {
                         if (peek() instanceof ParenClose) {
                             // (a b .) -> (a b \.)
                             builder.addWithLocation(
-                                    ELispContext.intern("."),
+                                    context.intern("."),
                                     startLine, startColumn, 0, 0
                             );
                             break;
@@ -258,8 +260,8 @@ public class ELispParser {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static ELispRootNode parse(ELispLanguage language, Source source) throws IOException {
-        ELispParser parser = new ELispParser(source);
+    public static ELispRootNode parse(ELispLanguage language, ELispContext context, Source source) throws IOException {
+        ELispParser parser = new ELispParser(context, source);
         List<Object> expressions = new ArrayList<>();
         while (parser.hasNext()) {
             expressions.add(parser.nextLisp());
@@ -276,12 +278,12 @@ public class ELispParser {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static Object read(String s) throws IOException {
-        return read(Source.newBuilder("elisp", s, "").build());
+    public static Object read(ELispContext context, String s) throws IOException {
+        return read(context, Source.newBuilder("elisp", s, "").build());
     }
 
-    public static Object read(Source source) throws IOException {
-        ELispParser parser = new ELispParser(source);
+    public static Object read(ELispContext context, Source source) throws IOException {
+        ELispParser parser = new ELispParser(context, source);
         return parser.nextLisp();
     }
 

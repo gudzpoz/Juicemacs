@@ -255,7 +255,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
         @Specialization
         public Object unicodePropertyTableInternal(Object prop) {
             ELispContext context = getContext();
-            Object val = BuiltInFns.FAssq.assq(prop, context.getValue(CHAR_CODE_PROPERTY_ALIST));
+            Object val = BuiltInFns.FAssq.assq(prop, CHAR_CODE_PROPERTY_ALIST.getValue());
             if (!(val instanceof ELispCons cons)) {
                 return false;
             }

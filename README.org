@@ -1,7 +1,7 @@
 #+title: Juicemacs - An absolutely-not-solid Emacs implementation
 
 [[https://justforfunnoreally.dev][https://img.shields.io/badge/justforfunnoreally-dev-9ff.svg]]
-[[https://openjdk.org/projects/jdk/23/][https://img.shields.io/badge/Java-23-orange.svg?logo=openjdk]]
+[[https://openjdk.org/projects/jdk/23/][https://img.shields.io/badge/Java-23-orange.svg?logo=openjdk&ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
 that over-ambitiously aims to achieve the following:

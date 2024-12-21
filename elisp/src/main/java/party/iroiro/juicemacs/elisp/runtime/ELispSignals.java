@@ -213,7 +213,7 @@ public abstract class ELispSignals {
                     String expected = matcher.group(2);
                     ELispSymbol predicate = CLASS_CAST_MAP.get(expected);
                     if (predicate == null) {
-                        predicate = ELispContext.intern(expected);
+                        predicate = UNSPECIFIED;
                     }
                     yield ELispSignals.wrongTypeArgument(predicate, actual);
                 }

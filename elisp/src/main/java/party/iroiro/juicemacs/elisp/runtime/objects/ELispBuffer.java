@@ -9,18 +9,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol.Value.Forwarded;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab.*;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEditFns.currentBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public final class ELispBuffer extends AbstractELispIdentityObject {
@@ -37,7 +36,8 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         this.localVariables = new HashMap<>();
     }
 
-    private ELispBuffer(Object[] bufferLocalFields) {
+    public ELispBuffer(Object[] bufferLocalFields) {
+        // TODO: Should not be public
         this(
                 bufferLocalFields,
                 new PieceTreeBase(List.of(), PieceTreeBase.EndOfLine.LF, true),
@@ -45,9 +45,9 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         );
     }
 
-    public ELispBuffer(boolean inhibitBufferHooks) {
+    public ELispBuffer(ELispBuffer defaults, boolean inhibitBufferHooks) {
         this(
-                Arrays.copyOf(DEFAULT_VALUES.bufferLocalFields, DEFAULT_VALUES.bufferLocalFields.length),
+                Arrays.copyOf(defaults.bufferLocalFields, defaults.bufferLocalFields.length),
                 new PieceTreeBase(List.of(), PieceTreeBase.EndOfLine.LF, true),
                 inhibitBufferHooks
         );
@@ -123,7 +123,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         if (!(BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(0))
                 && BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(1))
                 && BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(2)))) {
-            BuiltInCaseTab.FSetStandardCaseTable.setStandardCaseTable(asciiDowncaseTable);
+            setCaseTable(ELispContext.get(null), asciiDowncaseTable, true);
         }
         setDowncaseTable(asciiDowncaseTable);
         setUpcaseTable(asciiDowncaseTable.getExtra(0));
@@ -136,9 +136,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     //#region struct buffer
     private final Object[] bufferLocalFields;
-    public static final ELispBuffer DEFAULT_VALUES = new ELispBuffer(Collections.nCopies(77, false).toArray());
     private static final byte[] BUFFER_LOCAL_FLAGS = new byte[77];
-    private static final ELispSymbol[] BUFFER_LOCAL_SYMBOLS = new ELispSymbol[77];
     /**
      * The name of this buffer.
      */
@@ -641,27 +639,27 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public void setUndoList(Object value) { bufferLocalFields[BVAR_UNDO_LIST] = value; }
     //#endregion struct buffer
 
-    public static void initBufferLocalVars() {
+    public static void initBufferLocalVars(ELispBuffer defaultValues) {
         //#region init_buffer_once
-        DEFAULT_VALUES.setName(new ELispString(" *buffer-defaults*"));
-        DEFAULT_VALUES.setMajorMode(FUNDAMENTAL_MODE);
-        DEFAULT_VALUES.setModeLineFormat(new ELispString("%-"));
-        DEFAULT_VALUES.setTabWidth((long) (8));
-        DEFAULT_VALUES.setFillColumn((long) (70));
-        DEFAULT_VALUES.setLeftMargin((long) (0));
-        DEFAULT_VALUES.setCtlArrow(T);
-        DEFAULT_VALUES.setBidiDisplayReordering(T);
-        DEFAULT_VALUES.setSelectiveDisplayEllipses(T);
-        DEFAULT_VALUES.setEnableMultibyteCharacters(T);
-        DEFAULT_VALUES.setAutoSaveFileFormat(T);
-        DEFAULT_VALUES.setCacheLongScans(T);
-        DEFAULT_VALUES.setDisplayCount((long) (0));
-        DEFAULT_VALUES.setLeftMarginCols((long) (0));
-        DEFAULT_VALUES.setRightMarginCols((long) (0));
-        DEFAULT_VALUES.setVerticalScrollBarType(T);
-        DEFAULT_VALUES.setHorizontalScrollBarType(T);
-        DEFAULT_VALUES.setCursorType(T);
-        DEFAULT_VALUES.setCursorInNonSelectedWindows(T);
+        defaultValues.setName(new ELispString(" *buffer-defaults*"));
+        defaultValues.setMajorMode(FUNDAMENTAL_MODE);
+        defaultValues.setModeLineFormat(new ELispString("%-"));
+        defaultValues.setTabWidth((long) (8));
+        defaultValues.setFillColumn((long) (70));
+        defaultValues.setLeftMargin((long) (0));
+        defaultValues.setCtlArrow(T);
+        defaultValues.setBidiDisplayReordering(T);
+        defaultValues.setSelectiveDisplayEllipses(T);
+        defaultValues.setEnableMultibyteCharacters(T);
+        defaultValues.setAutoSaveFileFormat(T);
+        defaultValues.setCacheLongScans(T);
+        defaultValues.setDisplayCount((long) (0));
+        defaultValues.setLeftMarginCols((long) (0));
+        defaultValues.setRightMarginCols((long) (0));
+        defaultValues.setVerticalScrollBarType(T);
+        defaultValues.setHorizontalScrollBarType(T);
+        defaultValues.setCursorType(T);
+        defaultValues.setCursorInNonSelectedWindows(T);
         BUFFER_LOCAL_FLAGS[BVAR_NAME] = 0;
         BUFFER_LOCAL_FLAGS[BVAR_LAST_NAME] = 0;
         BUFFER_LOCAL_FLAGS[BVAR_FILENAME] = -1;
@@ -739,133 +737,73 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         BUFFER_LOCAL_FLAGS[BVAR_TEXT_CONVERSION_STYLE] = 43;
         BUFFER_LOCAL_FLAGS[BVAR_CURSOR_IN_NON_SELECTED_WINDOWS] = 44;
         BUFFER_LOCAL_FLAGS[BVAR_UNDO_LIST] = -1;
-        BUFFER_FILE_NAME.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FILENAME, STRINGP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FILENAME] = BUFFER_FILE_NAME;
-        DEFAULT_DIRECTORY.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_DIRECTORY, STRINGP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_DIRECTORY] = DEFAULT_DIRECTORY;
-        BUFFER_BACKED_UP.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_BACKED_UP, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_BACKED_UP] = BUFFER_BACKED_UP;
-        BUFFER_SAVED_SIZE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SAVE_LENGTH, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SAVE_LENGTH] = BUFFER_SAVED_SIZE;
-        BUFFER_AUTO_SAVE_FILE_NAME.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_AUTO_SAVE_FILE_NAME, STRINGP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_AUTO_SAVE_FILE_NAME] = BUFFER_AUTO_SAVE_FILE_NAME;
-        BUFFER_READ_ONLY.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_READ_ONLY, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_READ_ONLY] = BUFFER_READ_ONLY;
-        MAJOR_MODE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_MAJOR_MODE, SYMBOLP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_MAJOR_MODE] = MAJOR_MODE;
-        LOCAL_MINOR_MODES.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_LOCAL_MINOR_MODES, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_LOCAL_MINOR_MODES] = LOCAL_MINOR_MODES;
-        MODE_NAME.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_MODE_NAME, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_MODE_NAME] = MODE_NAME;
-        MODE_LINE_FORMAT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_MODE_LINE_FORMAT, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_MODE_LINE_FORMAT] = MODE_LINE_FORMAT;
-        HEADER_LINE_FORMAT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_HEADER_LINE_FORMAT, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_HEADER_LINE_FORMAT] = HEADER_LINE_FORMAT;
-        TAB_LINE_FORMAT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_TAB_LINE_FORMAT, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_TAB_LINE_FORMAT] = TAB_LINE_FORMAT;
-        LOCAL_ABBREV_TABLE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_ABBREV_TABLE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_ABBREV_TABLE] = LOCAL_ABBREV_TABLE;
-        TAB_WIDTH.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_TAB_WIDTH, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_TAB_WIDTH] = TAB_WIDTH;
-        FILL_COLUMN.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FILL_COLUMN, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FILL_COLUMN] = FILL_COLUMN;
-        LEFT_MARGIN.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_LEFT_MARGIN, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_LEFT_MARGIN] = LEFT_MARGIN;
-        AUTO_FILL_FUNCTION.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_AUTO_FILL_FUNCTION, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_AUTO_FILL_FUNCTION] = AUTO_FILL_FUNCTION;
-        TRUNCATE_LINES.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_TRUNCATE_LINES, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_TRUNCATE_LINES] = TRUNCATE_LINES;
-        WORD_WRAP.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_WORD_WRAP, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_WORD_WRAP] = WORD_WRAP;
-        CTL_ARROW.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_CTL_ARROW, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_CTL_ARROW] = CTL_ARROW;
-        BIDI_DISPLAY_REORDERING.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_BIDI_DISPLAY_REORDERING, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_BIDI_DISPLAY_REORDERING] = BIDI_DISPLAY_REORDERING;
-        BIDI_PARAGRAPH_DIRECTION.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_BIDI_PARAGRAPH_DIRECTION, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_BIDI_PARAGRAPH_DIRECTION] = BIDI_PARAGRAPH_DIRECTION;
-        BIDI_PARAGRAPH_SEPARATE_RE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_BIDI_PARAGRAPH_SEPARATE_RE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_BIDI_PARAGRAPH_SEPARATE_RE] = BIDI_PARAGRAPH_SEPARATE_RE;
-        BIDI_PARAGRAPH_START_RE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_BIDI_PARAGRAPH_START_RE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_BIDI_PARAGRAPH_START_RE] = BIDI_PARAGRAPH_START_RE;
-        SELECTIVE_DISPLAY.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SELECTIVE_DISPLAY, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SELECTIVE_DISPLAY] = SELECTIVE_DISPLAY;
-        SELECTIVE_DISPLAY_ELLIPSES.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SELECTIVE_DISPLAY_ELLIPSES, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SELECTIVE_DISPLAY_ELLIPSES] = SELECTIVE_DISPLAY_ELLIPSES;
-        OVERWRITE_MODE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_OVERWRITE_MODE, OVERWRITE_MODE));
-        BUFFER_LOCAL_SYMBOLS[BVAR_OVERWRITE_MODE] = OVERWRITE_MODE;
-        ABBREV_MODE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_ABBREV_MODE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_ABBREV_MODE] = ABBREV_MODE;
-        BUFFER_DISPLAY_TABLE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_DISPLAY_TABLE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_DISPLAY_TABLE] = BUFFER_DISPLAY_TABLE;
-        MARK_ACTIVE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_MARK_ACTIVE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_MARK_ACTIVE] = MARK_ACTIVE;
-        ENABLE_MULTIBYTE_CHARACTERS.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_ENABLE_MULTIBYTE_CHARACTERS, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_ENABLE_MULTIBYTE_CHARACTERS] = ENABLE_MULTIBYTE_CHARACTERS;
-        BUFFER_FILE_CODING_SYSTEM.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_BUFFER_FILE_CODING_SYSTEM, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_BUFFER_FILE_CODING_SYSTEM] = BUFFER_FILE_CODING_SYSTEM;
-        BUFFER_FILE_FORMAT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FILE_FORMAT, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FILE_FORMAT] = BUFFER_FILE_FORMAT;
-        BUFFER_AUTO_SAVE_FILE_FORMAT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_AUTO_SAVE_FILE_FORMAT, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_AUTO_SAVE_FILE_FORMAT] = BUFFER_AUTO_SAVE_FILE_FORMAT;
-        CACHE_LONG_SCANS.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_CACHE_LONG_SCANS, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_CACHE_LONG_SCANS] = CACHE_LONG_SCANS;
-        POINT_BEFORE_SCROLL.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_POINT_BEFORE_SCROLL, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_POINT_BEFORE_SCROLL] = POINT_BEFORE_SCROLL;
-        BUFFER_FILE_TRUENAME.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FILE_TRUENAME, STRINGP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FILE_TRUENAME] = BUFFER_FILE_TRUENAME;
-        BUFFER_INVISIBILITY_SPEC.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_INVISIBILITY_SPEC, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_INVISIBILITY_SPEC] = BUFFER_INVISIBILITY_SPEC;
-        BUFFER_DISPLAY_COUNT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_DISPLAY_COUNT, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_DISPLAY_COUNT] = BUFFER_DISPLAY_COUNT;
-        LEFT_MARGIN_WIDTH.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_LEFT_MARGIN_COLS, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_LEFT_MARGIN_COLS] = LEFT_MARGIN_WIDTH;
-        RIGHT_MARGIN_WIDTH.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_RIGHT_MARGIN_COLS, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_RIGHT_MARGIN_COLS] = RIGHT_MARGIN_WIDTH;
-        LEFT_FRINGE_WIDTH.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_LEFT_FRINGE_WIDTH, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_LEFT_FRINGE_WIDTH] = LEFT_FRINGE_WIDTH;
-        RIGHT_FRINGE_WIDTH.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_RIGHT_FRINGE_WIDTH, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_RIGHT_FRINGE_WIDTH] = RIGHT_FRINGE_WIDTH;
-        FRINGES_OUTSIDE_MARGINS.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FRINGES_OUTSIDE_MARGINS, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FRINGES_OUTSIDE_MARGINS] = FRINGES_OUTSIDE_MARGINS;
-        SCROLL_BAR_WIDTH.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SCROLL_BAR_WIDTH, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SCROLL_BAR_WIDTH] = SCROLL_BAR_WIDTH;
-        SCROLL_BAR_HEIGHT.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SCROLL_BAR_HEIGHT, INTEGERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SCROLL_BAR_HEIGHT] = SCROLL_BAR_HEIGHT;
-        VERTICAL_SCROLL_BAR.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_VERTICAL_SCROLL_BAR_TYPE, VERTICAL_SCROLL_BAR));
-        BUFFER_LOCAL_SYMBOLS[BVAR_VERTICAL_SCROLL_BAR_TYPE] = VERTICAL_SCROLL_BAR;
-        HORIZONTAL_SCROLL_BAR.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_HORIZONTAL_SCROLL_BAR_TYPE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_HORIZONTAL_SCROLL_BAR_TYPE] = HORIZONTAL_SCROLL_BAR;
-        INDICATE_EMPTY_LINES.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_INDICATE_EMPTY_LINES, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_INDICATE_EMPTY_LINES] = INDICATE_EMPTY_LINES;
-        INDICATE_BUFFER_BOUNDARIES.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_INDICATE_BUFFER_BOUNDARIES, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_INDICATE_BUFFER_BOUNDARIES] = INDICATE_BUFFER_BOUNDARIES;
-        FRINGE_INDICATOR_ALIST.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FRINGE_INDICATOR_ALIST, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FRINGE_INDICATOR_ALIST] = FRINGE_INDICATOR_ALIST;
-        FRINGE_CURSOR_ALIST.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_FRINGE_CURSOR_ALIST, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_FRINGE_CURSOR_ALIST] = FRINGE_CURSOR_ALIST;
-        BUFFER_DISPLAY_TIME.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_DISPLAY_TIME, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_DISPLAY_TIME] = BUFFER_DISPLAY_TIME;
-        SCROLL_UP_AGGRESSIVELY.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SCROLL_UP_AGGRESSIVELY, FRACTION));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SCROLL_UP_AGGRESSIVELY] = SCROLL_UP_AGGRESSIVELY;
-        SCROLL_DOWN_AGGRESSIVELY.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_SCROLL_DOWN_AGGRESSIVELY, FRACTION));
-        BUFFER_LOCAL_SYMBOLS[BVAR_SCROLL_DOWN_AGGRESSIVELY] = SCROLL_DOWN_AGGRESSIVELY;
-        CURSOR_TYPE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_CURSOR_TYPE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_CURSOR_TYPE] = CURSOR_TYPE;
-        LINE_SPACING.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_EXTRA_LINE_SPACING, NUMBERP));
-        BUFFER_LOCAL_SYMBOLS[BVAR_EXTRA_LINE_SPACING] = LINE_SPACING;
-        TEXT_CONVERSION_STYLE.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_TEXT_CONVERSION_STYLE, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_TEXT_CONVERSION_STYLE] = TEXT_CONVERSION_STYLE;
-        CURSOR_IN_NON_SELECTED_WINDOWS.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_CURSOR_IN_NON_SELECTED_WINDOWS, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_CURSOR_IN_NON_SELECTED_WINDOWS] = CURSOR_IN_NON_SELECTED_WINDOWS;
-        BUFFER_UNDO_LIST.initForwardTo(new ELispSymbol.Value.ForwardedPerBuffer(BVAR_UNDO_LIST, NIL));
-        BUFFER_LOCAL_SYMBOLS[BVAR_UNDO_LIST] = BUFFER_UNDO_LIST;
+        BUFFER_FILE_NAME.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FILENAME, STRINGP));
+        DEFAULT_DIRECTORY.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_DIRECTORY, STRINGP));
+        BUFFER_BACKED_UP.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_BACKED_UP, NIL));
+        BUFFER_SAVED_SIZE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SAVE_LENGTH, INTEGERP));
+        BUFFER_AUTO_SAVE_FILE_NAME.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_AUTO_SAVE_FILE_NAME, STRINGP));
+        BUFFER_READ_ONLY.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_READ_ONLY, NIL));
+        MAJOR_MODE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_MAJOR_MODE, SYMBOLP));
+        LOCAL_MINOR_MODES.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_LOCAL_MINOR_MODES, NIL));
+        MODE_NAME.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_MODE_NAME, NIL));
+        MODE_LINE_FORMAT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_MODE_LINE_FORMAT, NIL));
+        HEADER_LINE_FORMAT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_HEADER_LINE_FORMAT, NIL));
+        TAB_LINE_FORMAT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_TAB_LINE_FORMAT, NIL));
+        LOCAL_ABBREV_TABLE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_ABBREV_TABLE, NIL));
+        TAB_WIDTH.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_TAB_WIDTH, INTEGERP));
+        FILL_COLUMN.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FILL_COLUMN, INTEGERP));
+        LEFT_MARGIN.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_LEFT_MARGIN, INTEGERP));
+        AUTO_FILL_FUNCTION.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_AUTO_FILL_FUNCTION, NIL));
+        TRUNCATE_LINES.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_TRUNCATE_LINES, NIL));
+        WORD_WRAP.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_WORD_WRAP, NIL));
+        CTL_ARROW.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_CTL_ARROW, NIL));
+        BIDI_DISPLAY_REORDERING.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_BIDI_DISPLAY_REORDERING, NIL));
+        BIDI_PARAGRAPH_DIRECTION.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_BIDI_PARAGRAPH_DIRECTION, NIL));
+        BIDI_PARAGRAPH_SEPARATE_RE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_BIDI_PARAGRAPH_SEPARATE_RE, NIL));
+        BIDI_PARAGRAPH_START_RE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_BIDI_PARAGRAPH_START_RE, NIL));
+        SELECTIVE_DISPLAY.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SELECTIVE_DISPLAY, NIL));
+        SELECTIVE_DISPLAY_ELLIPSES.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SELECTIVE_DISPLAY_ELLIPSES, NIL));
+        OVERWRITE_MODE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_OVERWRITE_MODE, OVERWRITE_MODE));
+        ABBREV_MODE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_ABBREV_MODE, NIL));
+        BUFFER_DISPLAY_TABLE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_DISPLAY_TABLE, NIL));
+        MARK_ACTIVE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_MARK_ACTIVE, NIL));
+        ENABLE_MULTIBYTE_CHARACTERS.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_ENABLE_MULTIBYTE_CHARACTERS, NIL));
+        BUFFER_FILE_CODING_SYSTEM.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_BUFFER_FILE_CODING_SYSTEM, NIL));
+        BUFFER_FILE_FORMAT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FILE_FORMAT, NIL));
+        BUFFER_AUTO_SAVE_FILE_FORMAT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_AUTO_SAVE_FILE_FORMAT, NIL));
+        CACHE_LONG_SCANS.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_CACHE_LONG_SCANS, NIL));
+        POINT_BEFORE_SCROLL.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_POINT_BEFORE_SCROLL, NIL));
+        BUFFER_FILE_TRUENAME.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FILE_TRUENAME, STRINGP));
+        BUFFER_INVISIBILITY_SPEC.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_INVISIBILITY_SPEC, NIL));
+        BUFFER_DISPLAY_COUNT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_DISPLAY_COUNT, INTEGERP));
+        LEFT_MARGIN_WIDTH.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_LEFT_MARGIN_COLS, INTEGERP));
+        RIGHT_MARGIN_WIDTH.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_RIGHT_MARGIN_COLS, INTEGERP));
+        LEFT_FRINGE_WIDTH.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_LEFT_FRINGE_WIDTH, INTEGERP));
+        RIGHT_FRINGE_WIDTH.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_RIGHT_FRINGE_WIDTH, INTEGERP));
+        FRINGES_OUTSIDE_MARGINS.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FRINGES_OUTSIDE_MARGINS, NIL));
+        SCROLL_BAR_WIDTH.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SCROLL_BAR_WIDTH, INTEGERP));
+        SCROLL_BAR_HEIGHT.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SCROLL_BAR_HEIGHT, INTEGERP));
+        VERTICAL_SCROLL_BAR.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_VERTICAL_SCROLL_BAR_TYPE, VERTICAL_SCROLL_BAR));
+        HORIZONTAL_SCROLL_BAR.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_HORIZONTAL_SCROLL_BAR_TYPE, NIL));
+        INDICATE_EMPTY_LINES.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_INDICATE_EMPTY_LINES, NIL));
+        INDICATE_BUFFER_BOUNDARIES.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_INDICATE_BUFFER_BOUNDARIES, NIL));
+        FRINGE_INDICATOR_ALIST.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FRINGE_INDICATOR_ALIST, NIL));
+        FRINGE_CURSOR_ALIST.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_FRINGE_CURSOR_ALIST, NIL));
+        BUFFER_DISPLAY_TIME.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_DISPLAY_TIME, NIL));
+        SCROLL_UP_AGGRESSIVELY.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SCROLL_UP_AGGRESSIVELY, FRACTION));
+        SCROLL_DOWN_AGGRESSIVELY.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_SCROLL_DOWN_AGGRESSIVELY, FRACTION));
+        CURSOR_TYPE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_CURSOR_TYPE, NIL));
+        LINE_SPACING.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_EXTRA_LINE_SPACING, NUMBERP));
+        TEXT_CONVERSION_STYLE.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_TEXT_CONVERSION_STYLE, NIL));
+        CURSOR_IN_NON_SELECTED_WINDOWS.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_CURSOR_IN_NON_SELECTED_WINDOWS, NIL));
+        BUFFER_UNDO_LIST.initForwardTo(new ValueStorage.ForwardedPerBuffer(BVAR_UNDO_LIST, NIL));
         //#endregion init_buffer_once
-        DEFAULT_VALUES.resetLocalVariables(true);
+        defaultValues.resetLocalVariables(true);
     }
 
     public static void initDirectory() {
-        String cwd = ELispLanguage.getEnv().get("user.dir");
-        ELispBuffer currentBuffer = currentBuffer();
+        String cwd = ELispContext.get(null).getEnv("user.dir");
+        ELispBuffer currentBuffer = ELispContext.get(null).currentBuffer();
         if (cwd == null) {
             currentBuffer.setDirectory(false);
         } else {
