@@ -89,6 +89,33 @@ access. A usual mitigation to this is to cache the value container objects, but,
 ..., it can be hard to do so since we have multiple workers sharing the same
 function.
 
+** TODO Progress [0/3]
+
+- [-] Move global things to fields in =ELispGlobal=
+
+  - [X] Symbols, generated forward value containers
+
+  - [ ] Various =static= fields in =BuiltIn*= classes
+
+- [ ] Optimize
+
+  - [ ] Use get contexts with =ELispContext.get(this)=
+
+  - [ ] Read/write to global values with some =ReadGlobalNode=
+
+  - [ ] Cache constant globals
+
+    - [ ] Keywords
+
+    - [ ] Constants
+
+  - [ ] Maybe use a =ContextThreadLocal= for current buffer tracking
+
+  - [ ] Automatically free container objects when the corresponding symbol goes
+    out of scope
+
+- [ ] Make tests pass again
+
 *** Why sharing symbols & functions?
 
 **** Symbols
