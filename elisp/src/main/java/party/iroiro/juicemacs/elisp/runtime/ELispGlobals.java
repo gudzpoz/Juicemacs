@@ -1,8 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharTab.*;
@@ -16,8 +14,6 @@ import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
@@ -39,68 +35,17 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
         "UnnecessaryUnicodeEscape",
         "UnnecessaryLocalVariable"
 })
-public class ELispGlobals {
-    final ELispObarray globalObarray;
-    private final ELispContext ctx;
-    private final ELispBuffer bufferDefaults = new ELispBuffer(Collections.nCopies(77, false).toArray());
-
-    public ELispGlobals(ELispLanguage language, ELispContext context) {
-        this.ctx = context;
-        this.globalObarray = new ELispObarray(new ConcurrentHashMap<>(4096));
+public final class ELispGlobals extends ELispGlobalsBase {
+    public ELispGlobals(ELispContext context) {
+        super(context);
     }
 
-    public ELispBuffer getBufferDefaults() {
-        return Objects.requireNonNull(bufferDefaults);
-    }
-
-    public ELispContext getContext() {
-        return ctx;
-    }
-
+    @Override
     public void init(ELispLanguage language, boolean postInit) {
         internSymbols(allSymbols());
         internSymbols(variableSymbols());
         internSymbols(bufferLocalVarSymbols());
-
-        initBuiltIns(language, new BuiltInAlloc());
-        initBuiltIns(language, new BuiltInBuffer());
-        initBuiltIns(language, new BuiltInCallInt());
-        initBuiltIns(language, new BuiltInCallProc());
-        initBuiltIns(language, new BuiltInCaseFiddle());
-        initBuiltIns(language, new BuiltInCaseTab());
-        initBuiltIns(language, new BuiltInCategory());
-        initBuiltIns(language, new BuiltInCcl());
-        initBuiltIns(language, new BuiltInCharacter());
-        initBuiltIns(language, new BuiltInCharSet());
-        initBuiltIns(language, new BuiltInCharTab());
-        initBuiltIns(language, new BuiltInCmds());
-        initBuiltIns(language, new BuiltInCoding());
-        initBuiltIns(language, new BuiltInComp());
-        initBuiltIns(language, new BuiltInComposite());
-        initBuiltIns(language, new BuiltInData());
-        initBuiltIns(language, new BuiltInDoc());
-        initBuiltIns(language, new BuiltInEditFns());
-        initBuiltIns(language, new BuiltInEmacs());
-        initBuiltIns(language, new BuiltInEval());
-        initBuiltIns(language, new BuiltInFileIO());
-        initBuiltIns(language, new BuiltInFloatFns());
-        initBuiltIns(language, new BuiltInFns());
-        initBuiltIns(language, new BuiltInFrame());
-        initBuiltIns(language, new BuiltInKeyboard());
-        initBuiltIns(language, new BuiltInKeymap());
-        initBuiltIns(language, new BuiltInLRead());
-        initBuiltIns(language, new BuiltInMacros());
-        initBuiltIns(language, new BuiltInMiniBuf());
-        initBuiltIns(language, new BuiltInPrint());
-        initBuiltIns(language, new BuiltInProcess());
-        initBuiltIns(language, new BuiltInSearch());
-        initBuiltIns(language, new BuiltInSyntax());
-        initBuiltIns(language, new BuiltInTextProp());
-        initBuiltIns(language, new BuiltInTimeFns());
-        initBuiltIns(language, new BuiltInWindow());
-        initBuiltIns(language, new BuiltInXDisp());
-        initBuiltIns(language, new BuiltInXFaces());
-
+        super.init(language, postInit);
         initGlobalVariables();
         if (postInit) {
             postInitVariables();
@@ -114,15 +59,6 @@ public class ELispGlobals {
         }
     }
 
-    private void initBuiltIns(@Nullable ELispLanguage language, ELispBuiltIns builtIns) {
-        //noinspection DataFlowIssue
-        builtIns.initialize(language, this);
-    }
-
-    public ELispSymbol intern(String name) {
-        return globalObarray.intern(name);
-    }
-
     public ELispSymbol intern(MuleString name) {
         return globalObarray.intern(name);
     }
@@ -131,11 +67,7 @@ public class ELispGlobals {
         globalObarray.unintern(symbol.name());
     }
 
-    public void registerFunction(ELispSymbol symbol, ELispValue function) {
-        ctx.getFunctionStorage(symbol).set(function);
-    }
-
-    public void initForwardTo(ELispSymbol symbol, ValueStorage.AbstractForwarded<?> value) {
+    private void initForwardTo(ELispSymbol symbol, ValueStorage.AbstractForwarded<?> value) {
         ctx.forwardTo(symbol, value);
     }
 
@@ -264,24 +196,24 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedLong gcsDone = new ValueStorage.ForwardedLong(0);
     private final ValueStorage.ForwardedLong integerWidth = new ValueStorage.ForwardedLong();
     private void allocVars() {
-        GC_CONS_THRESHOLD.initForwardTo(gcConsThreshold);
-        GC_CONS_PERCENTAGE.initForwardTo(gcConsPercentage);
-        PURE_BYTES_USED.initForwardTo(pureBytesUsed);
-        CONS_CELLS_CONSED.initForwardTo(consCellsConsed);
-        FLOATS_CONSED.initForwardTo(floatsConsed);
-        VECTOR_CELLS_CONSED.initForwardTo(vectorCellsConsed);
-        SYMBOLS_CONSED.initForwardTo(symbolsConsed);
-        STRING_CHARS_CONSED.initForwardTo(stringCharsConsed);
-        INTERVALS_CONSED.initForwardTo(intervalsConsed);
-        STRINGS_CONSED.initForwardTo(stringsConsed);
-        PURIFY_FLAG.initForwardTo(purifyFlag);
-        GARBAGE_COLLECTION_MESSAGES.initForwardTo(garbageCollectionMessages);
-        POST_GC_HOOK.initForwardTo(postGcHook);
-        MEMORY_SIGNAL_DATA.initForwardTo(memorySignalData);
-        MEMORY_FULL.initForwardTo(memoryFull);
-        GC_ELAPSED.initForwardTo(gcElapsed);
-        GCS_DONE.initForwardTo(gcsDone);
-        INTEGER_WIDTH.initForwardTo(integerWidth);
+        initForwardTo(GC_CONS_THRESHOLD, gcConsThreshold);
+        initForwardTo(GC_CONS_PERCENTAGE, gcConsPercentage);
+        initForwardTo(PURE_BYTES_USED, pureBytesUsed);
+        initForwardTo(CONS_CELLS_CONSED, consCellsConsed);
+        initForwardTo(FLOATS_CONSED, floatsConsed);
+        initForwardTo(VECTOR_CELLS_CONSED, vectorCellsConsed);
+        initForwardTo(SYMBOLS_CONSED, symbolsConsed);
+        initForwardTo(STRING_CHARS_CONSED, stringCharsConsed);
+        initForwardTo(INTERVALS_CONSED, intervalsConsed);
+        initForwardTo(STRINGS_CONSED, stringsConsed);
+        initForwardTo(PURIFY_FLAG, purifyFlag);
+        initForwardTo(GARBAGE_COLLECTION_MESSAGES, garbageCollectionMessages);
+        initForwardTo(POST_GC_HOOK, postGcHook);
+        initForwardTo(MEMORY_SIGNAL_DATA, memorySignalData);
+        initForwardTo(MEMORY_FULL, memoryFull);
+        initForwardTo(GC_ELAPSED, gcElapsed);
+        initForwardTo(GCS_DONE, gcsDone);
+        initForwardTo(INTEGER_WIDTH, integerWidth);
     }
     private final ValueStorage.Forwarded beforeChangeFunctions = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded afterChangeFunctions = new ValueStorage.Forwarded(false);
@@ -300,22 +232,22 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedLong longLineOptimizationsBolSearchLimit = new ValueStorage.ForwardedLong(128);
     private final ValueStorage.ForwardedLong largeHscrollThreshold = new ValueStorage.ForwardedLong(10000);
     private void bufferVars() {
-        BEFORE_CHANGE_FUNCTIONS.initForwardTo(beforeChangeFunctions);
-        AFTER_CHANGE_FUNCTIONS.initForwardTo(afterChangeFunctions);
-        FIRST_CHANGE_HOOK.initForwardTo(firstChangeHook);
-        TRANSIENT_MARK_MODE.initForwardTo(transientMarkMode);
-        INHIBIT_READ_ONLY.initForwardTo(inhibitReadOnly);
-        KILL_BUFFER_QUERY_FUNCTIONS.initForwardTo(killBufferQueryFunctions);
-        CHANGE_MAJOR_MODE_HOOK.initForwardTo(changeMajorModeHook);
-        BUFFER_LIST_UPDATE_HOOK.initForwardTo(bufferListUpdateHook);
-        KILL_BUFFER_DELETE_AUTO_SAVE_FILES.initForwardTo(killBufferDeleteAutoSaveFiles);
-        DELETE_AUTO_SAVE_FILES.initForwardTo(deleteAutoSaveFiles);
-        CASE_FOLD_SEARCH.initForwardTo(caseFoldSearch);
-        CLONE_INDIRECT_BUFFER_HOOK.initForwardTo(cloneIndirectBufferHook);
-        LONG_LINE_THRESHOLD.initForwardTo(longLineThreshold);
-        LONG_LINE_OPTIMIZATIONS_REGION_SIZE.initForwardTo(longLineOptimizationsRegionSize);
-        LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT.initForwardTo(longLineOptimizationsBolSearchLimit);
-        LARGE_HSCROLL_THRESHOLD.initForwardTo(largeHscrollThreshold);
+        initForwardTo(BEFORE_CHANGE_FUNCTIONS, beforeChangeFunctions);
+        initForwardTo(AFTER_CHANGE_FUNCTIONS, afterChangeFunctions);
+        initForwardTo(FIRST_CHANGE_HOOK, firstChangeHook);
+        initForwardTo(TRANSIENT_MARK_MODE, transientMarkMode);
+        initForwardTo(INHIBIT_READ_ONLY, inhibitReadOnly);
+        initForwardTo(KILL_BUFFER_QUERY_FUNCTIONS, killBufferQueryFunctions);
+        initForwardTo(CHANGE_MAJOR_MODE_HOOK, changeMajorModeHook);
+        initForwardTo(BUFFER_LIST_UPDATE_HOOK, bufferListUpdateHook);
+        initForwardTo(KILL_BUFFER_DELETE_AUTO_SAVE_FILES, killBufferDeleteAutoSaveFiles);
+        initForwardTo(DELETE_AUTO_SAVE_FILES, deleteAutoSaveFiles);
+        initForwardTo(CASE_FOLD_SEARCH, caseFoldSearch);
+        initForwardTo(CLONE_INDIRECT_BUFFER_HOOK, cloneIndirectBufferHook);
+        initForwardTo(LONG_LINE_THRESHOLD, longLineThreshold);
+        initForwardTo(LONG_LINE_OPTIMIZATIONS_REGION_SIZE, longLineOptimizationsRegionSize);
+        initForwardTo(LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT, longLineOptimizationsBolSearchLimit);
+        initForwardTo(LARGE_HSCROLL_THRESHOLD, largeHscrollThreshold);
     }
     private final ValueStorage.Forwarded prefixArg = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded lastPrefixArg = new ValueStorage.Forwarded(); /* TODO */
@@ -326,14 +258,14 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded mouseLeaveBufferHook = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedBool inhibitMouseEventCheck = new ValueStorage.ForwardedBool(false);
     private void callintVars() {
-        PREFIX_ARG.initForwardTo(prefixArg);
-        LAST_PREFIX_ARG.initForwardTo(lastPrefixArg);
-        CURRENT_PREFIX_ARG.initForwardTo(currentPrefixArg);
-        COMMAND_HISTORY.initForwardTo(commandHistory);
-        COMMAND_DEBUG_STATUS.initForwardTo(commandDebugStatus);
-        MARK_EVEN_IF_INACTIVE.initForwardTo(markEvenIfInactive);
-        MOUSE_LEAVE_BUFFER_HOOK.initForwardTo(mouseLeaveBufferHook);
-        INHIBIT_MOUSE_EVENT_CHECK.initForwardTo(inhibitMouseEventCheck);
+        initForwardTo(PREFIX_ARG, prefixArg);
+        initForwardTo(LAST_PREFIX_ARG, lastPrefixArg);
+        initForwardTo(CURRENT_PREFIX_ARG, currentPrefixArg);
+        initForwardTo(COMMAND_HISTORY, commandHistory);
+        initForwardTo(COMMAND_DEBUG_STATUS, commandDebugStatus);
+        initForwardTo(MARK_EVEN_IF_INACTIVE, markEvenIfInactive);
+        initForwardTo(MOUSE_LEAVE_BUFFER_HOOK, mouseLeaveBufferHook);
+        initForwardTo(INHIBIT_MOUSE_EVENT_CHECK, inhibitMouseEventCheck);
     }
     private final ValueStorage.Forwarded shellFileName = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded execPath = new ValueStorage.Forwarded();
@@ -353,29 +285,29 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded ebrowseProgramName = new ValueStorage.Forwarded(new ELispString("ebrowse"));
     private final ValueStorage.Forwarded rcs2logProgramName = new ValueStorage.Forwarded(new ELispString("rcs2log"));
     private void callprocVars() {
-        SHELL_FILE_NAME.initForwardTo(shellFileName);
-        EXEC_PATH.initForwardTo(execPath);
-        EXEC_SUFFIXES.initForwardTo(execSuffixes);
-        EXEC_DIRECTORY.initForwardTo(execDirectory);
-        DATA_DIRECTORY.initForwardTo(dataDirectory);
-        DOC_DIRECTORY.initForwardTo(docDirectory);
-        CONFIGURE_INFO_DIRECTORY.initForwardTo(configureInfoDirectory);
-        SHARED_GAME_SCORE_DIRECTORY.initForwardTo(sharedGameScoreDirectory);
-        INITIAL_ENVIRONMENT.initForwardTo(initialEnvironment);
-        PROCESS_ENVIRONMENT.initForwardTo(processEnvironment);
-        CTAGS_PROGRAM_NAME.initForwardTo(ctagsProgramName);
-        ETAGS_PROGRAM_NAME.initForwardTo(etagsProgramName);
-        HEXL_PROGRAM_NAME.initForwardTo(hexlProgramName);
-        EMACSCLIENT_PROGRAM_NAME.initForwardTo(emacsclientProgramName);
-        MOVEMAIL_PROGRAM_NAME.initForwardTo(movemailProgramName);
-        EBROWSE_PROGRAM_NAME.initForwardTo(ebrowseProgramName);
-        RCS2LOG_PROGRAM_NAME.initForwardTo(rcs2logProgramName);
+        initForwardTo(SHELL_FILE_NAME, shellFileName);
+        initForwardTo(EXEC_PATH, execPath);
+        initForwardTo(EXEC_SUFFIXES, execSuffixes);
+        initForwardTo(EXEC_DIRECTORY, execDirectory);
+        initForwardTo(DATA_DIRECTORY, dataDirectory);
+        initForwardTo(DOC_DIRECTORY, docDirectory);
+        initForwardTo(CONFIGURE_INFO_DIRECTORY, configureInfoDirectory);
+        initForwardTo(SHARED_GAME_SCORE_DIRECTORY, sharedGameScoreDirectory);
+        initForwardTo(INITIAL_ENVIRONMENT, initialEnvironment);
+        initForwardTo(PROCESS_ENVIRONMENT, processEnvironment);
+        initForwardTo(CTAGS_PROGRAM_NAME, ctagsProgramName);
+        initForwardTo(ETAGS_PROGRAM_NAME, etagsProgramName);
+        initForwardTo(HEXL_PROGRAM_NAME, hexlProgramName);
+        initForwardTo(EMACSCLIENT_PROGRAM_NAME, emacsclientProgramName);
+        initForwardTo(MOVEMAIL_PROGRAM_NAME, movemailProgramName);
+        initForwardTo(EBROWSE_PROGRAM_NAME, ebrowseProgramName);
+        initForwardTo(RCS2LOG_PROGRAM_NAME, rcs2logProgramName);
     }
     private final ValueStorage.Forwarded regionExtractFunction = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedBool caseSymbolsAsWords = new ValueStorage.ForwardedBool(false);
     private void casefiddleVars() {
-        REGION_EXTRACT_FUNCTION.initForwardTo(regionExtractFunction);
-        CASE_SYMBOLS_AS_WORDS.initForwardTo(caseSymbolsAsWords);
+        initForwardTo(REGION_EXTRACT_FUNCTION, regionExtractFunction);
+        initForwardTo(CASE_SYMBOLS_AS_WORDS, caseSymbolsAsWords);
     }
 
     private void casetabVars() {
@@ -384,16 +316,16 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded wordCombiningCategories = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded wordSeparatingCategories = new ValueStorage.Forwarded(false);
     private void categoryVars() {
-        WORD_COMBINING_CATEGORIES.initForwardTo(wordCombiningCategories);
-        WORD_SEPARATING_CATEGORIES.initForwardTo(wordSeparatingCategories);
+        initForwardTo(WORD_COMBINING_CATEGORIES, wordCombiningCategories);
+        initForwardTo(WORD_SEPARATING_CATEGORIES, wordSeparatingCategories);
     }
     private final ValueStorage.Forwarded codeConversionMapVector = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded fontCclEncoderAlist = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded translationHashTableVector = new ValueStorage.Forwarded(false);
     private void cclVars() {
-        CODE_CONVERSION_MAP_VECTOR.initForwardTo(codeConversionMapVector);
-        FONT_CCL_ENCODER_ALIST.initForwardTo(fontCclEncoderAlist);
-        TRANSLATION_HASH_TABLE_VECTOR.initForwardTo(translationHashTableVector);
+        initForwardTo(CODE_CONVERSION_MAP_VECTOR, codeConversionMapVector);
+        initForwardTo(FONT_CCL_ENCODER_ALIST, fontCclEncoderAlist);
+        initForwardTo(TRANSLATION_HASH_TABLE_VECTOR, translationHashTableVector);
     }
     private final ValueStorage.Forwarded translationTableVector = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded autoFillChars = new ValueStorage.Forwarded();
@@ -404,32 +336,32 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded scriptRepresentativeChars = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded unicodeCategoryTable = new ValueStorage.Forwarded(false);
     private void characterVars() {
-        TRANSLATION_TABLE_VECTOR.initForwardTo(translationTableVector);
-        AUTO_FILL_CHARS.initForwardTo(autoFillChars);
-        CHAR_WIDTH_TABLE.initForwardTo(charWidthTable);
-        AMBIGUOUS_WIDTH_CHARS.initForwardTo(ambiguousWidthChars);
-        PRINTABLE_CHARS.initForwardTo(printableChars);
-        CHAR_SCRIPT_TABLE.initForwardTo(charScriptTable);
-        SCRIPT_REPRESENTATIVE_CHARS.initForwardTo(scriptRepresentativeChars);
-        UNICODE_CATEGORY_TABLE.initForwardTo(unicodeCategoryTable);
+        initForwardTo(TRANSLATION_TABLE_VECTOR, translationTableVector);
+        initForwardTo(AUTO_FILL_CHARS, autoFillChars);
+        initForwardTo(CHAR_WIDTH_TABLE, charWidthTable);
+        initForwardTo(AMBIGUOUS_WIDTH_CHARS, ambiguousWidthChars);
+        initForwardTo(PRINTABLE_CHARS, printableChars);
+        initForwardTo(CHAR_SCRIPT_TABLE, charScriptTable);
+        initForwardTo(SCRIPT_REPRESENTATIVE_CHARS, scriptRepresentativeChars);
+        initForwardTo(UNICODE_CATEGORY_TABLE, unicodeCategoryTable);
     }
     private final ValueStorage.Forwarded charsetMapPath = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedBool inhibitLoadCharsetMap = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.Forwarded charsetList = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded currentIso639Language = new ValueStorage.Forwarded(false);
     private void charsetVars() {
-        CHARSET_MAP_PATH.initForwardTo(charsetMapPath);
-        INHIBIT_LOAD_CHARSET_MAP.initForwardTo(inhibitLoadCharsetMap);
-        CHARSET_LIST.initForwardTo(charsetList);
-        CURRENT_ISO639_LANGUAGE.initForwardTo(currentIso639Language);
+        initForwardTo(CHARSET_MAP_PATH, charsetMapPath);
+        initForwardTo(INHIBIT_LOAD_CHARSET_MAP, inhibitLoadCharsetMap);
+        initForwardTo(CHARSET_LIST, charsetList);
+        initForwardTo(CURRENT_ISO639_LANGUAGE, currentIso639Language);
     }
     private final ValueStorage.Forwarded charCodePropertyAlist = new ValueStorage.Forwarded(false);
     private void chartabVars() {
-        CHAR_CODE_PROPERTY_ALIST.initForwardTo(charCodePropertyAlist);
+        initForwardTo(CHAR_CODE_PROPERTY_ALIST, charCodePropertyAlist);
     }
     private final ValueStorage.Forwarded postSelfInsertHook = new ValueStorage.Forwarded(false);
     private void cmdsVars() {
-        POST_SELF_INSERT_HOOK.initForwardTo(postSelfInsertHook);
+        initForwardTo(POST_SELF_INSERT_HOOK, postSelfInsertHook);
     }
     private final ValueStorage.Forwarded codingSystemList = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded codingSystemAlist = new ValueStorage.Forwarded(false);
@@ -461,35 +393,35 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool disableAsciiOptimization = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.Forwarded translationTableForInput = new ValueStorage.Forwarded(false);
     private void codingVars() {
-        CODING_SYSTEM_LIST.initForwardTo(codingSystemList);
-        CODING_SYSTEM_ALIST.initForwardTo(codingSystemAlist);
-        CODING_CATEGORY_LIST.initForwardTo(codingCategoryList);
-        CODING_SYSTEM_FOR_READ.initForwardTo(codingSystemForRead);
-        CODING_SYSTEM_FOR_WRITE.initForwardTo(codingSystemForWrite);
-        LAST_CODING_SYSTEM_USED.initForwardTo(lastCodingSystemUsed);
-        LAST_CODE_CONVERSION_ERROR.initForwardTo(lastCodeConversionError);
-        INHIBIT_EOL_CONVERSION.initForwardTo(inhibitEolConversion);
-        INHERIT_PROCESS_CODING_SYSTEM.initForwardTo(inheritProcessCodingSystem);
-        FILE_CODING_SYSTEM_ALIST.initForwardTo(fileCodingSystemAlist);
-        PROCESS_CODING_SYSTEM_ALIST.initForwardTo(processCodingSystemAlist);
-        NETWORK_CODING_SYSTEM_ALIST.initForwardTo(networkCodingSystemAlist);
-        LOCALE_CODING_SYSTEM.initForwardTo(localeCodingSystem);
-        EOL_MNEMONIC_UNIX.initForwardTo(eolMnemonicUnix);
-        EOL_MNEMONIC_DOS.initForwardTo(eolMnemonicDos);
-        EOL_MNEMONIC_MAC.initForwardTo(eolMnemonicMac);
-        EOL_MNEMONIC_UNDECIDED.initForwardTo(eolMnemonicUndecided);
-        ENABLE_CHARACTER_TRANSLATION.initForwardTo(enableCharacterTranslation);
-        STANDARD_TRANSLATION_TABLE_FOR_DECODE.initForwardTo(standardTranslationTableForDecode);
-        STANDARD_TRANSLATION_TABLE_FOR_ENCODE.initForwardTo(standardTranslationTableForEncode);
-        CHARSET_REVISION_TABLE.initForwardTo(charsetRevisionTable);
-        DEFAULT_PROCESS_CODING_SYSTEM.initForwardTo(defaultProcessCodingSystem);
-        LATIN_EXTRA_CODE_TABLE.initForwardTo(latinExtraCodeTable);
-        SELECT_SAFE_CODING_SYSTEM_FUNCTION.initForwardTo(selectSafeCodingSystemFunction);
-        CODING_SYSTEM_REQUIRE_WARNING.initForwardTo(codingSystemRequireWarning);
-        INHIBIT_ISO_ESCAPE_DETECTION.initForwardTo(inhibitIsoEscapeDetection);
-        INHIBIT_NULL_BYTE_DETECTION.initForwardTo(inhibitNullByteDetection);
-        DISABLE_ASCII_OPTIMIZATION.initForwardTo(disableAsciiOptimization);
-        TRANSLATION_TABLE_FOR_INPUT.initForwardTo(translationTableForInput);
+        initForwardTo(CODING_SYSTEM_LIST, codingSystemList);
+        initForwardTo(CODING_SYSTEM_ALIST, codingSystemAlist);
+        initForwardTo(CODING_CATEGORY_LIST, codingCategoryList);
+        initForwardTo(CODING_SYSTEM_FOR_READ, codingSystemForRead);
+        initForwardTo(CODING_SYSTEM_FOR_WRITE, codingSystemForWrite);
+        initForwardTo(LAST_CODING_SYSTEM_USED, lastCodingSystemUsed);
+        initForwardTo(LAST_CODE_CONVERSION_ERROR, lastCodeConversionError);
+        initForwardTo(INHIBIT_EOL_CONVERSION, inhibitEolConversion);
+        initForwardTo(INHERIT_PROCESS_CODING_SYSTEM, inheritProcessCodingSystem);
+        initForwardTo(FILE_CODING_SYSTEM_ALIST, fileCodingSystemAlist);
+        initForwardTo(PROCESS_CODING_SYSTEM_ALIST, processCodingSystemAlist);
+        initForwardTo(NETWORK_CODING_SYSTEM_ALIST, networkCodingSystemAlist);
+        initForwardTo(LOCALE_CODING_SYSTEM, localeCodingSystem);
+        initForwardTo(EOL_MNEMONIC_UNIX, eolMnemonicUnix);
+        initForwardTo(EOL_MNEMONIC_DOS, eolMnemonicDos);
+        initForwardTo(EOL_MNEMONIC_MAC, eolMnemonicMac);
+        initForwardTo(EOL_MNEMONIC_UNDECIDED, eolMnemonicUndecided);
+        initForwardTo(ENABLE_CHARACTER_TRANSLATION, enableCharacterTranslation);
+        initForwardTo(STANDARD_TRANSLATION_TABLE_FOR_DECODE, standardTranslationTableForDecode);
+        initForwardTo(STANDARD_TRANSLATION_TABLE_FOR_ENCODE, standardTranslationTableForEncode);
+        initForwardTo(CHARSET_REVISION_TABLE, charsetRevisionTable);
+        initForwardTo(DEFAULT_PROCESS_CODING_SYSTEM, defaultProcessCodingSystem);
+        initForwardTo(LATIN_EXTRA_CODE_TABLE, latinExtraCodeTable);
+        initForwardTo(SELECT_SAFE_CODING_SYSTEM_FUNCTION, selectSafeCodingSystemFunction);
+        initForwardTo(CODING_SYSTEM_REQUIRE_WARNING, codingSystemRequireWarning);
+        initForwardTo(INHIBIT_ISO_ESCAPE_DETECTION, inhibitIsoEscapeDetection);
+        initForwardTo(INHIBIT_NULL_BYTE_DETECTION, inhibitNullByteDetection);
+        initForwardTo(DISABLE_ASCII_OPTIMIZATION, disableAsciiOptimization);
+        initForwardTo(TRANSLATION_TABLE_FOR_INPUT, translationTableForInput);
     }
     private final ValueStorage.ForwardedBool nativeCompJitCompilation = new ValueStorage.ForwardedBool(true);
     private final ValueStorage.Forwarded compCtxt = new ValueStorage.Forwarded(false);
@@ -507,21 +439,21 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded compSubrAritiesH = new ValueStorage.Forwarded();
     private final ValueStorage.ForwardedBool compSanitizerActive = new ValueStorage.ForwardedBool(false);
     private void compVars() {
-        NATIVE_COMP_JIT_COMPILATION.initForwardTo(nativeCompJitCompilation);
-        COMP_CTXT.initForwardTo(compCtxt);
-        COMP_SUBR_LIST.initForwardTo(compSubrList);
-        COMP_ABI_HASH.initForwardTo(compAbiHash);
-        COMP_NATIVE_VERSION_DIR.initForwardTo(compNativeVersionDir);
-        COMP_DEFERRED_PENDING_H.initForwardTo(compDeferredPendingH);
-        COMP_ELN_TO_EL_H.initForwardTo(compElnToElH);
-        NATIVE_COMP_ELN_LOAD_PATH.initForwardTo(nativeCompElnLoadPath);
-        NATIVE_COMP_ENABLE_SUBR_TRAMPOLINES.initForwardTo(nativeCompEnableSubrTrampolines);
-        COMP_INSTALLED_TRAMPOLINES_H.initForwardTo(compInstalledTrampolinesH);
-        COMP_NO_NATIVE_FILE_H.initForwardTo(compNoNativeFileH);
-        COMP_FILE_PRELOADED_P.initForwardTo(compFilePreloadedP);
-        COMP_LOADED_COMP_UNITS_H.initForwardTo(compLoadedCompUnitsH);
-        COMP_SUBR_ARITIES_H.initForwardTo(compSubrAritiesH);
-        COMP_SANITIZER_ACTIVE.initForwardTo(compSanitizerActive);
+        initForwardTo(NATIVE_COMP_JIT_COMPILATION, nativeCompJitCompilation);
+        initForwardTo(COMP_CTXT, compCtxt);
+        initForwardTo(COMP_SUBR_LIST, compSubrList);
+        initForwardTo(COMP_ABI_HASH, compAbiHash);
+        initForwardTo(COMP_NATIVE_VERSION_DIR, compNativeVersionDir);
+        initForwardTo(COMP_DEFERRED_PENDING_H, compDeferredPendingH);
+        initForwardTo(COMP_ELN_TO_EL_H, compElnToElH);
+        initForwardTo(NATIVE_COMP_ELN_LOAD_PATH, nativeCompElnLoadPath);
+        initForwardTo(NATIVE_COMP_ENABLE_SUBR_TRAMPOLINES, nativeCompEnableSubrTrampolines);
+        initForwardTo(COMP_INSTALLED_TRAMPOLINES_H, compInstalledTrampolinesH);
+        initForwardTo(COMP_NO_NATIVE_FILE_H, compNoNativeFileH);
+        initForwardTo(COMP_FILE_PRELOADED_P, compFilePreloadedP);
+        initForwardTo(COMP_LOADED_COMP_UNITS_H, compLoadedCompUnitsH);
+        initForwardTo(COMP_SUBR_ARITIES_H, compSubrAritiesH);
+        initForwardTo(COMP_SANITIZER_ACTIVE, compSanitizerActive);
     }
     private final ValueStorage.Forwarded composeCharsAfterFunction = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded autoCompositionMode = new ValueStorage.Forwarded(true);
@@ -529,29 +461,29 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded compositionFunctionTable = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded autoCompositionEmojiEligibleCodepoints = new ValueStorage.Forwarded(false);
     private void compositeVars() {
-        COMPOSE_CHARS_AFTER_FUNCTION.initForwardTo(composeCharsAfterFunction);
-        AUTO_COMPOSITION_MODE.initForwardTo(autoCompositionMode);
-        AUTO_COMPOSITION_FUNCTION.initForwardTo(autoCompositionFunction);
-        COMPOSITION_FUNCTION_TABLE.initForwardTo(compositionFunctionTable);
-        AUTO_COMPOSITION_EMOJI_ELIGIBLE_CODEPOINTS.initForwardTo(autoCompositionEmojiEligibleCodepoints);
+        initForwardTo(COMPOSE_CHARS_AFTER_FUNCTION, composeCharsAfterFunction);
+        initForwardTo(AUTO_COMPOSITION_MODE, autoCompositionMode);
+        initForwardTo(AUTO_COMPOSITION_FUNCTION, autoCompositionFunction);
+        initForwardTo(COMPOSITION_FUNCTION_TABLE, compositionFunctionTable);
+        initForwardTo(AUTO_COMPOSITION_EMOJI_ELIGIBLE_CODEPOINTS, autoCompositionEmojiEligibleCodepoints);
     }
     private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded(2147483647L);
     private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded(-2147483648L);
     private final ValueStorage.ForwardedBool symbolsWithPosEnabled = new ValueStorage.ForwardedBool(false);
     private void dataVars() {
-        MOST_POSITIVE_FIXNUM.initForwardTo(mostPositiveFixnum);
-        MOST_NEGATIVE_FIXNUM.initForwardTo(mostNegativeFixnum);
-        SYMBOLS_WITH_POS_ENABLED.initForwardTo(symbolsWithPosEnabled);
+        initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);
+        initForwardTo(MOST_NEGATIVE_FIXNUM, mostNegativeFixnum);
+        initForwardTo(SYMBOLS_WITH_POS_ENABLED, symbolsWithPosEnabled);
     }
     private final ValueStorage.Forwarded internalDocFileName = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded buildFiles = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded textQuotingStyle = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedBool internalTextQuotingFlag = new ValueStorage.ForwardedBool();
     private void docVars() {
-        INTERNAL_DOC_FILE_NAME.initForwardTo(internalDocFileName);
-        BUILD_FILES.initForwardTo(buildFiles);
-        TEXT_QUOTING_STYLE.initForwardTo(textQuotingStyle);
-        INTERNAL__TEXT_QUOTING_FLAG.initForwardTo(internalTextQuotingFlag);
+        initForwardTo(INTERNAL_DOC_FILE_NAME, internalDocFileName);
+        initForwardTo(BUILD_FILES, buildFiles);
+        initForwardTo(TEXT_QUOTING_STYLE, textQuotingStyle);
+        initForwardTo(INTERNAL__TEXT_QUOTING_FLAG, internalTextQuotingFlag);
     }
     private final ValueStorage.Forwarded inhibitFieldTextMotion = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded bufferAccessFontifyFunctions = new ValueStorage.Forwarded(false);
@@ -563,15 +495,15 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded operatingSystemRelease = new ValueStorage.Forwarded();
     private final ValueStorage.ForwardedBool binaryAsUnsigned = new ValueStorage.ForwardedBool(false);
     private void editfnsVars() {
-        INHIBIT_FIELD_TEXT_MOTION.initForwardTo(inhibitFieldTextMotion);
-        BUFFER_ACCESS_FONTIFY_FUNCTIONS.initForwardTo(bufferAccessFontifyFunctions);
-        BUFFER_ACCESS_FONTIFIED_PROPERTY.initForwardTo(bufferAccessFontifiedProperty);
-        SYSTEM_NAME.initForwardTo(systemName);
-        USER_FULL_NAME.initForwardTo(userFullName);
-        USER_LOGIN_NAME.initForwardTo(userLoginName);
-        USER_REAL_LOGIN_NAME.initForwardTo(userRealLoginName);
-        OPERATING_SYSTEM_RELEASE.initForwardTo(operatingSystemRelease);
-        BINARY_AS_UNSIGNED.initForwardTo(binaryAsUnsigned);
+        initForwardTo(INHIBIT_FIELD_TEXT_MOTION, inhibitFieldTextMotion);
+        initForwardTo(BUFFER_ACCESS_FONTIFY_FUNCTIONS, bufferAccessFontifyFunctions);
+        initForwardTo(BUFFER_ACCESS_FONTIFIED_PROPERTY, bufferAccessFontifiedProperty);
+        initForwardTo(SYSTEM_NAME, systemName);
+        initForwardTo(USER_FULL_NAME, userFullName);
+        initForwardTo(USER_LOGIN_NAME, userLoginName);
+        initForwardTo(USER_REAL_LOGIN_NAME, userRealLoginName);
+        initForwardTo(OPERATING_SYSTEM_RELEASE, operatingSystemRelease);
+        initForwardTo(BINARY_AS_UNSIGNED, binaryAsUnsigned);
     }
     private final ValueStorage.Forwarded commandLineArgs = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded systemType = new ValueStorage.Forwarded();
@@ -595,27 +527,27 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded dumpMode = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded dynamicLibraryAlist = new ValueStorage.Forwarded(false);
     private void emacsVars() {
-        COMMAND_LINE_ARGS.initForwardTo(commandLineArgs);
-        SYSTEM_TYPE.initForwardTo(systemType);
-        SYSTEM_CONFIGURATION.initForwardTo(systemConfiguration);
-        SYSTEM_CONFIGURATION_OPTIONS.initForwardTo(systemConfigurationOptions);
-        SYSTEM_CONFIGURATION_FEATURES.initForwardTo(systemConfigurationFeatures);
-        NONINTERACTIVE.initForwardTo(noninteractive);
-        KILL_EMACS_HOOK.initForwardTo(killEmacsHook);
-        PATH_SEPARATOR.initForwardTo(pathSeparator);
-        INVOCATION_NAME.initForwardTo(invocationName);
-        INVOCATION_DIRECTORY.initForwardTo(invocationDirectory);
-        INSTALLATION_DIRECTORY.initForwardTo(installationDirectory);
-        SYSTEM_MESSAGES_LOCALE.initForwardTo(systemMessagesLocale);
-        SYSTEM_TIME_LOCALE.initForwardTo(systemTimeLocale);
-        BEFORE_INIT_TIME.initForwardTo(beforeInitTime);
-        AFTER_INIT_TIME.initForwardTo(afterInitTime);
-        INHIBIT_X_RESOURCES.initForwardTo(inhibitXResources);
-        EMACS_COPYRIGHT.initForwardTo(emacsCopyright);
-        EMACS_VERSION.initForwardTo(emacsVersion);
-        REPORT_EMACS_BUG_ADDRESS.initForwardTo(reportEmacsBugAddress);
-        DUMP_MODE.initForwardTo(dumpMode);
-        DYNAMIC_LIBRARY_ALIST.initForwardTo(dynamicLibraryAlist);
+        initForwardTo(COMMAND_LINE_ARGS, commandLineArgs);
+        initForwardTo(SYSTEM_TYPE, systemType);
+        initForwardTo(SYSTEM_CONFIGURATION, systemConfiguration);
+        initForwardTo(SYSTEM_CONFIGURATION_OPTIONS, systemConfigurationOptions);
+        initForwardTo(SYSTEM_CONFIGURATION_FEATURES, systemConfigurationFeatures);
+        initForwardTo(NONINTERACTIVE, noninteractive);
+        initForwardTo(KILL_EMACS_HOOK, killEmacsHook);
+        initForwardTo(PATH_SEPARATOR, pathSeparator);
+        initForwardTo(INVOCATION_NAME, invocationName);
+        initForwardTo(INVOCATION_DIRECTORY, invocationDirectory);
+        initForwardTo(INSTALLATION_DIRECTORY, installationDirectory);
+        initForwardTo(SYSTEM_MESSAGES_LOCALE, systemMessagesLocale);
+        initForwardTo(SYSTEM_TIME_LOCALE, systemTimeLocale);
+        initForwardTo(BEFORE_INIT_TIME, beforeInitTime);
+        initForwardTo(AFTER_INIT_TIME, afterInitTime);
+        initForwardTo(INHIBIT_X_RESOURCES, inhibitXResources);
+        initForwardTo(EMACS_COPYRIGHT, emacsCopyright);
+        initForwardTo(EMACS_VERSION, emacsVersion);
+        initForwardTo(REPORT_EMACS_BUG_ADDRESS, reportEmacsBugAddress);
+        initForwardTo(DUMP_MODE, dumpMode);
+        initForwardTo(DYNAMIC_LIBRARY_ALIST, dynamicLibraryAlist);
     }
     private final ValueStorage.ForwardedLong maxLispEvalDepth = new ValueStorage.ForwardedLong(1600);
     private final ValueStorage.ForwardedLong lispEvalDepthReserve = new ValueStorage.ForwardedLong(200);
@@ -637,25 +569,25 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded internalInterpreterEnvironment = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded internalMakeInterpretedClosureFunction = new ValueStorage.Forwarded(false);
     private void evalVars() {
-        MAX_LISP_EVAL_DEPTH.initForwardTo(maxLispEvalDepth);
-        LISP_EVAL_DEPTH_RESERVE.initForwardTo(lispEvalDepthReserve);
-        QUIT_FLAG.initForwardTo(quitFlag);
-        INHIBIT_QUIT.initForwardTo(inhibitQuit);
-        INHIBIT_DEBUGGER.initForwardTo(inhibitDebugger);
-        DEBUG_ON_ERROR.initForwardTo(debugOnError);
-        DEBUG_IGNORED_ERRORS.initForwardTo(debugIgnoredErrors);
-        DEBUG_ON_QUIT.initForwardTo(debugOnQuit);
-        DEBUG_ON_NEXT_CALL.initForwardTo(debugOnNextCall);
-        BACKTRACE_ON_REDISPLAY_ERROR.initForwardTo(backtraceOnRedisplayError);
-        DEBUGGER_MAY_CONTINUE.initForwardTo(debuggerMayContinue);
-        DEBUGGER_STACK_FRAME_AS_LIST.initForwardTo(debuggerStackFrameAsList);
-        DEBUGGER.initForwardTo(debugger);
-        SIGNAL_HOOK_FUNCTION.initForwardTo(signalHookFunction);
-        DEBUG_ON_SIGNAL.initForwardTo(debugOnSignal);
-        BACKTRACE_ON_ERROR_NONINTERACTIVE.initForwardTo(backtraceOnErrorNoninteractive);
-        INTERNAL_WHEN_ENTERED_DEBUGGER.initForwardTo(internalWhenEnteredDebugger);
-        INTERNAL_INTERPRETER_ENVIRONMENT.initForwardTo(internalInterpreterEnvironment);
-        INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.initForwardTo(internalMakeInterpretedClosureFunction);
+        initForwardTo(MAX_LISP_EVAL_DEPTH, maxLispEvalDepth);
+        initForwardTo(LISP_EVAL_DEPTH_RESERVE, lispEvalDepthReserve);
+        initForwardTo(QUIT_FLAG, quitFlag);
+        initForwardTo(INHIBIT_QUIT, inhibitQuit);
+        initForwardTo(INHIBIT_DEBUGGER, inhibitDebugger);
+        initForwardTo(DEBUG_ON_ERROR, debugOnError);
+        initForwardTo(DEBUG_IGNORED_ERRORS, debugIgnoredErrors);
+        initForwardTo(DEBUG_ON_QUIT, debugOnQuit);
+        initForwardTo(DEBUG_ON_NEXT_CALL, debugOnNextCall);
+        initForwardTo(BACKTRACE_ON_REDISPLAY_ERROR, backtraceOnRedisplayError);
+        initForwardTo(DEBUGGER_MAY_CONTINUE, debuggerMayContinue);
+        initForwardTo(DEBUGGER_STACK_FRAME_AS_LIST, debuggerStackFrameAsList);
+        initForwardTo(DEBUGGER, debugger);
+        initForwardTo(SIGNAL_HOOK_FUNCTION, signalHookFunction);
+        initForwardTo(DEBUG_ON_SIGNAL, debugOnSignal);
+        initForwardTo(BACKTRACE_ON_ERROR_NONINTERACTIVE, backtraceOnErrorNoninteractive);
+        initForwardTo(INTERNAL_WHEN_ENTERED_DEBUGGER, internalWhenEnteredDebugger);
+        initForwardTo(INTERNAL_INTERPRETER_ENVIRONMENT, internalInterpreterEnvironment);
+        initForwardTo(INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION, internalMakeInterpretedClosureFunction);
     }
     private final ValueStorage.Forwarded fileNameCodingSystem = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded defaultFileNameCodingSystem = new ValueStorage.Forwarded(false);
@@ -673,21 +605,21 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool writeRegionInhibitFsync = new ValueStorage.ForwardedBool(true);
     private final ValueStorage.ForwardedBool deleteByMovingToTrash = new ValueStorage.ForwardedBool(false);
     private void fileioVars() {
-        FILE_NAME_CODING_SYSTEM.initForwardTo(fileNameCodingSystem);
-        DEFAULT_FILE_NAME_CODING_SYSTEM.initForwardTo(defaultFileNameCodingSystem);
-        FILE_NAME_HANDLER_ALIST.initForwardTo(fileNameHandlerAlist);
-        SET_AUTO_CODING_FUNCTION.initForwardTo(setAutoCodingFunction);
-        AFTER_INSERT_FILE_FUNCTIONS.initForwardTo(afterInsertFileFunctions);
-        WRITE_REGION_ANNOTATE_FUNCTIONS.initForwardTo(writeRegionAnnotateFunctions);
-        WRITE_REGION_POST_ANNOTATION_FUNCTION.initForwardTo(writeRegionPostAnnotationFunction);
-        WRITE_REGION_ANNOTATIONS_SO_FAR.initForwardTo(writeRegionAnnotationsSoFar);
-        INHIBIT_FILE_NAME_HANDLERS.initForwardTo(inhibitFileNameHandlers);
-        INHIBIT_FILE_NAME_OPERATION.initForwardTo(inhibitFileNameOperation);
-        AUTO_SAVE_LIST_FILE_NAME.initForwardTo(autoSaveListFileName);
-        AUTO_SAVE_VISITED_FILE_NAME.initForwardTo(autoSaveVisitedFileName);
-        AUTO_SAVE_INCLUDE_BIG_DELETIONS.initForwardTo(autoSaveIncludeBigDeletions);
-        WRITE_REGION_INHIBIT_FSYNC.initForwardTo(writeRegionInhibitFsync);
-        DELETE_BY_MOVING_TO_TRASH.initForwardTo(deleteByMovingToTrash);
+        initForwardTo(FILE_NAME_CODING_SYSTEM, fileNameCodingSystem);
+        initForwardTo(DEFAULT_FILE_NAME_CODING_SYSTEM, defaultFileNameCodingSystem);
+        initForwardTo(FILE_NAME_HANDLER_ALIST, fileNameHandlerAlist);
+        initForwardTo(SET_AUTO_CODING_FUNCTION, setAutoCodingFunction);
+        initForwardTo(AFTER_INSERT_FILE_FUNCTIONS, afterInsertFileFunctions);
+        initForwardTo(WRITE_REGION_ANNOTATE_FUNCTIONS, writeRegionAnnotateFunctions);
+        initForwardTo(WRITE_REGION_POST_ANNOTATION_FUNCTION, writeRegionPostAnnotationFunction);
+        initForwardTo(WRITE_REGION_ANNOTATIONS_SO_FAR, writeRegionAnnotationsSoFar);
+        initForwardTo(INHIBIT_FILE_NAME_HANDLERS, inhibitFileNameHandlers);
+        initForwardTo(INHIBIT_FILE_NAME_OPERATION, inhibitFileNameOperation);
+        initForwardTo(AUTO_SAVE_LIST_FILE_NAME, autoSaveListFileName);
+        initForwardTo(AUTO_SAVE_VISITED_FILE_NAME, autoSaveVisitedFileName);
+        initForwardTo(AUTO_SAVE_INCLUDE_BIG_DELETIONS, autoSaveIncludeBigDeletions);
+        initForwardTo(WRITE_REGION_INHIBIT_FSYNC, writeRegionInhibitFsync);
+        initForwardTo(DELETE_BY_MOVING_TO_TRASH, deleteByMovingToTrash);
     }
 
     private void floatfnsVars() {
@@ -700,12 +632,12 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool useShortAnswers = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.Forwarded yesOrNoPrompt = new ValueStorage.Forwarded(new ELispString("(yes or no) "));
     private void fnsVars() {
-        OVERRIDING_PLIST_ENVIRONMENT.initForwardTo(overridingPlistEnvironment);
-        FEATURES.initForwardTo(features);
-        USE_DIALOG_BOX.initForwardTo(useDialogBox);
-        USE_FILE_DIALOG.initForwardTo(useFileDialog);
-        USE_SHORT_ANSWERS.initForwardTo(useShortAnswers);
-        YES_OR_NO_PROMPT.initForwardTo(yesOrNoPrompt);
+        initForwardTo(OVERRIDING_PLIST_ENVIRONMENT, overridingPlistEnvironment);
+        initForwardTo(FEATURES, features);
+        initForwardTo(USE_DIALOG_BOX, useDialogBox);
+        initForwardTo(USE_FILE_DIALOG, useFileDialog);
+        initForwardTo(USE_SHORT_ANSWERS, useShortAnswers);
+        initForwardTo(YES_OR_NO_PROMPT, yesOrNoPrompt);
     }
     private final ValueStorage.Forwarded xResourceName = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded xResourceClass = new ValueStorage.Forwarded();
@@ -734,32 +666,32 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded iconifyChildFrame = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded frameInternalParameters = new ValueStorage.Forwarded();
     private void frameVars() {
-        X_RESOURCE_NAME.initForwardTo(xResourceName);
-        X_RESOURCE_CLASS.initForwardTo(xResourceClass);
-        FRAME_ALPHA_LOWER_LIMIT.initForwardTo(frameAlphaLowerLimit);
-        DEFAULT_FRAME_ALIST.initForwardTo(defaultFrameAlist);
-        DEFAULT_FRAME_SCROLL_BARS.initForwardTo(defaultFrameScrollBars);
-        SCROLL_BAR_ADJUST_THUMB_PORTION.initForwardTo(scrollBarAdjustThumbPortion);
-        _TERMINAL_FRAME.initForwardTo(TerminalFrame);
-        MOUSE_POSITION_FUNCTION.initForwardTo(mousePositionFunction);
-        MOUSE_HIGHLIGHT.initForwardTo(mouseHighlight);
-        MAKE_POINTER_INVISIBLE.initForwardTo(makePointerInvisible);
-        MOVE_FRAME_FUNCTIONS.initForwardTo(moveFrameFunctions);
-        DELETE_FRAME_FUNCTIONS.initForwardTo(deleteFrameFunctions);
-        AFTER_DELETE_FRAME_FUNCTIONS.initForwardTo(afterDeleteFrameFunctions);
-        MENU_BAR_MODE.initForwardTo(menuBarMode);
-        TAB_BAR_MODE.initForwardTo(tabBarMode);
-        TOOL_BAR_MODE.initForwardTo(toolBarMode);
-        DEFAULT_MINIBUFFER_FRAME.initForwardTo(defaultMinibufferFrame);
-        RESIZE_MINI_FRAMES.initForwardTo(resizeMiniFrames);
-        FOCUS_FOLLOWS_MOUSE.initForwardTo(focusFollowsMouse);
-        FRAME_RESIZE_PIXELWISE.initForwardTo(frameResizePixelwise);
-        FRAME_INHIBIT_IMPLIED_RESIZE.initForwardTo(frameInhibitImpliedResize);
-        FRAME_SIZE_HISTORY.initForwardTo(frameSizeHistory);
-        TOOLTIP_REUSE_HIDDEN_FRAME.initForwardTo(tooltipReuseHiddenFrame);
-        USE_SYSTEM_TOOLTIPS.initForwardTo(useSystemTooltips);
-        ICONIFY_CHILD_FRAME.initForwardTo(iconifyChildFrame);
-        FRAME_INTERNAL_PARAMETERS.initForwardTo(frameInternalParameters);
+        initForwardTo(X_RESOURCE_NAME, xResourceName);
+        initForwardTo(X_RESOURCE_CLASS, xResourceClass);
+        initForwardTo(FRAME_ALPHA_LOWER_LIMIT, frameAlphaLowerLimit);
+        initForwardTo(DEFAULT_FRAME_ALIST, defaultFrameAlist);
+        initForwardTo(DEFAULT_FRAME_SCROLL_BARS, defaultFrameScrollBars);
+        initForwardTo(SCROLL_BAR_ADJUST_THUMB_PORTION, scrollBarAdjustThumbPortion);
+        initForwardTo(_TERMINAL_FRAME, TerminalFrame);
+        initForwardTo(MOUSE_POSITION_FUNCTION, mousePositionFunction);
+        initForwardTo(MOUSE_HIGHLIGHT, mouseHighlight);
+        initForwardTo(MAKE_POINTER_INVISIBLE, makePointerInvisible);
+        initForwardTo(MOVE_FRAME_FUNCTIONS, moveFrameFunctions);
+        initForwardTo(DELETE_FRAME_FUNCTIONS, deleteFrameFunctions);
+        initForwardTo(AFTER_DELETE_FRAME_FUNCTIONS, afterDeleteFrameFunctions);
+        initForwardTo(MENU_BAR_MODE, menuBarMode);
+        initForwardTo(TAB_BAR_MODE, tabBarMode);
+        initForwardTo(TOOL_BAR_MODE, toolBarMode);
+        initForwardTo(DEFAULT_MINIBUFFER_FRAME, defaultMinibufferFrame);
+        initForwardTo(RESIZE_MINI_FRAMES, resizeMiniFrames);
+        initForwardTo(FOCUS_FOLLOWS_MOUSE, focusFollowsMouse);
+        initForwardTo(FRAME_RESIZE_PIXELWISE, frameResizePixelwise);
+        initForwardTo(FRAME_INHIBIT_IMPLIED_RESIZE, frameInhibitImpliedResize);
+        initForwardTo(FRAME_SIZE_HISTORY, frameSizeHistory);
+        initForwardTo(TOOLTIP_REUSE_HIDDEN_FRAME, tooltipReuseHiddenFrame);
+        initForwardTo(USE_SYSTEM_TOOLTIPS, useSystemTooltips);
+        initForwardTo(ICONIFY_CHILD_FRAME, iconifyChildFrame);
+        initForwardTo(FRAME_INTERNAL_PARAMETERS, frameInternalParameters);
     }
     private final ValueStorage.Forwarded internalTopLevelMessage = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded lastCommandEvent = new ValueStorage.Forwarded();
@@ -846,90 +778,90 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool disableInhibitTextConversion = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.Forwarded currentKeyRemapSequence = new ValueStorage.Forwarded(false);
     private void keyboardVars() {
-        INTERNAL__TOP_LEVEL_MESSAGE.initForwardTo(internalTopLevelMessage);
-        LAST_COMMAND_EVENT.initForwardTo(lastCommandEvent);
-        LAST_NONMENU_EVENT.initForwardTo(lastNonmenuEvent);
-        LAST_INPUT_EVENT.initForwardTo(lastInputEvent);
-        UNREAD_COMMAND_EVENTS.initForwardTo(unreadCommandEvents);
-        UNREAD_POST_INPUT_METHOD_EVENTS.initForwardTo(unreadPostInputMethodEvents);
-        UNREAD_INPUT_METHOD_EVENTS.initForwardTo(unreadInputMethodEvents);
-        META_PREFIX_CHAR.initForwardTo(metaPrefixChar);
-        LAST_COMMAND.initForwardTo(lastCommand);
-        REAL_LAST_COMMAND.initForwardTo(realLastCommand);
-        LAST_REPEATABLE_COMMAND.initForwardTo(lastRepeatableCommand);
-        THIS_COMMAND.initForwardTo(thisCommand);
-        REAL_THIS_COMMAND.initForwardTo(realThisCommand);
-        CURRENT_MINIBUFFER_COMMAND.initForwardTo(currentMinibufferCommand);
-        THIS_COMMAND_KEYS_SHIFT_TRANSLATED.initForwardTo(thisCommandKeysShiftTranslated);
-        THIS_ORIGINAL_COMMAND.initForwardTo(thisOriginalCommand);
-        AUTO_SAVE_INTERVAL.initForwardTo(autoSaveInterval);
-        AUTO_SAVE_NO_MESSAGE.initForwardTo(autoSaveNoMessage);
-        AUTO_SAVE_TIMEOUT.initForwardTo(autoSaveTimeout);
-        ECHO_KEYSTROKES.initForwardTo(echoKeystrokes);
-        ECHO_KEYSTROKES_HELP.initForwardTo(echoKeystrokesHelp);
-        POLLING_PERIOD.initForwardTo(pollingPeriod);
-        DOUBLE_CLICK_TIME.initForwardTo(doubleClickTime);
-        DOUBLE_CLICK_FUZZ.initForwardTo(doubleClickFuzz);
-        NUM_INPUT_KEYS.initForwardTo(numInputKeys);
-        NUM_NONMACRO_INPUT_EVENTS.initForwardTo(numNonmacroInputEvents);
-        LAST_EVENT_FRAME.initForwardTo(lastEventFrame);
-        LAST_EVENT_DEVICE.initForwardTo(lastEventDevice);
-        TTY_ERASE_CHAR.initForwardTo(ttyEraseChar);
-        HELP_CHAR.initForwardTo(helpChar);
-        HELP_EVENT_LIST.initForwardTo(helpEventList);
-        HELP_FORM.initForwardTo(helpForm);
-        PREFIX_HELP_COMMAND.initForwardTo(prefixHelpCommand);
-        TOP_LEVEL.initForwardTo(topLevel);
-        KEYBOARD_TRANSLATE_TABLE.initForwardTo(keyboardTranslateTable);
-        CANNOT_SUSPEND.initForwardTo(cannotSuspend);
-        MENU_PROMPTING.initForwardTo(menuPrompting);
-        MENU_PROMPT_MORE_CHAR.initForwardTo(menuPromptMoreChar);
-        EXTRA_KEYBOARD_MODIFIERS.initForwardTo(extraKeyboardModifiers);
-        DEACTIVATE_MARK.initForwardTo(deactivateMark);
-        PRE_COMMAND_HOOK.initForwardTo(preCommandHook);
-        POST_COMMAND_HOOK.initForwardTo(postCommandHook);
-        LUCID__MENU_GRAB_KEYBOARD.initForwardTo(lucidMenuGrabKeyboard);
-        MENU_BAR_FINAL_ITEMS.initForwardTo(menuBarFinalItems);
-        TAB_BAR_SEPARATOR_IMAGE_EXPRESSION.initForwardTo(tabBarSeparatorImageExpression);
-        TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION.initForwardTo(toolBarSeparatorImageExpression);
-        OVERRIDING_TERMINAL_LOCAL_MAP.initForwardTo(overridingTerminalLocalMap);
-        OVERRIDING_LOCAL_MAP.initForwardTo(overridingLocalMap);
-        OVERRIDING_LOCAL_MAP_MENU_FLAG.initForwardTo(overridingLocalMapMenuFlag);
-        SPECIAL_EVENT_MAP.initForwardTo(specialEventMap);
-        TRACK_MOUSE.initForwardTo(trackMouse);
-        SYSTEM_KEY_ALIST.initForwardTo(systemKeyAlist);
-        LOCAL_FUNCTION_KEY_MAP.initForwardTo(localFunctionKeyMap);
-        INPUT_DECODE_MAP.initForwardTo(inputDecodeMap);
-        FUNCTION_KEY_MAP.initForwardTo(functionKeyMap);
-        KEY_TRANSLATION_MAP.initForwardTo(keyTranslationMap);
-        DELAYED_WARNINGS_LIST.initForwardTo(delayedWarningsList);
-        TIMER_LIST.initForwardTo(timerList);
-        TIMER_IDLE_LIST.initForwardTo(timerIdleList);
-        INPUT_METHOD_FUNCTION.initForwardTo(inputMethodFunction);
-        INPUT_METHOD_PREVIOUS_MESSAGE.initForwardTo(inputMethodPreviousMessage);
-        SHOW_HELP_FUNCTION.initForwardTo(showHelpFunction);
-        DISABLE_POINT_ADJUSTMENT.initForwardTo(disablePointAdjustment);
-        GLOBAL_DISABLE_POINT_ADJUSTMENT.initForwardTo(globalDisablePointAdjustment);
-        MINIBUFFER_MESSAGE_TIMEOUT.initForwardTo(minibufferMessageTimeout);
-        THROW_ON_INPUT.initForwardTo(throwOnInput);
-        COMMAND_ERROR_FUNCTION.initForwardTo(commandErrorFunction);
-        ENABLE_DISABLED_MENUS_AND_BUTTONS.initForwardTo(enableDisabledMenusAndButtons);
-        SELECT_ACTIVE_REGIONS.initForwardTo(selectActiveRegions);
-        SAVED_REGION_SELECTION.initForwardTo(savedRegionSelection);
-        SELECTION_INHIBIT_UPDATE_COMMANDS.initForwardTo(selectionInhibitUpdateCommands);
-        DEBUG_ON_EVENT.initForwardTo(debugOnEvent);
-        ATTEMPT_STACK_OVERFLOW_RECOVERY.initForwardTo(attemptStackOverflowRecovery);
-        ATTEMPT_ORDERLY_SHUTDOWN_ON_FATAL_SIGNAL.initForwardTo(attemptOrderlyShutdownOnFatalSignal);
-        WHILE_NO_INPUT_IGNORE_EVENTS.initForwardTo(whileNoInputIgnoreEvents);
-        TRANSLATE_UPPER_CASE_KEY_BINDINGS.initForwardTo(translateUpperCaseKeyBindings);
-        INPUT_PENDING_P_FILTER_EVENTS.initForwardTo(inputPendingPFilterEvents);
-        MWHEEL_COALESCE_SCROLL_EVENTS.initForwardTo(mwheelCoalesceScrollEvents);
-        DISPLAY_MONITORS_CHANGED_FUNCTIONS.initForwardTo(displayMonitorsChangedFunctions);
-        INHIBIT__RECORD_CHAR.initForwardTo(inhibitRecordChar);
-        RECORD_ALL_KEYS.initForwardTo(recordAllKeys);
-        POST_SELECT_REGION_HOOK.initForwardTo(postSelectRegionHook);
-        DISABLE_INHIBIT_TEXT_CONVERSION.initForwardTo(disableInhibitTextConversion);
-        CURRENT_KEY_REMAP_SEQUENCE.initForwardTo(currentKeyRemapSequence);
+        initForwardTo(INTERNAL__TOP_LEVEL_MESSAGE, internalTopLevelMessage);
+        initForwardTo(LAST_COMMAND_EVENT, lastCommandEvent);
+        initForwardTo(LAST_NONMENU_EVENT, lastNonmenuEvent);
+        initForwardTo(LAST_INPUT_EVENT, lastInputEvent);
+        initForwardTo(UNREAD_COMMAND_EVENTS, unreadCommandEvents);
+        initForwardTo(UNREAD_POST_INPUT_METHOD_EVENTS, unreadPostInputMethodEvents);
+        initForwardTo(UNREAD_INPUT_METHOD_EVENTS, unreadInputMethodEvents);
+        initForwardTo(META_PREFIX_CHAR, metaPrefixChar);
+        initForwardTo(LAST_COMMAND, lastCommand);
+        initForwardTo(REAL_LAST_COMMAND, realLastCommand);
+        initForwardTo(LAST_REPEATABLE_COMMAND, lastRepeatableCommand);
+        initForwardTo(THIS_COMMAND, thisCommand);
+        initForwardTo(REAL_THIS_COMMAND, realThisCommand);
+        initForwardTo(CURRENT_MINIBUFFER_COMMAND, currentMinibufferCommand);
+        initForwardTo(THIS_COMMAND_KEYS_SHIFT_TRANSLATED, thisCommandKeysShiftTranslated);
+        initForwardTo(THIS_ORIGINAL_COMMAND, thisOriginalCommand);
+        initForwardTo(AUTO_SAVE_INTERVAL, autoSaveInterval);
+        initForwardTo(AUTO_SAVE_NO_MESSAGE, autoSaveNoMessage);
+        initForwardTo(AUTO_SAVE_TIMEOUT, autoSaveTimeout);
+        initForwardTo(ECHO_KEYSTROKES, echoKeystrokes);
+        initForwardTo(ECHO_KEYSTROKES_HELP, echoKeystrokesHelp);
+        initForwardTo(POLLING_PERIOD, pollingPeriod);
+        initForwardTo(DOUBLE_CLICK_TIME, doubleClickTime);
+        initForwardTo(DOUBLE_CLICK_FUZZ, doubleClickFuzz);
+        initForwardTo(NUM_INPUT_KEYS, numInputKeys);
+        initForwardTo(NUM_NONMACRO_INPUT_EVENTS, numNonmacroInputEvents);
+        initForwardTo(LAST_EVENT_FRAME, lastEventFrame);
+        initForwardTo(LAST_EVENT_DEVICE, lastEventDevice);
+        initForwardTo(TTY_ERASE_CHAR, ttyEraseChar);
+        initForwardTo(HELP_CHAR, helpChar);
+        initForwardTo(HELP_EVENT_LIST, helpEventList);
+        initForwardTo(HELP_FORM, helpForm);
+        initForwardTo(PREFIX_HELP_COMMAND, prefixHelpCommand);
+        initForwardTo(TOP_LEVEL, topLevel);
+        initForwardTo(KEYBOARD_TRANSLATE_TABLE, keyboardTranslateTable);
+        initForwardTo(CANNOT_SUSPEND, cannotSuspend);
+        initForwardTo(MENU_PROMPTING, menuPrompting);
+        initForwardTo(MENU_PROMPT_MORE_CHAR, menuPromptMoreChar);
+        initForwardTo(EXTRA_KEYBOARD_MODIFIERS, extraKeyboardModifiers);
+        initForwardTo(DEACTIVATE_MARK, deactivateMark);
+        initForwardTo(PRE_COMMAND_HOOK, preCommandHook);
+        initForwardTo(POST_COMMAND_HOOK, postCommandHook);
+        initForwardTo(LUCID__MENU_GRAB_KEYBOARD, lucidMenuGrabKeyboard);
+        initForwardTo(MENU_BAR_FINAL_ITEMS, menuBarFinalItems);
+        initForwardTo(TAB_BAR_SEPARATOR_IMAGE_EXPRESSION, tabBarSeparatorImageExpression);
+        initForwardTo(TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION, toolBarSeparatorImageExpression);
+        initForwardTo(OVERRIDING_TERMINAL_LOCAL_MAP, overridingTerminalLocalMap);
+        initForwardTo(OVERRIDING_LOCAL_MAP, overridingLocalMap);
+        initForwardTo(OVERRIDING_LOCAL_MAP_MENU_FLAG, overridingLocalMapMenuFlag);
+        initForwardTo(SPECIAL_EVENT_MAP, specialEventMap);
+        initForwardTo(TRACK_MOUSE, trackMouse);
+        initForwardTo(SYSTEM_KEY_ALIST, systemKeyAlist);
+        initForwardTo(LOCAL_FUNCTION_KEY_MAP, localFunctionKeyMap);
+        initForwardTo(INPUT_DECODE_MAP, inputDecodeMap);
+        initForwardTo(FUNCTION_KEY_MAP, functionKeyMap);
+        initForwardTo(KEY_TRANSLATION_MAP, keyTranslationMap);
+        initForwardTo(DELAYED_WARNINGS_LIST, delayedWarningsList);
+        initForwardTo(TIMER_LIST, timerList);
+        initForwardTo(TIMER_IDLE_LIST, timerIdleList);
+        initForwardTo(INPUT_METHOD_FUNCTION, inputMethodFunction);
+        initForwardTo(INPUT_METHOD_PREVIOUS_MESSAGE, inputMethodPreviousMessage);
+        initForwardTo(SHOW_HELP_FUNCTION, showHelpFunction);
+        initForwardTo(DISABLE_POINT_ADJUSTMENT, disablePointAdjustment);
+        initForwardTo(GLOBAL_DISABLE_POINT_ADJUSTMENT, globalDisablePointAdjustment);
+        initForwardTo(MINIBUFFER_MESSAGE_TIMEOUT, minibufferMessageTimeout);
+        initForwardTo(THROW_ON_INPUT, throwOnInput);
+        initForwardTo(COMMAND_ERROR_FUNCTION, commandErrorFunction);
+        initForwardTo(ENABLE_DISABLED_MENUS_AND_BUTTONS, enableDisabledMenusAndButtons);
+        initForwardTo(SELECT_ACTIVE_REGIONS, selectActiveRegions);
+        initForwardTo(SAVED_REGION_SELECTION, savedRegionSelection);
+        initForwardTo(SELECTION_INHIBIT_UPDATE_COMMANDS, selectionInhibitUpdateCommands);
+        initForwardTo(DEBUG_ON_EVENT, debugOnEvent);
+        initForwardTo(ATTEMPT_STACK_OVERFLOW_RECOVERY, attemptStackOverflowRecovery);
+        initForwardTo(ATTEMPT_ORDERLY_SHUTDOWN_ON_FATAL_SIGNAL, attemptOrderlyShutdownOnFatalSignal);
+        initForwardTo(WHILE_NO_INPUT_IGNORE_EVENTS, whileNoInputIgnoreEvents);
+        initForwardTo(TRANSLATE_UPPER_CASE_KEY_BINDINGS, translateUpperCaseKeyBindings);
+        initForwardTo(INPUT_PENDING_P_FILTER_EVENTS, inputPendingPFilterEvents);
+        initForwardTo(MWHEEL_COALESCE_SCROLL_EVENTS, mwheelCoalesceScrollEvents);
+        initForwardTo(DISPLAY_MONITORS_CHANGED_FUNCTIONS, displayMonitorsChangedFunctions);
+        initForwardTo(INHIBIT__RECORD_CHAR, inhibitRecordChar);
+        initForwardTo(RECORD_ALL_KEYS, recordAllKeys);
+        initForwardTo(POST_SELECT_REGION_HOOK, postSelectRegionHook);
+        initForwardTo(DISABLE_INHIBIT_TEXT_CONVERSION, disableInhibitTextConversion);
+        initForwardTo(CURRENT_KEY_REMAP_SEQUENCE, currentKeyRemapSequence);
     }
     private final ValueStorage.Forwarded minibufferLocalMap = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded minorModeMapAlist = new ValueStorage.Forwarded(false);
@@ -938,12 +870,12 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded whereIsPreferredModifier = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded describeBindingsCheckShadowingInRanges = new ValueStorage.Forwarded(false);
     private void keymapVars() {
-        MINIBUFFER_LOCAL_MAP.initForwardTo(minibufferLocalMap);
-        MINOR_MODE_MAP_ALIST.initForwardTo(minorModeMapAlist);
-        MINOR_MODE_OVERRIDING_MAP_ALIST.initForwardTo(minorModeOverridingMapAlist);
-        EMULATION_MODE_MAP_ALISTS.initForwardTo(emulationModeMapAlists);
-        WHERE_IS_PREFERRED_MODIFIER.initForwardTo(whereIsPreferredModifier);
-        DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES.initForwardTo(describeBindingsCheckShadowingInRanges);
+        initForwardTo(MINIBUFFER_LOCAL_MAP, minibufferLocalMap);
+        initForwardTo(MINOR_MODE_MAP_ALIST, minorModeMapAlist);
+        initForwardTo(MINOR_MODE_OVERRIDING_MAP_ALIST, minorModeOverridingMapAlist);
+        initForwardTo(EMULATION_MODE_MAP_ALISTS, emulationModeMapAlists);
+        initForwardTo(WHERE_IS_PREFERRED_MODIFIER, whereIsPreferredModifier);
+        initForwardTo(DESCRIBE_BINDINGS_CHECK_SHADOWING_IN_RANGES, describeBindingsCheckShadowingInRanges);
     }
     private final ValueStorage.Forwarded obarray = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded values = new ValueStorage.Forwarded(false);
@@ -979,39 +911,39 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded readSymbolShorthands = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded macroexpDynvars = new ValueStorage.Forwarded(false);
     private void lreadVars() {
-        OBARRAY.initForwardTo(obarray);
-        VALUES.initForwardTo(values);
-        STANDARD_INPUT.initForwardTo(standardInput);
-        READ_CIRCLE.initForwardTo(readCircle);
-        LOAD_PATH.initForwardTo(loadPath);
-        LOAD_SUFFIXES.initForwardTo(loadSuffixes);
-        MODULE_FILE_SUFFIX.initForwardTo(moduleFileSuffix);
-        DYNAMIC_LIBRARY_SUFFIXES.initForwardTo(dynamicLibrarySuffixes);
-        LOAD_FILE_REP_SUFFIXES.initForwardTo(loadFileRepSuffixes);
-        LOAD_IN_PROGRESS.initForwardTo(loadInProgress);
-        AFTER_LOAD_ALIST.initForwardTo(afterLoadAlist);
-        LOAD_HISTORY.initForwardTo(loadHistory);
-        LOAD_FILE_NAME.initForwardTo(loadFileName);
-        LOAD_TRUE_FILE_NAME.initForwardTo(loadTrueFileName);
-        USER_INIT_FILE.initForwardTo(userInitFile);
-        CURRENT_LOAD_LIST.initForwardTo(currentLoadList);
-        LOAD_READ_FUNCTION.initForwardTo(loadReadFunction);
-        LOAD_SOURCE_FILE_FUNCTION.initForwardTo(loadSourceFileFunction);
-        LOAD_FORCE_DOC_STRINGS.initForwardTo(loadForceDocStrings);
-        LOAD_CONVERT_TO_UNIBYTE.initForwardTo(loadConvertToUnibyte);
-        SOURCE_DIRECTORY.initForwardTo(sourceDirectory);
-        PRELOADED_FILE_LIST.initForwardTo(preloadedFileList);
-        BYTE_BOOLEAN_VARS.initForwardTo(byteBooleanVars);
-        LOAD_DANGEROUS_LIBRARIES.initForwardTo(loadDangerousLibraries);
-        FORCE_LOAD_MESSAGES.initForwardTo(forceLoadMessages);
-        BYTECOMP_VERSION_REGEXP.initForwardTo(bytecompVersionRegexp);
-        LEXICAL_BINDING.initForwardTo(lexicalBinding);
-        EVAL_BUFFER_LIST.initForwardTo(evalBufferList);
-        LREAD_UNESCAPED_CHARACTER_LITERALS.initForwardTo(lreadUnescapedCharacterLiterals);
-        LOAD_PREFER_NEWER.initForwardTo(loadPreferNewer);
-        LOAD_NO_NATIVE.initForwardTo(loadNoNative);
-        READ_SYMBOL_SHORTHANDS.initForwardTo(readSymbolShorthands);
-        MACROEXP__DYNVARS.initForwardTo(macroexpDynvars);
+        initForwardTo(OBARRAY, obarray);
+        initForwardTo(VALUES, values);
+        initForwardTo(STANDARD_INPUT, standardInput);
+        initForwardTo(READ_CIRCLE, readCircle);
+        initForwardTo(LOAD_PATH, loadPath);
+        initForwardTo(LOAD_SUFFIXES, loadSuffixes);
+        initForwardTo(MODULE_FILE_SUFFIX, moduleFileSuffix);
+        initForwardTo(DYNAMIC_LIBRARY_SUFFIXES, dynamicLibrarySuffixes);
+        initForwardTo(LOAD_FILE_REP_SUFFIXES, loadFileRepSuffixes);
+        initForwardTo(LOAD_IN_PROGRESS, loadInProgress);
+        initForwardTo(AFTER_LOAD_ALIST, afterLoadAlist);
+        initForwardTo(LOAD_HISTORY, loadHistory);
+        initForwardTo(LOAD_FILE_NAME, loadFileName);
+        initForwardTo(LOAD_TRUE_FILE_NAME, loadTrueFileName);
+        initForwardTo(USER_INIT_FILE, userInitFile);
+        initForwardTo(CURRENT_LOAD_LIST, currentLoadList);
+        initForwardTo(LOAD_READ_FUNCTION, loadReadFunction);
+        initForwardTo(LOAD_SOURCE_FILE_FUNCTION, loadSourceFileFunction);
+        initForwardTo(LOAD_FORCE_DOC_STRINGS, loadForceDocStrings);
+        initForwardTo(LOAD_CONVERT_TO_UNIBYTE, loadConvertToUnibyte);
+        initForwardTo(SOURCE_DIRECTORY, sourceDirectory);
+        initForwardTo(PRELOADED_FILE_LIST, preloadedFileList);
+        initForwardTo(BYTE_BOOLEAN_VARS, byteBooleanVars);
+        initForwardTo(LOAD_DANGEROUS_LIBRARIES, loadDangerousLibraries);
+        initForwardTo(FORCE_LOAD_MESSAGES, forceLoadMessages);
+        initForwardTo(BYTECOMP_VERSION_REGEXP, bytecompVersionRegexp);
+        initForwardTo(LEXICAL_BINDING, lexicalBinding);
+        initForwardTo(EVAL_BUFFER_LIST, evalBufferList);
+        initForwardTo(LREAD_UNESCAPED_CHARACTER_LITERALS, lreadUnescapedCharacterLiterals);
+        initForwardTo(LOAD_PREFER_NEWER, loadPreferNewer);
+        initForwardTo(LOAD_NO_NATIVE, loadNoNative);
+        initForwardTo(READ_SYMBOL_SHORTHANDS, readSymbolShorthands);
+        initForwardTo(MACROEXP__DYNVARS, macroexpDynvars);
     }
     private final ValueStorage.Forwarded kbdMacroTerminationHook = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded definingKbdMacro = new ValueStorage.Forwarded(); /* TODO */
@@ -1019,11 +951,11 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedLong executingKbdMacroIndex = new ValueStorage.ForwardedLong();
     private final ValueStorage.Forwarded lastKbdMacro = new ValueStorage.Forwarded(); /* TODO */
     private void macrosVars() {
-        KBD_MACRO_TERMINATION_HOOK.initForwardTo(kbdMacroTerminationHook);
-        DEFINING_KBD_MACRO.initForwardTo(definingKbdMacro);
-        EXECUTING_KBD_MACRO.initForwardTo(executingKbdMacro);
-        EXECUTING_KBD_MACRO_INDEX.initForwardTo(executingKbdMacroIndex);
-        LAST_KBD_MACRO.initForwardTo(lastKbdMacro);
+        initForwardTo(KBD_MACRO_TERMINATION_HOOK, kbdMacroTerminationHook);
+        initForwardTo(DEFINING_KBD_MACRO, definingKbdMacro);
+        initForwardTo(EXECUTING_KBD_MACRO, executingKbdMacro);
+        initForwardTo(EXECUTING_KBD_MACRO_INDEX, executingKbdMacroIndex);
+        initForwardTo(LAST_KBD_MACRO, lastKbdMacro);
     }
     private final ValueStorage.Forwarded readExpressionHistory = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded readBufferFunction = new ValueStorage.Forwarded(false);
@@ -1051,31 +983,31 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool inhibitInteraction = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.ForwardedBool readMinibufferRestoreWindows = new ValueStorage.ForwardedBool(true);
     private void minibufVars() {
-        READ_EXPRESSION_HISTORY.initForwardTo(readExpressionHistory);
-        READ_BUFFER_FUNCTION.initForwardTo(readBufferFunction);
-        MINIBUFFER_FOLLOWS_SELECTED_FRAME.initForwardTo(minibufferFollowsSelectedFrame);
-        READ_BUFFER_COMPLETION_IGNORE_CASE.initForwardTo(readBufferCompletionIgnoreCase);
-        MINIBUFFER_SETUP_HOOK.initForwardTo(minibufferSetupHook);
-        MINIBUFFER_EXIT_HOOK.initForwardTo(minibufferExitHook);
-        HISTORY_LENGTH.initForwardTo(historyLength);
-        HISTORY_DELETE_DUPLICATES.initForwardTo(historyDeleteDuplicates);
-        HISTORY_ADD_NEW_INPUT.initForwardTo(historyAddNewInput);
-        COMPLETION_IGNORE_CASE.initForwardTo(completionIgnoreCase);
-        ENABLE_RECURSIVE_MINIBUFFERS.initForwardTo(enableRecursiveMinibuffers);
-        MINIBUFFER_COMPLETION_TABLE.initForwardTo(minibufferCompletionTable);
-        MINIBUFFER_COMPLETION_PREDICATE.initForwardTo(minibufferCompletionPredicate);
-        MINIBUFFER_COMPLETION_CONFIRM.initForwardTo(minibufferCompletionConfirm);
-        MINIBUFFER_COMPLETING_FILE_NAME.initForwardTo(minibufferCompletingFileName);
-        MINIBUFFER_HELP_FORM.initForwardTo(minibufferHelpForm);
-        MINIBUFFER_HISTORY_VARIABLE.initForwardTo(minibufferHistoryVariable);
-        MINIBUFFER_HISTORY_POSITION.initForwardTo(minibufferHistoryPosition);
-        MINIBUFFER_AUTO_RAISE.initForwardTo(minibufferAutoRaise);
-        COMPLETION_REGEXP_LIST.initForwardTo(completionRegexpList);
-        MINIBUFFER_ALLOW_TEXT_PROPERTIES.initForwardTo(minibufferAllowTextProperties);
-        MINIBUFFER_PROMPT_PROPERTIES.initForwardTo(minibufferPromptProperties);
-        READ_HIDE_CHAR.initForwardTo(readHideChar);
-        INHIBIT_INTERACTION.initForwardTo(inhibitInteraction);
-        READ_MINIBUFFER_RESTORE_WINDOWS.initForwardTo(readMinibufferRestoreWindows);
+        initForwardTo(READ_EXPRESSION_HISTORY, readExpressionHistory);
+        initForwardTo(READ_BUFFER_FUNCTION, readBufferFunction);
+        initForwardTo(MINIBUFFER_FOLLOWS_SELECTED_FRAME, minibufferFollowsSelectedFrame);
+        initForwardTo(READ_BUFFER_COMPLETION_IGNORE_CASE, readBufferCompletionIgnoreCase);
+        initForwardTo(MINIBUFFER_SETUP_HOOK, minibufferSetupHook);
+        initForwardTo(MINIBUFFER_EXIT_HOOK, minibufferExitHook);
+        initForwardTo(HISTORY_LENGTH, historyLength);
+        initForwardTo(HISTORY_DELETE_DUPLICATES, historyDeleteDuplicates);
+        initForwardTo(HISTORY_ADD_NEW_INPUT, historyAddNewInput);
+        initForwardTo(COMPLETION_IGNORE_CASE, completionIgnoreCase);
+        initForwardTo(ENABLE_RECURSIVE_MINIBUFFERS, enableRecursiveMinibuffers);
+        initForwardTo(MINIBUFFER_COMPLETION_TABLE, minibufferCompletionTable);
+        initForwardTo(MINIBUFFER_COMPLETION_PREDICATE, minibufferCompletionPredicate);
+        initForwardTo(MINIBUFFER_COMPLETION_CONFIRM, minibufferCompletionConfirm);
+        initForwardTo(MINIBUFFER_COMPLETING_FILE_NAME, minibufferCompletingFileName);
+        initForwardTo(MINIBUFFER_HELP_FORM, minibufferHelpForm);
+        initForwardTo(MINIBUFFER_HISTORY_VARIABLE, minibufferHistoryVariable);
+        initForwardTo(MINIBUFFER_HISTORY_POSITION, minibufferHistoryPosition);
+        initForwardTo(MINIBUFFER_AUTO_RAISE, minibufferAutoRaise);
+        initForwardTo(COMPLETION_REGEXP_LIST, completionRegexpList);
+        initForwardTo(MINIBUFFER_ALLOW_TEXT_PROPERTIES, minibufferAllowTextProperties);
+        initForwardTo(MINIBUFFER_PROMPT_PROPERTIES, minibufferPromptProperties);
+        initForwardTo(READ_HIDE_CHAR, readHideChar);
+        initForwardTo(INHIBIT_INTERACTION, inhibitInteraction);
+        initForwardTo(READ_MINIBUFFER_RESTORE_WINDOWS, readMinibufferRestoreWindows);
     }
     private final ValueStorage.Forwarded standardOutput = new ValueStorage.Forwarded(true);
     private final ValueStorage.Forwarded floatOutputFormat = new ValueStorage.Forwarded(false);
@@ -1096,24 +1028,24 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded printUnreadableFunction = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded printUnreadableCallbackBuffer = new ValueStorage.Forwarded(false);
     private void printVars() {
-        STANDARD_OUTPUT.initForwardTo(standardOutput);
-        FLOAT_OUTPUT_FORMAT.initForwardTo(floatOutputFormat);
-        PRINT_INTEGERS_AS_CHARACTERS.initForwardTo(printIntegersAsCharacters);
-        PRINT_LENGTH.initForwardTo(printLength);
-        PRINT_LEVEL.initForwardTo(printLevel);
-        PRINT_ESCAPE_NEWLINES.initForwardTo(printEscapeNewlines);
-        PRINT_ESCAPE_CONTROL_CHARACTERS.initForwardTo(printEscapeControlCharacters);
-        PRINT_ESCAPE_NONASCII.initForwardTo(printEscapeNonascii);
-        PRINT_ESCAPE_MULTIBYTE.initForwardTo(printEscapeMultibyte);
-        PRINT_QUOTED.initForwardTo(printQuoted);
-        PRINT_GENSYM.initForwardTo(printGensym);
-        PRINT_CIRCLE.initForwardTo(printCircle);
-        PRINT_CONTINUOUS_NUMBERING.initForwardTo(printContinuousNumbering);
-        PRINT_NUMBER_TABLE.initForwardTo(printNumberTable);
-        PRINT_CHARSET_TEXT_PROPERTY.initForwardTo(printCharsetTextProperty);
-        PRINT_SYMBOLS_BARE.initForwardTo(printSymbolsBare);
-        PRINT_UNREADABLE_FUNCTION.initForwardTo(printUnreadableFunction);
-        PRINT__UNREADABLE_CALLBACK_BUFFER.initForwardTo(printUnreadableCallbackBuffer);
+        initForwardTo(STANDARD_OUTPUT, standardOutput);
+        initForwardTo(FLOAT_OUTPUT_FORMAT, floatOutputFormat);
+        initForwardTo(PRINT_INTEGERS_AS_CHARACTERS, printIntegersAsCharacters);
+        initForwardTo(PRINT_LENGTH, printLength);
+        initForwardTo(PRINT_LEVEL, printLevel);
+        initForwardTo(PRINT_ESCAPE_NEWLINES, printEscapeNewlines);
+        initForwardTo(PRINT_ESCAPE_CONTROL_CHARACTERS, printEscapeControlCharacters);
+        initForwardTo(PRINT_ESCAPE_NONASCII, printEscapeNonascii);
+        initForwardTo(PRINT_ESCAPE_MULTIBYTE, printEscapeMultibyte);
+        initForwardTo(PRINT_QUOTED, printQuoted);
+        initForwardTo(PRINT_GENSYM, printGensym);
+        initForwardTo(PRINT_CIRCLE, printCircle);
+        initForwardTo(PRINT_CONTINUOUS_NUMBERING, printContinuousNumbering);
+        initForwardTo(PRINT_NUMBER_TABLE, printNumberTable);
+        initForwardTo(PRINT_CHARSET_TEXT_PROPERTY, printCharsetTextProperty);
+        initForwardTo(PRINT_SYMBOLS_BARE, printSymbolsBare);
+        initForwardTo(PRINT_UNREADABLE_FUNCTION, printUnreadableFunction);
+        initForwardTo(PRINT__UNREADABLE_CALLBACK_BUFFER, printUnreadableCallbackBuffer);
     }
     private final ValueStorage.ForwardedBool deleteExitedProcesses = new ValueStorage.ForwardedBool(true);
     private final ValueStorage.Forwarded processConnectionType = new ValueStorage.Forwarded(true);
@@ -1126,22 +1058,22 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool fastReadProcessOutput = new ValueStorage.ForwardedBool(true);
     private final ValueStorage.ForwardedLong processErrorPauseTime = new ValueStorage.ForwardedLong(1);
     private void processVars() {
-        DELETE_EXITED_PROCESSES.initForwardTo(deleteExitedProcesses);
-        PROCESS_CONNECTION_TYPE.initForwardTo(processConnectionType);
-        PROCESS_ADAPTIVE_READ_BUFFERING.initForwardTo(processAdaptiveReadBuffering);
-        PROCESS_PRIORITIZE_LOWER_FDS.initForwardTo(processPrioritizeLowerFds);
-        INTERRUPT_PROCESS_FUNCTIONS.initForwardTo(interruptProcessFunctions);
-        SIGNAL_PROCESS_FUNCTIONS.initForwardTo(signalProcessFunctions);
-        INTERNAL__DAEMON_SOCKNAME.initForwardTo(internalDaemonSockname);
-        READ_PROCESS_OUTPUT_MAX.initForwardTo(readProcessOutputMax);
-        FAST_READ_PROCESS_OUTPUT.initForwardTo(fastReadProcessOutput);
-        PROCESS_ERROR_PAUSE_TIME.initForwardTo(processErrorPauseTime);
+        initForwardTo(DELETE_EXITED_PROCESSES, deleteExitedProcesses);
+        initForwardTo(PROCESS_CONNECTION_TYPE, processConnectionType);
+        initForwardTo(PROCESS_ADAPTIVE_READ_BUFFERING, processAdaptiveReadBuffering);
+        initForwardTo(PROCESS_PRIORITIZE_LOWER_FDS, processPrioritizeLowerFds);
+        initForwardTo(INTERRUPT_PROCESS_FUNCTIONS, interruptProcessFunctions);
+        initForwardTo(SIGNAL_PROCESS_FUNCTIONS, signalProcessFunctions);
+        initForwardTo(INTERNAL__DAEMON_SOCKNAME, internalDaemonSockname);
+        initForwardTo(READ_PROCESS_OUTPUT_MAX, readProcessOutputMax);
+        initForwardTo(FAST_READ_PROCESS_OUTPUT, fastReadProcessOutput);
+        initForwardTo(PROCESS_ERROR_PAUSE_TIME, processErrorPauseTime);
     }
     private final ValueStorage.Forwarded searchSpacesRegexp = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded inhibitChangingMatchData = new ValueStorage.Forwarded(false);
     private void searchVars() {
-        SEARCH_SPACES_REGEXP.initForwardTo(searchSpacesRegexp);
-        INHIBIT_CHANGING_MATCH_DATA.initForwardTo(inhibitChangingMatchData);
+        initForwardTo(SEARCH_SPACES_REGEXP, searchSpacesRegexp);
+        initForwardTo(INHIBIT_CHANGING_MATCH_DATA, inhibitChangingMatchData);
     }
     private final ValueStorage.Forwarded commentUseSyntaxPpss = new ValueStorage.Forwarded(true);
     private final ValueStorage.ForwardedBool parseSexpIgnoreComments = new ValueStorage.ForwardedBool();
@@ -1153,29 +1085,29 @@ public class ELispGlobals {
     private final ValueStorage.Forwarded findWordBoundaryFunctionTable = new ValueStorage.Forwarded();
     private final ValueStorage.ForwardedBool commentEndCanBeEscaped = new ValueStorage.ForwardedBool(false);
     private void syntaxVars() {
-        COMMENT_USE_SYNTAX_PPSS.initForwardTo(commentUseSyntaxPpss);
-        PARSE_SEXP_IGNORE_COMMENTS.initForwardTo(parseSexpIgnoreComments);
-        PARSE_SEXP_LOOKUP_PROPERTIES.initForwardTo(parseSexpLookupProperties);
-        SYNTAX_PROPERTIZE__DONE.initForwardTo(syntaxPropertizeDone);
-        WORDS_INCLUDE_ESCAPES.initForwardTo(wordsIncludeEscapes);
-        MULTIBYTE_SYNTAX_AS_SYMBOL.initForwardTo(multibyteSyntaxAsSymbol);
-        OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START.initForwardTo(openParenInColumn0IsDefunStart);
-        FIND_WORD_BOUNDARY_FUNCTION_TABLE.initForwardTo(findWordBoundaryFunctionTable);
-        COMMENT_END_CAN_BE_ESCAPED.initForwardTo(commentEndCanBeEscaped);
+        initForwardTo(COMMENT_USE_SYNTAX_PPSS, commentUseSyntaxPpss);
+        initForwardTo(PARSE_SEXP_IGNORE_COMMENTS, parseSexpIgnoreComments);
+        initForwardTo(PARSE_SEXP_LOOKUP_PROPERTIES, parseSexpLookupProperties);
+        initForwardTo(SYNTAX_PROPERTIZE__DONE, syntaxPropertizeDone);
+        initForwardTo(WORDS_INCLUDE_ESCAPES, wordsIncludeEscapes);
+        initForwardTo(MULTIBYTE_SYNTAX_AS_SYMBOL, multibyteSyntaxAsSymbol);
+        initForwardTo(OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START, openParenInColumn0IsDefunStart);
+        initForwardTo(FIND_WORD_BOUNDARY_FUNCTION_TABLE, findWordBoundaryFunctionTable);
+        initForwardTo(COMMENT_END_CAN_BE_ESCAPED, commentEndCanBeEscaped);
     }
     private final ValueStorage.Forwarded defaultTextProperties = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded charPropertyAliasAlist = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded inhibitPointMotionHooks = new ValueStorage.Forwarded(true);
     private final ValueStorage.Forwarded textPropertyDefaultNonsticky = new ValueStorage.Forwarded();
     private void textpropVars() {
-        DEFAULT_TEXT_PROPERTIES.initForwardTo(defaultTextProperties);
-        CHAR_PROPERTY_ALIAS_ALIST.initForwardTo(charPropertyAliasAlist);
-        INHIBIT_POINT_MOTION_HOOKS.initForwardTo(inhibitPointMotionHooks);
-        TEXT_PROPERTY_DEFAULT_NONSTICKY.initForwardTo(textPropertyDefaultNonsticky);
+        initForwardTo(DEFAULT_TEXT_PROPERTIES, defaultTextProperties);
+        initForwardTo(CHAR_PROPERTY_ALIAS_ALIST, charPropertyAliasAlist);
+        initForwardTo(INHIBIT_POINT_MOTION_HOOKS, inhibitPointMotionHooks);
+        initForwardTo(TEXT_PROPERTY_DEFAULT_NONSTICKY, textPropertyDefaultNonsticky);
     }
     private final ValueStorage.ForwardedBool currentTimeList = new ValueStorage.ForwardedBool(true);
     private void timefnsVars() {
-        CURRENT_TIME_LIST.initForwardTo(currentTimeList);
+        initForwardTo(CURRENT_TIME_LIST, currentTimeList);
     }
     private final ValueStorage.Forwarded tempBufferShowFunction = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded minibufferScrollWindow = new ValueStorage.Forwarded(false);
@@ -1201,29 +1133,29 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool fastButImpreciseScrolling = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.Forwarded windowDeadWindowsTable = new ValueStorage.Forwarded();
     private void windowVars() {
-        TEMP_BUFFER_SHOW_FUNCTION.initForwardTo(tempBufferShowFunction);
-        MINIBUFFER_SCROLL_WINDOW.initForwardTo(minibufferScrollWindow);
-        MODE_LINE_IN_NON_SELECTED_WINDOWS.initForwardTo(modeLineInNonSelectedWindows);
-        OTHER_WINDOW_SCROLL_BUFFER.initForwardTo(otherWindowScrollBuffer);
-        OTHER_WINDOW_SCROLL_DEFAULT.initForwardTo(otherWindowScrollDefault);
-        AUTO_WINDOW_VSCROLL.initForwardTo(autoWindowVscroll);
-        NEXT_SCREEN_CONTEXT_LINES.initForwardTo(nextScreenContextLines);
-        SCROLL_PRESERVE_SCREEN_POSITION.initForwardTo(scrollPreserveScreenPosition);
-        WINDOW_POINT_INSERTION_TYPE.initForwardTo(windowPointInsertionType);
-        WINDOW_BUFFER_CHANGE_FUNCTIONS.initForwardTo(windowBufferChangeFunctions);
-        WINDOW_SIZE_CHANGE_FUNCTIONS.initForwardTo(windowSizeChangeFunctions);
-        WINDOW_SELECTION_CHANGE_FUNCTIONS.initForwardTo(windowSelectionChangeFunctions);
-        WINDOW_STATE_CHANGE_FUNCTIONS.initForwardTo(windowStateChangeFunctions);
-        WINDOW_STATE_CHANGE_HOOK.initForwardTo(windowStateChangeHook);
-        WINDOW_CONFIGURATION_CHANGE_HOOK.initForwardTo(windowConfigurationChangeHook);
-        WINDOW_RESTORE_KILLED_BUFFER_WINDOWS.initForwardTo(windowRestoreKilledBufferWindows);
-        RECENTER_REDISPLAY.initForwardTo(recenterRedisplay);
-        WINDOW_COMBINATION_RESIZE.initForwardTo(windowCombinationResize);
-        WINDOW_COMBINATION_LIMIT.initForwardTo(windowCombinationLimit);
-        WINDOW_PERSISTENT_PARAMETERS.initForwardTo(windowPersistentParameters);
-        WINDOW_RESIZE_PIXELWISE.initForwardTo(windowResizePixelwise);
-        FAST_BUT_IMPRECISE_SCROLLING.initForwardTo(fastButImpreciseScrolling);
-        WINDOW_DEAD_WINDOWS_TABLE.initForwardTo(windowDeadWindowsTable);
+        initForwardTo(TEMP_BUFFER_SHOW_FUNCTION, tempBufferShowFunction);
+        initForwardTo(MINIBUFFER_SCROLL_WINDOW, minibufferScrollWindow);
+        initForwardTo(MODE_LINE_IN_NON_SELECTED_WINDOWS, modeLineInNonSelectedWindows);
+        initForwardTo(OTHER_WINDOW_SCROLL_BUFFER, otherWindowScrollBuffer);
+        initForwardTo(OTHER_WINDOW_SCROLL_DEFAULT, otherWindowScrollDefault);
+        initForwardTo(AUTO_WINDOW_VSCROLL, autoWindowVscroll);
+        initForwardTo(NEXT_SCREEN_CONTEXT_LINES, nextScreenContextLines);
+        initForwardTo(SCROLL_PRESERVE_SCREEN_POSITION, scrollPreserveScreenPosition);
+        initForwardTo(WINDOW_POINT_INSERTION_TYPE, windowPointInsertionType);
+        initForwardTo(WINDOW_BUFFER_CHANGE_FUNCTIONS, windowBufferChangeFunctions);
+        initForwardTo(WINDOW_SIZE_CHANGE_FUNCTIONS, windowSizeChangeFunctions);
+        initForwardTo(WINDOW_SELECTION_CHANGE_FUNCTIONS, windowSelectionChangeFunctions);
+        initForwardTo(WINDOW_STATE_CHANGE_FUNCTIONS, windowStateChangeFunctions);
+        initForwardTo(WINDOW_STATE_CHANGE_HOOK, windowStateChangeHook);
+        initForwardTo(WINDOW_CONFIGURATION_CHANGE_HOOK, windowConfigurationChangeHook);
+        initForwardTo(WINDOW_RESTORE_KILLED_BUFFER_WINDOWS, windowRestoreKilledBufferWindows);
+        initForwardTo(RECENTER_REDISPLAY, recenterRedisplay);
+        initForwardTo(WINDOW_COMBINATION_RESIZE, windowCombinationResize);
+        initForwardTo(WINDOW_COMBINATION_LIMIT, windowCombinationLimit);
+        initForwardTo(WINDOW_PERSISTENT_PARAMETERS, windowPersistentParameters);
+        initForwardTo(WINDOW_RESIZE_PIXELWISE, windowResizePixelwise);
+        initForwardTo(FAST_BUT_IMPRECISE_SCROLLING, fastButImpreciseScrolling);
+        initForwardTo(WINDOW_DEAD_WINDOWS_TABLE, windowDeadWindowsTable);
     }
     private final ValueStorage.ForwardedBool scrollMinibufferConservatively = new ValueStorage.ForwardedBool(true);
     private final ValueStorage.ForwardedBool inhibitMessage = new ValueStorage.ForwardedBool(false);
@@ -1322,102 +1254,102 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedBool compositionBreakAtPoint = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.ForwardedLong maxRedisplayTicks = new ValueStorage.ForwardedLong(0);
     private void xdispVars() {
-        SCROLL_MINIBUFFER_CONSERVATIVELY.initForwardTo(scrollMinibufferConservatively);
-        INHIBIT_MESSAGE.initForwardTo(inhibitMessage);
-        MESSAGES_BUFFER_NAME.initForwardTo(messagesBufferName);
-        X_STRETCH_CURSOR.initForwardTo(xStretchCursor);
-        SHOW_TRAILING_WHITESPACE.initForwardTo(showTrailingWhitespace);
-        MODE_LINE_COMPACT.initForwardTo(modeLineCompact);
-        NOBREAK_CHAR_DISPLAY.initForwardTo(nobreakCharDisplay);
-        NOBREAK_CHAR_ASCII_DISPLAY.initForwardTo(nobreakCharAsciiDisplay);
-        VOID_TEXT_AREA_POINTER.initForwardTo(voidTextAreaPointer);
-        INHIBIT_REDISPLAY.initForwardTo(inhibitRedisplay);
-        GLOBAL_MODE_STRING.initForwardTo(globalModeString);
-        OVERLAY_ARROW_POSITION.initForwardTo(overlayArrowPosition);
-        OVERLAY_ARROW_STRING.initForwardTo(overlayArrowString);
-        OVERLAY_ARROW_VARIABLE_LIST.initForwardTo(overlayArrowVariableList);
-        SCROLL_STEP.initForwardTo(scrollStep);
-        SCROLL_CONSERVATIVELY.initForwardTo(scrollConservatively);
-        SCROLL_MARGIN.initForwardTo(scrollMargin);
-        MAXIMUM_SCROLL_MARGIN.initForwardTo(maximumScrollMargin);
-        DISPLAY_PIXELS_PER_INCH.initForwardTo(displayPixelsPerInch);
-        DEBUG_END_POS.initForwardTo(debugEndPos);
-        TRUNCATE_PARTIAL_WIDTH_WINDOWS.initForwardTo(truncatePartialWidthWindows);
-        WORD_WRAP_BY_CATEGORY.initForwardTo(wordWrapByCategory);
-        LINE_NUMBER_DISPLAY_LIMIT.initForwardTo(lineNumberDisplayLimit);
-        LINE_NUMBER_DISPLAY_LIMIT_WIDTH.initForwardTo(lineNumberDisplayLimitWidth);
-        HIGHLIGHT_NONSELECTED_WINDOWS.initForwardTo(highlightNonselectedWindows);
-        MULTIPLE_FRAMES.initForwardTo(multipleFrames);
-        FRAME_TITLE_FORMAT.initForwardTo(frameTitleFormat);
-        ICON_TITLE_FORMAT.initForwardTo(iconTitleFormat);
-        MESSAGE_LOG_MAX.initForwardTo(messageLogMax);
-        WINDOW_SCROLL_FUNCTIONS.initForwardTo(windowScrollFunctions);
-        MOUSE_AUTOSELECT_WINDOW.initForwardTo(mouseAutoselectWindow);
-        AUTO_RESIZE_TAB_BARS.initForwardTo(autoResizeTabBars);
-        AUTO_RAISE_TAB_BAR_BUTTONS.initForwardTo(autoRaiseTabBarButtons);
-        AUTO_RESIZE_TOOL_BARS.initForwardTo(autoResizeToolBars);
-        AUTO_RAISE_TOOL_BAR_BUTTONS.initForwardTo(autoRaiseToolBarButtons);
-        MAKE_CURSOR_LINE_FULLY_VISIBLE.initForwardTo(makeCursorLineFullyVisible);
-        MAKE_WINDOW_START_VISIBLE.initForwardTo(makeWindowStartVisible);
-        TAB_BAR_BORDER.initForwardTo(tabBarBorder);
-        TAB_BAR_BUTTON_MARGIN.initForwardTo(tabBarButtonMargin);
-        TAB_BAR_BUTTON_RELIEF.initForwardTo(tabBarButtonRelief);
-        TOOL_BAR_BORDER.initForwardTo(toolBarBorder);
-        TOOL_BAR_BUTTON_MARGIN.initForwardTo(toolBarButtonMargin);
-        TOOL_BAR_BUTTON_RELIEF.initForwardTo(toolBarButtonRelief);
-        TOOL_BAR_STYLE.initForwardTo(toolBarStyle);
-        TOOL_BAR_MAX_LABEL_SIZE.initForwardTo(toolBarMaxLabelSize);
-        FONTIFICATION_FUNCTIONS.initForwardTo(fontificationFunctions);
-        UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT.initForwardTo(unibyteDisplayViaLanguageEnvironment);
-        MAX_MINI_WINDOW_HEIGHT.initForwardTo(maxMiniWindowHeight);
-        RESIZE_MINI_WINDOWS.initForwardTo(resizeMiniWindows);
-        BLINK_CURSOR_ALIST.initForwardTo(blinkCursorAlist);
-        AUTO_HSCROLL_MODE.initForwardTo(autoHscrollMode);
-        HSCROLL_MARGIN.initForwardTo(hscrollMargin);
-        HSCROLL_STEP.initForwardTo(hscrollStep);
-        MESSAGE_TRUNCATE_LINES.initForwardTo(messageTruncateLines);
-        MENU_BAR_UPDATE_HOOK.initForwardTo(menuBarUpdateHook);
-        MENU_UPDATING_FRAME.initForwardTo(menuUpdatingFrame);
-        INHIBIT_MENUBAR_UPDATE.initForwardTo(inhibitMenubarUpdate);
-        WRAP_PREFIX.initForwardTo(wrapPrefix);
-        LINE_PREFIX.initForwardTo(linePrefix);
-        DISPLAY_LINE_NUMBERS.initForwardTo(displayLineNumbers);
-        DISPLAY_LINE_NUMBERS_WIDTH.initForwardTo(displayLineNumbersWidth);
-        DISPLAY_LINE_NUMBERS_CURRENT_ABSOLUTE.initForwardTo(displayLineNumbersCurrentAbsolute);
-        DISPLAY_LINE_NUMBERS_WIDEN.initForwardTo(displayLineNumbersWiden);
-        DISPLAY_LINE_NUMBERS_OFFSET.initForwardTo(displayLineNumbersOffset);
-        DISPLAY_FILL_COLUMN_INDICATOR.initForwardTo(displayFillColumnIndicator);
-        DISPLAY_FILL_COLUMN_INDICATOR_COLUMN.initForwardTo(displayFillColumnIndicatorColumn);
-        DISPLAY_FILL_COLUMN_INDICATOR_CHARACTER.initForwardTo(displayFillColumnIndicatorCharacter);
-        DISPLAY_LINE_NUMBERS_MAJOR_TICK.initForwardTo(displayLineNumbersMajorTick);
-        DISPLAY_LINE_NUMBERS_MINOR_TICK.initForwardTo(displayLineNumbersMinorTick);
-        INHIBIT_EVAL_DURING_REDISPLAY.initForwardTo(inhibitEvalDuringRedisplay);
-        INHIBIT_FREE_REALIZED_FACES.initForwardTo(inhibitFreeRealizedFaces);
-        INHIBIT_BIDI_MIRRORING.initForwardTo(inhibitBidiMirroring);
-        BIDI_INHIBIT_BPA.initForwardTo(bidiInhibitBpa);
-        INHIBIT_TRY_WINDOW_ID.initForwardTo(inhibitTryWindowId);
-        INHIBIT_TRY_WINDOW_REUSING.initForwardTo(inhibitTryWindowReusing);
-        INHIBIT_TRY_CURSOR_MOVEMENT.initForwardTo(inhibitTryCursorMovement);
-        OVERLINE_MARGIN.initForwardTo(overlineMargin);
-        UNDERLINE_MINIMUM_OFFSET.initForwardTo(underlineMinimumOffset);
-        DISPLAY_HOURGLASS.initForwardTo(displayHourglass);
-        HOURGLASS_DELAY.initForwardTo(hourglassDelay);
-        PRE_REDISPLAY_FUNCTION.initForwardTo(preRedisplayFunction);
-        GLYPHLESS_CHAR_DISPLAY.initForwardTo(glyphlessCharDisplay);
-        DEBUG_ON_MESSAGE.initForwardTo(debugOnMessage);
-        SET_MESSAGE_FUNCTION.initForwardTo(setMessageFunction);
-        CLEAR_MESSAGE_FUNCTION.initForwardTo(clearMessageFunction);
-        REDISPLAY__ALL_WINDOWS_CAUSE.initForwardTo(redisplayAllWindowsCause);
-        REDISPLAY__MODE_LINES_CAUSE.initForwardTo(redisplayModeLinesCause);
-        REDISPLAY__INHIBIT_BIDI.initForwardTo(redisplayInhibitBidi);
-        DISPLAY_RAW_BYTES_AS_HEX.initForwardTo(displayRawBytesAsHex);
-        MOUSE_FINE_GRAINED_TRACKING.initForwardTo(mouseFineGrainedTracking);
-        TAB_BAR__DRAGGING_IN_PROGRESS.initForwardTo(tabBarDraggingInProgress);
-        REDISPLAY_SKIP_INITIAL_FRAME.initForwardTo(redisplaySkipInitialFrame);
-        REDISPLAY_SKIP_FONTIFICATION_ON_INPUT.initForwardTo(redisplaySkipFontificationOnInput);
-        REDISPLAY_ADHOC_SCROLL_IN_RESIZE_MINI_WINDOWS.initForwardTo(redisplayAdhocScrollInResizeMiniWindows);
-        COMPOSITION_BREAK_AT_POINT.initForwardTo(compositionBreakAtPoint);
-        MAX_REDISPLAY_TICKS.initForwardTo(maxRedisplayTicks);
+        initForwardTo(SCROLL_MINIBUFFER_CONSERVATIVELY, scrollMinibufferConservatively);
+        initForwardTo(INHIBIT_MESSAGE, inhibitMessage);
+        initForwardTo(MESSAGES_BUFFER_NAME, messagesBufferName);
+        initForwardTo(X_STRETCH_CURSOR, xStretchCursor);
+        initForwardTo(SHOW_TRAILING_WHITESPACE, showTrailingWhitespace);
+        initForwardTo(MODE_LINE_COMPACT, modeLineCompact);
+        initForwardTo(NOBREAK_CHAR_DISPLAY, nobreakCharDisplay);
+        initForwardTo(NOBREAK_CHAR_ASCII_DISPLAY, nobreakCharAsciiDisplay);
+        initForwardTo(VOID_TEXT_AREA_POINTER, voidTextAreaPointer);
+        initForwardTo(INHIBIT_REDISPLAY, inhibitRedisplay);
+        initForwardTo(GLOBAL_MODE_STRING, globalModeString);
+        initForwardTo(OVERLAY_ARROW_POSITION, overlayArrowPosition);
+        initForwardTo(OVERLAY_ARROW_STRING, overlayArrowString);
+        initForwardTo(OVERLAY_ARROW_VARIABLE_LIST, overlayArrowVariableList);
+        initForwardTo(SCROLL_STEP, scrollStep);
+        initForwardTo(SCROLL_CONSERVATIVELY, scrollConservatively);
+        initForwardTo(SCROLL_MARGIN, scrollMargin);
+        initForwardTo(MAXIMUM_SCROLL_MARGIN, maximumScrollMargin);
+        initForwardTo(DISPLAY_PIXELS_PER_INCH, displayPixelsPerInch);
+        initForwardTo(DEBUG_END_POS, debugEndPos);
+        initForwardTo(TRUNCATE_PARTIAL_WIDTH_WINDOWS, truncatePartialWidthWindows);
+        initForwardTo(WORD_WRAP_BY_CATEGORY, wordWrapByCategory);
+        initForwardTo(LINE_NUMBER_DISPLAY_LIMIT, lineNumberDisplayLimit);
+        initForwardTo(LINE_NUMBER_DISPLAY_LIMIT_WIDTH, lineNumberDisplayLimitWidth);
+        initForwardTo(HIGHLIGHT_NONSELECTED_WINDOWS, highlightNonselectedWindows);
+        initForwardTo(MULTIPLE_FRAMES, multipleFrames);
+        initForwardTo(FRAME_TITLE_FORMAT, frameTitleFormat);
+        initForwardTo(ICON_TITLE_FORMAT, iconTitleFormat);
+        initForwardTo(MESSAGE_LOG_MAX, messageLogMax);
+        initForwardTo(WINDOW_SCROLL_FUNCTIONS, windowScrollFunctions);
+        initForwardTo(MOUSE_AUTOSELECT_WINDOW, mouseAutoselectWindow);
+        initForwardTo(AUTO_RESIZE_TAB_BARS, autoResizeTabBars);
+        initForwardTo(AUTO_RAISE_TAB_BAR_BUTTONS, autoRaiseTabBarButtons);
+        initForwardTo(AUTO_RESIZE_TOOL_BARS, autoResizeToolBars);
+        initForwardTo(AUTO_RAISE_TOOL_BAR_BUTTONS, autoRaiseToolBarButtons);
+        initForwardTo(MAKE_CURSOR_LINE_FULLY_VISIBLE, makeCursorLineFullyVisible);
+        initForwardTo(MAKE_WINDOW_START_VISIBLE, makeWindowStartVisible);
+        initForwardTo(TAB_BAR_BORDER, tabBarBorder);
+        initForwardTo(TAB_BAR_BUTTON_MARGIN, tabBarButtonMargin);
+        initForwardTo(TAB_BAR_BUTTON_RELIEF, tabBarButtonRelief);
+        initForwardTo(TOOL_BAR_BORDER, toolBarBorder);
+        initForwardTo(TOOL_BAR_BUTTON_MARGIN, toolBarButtonMargin);
+        initForwardTo(TOOL_BAR_BUTTON_RELIEF, toolBarButtonRelief);
+        initForwardTo(TOOL_BAR_STYLE, toolBarStyle);
+        initForwardTo(TOOL_BAR_MAX_LABEL_SIZE, toolBarMaxLabelSize);
+        initForwardTo(FONTIFICATION_FUNCTIONS, fontificationFunctions);
+        initForwardTo(UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT, unibyteDisplayViaLanguageEnvironment);
+        initForwardTo(MAX_MINI_WINDOW_HEIGHT, maxMiniWindowHeight);
+        initForwardTo(RESIZE_MINI_WINDOWS, resizeMiniWindows);
+        initForwardTo(BLINK_CURSOR_ALIST, blinkCursorAlist);
+        initForwardTo(AUTO_HSCROLL_MODE, autoHscrollMode);
+        initForwardTo(HSCROLL_MARGIN, hscrollMargin);
+        initForwardTo(HSCROLL_STEP, hscrollStep);
+        initForwardTo(MESSAGE_TRUNCATE_LINES, messageTruncateLines);
+        initForwardTo(MENU_BAR_UPDATE_HOOK, menuBarUpdateHook);
+        initForwardTo(MENU_UPDATING_FRAME, menuUpdatingFrame);
+        initForwardTo(INHIBIT_MENUBAR_UPDATE, inhibitMenubarUpdate);
+        initForwardTo(WRAP_PREFIX, wrapPrefix);
+        initForwardTo(LINE_PREFIX, linePrefix);
+        initForwardTo(DISPLAY_LINE_NUMBERS, displayLineNumbers);
+        initForwardTo(DISPLAY_LINE_NUMBERS_WIDTH, displayLineNumbersWidth);
+        initForwardTo(DISPLAY_LINE_NUMBERS_CURRENT_ABSOLUTE, displayLineNumbersCurrentAbsolute);
+        initForwardTo(DISPLAY_LINE_NUMBERS_WIDEN, displayLineNumbersWiden);
+        initForwardTo(DISPLAY_LINE_NUMBERS_OFFSET, displayLineNumbersOffset);
+        initForwardTo(DISPLAY_FILL_COLUMN_INDICATOR, displayFillColumnIndicator);
+        initForwardTo(DISPLAY_FILL_COLUMN_INDICATOR_COLUMN, displayFillColumnIndicatorColumn);
+        initForwardTo(DISPLAY_FILL_COLUMN_INDICATOR_CHARACTER, displayFillColumnIndicatorCharacter);
+        initForwardTo(DISPLAY_LINE_NUMBERS_MAJOR_TICK, displayLineNumbersMajorTick);
+        initForwardTo(DISPLAY_LINE_NUMBERS_MINOR_TICK, displayLineNumbersMinorTick);
+        initForwardTo(INHIBIT_EVAL_DURING_REDISPLAY, inhibitEvalDuringRedisplay);
+        initForwardTo(INHIBIT_FREE_REALIZED_FACES, inhibitFreeRealizedFaces);
+        initForwardTo(INHIBIT_BIDI_MIRRORING, inhibitBidiMirroring);
+        initForwardTo(BIDI_INHIBIT_BPA, bidiInhibitBpa);
+        initForwardTo(INHIBIT_TRY_WINDOW_ID, inhibitTryWindowId);
+        initForwardTo(INHIBIT_TRY_WINDOW_REUSING, inhibitTryWindowReusing);
+        initForwardTo(INHIBIT_TRY_CURSOR_MOVEMENT, inhibitTryCursorMovement);
+        initForwardTo(OVERLINE_MARGIN, overlineMargin);
+        initForwardTo(UNDERLINE_MINIMUM_OFFSET, underlineMinimumOffset);
+        initForwardTo(DISPLAY_HOURGLASS, displayHourglass);
+        initForwardTo(HOURGLASS_DELAY, hourglassDelay);
+        initForwardTo(PRE_REDISPLAY_FUNCTION, preRedisplayFunction);
+        initForwardTo(GLYPHLESS_CHAR_DISPLAY, glyphlessCharDisplay);
+        initForwardTo(DEBUG_ON_MESSAGE, debugOnMessage);
+        initForwardTo(SET_MESSAGE_FUNCTION, setMessageFunction);
+        initForwardTo(CLEAR_MESSAGE_FUNCTION, clearMessageFunction);
+        initForwardTo(REDISPLAY__ALL_WINDOWS_CAUSE, redisplayAllWindowsCause);
+        initForwardTo(REDISPLAY__MODE_LINES_CAUSE, redisplayModeLinesCause);
+        initForwardTo(REDISPLAY__INHIBIT_BIDI, redisplayInhibitBidi);
+        initForwardTo(DISPLAY_RAW_BYTES_AS_HEX, displayRawBytesAsHex);
+        initForwardTo(MOUSE_FINE_GRAINED_TRACKING, mouseFineGrainedTracking);
+        initForwardTo(TAB_BAR__DRAGGING_IN_PROGRESS, tabBarDraggingInProgress);
+        initForwardTo(REDISPLAY_SKIP_INITIAL_FRAME, redisplaySkipInitialFrame);
+        initForwardTo(REDISPLAY_SKIP_FONTIFICATION_ON_INPUT, redisplaySkipFontificationOnInput);
+        initForwardTo(REDISPLAY_ADHOC_SCROLL_IN_RESIZE_MINI_WINDOWS, redisplayAdhocScrollInResizeMiniWindows);
+        initForwardTo(COMPOSITION_BREAK_AT_POINT, compositionBreakAtPoint);
+        initForwardTo(MAX_REDISPLAY_TICKS, maxRedisplayTicks);
     }
     private final ValueStorage.ForwardedBool faceFiltersAlwaysMatch = new ValueStorage.ForwardedBool();
     private final ValueStorage.Forwarded faceNewFrameDefaults = new ValueStorage.Forwarded();
@@ -1430,16 +1362,16 @@ public class ELispGlobals {
     private final ValueStorage.ForwardedLong faceNearSameColorThreshold = new ValueStorage.ForwardedLong(30000);
     private final ValueStorage.Forwarded faceFontLaxMatchedAttributes = new ValueStorage.Forwarded(true);
     private void xfacesVars() {
-        FACE_FILTERS_ALWAYS_MATCH.initForwardTo(faceFiltersAlwaysMatch);
-        FACE__NEW_FRAME_DEFAULTS.initForwardTo(faceNewFrameDefaults);
-        FACE_DEFAULT_STIPPLE.initForwardTo(faceDefaultStipple);
-        TTY_DEFINED_COLOR_ALIST.initForwardTo(ttyDefinedColorAlist);
-        SCALABLE_FONTS_ALLOWED.initForwardTo(scalableFontsAllowed);
-        FACE_IGNORED_FONTS.initForwardTo(faceIgnoredFonts);
-        FACE_REMAPPING_ALIST.initForwardTo(faceRemappingAlist);
-        FACE_FONT_RESCALE_ALIST.initForwardTo(faceFontRescaleAlist);
-        FACE_NEAR_SAME_COLOR_THRESHOLD.initForwardTo(faceNearSameColorThreshold);
-        FACE_FONT_LAX_MATCHED_ATTRIBUTES.initForwardTo(faceFontLaxMatchedAttributes);
+        initForwardTo(FACE_FILTERS_ALWAYS_MATCH, faceFiltersAlwaysMatch);
+        initForwardTo(FACE__NEW_FRAME_DEFAULTS, faceNewFrameDefaults);
+        initForwardTo(FACE_DEFAULT_STIPPLE, faceDefaultStipple);
+        initForwardTo(TTY_DEFINED_COLOR_ALIST, ttyDefinedColorAlist);
+        initForwardTo(SCALABLE_FONTS_ALLOWED, scalableFontsAllowed);
+        initForwardTo(FACE_IGNORED_FONTS, faceIgnoredFonts);
+        initForwardTo(FACE_REMAPPING_ALIST, faceRemappingAlist);
+        initForwardTo(FACE_FONT_RESCALE_ALIST, faceFontRescaleAlist);
+        initForwardTo(FACE_NEAR_SAME_COLOR_THRESHOLD, faceNearSameColorThreshold);
+        initForwardTo(FACE_FONT_LAX_MATCHED_ATTRIBUTES, faceFontLaxMatchedAttributes);
     }
     //#endregion initGlobalVariables
     //#region initializations

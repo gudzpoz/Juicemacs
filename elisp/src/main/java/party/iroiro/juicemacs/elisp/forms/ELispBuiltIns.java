@@ -9,7 +9,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobalsBase;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -57,7 +57,7 @@ public abstract class ELispBuiltIns {
 
     private final boolean inline;
 
-    public final void initialize(ELispLanguage language, ELispGlobals globals) {
+    public final void initialize(ELispLanguage language, ELispGlobalsBase globals) {
         Source javaSource = Source.newBuilder(
                 "java", "", this.getClass().getSimpleName() + ".java"
         )

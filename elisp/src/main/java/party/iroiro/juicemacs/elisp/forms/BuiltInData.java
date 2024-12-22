@@ -1349,7 +1349,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public boolean fboundp(ELispSymbol symbol, @Cached GlobalIndirectFunctionLookupNode lookup) {
             Optional<FunctionStorage> storage = lookup.execute(this, symbol);
-            return storage.isPresent() && !isNil(storage.get());
+            return storage.isPresent() && !isNil(storage.get().get());
         }
     }
 
@@ -1405,7 +1405,7 @@ public class BuiltInData extends ELispBuiltIns {
             Optional<FunctionStorage> storage = lookup.execute(this, symbol);
             if (storage.isPresent()) {
                 FunctionStorage value = storage.get();
-                value.set(false);
+                value.set(false, symbol);
             }
             return symbol;
         }
@@ -1535,7 +1535,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FFset extends ELispBuiltInBaseNode {
         @Specialization
         public ELispSymbol fset(ELispSymbol symbol, Object definition) {
-            getContext().getFunctionStorage(symbol).set(definition);
+            getContext().getFunctionStorage(symbol).set(definition, symbol);
             return symbol;
         }
     }
@@ -1560,7 +1560,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
             // TODO: Handle defalias-fset-function
-            getContext().getFunctionStorage(symbol).set(definition);
+            getContext().getFunctionStorage(symbol).set(definition, symbol);
             return symbol;
         }
     }
@@ -1760,6 +1760,9 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSymbolValue extends ELispBuiltInBaseNode {
         @Specialization
         public Object symbolValue(ELispSymbol symbol, @Cached GlobalIndirectLookupNode lookupNode) {
+            if (symbol.isKeyword()) {
+                return symbol;
+            }
             Optional<ValueStorage> storage = lookupNode.execute(this, symbol);
             if (storage.isEmpty()) {
                 throw ELispSignals.voidVariable(symbol);

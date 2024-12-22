@@ -166,21 +166,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     public void setFunction(Object function) {
-        if (isConstant()) {
-            throw ELispSignals.settingConstant(this);
-        }
-        Object original = getFunction();
-        if (original instanceof ELispSubroutine(_, _, ELispSubroutine.InlineInfo inline) && inline != null) {
-            inline.stable().invalidate();
-        }
-        ELispContext.get(null).getFunctionStorage(this).set(function);
-        if (function instanceof ELispInterpretedClosure closure) {
-            closure.setName(this);
-        }
-        if (function instanceof ELispCons cons && cons.car() == MACRO
-                && cons.cdr() instanceof ELispInterpretedClosure closure) {
-            closure.setName(this);
-        }
+        ELispContext.get(null).getFunctionStorage(this).set(function, this);
     }
 
     public MuleString name() {

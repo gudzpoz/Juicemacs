@@ -38,7 +38,7 @@ public final class ELispContext {
     public ELispContext(ELispLanguage language, TruffleLanguage.Env env) {
         this.language = language;
         this.env = new ConcurrentHashMap<>(env.getEnvironment());
-        this.globals = new ELispGlobals(language, this);
+        this.globals = new ELispGlobals(this);
         variablesArray = new SharedIndicesMap.ContextArray<>(
                 language.globalVariablesMap,
                 ValueStorage[]::new,
@@ -59,7 +59,7 @@ public final class ELispContext {
         return globals.globalObarray;
     }
 
-    public Object intern(String name) {
+    public ELispSymbol intern(String name) {
         return obarray().intern(name);
     }
 
@@ -83,7 +83,7 @@ public final class ELispContext {
     //#region Symbol lookup
     public ValueStorage getStorage(ELispSymbol symbol) {
         int index = language.getGlobalVariableIndex(symbol);
-        return variablesArray.get(index);
+        return variablesArray.getDynamic(index);
     }
     @Idempotent
     public Optional<ValueStorage> getStorageLazy(ELispSymbol symbol) {
@@ -91,11 +91,11 @@ public final class ELispContext {
         if (index == -1) {
             return Optional.empty();
         }
-        return Optional.of(variablesArray.get(index));
+        return Optional.of(variablesArray.getDynamic(index));
     }
     public FunctionStorage getFunctionStorage(ELispSymbol symbol) {
         int index = language.getGlobalFunctionIndex(symbol);
-        return functionsArray.get(index);
+        return functionsArray.getDynamic(index);
     }
     @Idempotent
     public Optional<FunctionStorage> getFunctionStorageLazy(ELispSymbol symbol) {
@@ -103,7 +103,7 @@ public final class ELispContext {
         if (index == -1) {
             return Optional.empty();
         }
-        return Optional.of(functionsArray.get(index));
+        return Optional.of(functionsArray.getDynamic(index));
     }
     public ValueStorage getValueStorage(int index) {
         return variablesArray.get(index);

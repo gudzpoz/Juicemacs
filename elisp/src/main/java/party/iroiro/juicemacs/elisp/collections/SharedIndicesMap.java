@@ -66,9 +66,26 @@ public final class SharedIndicesMap {
             this.data = newArray.apply(sharedIndicesMap.size());
         }
 
+        @SuppressWarnings("DuplicatedCode")
         @NeverDefault
         public T get(int index) {
             CompilerAsserts.partialEvaluationConstant(index);
+            assert index <= sharedIndicesMap.size();
+
+            final T[] localData = this.data;
+            if (index < localData.length) {
+                T value = localData[index];
+                if (value != null) {
+                    return value;
+                }
+            }
+
+            return getSlowPath(index);
+        }
+
+        @SuppressWarnings("DuplicatedCode")
+        @NeverDefault
+        public T getDynamic(int index) {
             assert index <= sharedIndicesMap.size();
 
             final T[] localData = this.data;
