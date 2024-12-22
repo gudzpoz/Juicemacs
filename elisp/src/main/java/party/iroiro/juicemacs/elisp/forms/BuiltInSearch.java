@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
@@ -21,18 +22,27 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSearch extends ELispBuiltIns {
-    public BuiltInSearch() {
-        MATCH_DATA.setValue(false);
-        MATCHED_STR.setValue(false);
-    }
-
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInSearchFactory.getFactories();
     }
 
-    private static final ThreadLocalStorage MATCH_DATA = new ThreadLocalStorage(false);
-    private static final ThreadLocalStorage MATCHED_STR = new ThreadLocalStorage(false);
+    private final ThreadLocalStorage MATCH_DATA = new ThreadLocalStorage(false);
+    private final ThreadLocalStorage MATCHED_STR = new ThreadLocalStorage(false);
+
+    private static Object matchData(@Nullable Node node) {
+        return ELispContext.get(node).globals().builtInSearch.MATCH_DATA.getValue();
+    }
+
+    private static Object matchStr(@Nullable Node node) {
+        return ELispContext.get(node).globals().builtInSearch.MATCHED_STR.getValue();
+    }
+
+    private static void setMatch(@Nullable Node node, Object data, Object str) {
+        BuiltInSearch builtInSearch = ELispContext.get(node).globals().builtInSearch;
+        builtInSearch.MATCH_DATA.setValue(data);
+        builtInSearch.MATCHED_STR.setValue(str);
+    }
 
     private record RegExpKey(MuleString regExp, @Nullable MuleString whitespaceRegExp, @Nullable ELispCharTable canon) {
     }
@@ -167,8 +177,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             Object result = pattern.call(string.value(), true, from, -1, buffer);
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
-                    MATCH_DATA.setValue(result);
-                    MATCHED_STR.setValue(string);
+                    setMatch(this, result, string);
                 }
                 return cons.car();
             }
@@ -456,11 +465,11 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReplaceMatch extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString replaceMatch(ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp) {
+        public ELispString replaceMatch(ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp) {
             // TODO: fixedcase, literal...
             long subexpN = notNilOr(subexp, 0);
-            ELispString s = asStr(isNil(string) ? MATCHED_STR.getValue() : string);
-            ELispCons cons = asCons(MATCH_DATA.getValue()).getCons((int) (subexpN * 2));
+            ELispString s = asStr(isNil(string) ? matchStr(this) : string);
+            ELispCons cons = asCons(matchData(this)).getCons((int) (subexpN * 2));
             int start = asInt(cons.car());
             int end = asInt(asCons(cons.cdr()).car());
             MuleString before = s.value().subSequence(0, start);
@@ -490,8 +499,8 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchBeginning extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object matchBeginning(long subexp) {
-            Object value = MATCH_DATA.getValue();
+        public Object matchBeginning(long subexp) {
+            Object value = matchData(this);
             return BuiltInFns.FNth.nth(2 * subexp, value);
         }
     }
@@ -513,8 +522,8 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchEnd extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object matchEnd(long subexp) {
-            Object value = MATCH_DATA.getValue();
+        public Object matchEnd(long subexp) {
+            Object value = matchData(this);
             return BuiltInFns.FNth.nth(2 * subexp + 1, value);
         }
     }
@@ -561,11 +570,11 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchData extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object matchData(boolean integers, Object reuse, Object reseat) {
+        public Object matchData(boolean integers, Object reuse, Object reseat) {
             if (!isNil(reuse)) {
                 throw new UnsupportedOperationException();
             }
-            Object value = MATCH_DATA.getValue();
+            Object value = BuiltInSearch.matchData(this);
             if (value instanceof ELispCons cons) {
                 return cons;
             }
@@ -585,7 +594,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetMatchData extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean setMatchData(Object list, Object reseat) {
+        public boolean setMatchData(Object list, Object reseat) {
             if (!BuiltInData.FListp.listp(list)) {
                 throw ELispSignals.wrongTypeArgument(LISTP, list);
             }
@@ -604,7 +613,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                     break;
                 }
             }
-            MATCH_DATA.setValue(builder.build());
+            setMatch(this, builder.build(), false);
             return false;
         }
     }
@@ -618,8 +627,8 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMatchDataTranslate extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object matchDataTranslate(long n) {
-            Object value = MATCH_DATA.getValue();
+        public Object matchDataTranslate(long n) {
+            Object value = matchData(this);
             if (value instanceof ELispCons cons) {
                 ELispCons.ConsIterator i = cons.consIterator(0);
                 while (i.hasNextCons()) {

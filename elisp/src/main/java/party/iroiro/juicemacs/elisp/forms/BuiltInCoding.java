@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
@@ -18,26 +19,12 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.EMACS_MULE_CHARSET_LIST;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.ISO2022_CHARSET_LIST;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystemType.shortArgs;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCoding extends ELispBuiltIns {
-    public BuiltInCoding() {
-        CODING_SYSTEM_HASH_TABLE.clear();
-        for (int i = 0; i < CODING_CATEGORIES.length; i++) {
-            CODING_CATEGORIES[i] = new CodingSystemCategory.RawText();
-        }
-    }
-
-    @Override
-    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
-        return BuiltInCodingFactory.getFactories();
-    }
-
     private static final Map<ELispSymbol, ELispCodingSystemType> CODING_SYSTEM_TYPES;
 
     static {
@@ -62,11 +49,26 @@ public class BuiltInCoding extends ELispBuiltIns {
         CODING_SYSTEM_TYPES = Map.ofEntries(entries);
     }
 
-    private static final HashMap<ELispSymbol, CodingSystemCategory.CodingSystem> CODING_SYSTEM_HASH_TABLE = new HashMap<>();
-    private static final CodingSystemCategory[] CODING_CATEGORIES = new CodingSystemCategory[CODING_CATEGORY_MAX];
-    public static CodingSystemCategory safeTerminalCoding = new CodingSystemCategory.RawText();
+    private final HashMap<ELispSymbol, CodingSystemCategory.CodingSystem> CODING_SYSTEM_HASH_TABLE = new HashMap<>();
+    private final CodingSystemCategory[] CODING_CATEGORIES = new CodingSystemCategory[CODING_CATEGORY_MAX];
+    public CodingSystemCategory safeTerminalCoding = new CodingSystemCategory.RawText();
 
-    private static void addCodingSystem(ELispSymbol name, CodingSystemCategory.CodingSystem system) {
+    public BuiltInCoding() {
+        for (int i = 0; i < CODING_CATEGORIES.length; i++) {
+            CODING_CATEGORIES[i] = new CodingSystemCategory.RawText();
+        }
+    }
+
+    @Override
+    protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
+        return BuiltInCodingFactory.getFactories();
+    }
+
+    private static BuiltInCoding getThis(@Nullable Node node) {
+        return ELispContext.get(node).globals().builtInCoding;
+    }
+
+    private void addCodingSystem(ELispSymbol name, CodingSystemCategory.CodingSystem system) {
         CODING_SYSTEM_HASH_TABLE.put(name, system);
         CODING_SYSTEM_LIST.setValue(new ELispCons(name, CODING_SYSTEM_LIST.getValue()));
         ELispString nameString = new ELispString(name.name());
@@ -79,7 +81,7 @@ public class BuiltInCoding extends ELispBuiltIns {
         }
     }
 
-    private static CodingSystemCategory.@Nullable CodingSystem getCodingSystem(ELispSymbol name) {
+    private CodingSystemCategory.@Nullable CodingSystem getCodingSystem(ELispSymbol name) {
         return CODING_SYSTEM_HASH_TABLE.get(name);
     }
 
@@ -104,7 +106,7 @@ public class BuiltInCoding extends ELispBuiltIns {
         throw BuiltInEval.FSignal.signal(CODING_SYSTEM_ERROR, codingSystem);
     }
 
-    public static CodingSystemCategory setupCodingSystem(ELispSymbol codingSystemName, CodingSystemCategory coding) {
+    public CodingSystemCategory setupCodingSystem(ELispSymbol codingSystemName, CodingSystemCategory coding) {
         if (isNil(codingSystemName)) {
             codingSystemName = UNDECIDED;
         }
@@ -166,7 +168,7 @@ public class BuiltInCoding extends ELispBuiltIns {
                 return true;
             }
             if (object instanceof ELispSymbol sym) {
-                return getCodingSystem(sym) != null || !isNil(BuiltInFns.FGet.get(sym, CODING_SYSTEM_DEFINE_FORM));
+                return getThis(null).getCodingSystem(sym) != null || !isNil(BuiltInFns.FGet.get(sym, CODING_SYSTEM_DEFINE_FORM));
             }
             return false;
         }
@@ -784,6 +786,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             }
 
             ELispCons aliases = new ELispCons(name);
+            BuiltInCoding coding = getThis(null);
             if (isNil(eolType)) {
                 ELispSymbol[] subsidiaries = makeSubsidiaries(name);
                 eolType = subsidiaries;
@@ -795,18 +798,18 @@ public class BuiltInCoding extends ELispBuiltIns {
                         case 1 -> DOS;
                         default -> MAC;
                     };
-                    addCodingSystem(
+                    coding.addCodingSystem(
                             subsidiary,
                             new CodingSystemCategory.CodingSystem(subsidiary, attrs, currentAliases, currentEolType)
                     );
                 }
             }
 
-            addCodingSystem(name, new CodingSystemCategory.CodingSystem(name, attrs, aliases, eolType));
+            coding.addCodingSystem(name, new CodingSystemCategory.CodingSystem(name, attrs, aliases, eolType));
 
-            CodingSystemCategory codingCategory = CODING_CATEGORIES[category];
+            CodingSystemCategory codingCategory = coding.CODING_CATEGORIES[category];
             if (codingCategory.system == null || codingCategory.system.name() == name) {
-                CODING_CATEGORIES[category] = setupCodingSystem(name, codingCategory);
+                coding.CODING_CATEGORIES[category] = coding.setupCodingSystem(name, codingCategory);
             }
 
             return false;
@@ -837,12 +840,12 @@ public class BuiltInCoding extends ELispBuiltIns {
                     if (codingType != ISO_2022) {
                         throw ELispSignals.error("Invalid charset-list");
                     }
-                    list = asCons(ISO2022_CHARSET_LIST.getValue());
+                    list = asCons(BuiltInCharSet.getThis(null).ISO2022_CHARSET_LIST.getValue());
                 } else if (symbol == EMACS_MULE) {
                     if (codingType != EMACS_MULE) {
                         throw ELispSignals.error("Invalid charset-list");
                     }
-                    list = asCons(EMACS_MULE_CHARSET_LIST.getValue());
+                    list = asCons(BuiltInCharSet.getThis(null).EMACS_MULE_CHARSET_LIST.getValue());
                 } else {
                     throw ELispSignals.error("Invalid charset-list");
                 }
@@ -933,12 +936,12 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCodingSystemBase extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol codingSystemBase(ELispSymbol codingSystem) {
+        public ELispSymbol codingSystemBase(ELispSymbol codingSystem) {
             if (isNil(codingSystem)) {
                 return NO_CONVERSION;
             }
             checkCodingSystem(codingSystem);
-            CodingSystemCategory.CodingSystem system = Objects.requireNonNull(getCodingSystem(codingSystem));
+            CodingSystemCategory.CodingSystem system = Objects.requireNonNull(getThis(this).getCodingSystem(codingSystem));
             //noinspection SequencedCollectionMethodCanBeUsed
             return asSym(system.attrs().get(CODING_ATTR_BASE_NAME));
         }
@@ -989,14 +992,14 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCodingSystemEolType extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object codingSystemEolType(ELispSymbol codingSystem) {
+        public Object codingSystemEolType(ELispSymbol codingSystem) {
             if (isNil(codingSystem)) {
                 codingSystem = NO_CONVERSION;
             }
             if (!FCodingSystemP.codingSystemP(codingSystem)) {
                 return false;
             }
-            Object eolType = Objects.requireNonNull(getCodingSystem(codingSystem)).eolType();
+            Object eolType = Objects.requireNonNull(getThis(this).getCodingSystem(codingSystem)).eolType();
             if (eolType instanceof ELispVector vector) {
                 return BuiltInFns.FCopySequence.copySequenceVector(vector);
             }

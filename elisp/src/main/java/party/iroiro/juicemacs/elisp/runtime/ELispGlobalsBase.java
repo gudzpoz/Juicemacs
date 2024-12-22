@@ -23,6 +23,14 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     protected final ELispContext ctx;
     protected final ELispBuffer bufferDefaults = new ELispBuffer(Collections.nCopies(77, false).toArray());
 
+    public final BuiltInBuffer builtInBuffer = new BuiltInBuffer();
+    public final BuiltInCaseTab builtInCaseTab = new BuiltInCaseTab();
+    public final BuiltInCharSet builtInCharSet = new BuiltInCharSet();
+    public final BuiltInCoding builtInCoding = new BuiltInCoding();
+    public final BuiltInKeymap builtInKeymap = new BuiltInKeymap();
+    public final BuiltInSearch builtInSearch = new BuiltInSearch();
+    public final BuiltInSyntax builtInSyntax = new BuiltInSyntax();
+
     protected ELispGlobalsBase(ELispContext context) {
         this.ctx = context;
         this.globalObarray = new ELispObarray(new ConcurrentHashMap<>(4096));
@@ -38,18 +46,18 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
 
     public void init(ELispLanguage language, boolean postInit) {
         initBuiltIns(language, new BuiltInAlloc());
-        initBuiltIns(language, new BuiltInBuffer());
+        initBuiltIns(language, builtInBuffer);
         initBuiltIns(language, new BuiltInCallInt());
         initBuiltIns(language, new BuiltInCallProc());
         initBuiltIns(language, new BuiltInCaseFiddle());
-        initBuiltIns(language, new BuiltInCaseTab());
+        initBuiltIns(language, builtInCaseTab);
         initBuiltIns(language, new BuiltInCategory());
         initBuiltIns(language, new BuiltInCcl());
         initBuiltIns(language, new BuiltInCharacter());
-        initBuiltIns(language, new BuiltInCharSet());
+        initBuiltIns(language, builtInCharSet);
         initBuiltIns(language, new BuiltInCharTab());
         initBuiltIns(language, new BuiltInCmds());
-        initBuiltIns(language, new BuiltInCoding());
+        initBuiltIns(language, builtInCoding);
         initBuiltIns(language, new BuiltInComp());
         initBuiltIns(language, new BuiltInComposite());
         initBuiltIns(language, new BuiltInData());
@@ -62,14 +70,14 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
         initBuiltIns(language, new BuiltInFns());
         initBuiltIns(language, new BuiltInFrame());
         initBuiltIns(language, new BuiltInKeyboard());
-        initBuiltIns(language, new BuiltInKeymap());
+        initBuiltIns(language, builtInKeymap);
         initBuiltIns(language, new BuiltInLRead());
         initBuiltIns(language, new BuiltInMacros());
         initBuiltIns(language, new BuiltInMiniBuf());
         initBuiltIns(language, new BuiltInPrint());
         initBuiltIns(language, new BuiltInProcess());
-        initBuiltIns(language, new BuiltInSearch());
-        initBuiltIns(language, new BuiltInSyntax());
+        initBuiltIns(language, builtInSearch);
+        initBuiltIns(language, builtInSyntax);
         initBuiltIns(language, new BuiltInTextProp());
         initBuiltIns(language, new BuiltInTimeFns());
         initBuiltIns(language, new BuiltInWindow());

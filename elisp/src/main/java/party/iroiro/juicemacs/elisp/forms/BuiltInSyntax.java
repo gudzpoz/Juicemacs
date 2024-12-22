@@ -16,7 +16,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInSyntax extends ELispBuiltIns {
-    public static void initSyntaxOnce(ELispContext context) {
+    public void initSyntaxOnce(ELispContext context) {
         for (int i = 0; i < SMAX; i++) {
             SYNTAX_CODE_OBJECT.set(i, new ELispCons((long) i));
         }
@@ -82,9 +82,10 @@ public class BuiltInSyntax extends ELispBuiltIns {
         return BuiltInSyntaxFactory.getFactories();
     }
 
-    private static ELispCharTable standardSyntaxTable;
+    @SuppressWarnings("NotNullFieldNotInitialized")
+    private ELispCharTable standardSyntaxTable;
 
-    private final static ELispVector SYNTAX_CODE_OBJECT = new ELispVector(Collections.nCopies(SMAX, false));
+    private final ELispVector SYNTAX_CODE_OBJECT = new ELispVector(Collections.nCopies(SMAX, false));
 
     public static byte checkSyntaxChar(int next) {
         return switch (next) {
@@ -148,8 +149,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStandardSyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispCharTable standardSyntaxTable() {
-            return standardSyntaxTable;
+        public ELispCharTable standardSyntaxTable() {
+            return ELispContext.get(this).globals().builtInSyntax.standardSyntaxTable;
         }
     }
 

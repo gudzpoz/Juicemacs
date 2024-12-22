@@ -89,13 +89,13 @@ access. A usual mitigation to this is to cache the value container objects, but,
 ..., it can be hard to do so since we have multiple workers sharing the same
 function.
 
-** TODO Progress [0/3]
+** TODO Progress [1/3]
 
-- [-] Move global things to fields in =ELispGlobal=
+- [X] Move global things to fields in =ELispGlobal=
 
   - [X] Symbols, generated forward value containers
 
-  - [ ] Various =static= fields in =BuiltIn*= classes
+  - [X] Various =static= fields in =BuiltIn*= classes
 
 - [ ] Optimize
 

@@ -5,10 +5,10 @@ import org.eclipse.jdt.annotation.Nullable;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
+import party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -18,7 +18,6 @@ import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -120,10 +119,13 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         setMajorMode(FUNDAMENTAL_MODE);
         setKeymap(false);
         setModeName(new ELispString("Fundamental"));
+        ELispContext context = ELispContext.get(null);
+        BuiltInCaseTab caseTab = context.globals().builtInCaseTab;
+        ELispCharTable asciiDowncaseTable = caseTab.asciiDowncaseTable;
         if (!(BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(0))
                 && BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(1))
                 && BuiltInData.FCharTableP.charTableP(asciiDowncaseTable.getExtra(2)))) {
-            setCaseTable(ELispContext.get(null), asciiDowncaseTable, true);
+            caseTab.setCaseTable(context, asciiDowncaseTable, true);
         }
         setDowncaseTable(asciiDowncaseTable);
         setUpcaseTable(asciiDowncaseTable.getExtra(0));

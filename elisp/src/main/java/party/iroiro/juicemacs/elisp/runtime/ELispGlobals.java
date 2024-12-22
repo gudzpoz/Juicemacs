@@ -17,12 +17,8 @@ import java.nio.file.Paths;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab.initCasetabOnce;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.defineCharsetInternal;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.*;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.FDefineCodingSystemInternal.defineCodingSystemInternal;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEmacs.decodeEnvPath;
-import static party.iroiro.juicemacs.elisp.forms.BuiltInSyntax.initSyntaxOnce;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -126,7 +122,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         );
     }
 
-    private void initCharset(ELispContext ctx) {
+    private void initCharset() {
         ELispString path = FExpandFileName.expandFileName(new ELispString("charsets"), dataDirectory.getValue());
         File dir = Paths.get(path.toString()).toFile();
         if (!(dir.isDirectory() && dir.canRead())) {
@@ -1377,9 +1373,9 @@ public final class ELispGlobals extends ELispGlobalsBase {
     //#region initializations
     public void postInitVariables() {
         initObarrayOnce();
-        initSyntaxOnce(ctx);
+        builtInSyntax.initSyntaxOnce(ctx);
         initCategoryOnce();
-        initCasetabOnce(ctx);
+        builtInCaseTab.initCaseTabOnce(ctx);
         initBufferOnce();
         initMinibufOnce();
         symsOfXfaces();
@@ -1413,7 +1409,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         symsOfComposite();
         symsOfWindow();
         symsOfXdisp();
-        initCharset(ctx);
+        initCharset();
     }
 
     private void initObarrayOnce() {
@@ -1624,7 +1620,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         memorySignalData.setValue(memorySignalDataJInit);
     }
     private void symsOfCharset() {
-        var charsetAscii = defineCharsetInternal(
+        var charsetAscii = builtInCharSet.defineCharsetInternal(
             this,
             ASCII,
             1,
@@ -1638,7 +1634,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
             0,
             0
         );
-        var charsetIso88591 = defineCharsetInternal(
+        var charsetIso88591 = builtInCharSet.defineCharsetInternal(
             this,
             ISO_8859_1,
             1,
@@ -1652,7 +1648,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
             0,
             0
         );
-        var charsetUnicode = defineCharsetInternal(
+        var charsetUnicode = builtInCharSet.defineCharsetInternal(
             this,
             UNICODE,
             3,
@@ -1666,7 +1662,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
             0,
             0
         );
-        var charsetEmacs = defineCharsetInternal(
+        var charsetEmacs = builtInCharSet.defineCharsetInternal(
             this,
             EMACS,
             3,
@@ -1680,7 +1676,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
             1,
             0
         );
-        var charsetEightBit = defineCharsetInternal(
+        var charsetEightBit = builtInCharSet.defineCharsetInternal(
             this,
             EIGHT_BIT,
             1,
@@ -1848,7 +1844,7 @@ character."""),
             (long) (0),
             false
         });
-        setupCodingSystem(NO_CONVERSION, safeTerminalCoding);
+        builtInCoding.setupCodingSystem(NO_CONVERSION, builtInCoding.safeTerminalCoding);
         asSym(codingCategoryTable.get(0)).setValue(NO_CONVERSION);
         asSym(codingCategoryTable.get(1)).setValue(NO_CONVERSION);
         asSym(codingCategoryTable.get(2)).setValue(NO_CONVERSION);

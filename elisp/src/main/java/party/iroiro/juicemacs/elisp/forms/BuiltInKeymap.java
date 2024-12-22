@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -19,10 +20,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInKeymap extends ELispBuiltIns {
-    public BuiltInKeymap() {
-        globalMap = false;
-    }
-
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInKeymapFactory.getFactories();
@@ -192,7 +189,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         }
     }
 
-    private static Object globalMap = false;
+    private Object globalMap = false;
 
     @CompilerDirectives.TruffleBoundary
     public static void keymapSet(Object keymap, Iterator<?> iterator, Object value, boolean doRemove) {
@@ -671,11 +668,11 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUseGlobalMap extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean useGlobalMap(Object keymap) {
+        public boolean useGlobalMap(Object keymap) {
             if (!FKeymapp.keymapp(keymap)) {
                 throw ELispSignals.wrongTypeArgument(KEYMAPP, keymap);
             }
-            globalMap = keymap;
+            ELispContext.get(this).globals().builtInKeymap.globalMap = keymap;
             return false;
         }
     }
@@ -720,7 +717,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FCurrentGlobalMap extends ELispBuiltInBaseNode {
         @Specialization
         public static Object currentGlobalMap() {
-            return globalMap;
+            return ELispContext.get(null).globals().builtInKeymap.globalMap;
         }
     }
 

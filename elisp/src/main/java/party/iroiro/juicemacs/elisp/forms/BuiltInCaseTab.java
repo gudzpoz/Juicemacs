@@ -17,27 +17,21 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCaseTab extends ELispBuiltIns {
-    public static void initCasetabOnce(ELispContext context) {
-        BuiltInFns.FPut.put(CASE_TABLE, CHAR_TABLE_EXTRA_SLOTS, 3L);
+    public void initCaseTabOnce(ELispContext context) {
+        BuiltInFns.FPut.put(CASE_TABLE, CHAR_TABLE_EXTRA_SLOTS, (long) CASE_TABLE_EXTRA_SLOTS);
 
-        ELispCharTable asciiDownCase = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
-        ELispCharTable asciiUpCase = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
-        ELispCharTable asciiEqv = BuiltInCharTab.FMakeCharTable.makeCharTable(CASE_TABLE, false);
         for (int i = 0; i < 128; i++) {
             boolean up = 'A' <= i && i <= 'Z';
             boolean down = 'a' <= i && i <= 'z';
-            asciiDownCase.setChar(i, (long) (up ? i + ('a' - 'A') : i));
+            asciiDowncaseTable.setChar(i, (long) (up ? i + ('a' - 'A') : i));
             long toUpper = down ? i + ('A' - 'a') : i;
-            asciiUpCase.setChar(i, toUpper);
-            asciiEqv.setChar(i, up ? (long) (i + ('a' - 'A')) : toUpper);
+            asciiUpcaseTable.setChar(i, toUpper);
+            asciiEqvTable.setChar(i, up ? (long) (i + ('a' - 'A')) : toUpper);
         }
-        asciiDownCase.setExtra(0, asciiUpCase);
-        asciiDownCase.setExtra(1, BuiltInFns.FCopySequence.copySequenceCharTable(asciiDownCase));
-        asciiDownCase.setExtra(2, asciiEqv);
-        asciiDowncaseTable = asciiDownCase;
-        asciiUpcaseTable = asciiUpCase;
-        asciiEqvTable = asciiEqv;
-        setCaseTable(context, asciiDownCase, true);
+        asciiDowncaseTable.setExtra(0, asciiUpcaseTable);
+        asciiDowncaseTable.setExtra(1, BuiltInFns.FCopySequence.copySequenceCharTable(asciiDowncaseTable));
+        asciiDowncaseTable.setExtra(2, asciiEqvTable);
+        setCaseTable(context, asciiDowncaseTable, true);
     }
 
     @Override
@@ -45,10 +39,11 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         return BuiltInCaseTabFactory.getFactories();
     }
 
-    public static ELispCharTable asciiDowncaseTable;
-    public static ELispCharTable asciiUpcaseTable;
-    public static ELispCharTable asciiCanonTable;
-    public static ELispCharTable asciiEqvTable;
+    private static final int CASE_TABLE_EXTRA_SLOTS = 3;
+    public ELispCharTable asciiDowncaseTable = ELispCharTable.create(false, CASE_TABLE, CASE_TABLE_EXTRA_SLOTS);
+    public ELispCharTable asciiUpcaseTable = ELispCharTable.create(false, CASE_TABLE, CASE_TABLE_EXTRA_SLOTS);
+    public ELispCharTable asciiCanonTable = ELispCharTable.create(false, CASE_TABLE, CASE_TABLE_EXTRA_SLOTS);
+    public ELispCharTable asciiEqvTable = ELispCharTable.create(false, CASE_TABLE, CASE_TABLE_EXTRA_SLOTS);
 
     /// Sets elements of `table` for `c` to `c` itself.
     private record SetIdentity(ELispCharTable table) implements BiConsumer<Object, Object> {
@@ -112,7 +107,7 @@ public class BuiltInCaseTab extends ELispBuiltIns {
         }
     }
 
-    public static ELispCharTable setCaseTable(ELispContext context, ELispCharTable caseTable, boolean standard) {
+    public ELispCharTable setCaseTable(ELispContext context, ELispCharTable caseTable, boolean standard) {
         if (!FCaseTableP.caseTableP(caseTable)) {
             throw ELispSignals.wrongTypeArgument(CASE_TABLE_P, caseTable);
         }
@@ -206,8 +201,8 @@ public class BuiltInCaseTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStandardCaseTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispCharTable standardCaseTable() {
-            return asciiDowncaseTable;
+        public ELispCharTable standardCaseTable() {
+            return getContext().globals().builtInCaseTab.asciiDowncaseTable;
         }
     }
 
@@ -250,8 +245,9 @@ public class BuiltInCaseTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetStandardCaseTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispCharTable setStandardCaseTable(ELispCharTable table) {
-            return setCaseTable(ELispContext.get(null), table, true);
+        public ELispCharTable setStandardCaseTable(ELispCharTable table) {
+            ELispContext context = getContext();
+            return context.globals().builtInCaseTab.setCaseTable(context, table, true);
         }
     }
 }

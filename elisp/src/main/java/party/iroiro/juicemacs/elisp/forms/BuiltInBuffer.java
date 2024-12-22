@@ -26,17 +26,18 @@ public class BuiltInBuffer extends ELispBuiltIns {
         return BuiltInBufferFactory.getFactories();
     }
 
-    public final static HashMap<MuleString, ELispBuffer> BUFFERS = new HashMap<>();
-    public final static ValueStorage.Forwarded MINIBUFFER_LIST = new ValueStorage.Forwarded();
+    private final HashMap<MuleString, ELispBuffer> BUFFERS = new HashMap<>();
+    private final ValueStorage.Forwarded MINIBUFFER_LIST = new ValueStorage.Forwarded();
+
     @CompilerDirectives.TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(MuleString name) {
         // TODO: Handle name changes?
-        return BUFFERS.get(name);
+        return ELispContext.get(null).globals().builtInBuffer.BUFFERS.get(name);
     }
     @CompilerDirectives.TruffleBoundary
     private static void putBuffer(MuleString name, ELispBuffer buffer) {
-        BUFFERS.put(name, buffer);
+        ELispContext.get(null).globals().builtInBuffer.BUFFERS.put(name, buffer);
     }
 
     public static int downCase(int c, ELispBuffer buffer) {
@@ -55,10 +56,11 @@ public class BuiltInBuffer extends ELispBuiltIns {
     }
 
     public static ELispBuffer getMiniBuffer(int depth) {
-        Object tail = BuiltInFns.FNthcdr.nthcdr(depth, MINIBUFFER_LIST.getValue());
+        ValueStorage.Forwarded miniBuffers = ELispContext.get(null).globals().builtInBuffer.MINIBUFFER_LIST;
+        Object tail = BuiltInFns.FNthcdr.nthcdr(depth, miniBuffers.getValue());
         if (isNil(tail)) {
             tail = new ELispCons(false);
-            MINIBUFFER_LIST.setValue(BuiltInFns.FNconc.nconc(new Object[]{MINIBUFFER_LIST.getValue(), tail}));
+            miniBuffers.setValue(BuiltInFns.FNconc.nconc(new Object[]{miniBuffers.getValue(), tail}));
         }
         Object buffer = BuiltInData.FCar.car(tail);
         if (!(buffer instanceof ELispBuffer buf) || !buf.isLive()) {

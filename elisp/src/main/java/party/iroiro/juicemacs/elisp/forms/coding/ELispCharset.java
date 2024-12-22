@@ -5,11 +5,13 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -17,7 +19,6 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInCharSet.CHAR_UNIFY_TABLE;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CHARSET_MAP_PATH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
@@ -272,7 +273,7 @@ public final class ELispCharset {
                 - charIndexOffset;
     }
 
-    public void load() {
+    public void load(BuiltInCharSet builtInCharSet) {
         Object map;
         if (method == CharsetMethod.MAP) {
             map = attributes.get(CHARSET_MAP);
@@ -282,9 +283,12 @@ public final class ELispCharset {
             }
             map = attributes.get(CHARSET_UNIFY_MAP);
         }
-        loadCharsetMap(map instanceof ELispString file
-                ? loadMapFromFile(file)
-                : loadMapFromVector(asVector(map)));
+        loadCharsetMap(
+                map instanceof ELispString file
+                        ? loadMapFromFile(file)
+                        : loadMapFromVector(asVector(map)),
+                builtInCharSet
+        );
     }
 
     private CharsetMap loadMapFromVector(ELispVector vector) {
@@ -372,13 +376,13 @@ public final class ELispCharset {
         }
     }
 
-    private void loadCharsetMap(CharsetMap charsetMap) {
+    private void loadCharsetMap(CharsetMap charsetMap, BuiltInCharSet builtInCharSet) {
         if (charsetMap.from.isEmpty()) {
             return;
         }
         // TODO: Support lazy loading of charset maps
         @Nullable ELispVector decodingMap = null;
-        ELispCharTable unifyTable = asCharTable(CHAR_UNIFY_TABLE.getValue());
+        ELispCharTable unifyTable = asCharTable(builtInCharSet.CHAR_UNIFY_TABLE.getValue());
         ELispCharTable encodingTable;
         {
             // Decoding
@@ -467,7 +471,8 @@ public final class ELispCharset {
                 }
                 long c = index + charset.codeOffset;
                 if (charset.unifiedP && Character.MAX_CODE_POINT < c && c <= MAX_CHAR) {
-                    Object result = asCharTable(CHAR_UNIFY_TABLE.getValue()).getChar(Math.toIntExact(c));
+                    ValueStorage.Forwarded charUnifyTable = ELispContext.get(null).globals().builtInCharSet.CHAR_UNIFY_TABLE;
+                    Object result = asCharTable(charUnifyTable.getValue()).getChar(Math.toIntExact(c));
                     return notNilOr(result, c);
                 }
                 return c;
