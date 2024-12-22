@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -84,6 +85,7 @@ public final class ELispContext {
         int index = language.getGlobalVariableIndex(symbol);
         return variablesArray.get(index);
     }
+    @Idempotent
     public Optional<ValueStorage> getStorageLazy(ELispSymbol symbol) {
         int index = language.tryGetGlobalVariableIndex(symbol);
         if (index == -1) {
@@ -95,14 +97,41 @@ public final class ELispContext {
         int index = language.getGlobalFunctionIndex(symbol);
         return functionsArray.get(index);
     }
+    @Idempotent
+    public Optional<FunctionStorage> getFunctionStorageLazy(ELispSymbol symbol) {
+        int index = language.tryGetGlobalFunctionIndex(symbol);
+        if (index == -1) {
+            return Optional.empty();
+        }
+        return Optional.of(functionsArray.get(index));
+    }
     public ValueStorage getValueStorage(int index) {
         return variablesArray.get(index);
+    }
+    public Object getValue(ELispSymbol symbol) {
+        Optional<ValueStorage> storageLazy = getStorageLazy(symbol);
+        if (storageLazy.isEmpty()) {
+            throw ELispSignals.voidVariable(symbol);
+        }
+        Object rawValue = storageLazy.get().getAnyValue();
+        if (rawValue == ValueStorage.UNBOUND) {
+            throw ELispSignals.voidVariable(symbol);
+        }
+        return rawValue;
+    }
+    public void setValue(ELispSymbol symbol, Object value) {
+        ValueStorage storage = getStorage(symbol);
+        if (storage.isConstant()) {
+            throw ELispSignals.settingConstant(symbol);
+        }
+        storage.getDelegate().setValue(value);
     }
 
     public void forwardTo(ELispSymbol symbol, ValueStorage.AbstractForwarded<?> value) {
         int index = language.getGlobalVariableIndex(symbol);
         variablesArray.set(index, new ValueStorage(value));
     }
+    //#endregion Symbol lookup
 
     public static String applyShorthands(String symbol) {
         // TODO: Implementation

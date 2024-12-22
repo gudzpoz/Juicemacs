@@ -80,7 +80,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
      * Sets the thread-local value and returns the previous value
      * <p>
      * It might expose the internally used {@code UNBOUND} value, so the caller should make sure
-     * to either dispose the returned value or only swap it back afterwards.
+     * to either dispose the returned value or only swap it back afterward.
      * </p>
      * @param value the new thread-local value
      * @return the previous thread-local value, which should be treated as non-transparent
@@ -101,18 +101,6 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
 
     public boolean isBound() {
         return getAnyValue() != UNBOUND;
-    }
-
-    public void makeUnbound() {
-        setValue(UNBOUND);
-    }
-
-    public boolean isDefaultBound() {
-        ValueStorage.Value value = getStorage().getDelegate();
-        if (value instanceof ValueStorage.BufferLocal local) {
-            return local.getDefaultValue() != UNBOUND;
-        }
-        return isBound();
     }
 
     public Object getDefaultValue() {
@@ -199,6 +187,10 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         return name;
     }
 
+    public boolean isKeyword() {
+        return isKeyword;
+    }
+
     public boolean isSpecial() {
         return tryGetStorage().map(ValueStorage::isSpecial).orElse(false);
     }
@@ -217,10 +209,6 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
 
     public Object getProperties() {
         return getStorage().getProperties();
-    }
-
-    public void clearProperties() {
-        getStorage().clearProperties();
     }
 
     @Override

@@ -95,14 +95,6 @@ public final class ValueStorage {
         return unchangedAssumption.getAssumption();
     }
 
-    public boolean isPlainValue() {
-        return delegate instanceof PlainValue;
-    }
-
-    public PlainValue asPlainValue() {
-        return (PlainValue) delegate;
-    }
-
     //#region Value API
     /**
      * @return the value of the symbol, or {@link #UNBOUND}
@@ -110,7 +102,7 @@ public final class ValueStorage {
     public Object getAnyValue() {
         if (threadLocalValue != null) {
             Object local = threadLocalValue.getValue();
-            if (local != null && local != UNBOUND) {
+            if (local != UNBOUND) {
                 return local;
             }
         }
@@ -148,6 +140,11 @@ public final class ValueStorage {
         }
         this.delegate.setValue(value);
     }
+
+    public void makeUnbound() {
+        this.delegate = new PlainValue(UNBOUND);
+    }
+
     //#endregion Value API
 
     //#region Buffer local
@@ -254,10 +251,6 @@ public final class ValueStorage {
         return builder.build();
     }
 
-    public void clearProperties() {
-        properties = null;
-    }
-
     /**
      * Interface with similar semantics to {@code enum symbol_redirect}
      * and the corresponding enum in Emacs
@@ -294,8 +287,7 @@ public final class ValueStorage {
 
         @Override
         public void setValue(Object value) {
-            ELispContext context = ELispContext.get(null);
-            context.setValue(getAliased(context), value);
+            target.setValue(value);
         }
 
         public ELispSymbol getAliased(ELispContext context) {

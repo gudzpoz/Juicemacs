@@ -5,15 +5,20 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
+import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
+import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -1324,8 +1329,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoundp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean boundp(ELispSymbol symbol) {
-            return symbol.isBound();
+        public boolean boundp(ELispSymbol symbol, @Cached GlobalIndirectLookupNode lookup) {
+            if (symbol.isKeyword()) {
+                return true;
+            }
+            Optional<ValueStorage> storage = lookup.execute(this, symbol);
+            return storage.isPresent() && storage.get().isBound();
         }
     }
 
@@ -1338,8 +1347,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFboundp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean fboundp(ELispSymbol symbol) {
-            return !isNil(symbol.getFunction());
+        public boolean fboundp(ELispSymbol symbol, @Cached GlobalIndirectFunctionLookupNode lookup) {
+            Optional<FunctionStorage> storage = lookup.execute(this, symbol);
+            return storage.isPresent() && !isNil(storage.get());
         }
     }
 
@@ -1359,8 +1369,18 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakunbound extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol makunbound(ELispSymbol symbol) {
-            symbol.makeUnbound();
+        public ELispSymbol makunbound(ELispSymbol symbol, @Cached GlobalIndirectLookupNode lookup) {
+            if (symbol.isKeyword()) {
+                throw ELispSignals.settingConstant(symbol);
+            }
+            Optional<ValueStorage> storage = lookup.execute(this, symbol);
+            if (storage.isPresent()) {
+                ValueStorage value = storage.get();
+                if (value.isConstant()) {
+                    throw ELispSignals.settingConstant(symbol);
+                }
+                value.makeUnbound();
+            }
             return symbol;
         }
     }
@@ -1381,8 +1401,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFmakunbound extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol fmakunbound(ELispSymbol symbol) {
-            symbol.setFunction(false);
+        public ELispSymbol fmakunbound(ELispSymbol symbol, @Cached GlobalIndirectFunctionLookupNode lookup) {
+            Optional<FunctionStorage> storage = lookup.execute(this, symbol);
+            if (storage.isPresent()) {
+                FunctionStorage value = storage.get();
+                value.set(false);
+            }
             return symbol;
         }
     }
@@ -1396,8 +1420,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolFunction extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolFunction(ELispSymbol symbol) {
-            return symbol.getFunction();
+        public Object symbolFunction(ELispSymbol symbol, @Cached GlobalIndirectFunctionLookupNode lookup) {
+            Optional<FunctionStorage> storage = lookup.execute(this, symbol);
+            return storage.map(FunctionStorage::get).orElse(false);
         }
     }
 
@@ -1410,8 +1435,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolPlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolPlist(ELispSymbol symbol) {
-            return symbol.getProperties();
+        public Object symbolPlist(ELispSymbol symbol, @Cached GlobalIndirectLookupNode lookup) {
+            Optional<ValueStorage> storage = lookup.execute(this, symbol);
+            return storage.map(ValueStorage::getProperties).orElse(false);
         }
     }
 
@@ -1508,8 +1534,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFset extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol fset(ELispSymbol symbol, Object definition) {
-            symbol.setFunction(definition);
+        public ELispSymbol fset(ELispSymbol symbol, Object definition) {
+            getContext().getFunctionStorage(symbol).set(definition);
             return symbol;
         }
     }
@@ -1532,9 +1558,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefalias extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
+        public ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
             // TODO: Handle defalias-fset-function
-            FFset.fset(symbol, definition);
+            getContext().getFunctionStorage(symbol).set(definition);
             return symbol;
         }
     }
@@ -1733,8 +1759,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSymbolValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object symbolValue(ELispSymbol symbol) {
-            return symbol.getValue();
+        public Object symbolValue(ELispSymbol symbol, @Cached GlobalIndirectLookupNode lookupNode) {
+            Optional<ValueStorage> storage = lookupNode.execute(this, symbol);
+            if (storage.isEmpty()) {
+                throw ELispSignals.voidVariable(symbol);
+            }
+            return storage.get().getValue(symbol);
         }
     }
 
@@ -1747,8 +1777,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object set(ELispSymbol symbol, Object newval) {
-            symbol.setValue(newval);
+        public Object set(ELispSymbol symbol, Object newval) {
+            getContext().setValue(symbol, newval);
             return newval;
         }
     }
@@ -1820,8 +1850,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultBoundp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean defaultBoundp(ELispSymbol symbol) {
-            return symbol.isDefaultBound();
+        public boolean defaultBoundp(
+                ELispSymbol symbol,
+                @Cached GlobalIndirectLookupNode lookup
+        ) {
+            Optional<ValueStorage> storage = lookup.execute(this, symbol);
+            return storage.isPresent() && !storage.get().isDefaultBound();
         }
     }
 
@@ -1837,8 +1871,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object defaultValue(ELispSymbol symbol) {
-            return symbol.getDefaultValue();
+        public Object defaultValue(ELispSymbol symbol, @Cached GlobalIndirectLookupNode lookup) {
+            Optional<ValueStorage> storage = lookup.execute(this, symbol);
+            return storage.map(ValueStorage::getDefaultValue).orElse(false);
         }
     }
 

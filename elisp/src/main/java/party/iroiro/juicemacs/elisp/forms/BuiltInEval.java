@@ -1,9 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CallTarget;
@@ -25,6 +22,7 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -2125,8 +2123,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSpecialVariableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean specialVariableP(ELispSymbol symbol) {
-            return symbol.isSpecial();
+        public boolean specialVariableP(
+                ELispSymbol symbol,
+                @Cached GlobalIndirectLookupNode lookup
+        ) {
+            Optional<ValueStorage> storage = lookup.execute(this, symbol);
+            return storage.isPresent() && storage.get().isSpecial();
         }
     }
 
