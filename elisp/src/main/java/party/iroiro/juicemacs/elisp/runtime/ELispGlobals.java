@@ -14,7 +14,7 @@ import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.FDefineCodingSystemInternal.defineCodingSystemInternal;
@@ -49,7 +49,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
     }
 
     private void internSymbols(ELispSymbol[] symbols) {
-        ConcurrentHashMap<MuleString, ELispSymbol> map = globalObarray.symbols();
+        HashMap<MuleString, ELispSymbol> map = globalObarray.symbols();
         for (ELispSymbol symbol : symbols) {
             map.put(symbol.name(), symbol);
         }

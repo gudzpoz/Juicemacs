@@ -980,6 +980,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "insert", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FInsert extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static boolean insert(Object[] args) {
             ELispBuffer buffer = currentBuffer();
@@ -1681,6 +1682,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "format", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FFormat extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispString format(ELispString string, Object[] objects) {
             // TODO

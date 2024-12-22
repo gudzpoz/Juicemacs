@@ -9,8 +9,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /// Custom globals
 ///
@@ -33,7 +33,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
 
     protected ELispGlobalsBase(ELispContext context) {
         this.ctx = context;
-        this.globalObarray = new ELispObarray(new ConcurrentHashMap<>(4096));
+        this.globalObarray = new ELispObarray(new HashMap<>(4096));
     }
 
     public final ELispBuffer getBufferDefaults() {

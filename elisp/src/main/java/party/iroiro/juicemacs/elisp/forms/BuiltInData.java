@@ -813,13 +813,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FKeywordp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean keywordp(Object object) {
-            if (object instanceof ELispSymbol symbol) {
-                if (symbol.name().startsWith(":")) {
-                    // TODO: if SYMBOL_INTERNED_IN_INITIAL_OBARRAY_P ?
-                    return true;
-                }
-            }
-            return false;
+            return object instanceof ELispSymbol symbol && symbol.isKeyword();
         }
     }
 

@@ -124,7 +124,7 @@ public final class ELispContext {
         if (storage.isConstant()) {
             throw ELispSignals.settingConstant(symbol);
         }
-        storage.getDelegate().setValue(value);
+        storage.setValue(value, symbol);
     }
 
     public void forwardTo(ELispSymbol symbol, ValueStorage.AbstractForwarded<?> value) {

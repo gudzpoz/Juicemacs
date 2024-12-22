@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -155,6 +156,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return defineCharsetInternal(args);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private boolean defineCharsetInternal(Object[] args) {
         if (args.length != CHARSET_ARG_MAX) {
             throw ELispSignals.wrongNumberOfArguments(DEFINE_CHARSET_INTERNAL, args.length);

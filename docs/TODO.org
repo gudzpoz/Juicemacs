@@ -97,11 +97,15 @@ function.
 
   - [X] Various =static= fields in =BuiltIn*= classes
 
-- [ ] Optimize
+- [-] Optimize
 
   - [ ] Use get contexts with =ELispContext.get(this)=
 
-  - [ ] Read/write to global values with some =ReadGlobalNode=
+  - [-] Read/write to global values with some =ReadGlobalNode=
+
+    - [X] Read
+
+    - [ ] Write?
 
   - [ ] Cache constant globals
 

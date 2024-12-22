@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.MACRO;
 import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 
 
@@ -104,8 +103,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     public Object getDefaultValue() {
-        ValueStorage.Value value = getStorage().getDelegate();
-        return checkUnbound(value instanceof ValueStorage.BufferLocal local ? local.getDefaultValue() : value.getValue());
+        Object value = getStorage().getDefaultValue();
+        return checkUnbound(value);
     }
 
     public void setDefaultValue(Object value) {
@@ -127,7 +126,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     public void initForwardTo(ValueStorage.AbstractForwarded<?> forwarded) {
         ValueStorage storage = getStorage();
         storage.setSpecial(true);
-        storage.setDelegate(forwarded);
+        storage.initForwardTo(forwarded);
     }
 
     public void aliasSymbol(ELispSymbol symbol) {

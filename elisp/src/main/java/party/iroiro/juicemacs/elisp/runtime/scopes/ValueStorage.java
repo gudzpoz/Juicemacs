@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.scopes;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
@@ -22,6 +23,8 @@ public final class ValueStorage {
 
     private final CyclicAssumption unchangedAssumption = new CyclicAssumption("unchanged");
     private int changes = 0;
+    @CompilerDirectives.CompilationFinal
+    private volatile boolean assumeConstant = true;
 
     /**
      * True means that this variable has been explicitly declared
@@ -73,27 +76,48 @@ public final class ValueStorage {
         this.special = special;
     }
 
-    public Value getDelegate() {
-        return delegate;
+    public void initForwardTo(AbstractForwarded<?> forwarded) {
+        this.delegate = forwarded;
     }
 
-    public void setDelegate(Value delegate) {
-        this.delegate = delegate;
+    @Idempotent
+    public boolean isPlainValue() {
+        return delegate instanceof ValueStorage.PlainValue && threadLocalValue == null;
     }
 
-    public void aliasSymbol(ELispSymbol from, ELispSymbol to) {
-        if (isConstant()) {
-            throw ELispSignals.error("Cannot make a constant an alias: " + from);
-        }
-        switch (delegate) {
-            case PlainValue _, VarAlias _ -> delegate = new VarAlias(to);
-            default -> throw ELispSignals.error("Don’t know how to make a buffer-local variable an alias: " + from);
-        }
-    }
-
+    //#region Constant folding
     public Assumption getUnchangedAssumption() {
         return unchangedAssumption.getAssumption();
     }
+    @Idempotent
+    public boolean isAssumeConstant() {
+        return assumeConstant;
+    }
+    @CompilerDirectives.TruffleBoundary
+    public void updateAssumeConstant() {
+        if (!assumeConstant) {
+            return;
+        }
+        synchronized (this) {
+            if (changes <= 3) {
+                changes++;
+                unchangedAssumption.invalidate();
+            } else {
+                noLongerAssumeConstant();
+            }
+        }
+    }
+    @CompilerDirectives.TruffleBoundary
+    public void noLongerAssumeConstant() {
+        if (!assumeConstant) {
+            return;
+        }
+        synchronized (this) {
+            assumeConstant = false;
+            unchangedAssumption.getAssumption().invalidate();
+        }
+    }
+    //#endregion Constant folding
 
     //#region Value API
     /**
@@ -117,10 +141,22 @@ public final class ValueStorage {
         return rawValue;
     }
 
+    public void aliasSymbol(ELispSymbol from, ELispSymbol to) {
+        if (isConstant()) {
+            throw ELispSignals.error("Cannot make a constant an alias: " + from);
+        }
+        switch (delegate) {
+            case PlainValue _, VarAlias _ -> delegate = new VarAlias(to);
+            default -> throw ELispSignals.error("Don’t know how to make a buffer-local variable an alias: " + from);
+        }
+        noLongerAssumeConstant();
+    }
+
     public Object swapThreadLocalValue(Object value, ELispSymbol symbol) {
         if (isConstant()) {
             throw ELispSignals.settingConstant(symbol);
         }
+        noLongerAssumeConstant();
         if (threadLocalValue == null) {
             threadLocalValue = new ThreadLocalStorage(value);
             return UNBOUND;
@@ -138,11 +174,13 @@ public final class ValueStorage {
         if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(value)) {
             return;
         }
+        updateAssumeConstant();
         this.delegate.setValue(value);
     }
 
     public void makeUnbound() {
         this.delegate = new PlainValue(UNBOUND);
+        updateAssumeConstant();
     }
 
     //#endregion Value API
@@ -166,10 +204,11 @@ public final class ValueStorage {
     @CompilerDirectives.TruffleBoundary
     public void setDefaultValue(Object value, ELispSymbol symbol) {
         if (isConstant()) {
-            if (!BuiltInData.FKeywordp.keywordp(this) || value != this) {
+            if (symbol.isKeyword() && value == symbol) {
                 // "Allow setting keywords to their own value"?
-                throw ELispSignals.settingConstant(symbol);
+                return;
             }
+            throw ELispSignals.settingConstant(symbol);
         }
         if (delegate instanceof BufferLocal local) {
             // TODO: "If this variable is not always local in all buffers"...
@@ -179,12 +218,14 @@ public final class ValueStorage {
             // Recursive call: Truffle bails out
             target.setDefaultValue(value);
         } else {
+            updateAssumeConstant();
             delegate.setValue(value);
         }
     }
 
     @CompilerDirectives.TruffleBoundary
     public void setBufferLocal(boolean localIfSet, ELispSymbol symbol) {
+        noLongerAssumeConstant();
         if (delegate instanceof VarAlias(ELispSymbol target)) {
             target.setBufferLocal(localIfSet);
             return;

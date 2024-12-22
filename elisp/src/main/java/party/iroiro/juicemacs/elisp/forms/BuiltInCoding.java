@@ -729,6 +729,7 @@ public class BuiltInCoding extends ELispBuiltIns {
     @ELispBuiltIn(name = "define-coding-system-internal", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FDefineCodingSystemInternal extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static boolean defineCodingSystemInternal(Object[] args) {
             if (args.length < CODING_ARG_MAX) {

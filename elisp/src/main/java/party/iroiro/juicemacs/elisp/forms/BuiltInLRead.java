@@ -21,10 +21,10 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import java.io.*;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -695,7 +695,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FObarrayMake extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispObarray obarrayMake(Object size) {
-            return new ELispObarray(new ConcurrentHashMap<>((int) notNilOr(size, 0)));
+            return new ELispObarray(new HashMap<>((int) notNilOr(size, 0)));
         }
     }
 

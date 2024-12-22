@@ -15,7 +15,6 @@ import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.ArrayList;
@@ -192,15 +191,17 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     private final static class ELispSymbolDereferenceNode extends ELispInterpretedNode {
         public static final int INVALID = ELispLexical.NON_VAR_SLOT0;
         public static final int DYNAMIC = ELispLexical.NON_VAR_SLOT1;
-        @SuppressWarnings("FieldMayBeFinal")
-        @CompilerDirectives.CompilationFinal
-        private ELispSymbol symbol;
+        private final ELispSymbol symbol;
 
         @CompilerDirectives.CompilationFinal
         private int top = INVALID;
 
         @Child
         private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode;
+
+        @Child
+        @Nullable
+        private GlobalVariableReadNode globalReadNode;
 
         public ELispSymbolDereferenceNode(ELispSymbol symbol) {
             this.symbol = symbol;
@@ -211,32 +212,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         @Override
-        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-            if (symbol == NIL || symbol == T) {
-                throw new UnexpectedResultException(symbol);
-            }
-            ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
-            if (read == null) {
-                return ELispTypeSystemGen.expectLong(symbol.getValue());
-            } else {
-                return read.executeLong(frame);
-            }
-        }
-
-        @Override
-        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-            if (symbol == NIL || symbol == T) {
-                throw new UnexpectedResultException(symbol);
-            }
-            ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
-            if (read == null) {
-                return ELispTypeSystemGen.expectDouble(symbol.getValue());
-            } else {
-                return read.executeDouble(frame);
-            }
-        }
-
-        @Override
         public Object executeGeneric(VirtualFrame frame) {
             if (symbol == NIL) {
                 return false;
@@ -244,12 +219,25 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (symbol == T) {
                 return true;
             }
+            if (symbol.isKeyword()) {
+                return symbol;
+            }
             ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
             if (read == null) {
-                return symbol.getValue();
+                return getGlobal();
             } else {
                 return read.executeGeneric(frame);
             }
+        }
+
+        private Object getGlobal() {
+            GlobalVariableReadNode readGlobal = globalReadNode;
+            if (readGlobal == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readGlobal = GlobalVariableReadNodeGen.create(symbol);
+                globalReadNode = insert(readGlobal);
+            }
+            return readGlobal.execute();
         }
 
         private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode updateSlotInfo(VirtualFrame currentFrame) {
