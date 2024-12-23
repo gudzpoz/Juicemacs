@@ -193,8 +193,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         private final ELispSymbol symbol;
 
         @Child
-        @Nullable
-        private ELispExpressionNode readNode;
+        private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode;
 
         @CompilerDirectives.CompilationFinal
         private Assumption topUnchanged;
@@ -219,26 +218,16 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (symbol == T) {
                 return true;
             }
-            ELispExpressionNode read = updateSlotInfo(frame);
-            if (read == null) {
-                return getGlobal();
-            } else {
-                return read.executeGeneric(frame);
-            }
-        }
-
-        private Object getGlobal() {
-            GlobalVariableReadNode readGlobal = globalReadNode;
-            assert readGlobal != null;
-            return readGlobal.execute();
+            return updateSlotInfo(frame).executeGeneric(frame);
         }
 
         private ELispExpressionNode updateSlotInfo(VirtualFrame currentFrame) {
             Assumption top = topUnchanged;
-            if (globalReadNode != null) {
-                return null;
+            GlobalVariableReadNode global = globalReadNode;
+            if (global != null && (top == null || top.isValid())) {
+                return global;
             }
-            @Nullable ELispExpressionNode readNode = this.readNode;
+            ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode = this.readNode;
             if (CompilerDirectives.injectBranchProbability(
                     CompilerDirectives.FASTPATH_PROBABILITY,
                     readNode != null && top.isValid()
@@ -249,13 +238,19 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(currentFrame);
             ELispLexical.LexicalReference lexical = lexicalFrame == null
                     ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (lexical == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                GlobalVariableReadNode readGlobal = GlobalVariableReadNodeGen.create(symbol);
-                globalReadNode = insert(readGlobal);
-                return null;
+                global = GlobalVariableReadNodeGen.create(symbol);
+                globalReadNode = insert(global);
+                if (lexicalFrame != null) {
+                    this.topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
+                }
+                return global;
             } else {
+                if (readNode != null && lexical.index() == readNode.getSlot()) {
+                    return readNode;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ELispFrameSlotNode.ELispFrameSlotReadNode reader =
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
                 this.readNode = insertOrReplace(reader, readNode);

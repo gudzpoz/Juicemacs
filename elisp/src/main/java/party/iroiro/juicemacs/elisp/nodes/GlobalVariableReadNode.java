@@ -13,7 +13,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import java.util.Optional;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-public abstract class GlobalVariableReadNode extends ELispBaseNode {
+public abstract class GlobalVariableReadNode extends ELispExpressionNode {
     public final ELispSymbol symbol;
     @Nullable
     @Child
@@ -23,16 +23,14 @@ public abstract class GlobalVariableReadNode extends ELispBaseNode {
         this.symbol = symbol;
     }
 
-    public abstract Object execute();
-
     @Idempotent
-    boolean isPresent(Optional<?> optional) {
+    static boolean isPresent(Optional<?> optional) {
         return optional.isPresent();
     }
 
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     @Idempotent
-    ValueStorage getStorageInner(Optional<ValueStorage> storageLazy) {
+    static ValueStorage getStorageInner(Optional<ValueStorage> storageLazy) {
         return storageLazy.get();
     }
 

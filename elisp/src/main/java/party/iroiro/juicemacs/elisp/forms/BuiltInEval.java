@@ -473,118 +473,89 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetq extends ELispBuiltInBaseNode {
         static final class FSetqItem extends ELispExpressionNode {
-            final Object symbol;
+            private final ELispSymbol symbol;
 
             @CompilerDirectives.CompilationFinal
             @Nullable
             private Assumption topUnchanged;
 
             @Child
-            ELispFrameSlotNode.@Nullable ELispFrameSlotWriteNode writeNode;
+            @Nullable
+            ELispExpressionNode writeNode;
 
             private final ELispExpressionNode inner;
 
-            FSetqItem(Object symbol, Object value) {
+            FSetqItem(ELispSymbol symbol, Object value) {
                 this.symbol = symbol;
                 this.inner = ELispInterpretedNode.create(value);
             }
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                if (updateSlots(frame) != null) {
-                    return;
-                }
-                Objects.requireNonNull(writeNode).executeVoid(frame);
+                updateSlots(frame).executeVoid(frame);
             }
 
             @Override
             public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-                Object dyn = updateSlots(frame);
-                if (dyn != null) {
-                    return ELispTypeSystemGen.expectLong(dyn);
-                }
-                return Objects.requireNonNull(writeNode).executeLong(frame);
+                return updateSlots(frame).executeLong(frame);
             }
 
             @Override
             public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-                Object dyn = updateSlots(frame);
-                if (dyn != null) {
-                    return ELispTypeSystemGen.expectDouble(dyn);
-                }
-                return Objects.requireNonNull(writeNode).executeDouble(frame);
+                return updateSlots(frame).executeDouble(frame);
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                Object dyn = updateSlots(frame);
-                if (dyn != null) {
-                    return dyn;
-                }
-                return Objects.requireNonNull(writeNode).executeGeneric(frame);
+                return updateSlots(frame).executeGeneric(frame);
             }
 
-            /// Returns the value assigned to a dynamic variable or `null` if lexical
-            private @Nullable Object updateSlots(VirtualFrame frame) {
-                ELispFrameSlotNode.ELispFrameSlotWriteNode write = writeNode;
+            private ELispExpressionNode updateSlots(VirtualFrame frame) {
+                ELispExpressionNode write = writeNode;
                 Assumption top = topUnchanged;
-                if (writeNode != null && top == null) {
-                    return setDynamic(frame);
-                }
                 if (CompilerDirectives.injectBranchProbability(
                         CompilerDirectives.FASTPATH_PROBABILITY,
-                        write != null && top.isValid()
+                        write != null && (top == null || top.isValid())
                 )) {
-                    return null;
+                    return write;
                 }
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                 ELispLexical.@Nullable LexicalReference lexical =
                         lexicalFrame == null ? null : lexicalFrame.getLexicalReference(frame, asSym(symbol));
-                boolean dynamic = slowPathUpdateSlots(lexicalFrame, lexical, write);
-                if (dynamic) {
-                    return setDynamic(frame);
-                } else {
-                    return null;
-                }
+                return slowPathUpdateSlots(lexicalFrame, lexical, write);
             }
 
             @CompilerDirectives.TruffleBoundary
-            private boolean slowPathUpdateSlots(
+            private ELispExpressionNode slowPathUpdateSlots(
                     @Nullable ELispLexical lexicalFrame,
                     ELispLexical.@Nullable LexicalReference lexical,
-                    ELispFrameSlotNode.@Nullable ELispFrameSlotWriteNode write
+                    @Nullable ELispExpressionNode write
             ) {
                 int newIndex = lexical == null ? ELispFrameSlotNode.BYPASS : lexical.index();
-                if (write == null || write.getSlot() != newIndex) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    if (lexical == null) {
-                        ELispFrameSlotNode.ELispFrameSlotWriteNode newChild =
-                                ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
-                                        newIndex,
-                                        null, // PMD: Null
-                                        inner
-                                );
-                        writeNode = insertOrReplace(newChild, write);
-                        topUnchanged = null;
-                        return true;
-                    } else {
-                        ELispFrameSlotNode.ELispFrameSlotWriteNode newChild =
-                                ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
-                                        newIndex, lexical.frame(), inner
-                                );
-                        writeNode = insertOrReplace(newChild, write);
-                        assert lexicalFrame != null;
-                        topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
+                if (write instanceof ELispFrameSlotNode.ELispFrameSlotWriteNode lexicalWrite) {
+                    if (lexicalWrite.getSlot() == newIndex) {
+                        return lexicalWrite;
                     }
+                } else if (write instanceof GlobalVariableWriteNode && newIndex == ELispFrameSlotNode.BYPASS) {
+                    return write;
                 }
-                return false;
-            }
-
-            private Object setDynamic(VirtualFrame frame) {
-                Object o = Objects.requireNonNull(writeNode).executeGeneric(frame);
-                asSym(symbol).setValue(o);
-                return o;
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (lexical == null) {
+                    GlobalVariableWriteNode newChild = GlobalVariableWriteNodeGen.create(symbol, inner);
+                    writeNode = insertOrReplace(newChild, write);
+                    topUnchanged = lexicalFrame == null ? null : lexicalFrame.getMaterializedTopUnchanged();
+                    return newChild;
+                } else {
+                    ELispFrameSlotNode.ELispFrameSlotWriteNode newChild =
+                            ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
+                                    newIndex, lexical.frame(), inner
+                            );
+                    writeNode = insertOrReplace(newChild, write);
+                    assert lexicalFrame != null;
+                    topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
+                    return newChild;
+                }
             }
         }
 
@@ -610,7 +581,7 @@ public class BuiltInEval extends ELispBuiltIns {
             int half = args.length / 2;
             ELispExpressionNode[] assignments = new ELispExpressionNode[half];
             for (int i = 0; i < half; i++) {
-                assignments[i] = new FSetqItem(args[i * 2], args[i * 2 + 1]);
+                assignments[i] = new FSetqItem(asSym(args[i * 2]), args[i * 2 + 1]);
             }
             return new FProgn.PrognBlockNode(assignments);
         }
@@ -1032,10 +1003,12 @@ public class BuiltInEval extends ELispBuiltIns {
             @ExplodeLoop
             @Override
             public ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame) {
+                @SuppressWarnings("DuplicatedCode")
                 ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
                 ArrayList<Object> specialValues = new ArrayList<>();
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                lexicalSpecialAssumption.checkEntry(lexicalFrame);
                 boolean dynamicBinding = lexicalFrame == null;
                 int length = symbols.length;
                 try {
@@ -1138,10 +1111,12 @@ public class BuiltInEval extends ELispBuiltIns {
             @ExplodeLoop
             @Override
             public ELispLexical.@Nullable Dynamic executeGeneric(VirtualFrame frame) {
+                @SuppressWarnings("DuplicatedCode")
                 ArrayList<ELispSymbol> specialBindings = new ArrayList<>();
                 ArrayList<Object> specialValues = new ArrayList<>();
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                lexicalSpecialAssumption.checkEntry(lexicalFrame);
                 boolean dynamicBinding = lexicalFrame == null;
                 Object[] lexicalValues = dynamicBinding ? new Object[0] : new Object[symbols.length];
                 int length = symbols.length;

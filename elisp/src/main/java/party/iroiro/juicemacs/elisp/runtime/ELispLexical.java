@@ -126,7 +126,7 @@ public final class ELispLexical {
             ELispLexical parent,
             MaterializedAssumption assumption
     ) {
-        ELispLexical lexical = new ELispLexical(
+        return new ELispLexical(
                 frame,
                 null,
                 parent,
@@ -134,8 +134,6 @@ public final class ELispLexical {
                 parent.topIndex,
                 assumption
         );
-        assumption.invalidate(parent.topIndex);
-        return lexical;
     }
 
     /// Creates a lexical scope for a root node
@@ -164,28 +162,27 @@ public final class ELispLexical {
         setMaterializedTop(frame, topIndex);
     }
 
-    /**
-     * Forks the current frame
-     *
-     * <p>
-     * Please remember to call {@link #restore(VirtualFrame)}.
-     * We cannot use {@link AutoCloseable} for this because a {@link VirtualFrame}
-     * should not be stored in a field unless it is a {@link MaterializedFrame}
-     * (which will add some overhead).
-     * </p>
-     *
-     * @param frame the current backing frame
-     * @return a new frame
-     */
+    /// Forks the current frame
+    ///
+    /// ## Usage
+    ///
+    /// Please remember to call [#restore(VirtualFrame)].
+    /// We cannot use [AutoCloseable] for this because a [VirtualFrame]
+    /// should not be stored in a field unless it is a [MaterializedFrame]
+    /// (which will add some overhead).
+    ///
+    /// Please also remember to call [MaterializedAssumption#checkEntry(ELispLexical)]
+    /// before calling this node.
+    ///
+    /// @param frame the current backing frame
+    /// @return a new frame
     public ELispLexical fork(VirtualFrame frame, MaterializedAssumption assumption) {
         return create(frame, this, assumption);
     }
 
-    /**
-     * Restores the current frame
-     *
-     * @param frame the current backing frame
-     */
+    /// Restores the current frame
+    ///
+    /// @param frame the current backing frame
     public void restore(VirtualFrame frame) {
         int newTop = getMaterializedTop(frame);
         if (newTop > topIndex) {
@@ -394,31 +391,37 @@ public final class ELispLexical {
 
     public static final class MaterializedAssumption {
         private final Assumption stableMaterializedTop;
-        private int materializedTop;
+        private int lastTop;
 
-        public MaterializedAssumption(Assumption stableMaterializedTop, int materializedTop) {
+        public MaterializedAssumption(Assumption stableMaterializedTop, int lastTop) {
             this.stableMaterializedTop = stableMaterializedTop;
-            this.materializedTop = materializedTop;
+            this.lastTop = lastTop;
         }
 
         public MaterializedAssumption() {
             this(NON_VAR_SLOT0);
         }
 
-        public MaterializedAssumption(int materializedTop) {
-            this(Assumption.create(), materializedTop);
+        public MaterializedAssumption(int lastTop) {
+            this(Assumption.create(), lastTop);
         }
 
-        public void invalidate(int materializedTop) {
-            if (this.materializedTop == NON_VAR_SLOT0) {
-                this.materializedTop = materializedTop;
-            } else if (this.materializedTop != materializedTop) {
+        public void invalidate(int newTop) {
+            if (this.lastTop == NON_VAR_SLOT0) {
+                this.lastTop = newTop;
+            } else if (this.lastTop != newTop) {
                 stableMaterializedTop.invalidate();
             }
         }
 
         public boolean isValid() {
             return stableMaterializedTop.isValid();
+        }
+
+        public void checkEntry(@Nullable ELispLexical parent) {
+            if (parent != null) {
+                invalidate(parent.topIndex);
+            }
         }
     }
 }

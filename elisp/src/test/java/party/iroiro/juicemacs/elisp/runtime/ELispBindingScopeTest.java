@@ -111,6 +111,27 @@ public class ELispBindingScopeTest extends BaseFormTest {
         }
     }
 
+    @Test
+    public void testDefvarEffects() {
+        try (Context context = getTestingContext()) {
+            Value result = context.eval("elisp", """
+;;; -*- lexical-binding: t -*-
+(let ((i 0) (f #'(lambda () a)) (sum 0))
+  (while (< i 2)
+    (let (new-scope)
+      (if (= i 0) (defvar a)) ; <- I have no idea why one should ever do this...
+      (setq sum (+ sum (let ((a 1))
+                         (condition-case nil
+                             (funcall f)
+                           (error 1000))))))
+    (setq i (1+ i)))
+  sum)
+""");
+            // So... Emacs returns 1001 when interpreted, and 2000 when byte/native-compiled.
+            assertEquals(1001L, result.asLong());
+        }
+    }
+
     @Override
     protected Object @NonNull[] entries() {
         return TESTS;

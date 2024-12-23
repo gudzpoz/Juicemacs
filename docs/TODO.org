@@ -101,15 +101,15 @@ function.
 
   - [ ] Use get contexts with =ELispContext.get(this)=
 
-  - [-] Read/write to global values with some =ReadGlobalNode=
+  - [X] Read/write to global values with some =ReadGlobalNode=
 
     - [X] Read
 
-    - [ ] Write?
+    - [X] Write? (=setq= only; =let/let*= require too much changes)
 
-  - [ ] Cache constant globals
+  - [-] Cache constant globals
 
-    - [ ] Keywords
+    - [X] Keywords (turned into literal node)
 
     - [ ] Constants
 
