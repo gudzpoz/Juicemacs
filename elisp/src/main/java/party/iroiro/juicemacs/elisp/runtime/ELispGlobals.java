@@ -36,11 +36,15 @@ public final class ELispGlobals extends ELispGlobalsBase {
         super(context);
     }
 
-    @Override
-    public void init(ELispLanguage language, boolean postInit) {
+    public void initSymbols() {
         internSymbols(allSymbols());
         internSymbols(variableSymbols());
         internSymbols(bufferLocalVarSymbols());
+    }
+
+    @Override
+    public void init(ELispLanguage language, boolean postInit) {
+        initSymbols();
         super.init(language, postInit);
         initGlobalVariables();
         if (postInit) {

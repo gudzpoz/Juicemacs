@@ -47,6 +47,11 @@ public final class SharedIndicesMap {
         return nameToIndex.getOrDefault(name, -1);
     }
 
+    @TruffleBoundary
+    public ConcurrentHashMap.KeySetView<ELispSymbol, Integer> keySet() {
+        return nameToIndex.keySet();
+    }
+
     public int size() {
         return nextIndex.get();
     }

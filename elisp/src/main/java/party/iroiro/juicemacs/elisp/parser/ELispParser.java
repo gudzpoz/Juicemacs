@@ -12,7 +12,6 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.EOFException;
@@ -33,12 +32,17 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
  * </p>
  */
 public class ELispParser {
+    public interface InternContext {
+        ELispSymbol intern(String name);
+        ELispSymbol intern(MuleString name);
+        MuleString applyShorthands(MuleString symbol);
+    }
 
-    private final ELispContext context;
+    private final InternContext context;
     private final ELispLexer lexer;
     private boolean lexicalBinding;
 
-    public ELispParser(ELispContext context, Source source) {
+    public ELispParser(InternContext context, Source source) {
         this.context = context;
         this.lexer = new ELispLexer(source);
         try {
@@ -88,10 +92,10 @@ public class ELispParser {
             case Num(NumberVariant.Float(double value)) -> value;
             case Char(int value) -> (long) value;
             case Str(MuleString value) -> new ELispString(value);
-            case Symbol(String value, boolean intern, boolean shorthand) -> {
-                String symbol = value;
+            case Symbol(MuleString value, boolean intern, boolean shorthand) -> {
+                MuleString symbol = value;
                 if (shorthand) {
-                    symbol = ELispContext.applyShorthands(symbol);
+                    symbol = context.applyShorthands(symbol);
                 }
                 if (intern) {
                     yield context.intern(symbol);
@@ -260,7 +264,7 @@ public class ELispParser {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static ELispRootNode parse(ELispLanguage language, ELispContext context, Source source) throws IOException {
+    public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source) throws IOException {
         ELispParser parser = new ELispParser(context, source);
         List<Object> expressions = new ArrayList<>();
         while (parser.hasNext()) {
@@ -278,11 +282,11 @@ public class ELispParser {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static Object read(ELispContext context, String s) throws IOException {
+    public static Object read(InternContext context, String s) throws IOException {
         return read(context, Source.newBuilder("elisp", s, "").build());
     }
 
-    public static Object read(ELispContext context, Source source) throws IOException {
+    public static Object read(InternContext context, Source source) throws IOException {
         ELispParser parser = new ELispParser(context, source);
         return parser.nextLisp();
     }

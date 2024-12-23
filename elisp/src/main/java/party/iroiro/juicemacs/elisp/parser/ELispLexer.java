@@ -264,7 +264,10 @@ class ELispLexer {
         record Num(NumberVariant value) implements Token {
         }
 
-        record Symbol(String value, boolean intern, boolean shorthand) implements Token {
+        record Symbol(MuleString value, boolean intern, boolean shorthand) implements Token {
+            public Symbol(String value, boolean intern, boolean shorthand) {
+                this(MuleString.fromString(value), intern, shorthand);
+            }
         }
 
         /**

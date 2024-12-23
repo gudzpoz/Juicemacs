@@ -25,6 +25,7 @@
 
 package party.iroiro.juicemacs.piecetree;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase.Piece;
 
 /**
@@ -123,6 +124,7 @@ final class TreeNode {
         return node;
     }
 
+    @CompilerDirectives.TruffleBoundary
     private int calculateSize() {
         if (this == SENTINEL) {
             return 0;
@@ -130,6 +132,7 @@ final class TreeNode {
         return size_left + piece.length() + right.calculateSize();
     }
 
+    @CompilerDirectives.TruffleBoundary
     private int calculateLf() {
         if (this == SENTINEL) {
             return 0;

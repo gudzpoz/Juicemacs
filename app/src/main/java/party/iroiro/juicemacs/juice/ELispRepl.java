@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.juice;
 
 import com.oracle.truffle.api.source.Source;
+import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -15,18 +16,17 @@ import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 import org.jline.widget.AutopairWidgets;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.mule.MuleString;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
 )
 public class ELispRepl implements Callable<Integer> {
     @Option(names = {"-L", "--directory"}, description = "Prepend DIR to load-path")
-    File[] directories;
+    File @Nullable[] directories;
 
     private final static String PROMPT_STRING = new AttributedStringBuilder()
             .style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
@@ -52,23 +52,18 @@ public class ELispRepl implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        if (directories == null || directories.length == 0) {
+            directories = new File[]{Path.of(".", "elisp", "emacs", "lisp").toFile()};
+        }
+        String loadPaths = String.join(
+                File.pathSeparator,
+                Arrays.stream(directories).map(File::getAbsolutePath).toArray(String[]::new)
+        );
         try (Context context = Context.newBuilder("elisp")
-                .environment("ELISP_PATH", "")
+                .environment("EMACSLOADPATH", loadPaths)
+                .environment("EMACSDATA", Path.of("elisp", "emacs", "etc").toAbsolutePath().toString())
                 .build()) {
-            if (directories == null || directories.length == 0) {
-                directories = new File[]{Path.of(".", "elisp", "emacs", "lisp").toFile()};
-            }
-            ELispCons.ListBuilder loadPathBuilder = new ELispCons.ListBuilder();
-            for (File file : directories) {
-                loadPathBuilder.add(new ELispString(file.getAbsolutePath()));
-            }
-            Object loadPath = loadPathBuilder.build();
-            ELispGlobals.loadPath.setValue(loadPath);
-            ELispGlobals.commandLineArgs.setValue(false);
-
-            LineReader lineReader = getLineReader();
-            lineReader.printAbove("load-path: " + loadPath);
-
+            LineReader lineReader = getLineReader(context);
             try {
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
@@ -107,7 +102,7 @@ public class ELispRepl implements Callable<Integer> {
         }
     }
 
-    private LineReader getLineReader() throws IOException {
+    private LineReader getLineReader(Context context) throws IOException {
         Terminal terminal = TerminalBuilder.builder().build();
         Thread currentThread = Thread.currentThread();
         terminal.handle(Terminal.Signal.INT, _ -> currentThread.interrupt());
@@ -115,7 +110,7 @@ public class ELispRepl implements Callable<Integer> {
         LineReader reader = LineReaderBuilder.builder()
                 .appName("ELisp REPL")
                 .terminal(terminal)
-                .completer(new LispCompleter())
+                .completer(new LispCompleter(context))
                 .highlighter(new LispHighlighter())
                 .parser(new LispParser())
                 .option(LineReader.Option.INSERT_BRACKET, true)
@@ -161,6 +156,23 @@ public class ELispRepl implements Callable<Integer> {
     }
 
     private static class LispParser extends DefaultParser {
+        private static final ELispParser.InternContext intern = new ELispParser.InternContext() {
+            @Override
+            public ELispSymbol intern(String name) {
+                return ELispGlobals.NIL;
+            }
+
+            @Override
+            public ELispSymbol intern(MuleString name) {
+                return intern("");
+            }
+
+            @Override
+            public MuleString applyShorthands(MuleString symbol) {
+                return symbol;
+            }
+        };
+
         private LispParser() {
             lineCommentDelims(new String[]{";"})
                     .eofOnUnclosedBracket(DefaultParser.Bracket.ROUND, DefaultParser.Bracket.SQUARE)
@@ -169,7 +181,7 @@ public class ELispRepl implements Callable<Integer> {
 
         @Override
         public ParsedLine parse(String line, int cursor, ParseContext context) throws SyntaxError {
-            ELispParser parser = new ELispParser(Source.newBuilder("elisp", line, "<jline>").build());
+            ELispParser parser = new ELispParser(intern, Source.newBuilder("elisp", line, "<jline>").build());
             try {
                 parser.nextLisp();
             } catch (IOException | ELispSignals.ELispSignalException e) {
@@ -187,12 +199,16 @@ public class ELispRepl implements Callable<Integer> {
         }
     }
 
-    private static class LispCompleter implements Completer {
+    private record LispCompleter(Value topLevelBindings) implements Completer {
+        public LispCompleter(Context context) {
+            this(context.getBindings("elisp"));
+        }
+
         @Override
         public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
             candidates.clear();
-            for (ELispSymbol symbol : ELispContext.internedSymbols()) {
-                candidates.add(new Candidate(symbol.name()));
+            for (String symbol : topLevelBindings.getMemberKeys()) {
+                candidates.add(new Candidate(symbol));
             }
         }
     }

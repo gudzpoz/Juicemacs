@@ -7,6 +7,7 @@ plugins {
 }
 
 dependencies {
+    implementation project(':commons:mule-truffle')
     implementation project(':elisp')
 
     implementation 'org.jline:jline:3.26.3'

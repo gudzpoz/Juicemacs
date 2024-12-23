@@ -2,6 +2,11 @@ package party.iroiro.juicemacs.elisp;
 
 import com.oracle.truffle.api.*;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.eclipse.jdt.annotation.Nullable;
@@ -12,7 +17,13 @@ import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.mule.MuleString;
+
+import java.util.ArrayList;
 
 @TruffleLanguage.Registration(
     id = ELispLanguage.ID,
@@ -47,6 +58,11 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     @Override
     protected void initializeContext(ELispContext context) {
         context.initGlobal(this);
+    }
+
+    @Override
+    protected Object getScope(ELispContext context) {
+        return new TopLevelScope(context);
     }
 
     public int tryGetGlobalVariableIndex(ELispSymbol symbol) {
@@ -91,5 +107,62 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             return null;
         });
         return get(node);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    final class TopLevelScope implements TruffleObject {
+        private final ELispContext context;
+
+        TopLevelScope(ELispContext context) {
+            this.context = context;
+        }
+
+        @ExportMessage
+        boolean isScope() {
+            return true;
+        }
+        @ExportMessage
+        String toDisplayString(boolean allowSideEffects) {
+            return toString();
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+        @ExportMessage
+        Class<ELispLanguage> getLanguage() {
+            return ELispLanguage.class;
+        }
+
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+        @CompilerDirectives.TruffleBoundary
+        @ExportMessage
+        public Object getMembers(boolean includeInternal) {
+            ArrayList<ELispString> members = new ArrayList<>();
+            globalVariablesMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
+            globalFunctionsMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
+            return new ELispVector(members.toArray());
+        }
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return context.obarray().symbols().containsKey(MuleString.fromString(member));
+        }
+        @ExportMessage
+        Object readMember(String member) throws UnknownIdentifierException {
+            MuleString name = MuleString.fromString(member);
+            if (context.obarray().symbols().containsKey(name)) {
+                try {
+                    return context.getValue(context.intern(name));
+                } catch (ELispSignals.ELispSignalException e) {
+                    throw UnknownIdentifierException.create(member, e);
+                }
+            } else {
+                throw UnknownIdentifierException.create(member);
+            }
+        }
     }
 }
