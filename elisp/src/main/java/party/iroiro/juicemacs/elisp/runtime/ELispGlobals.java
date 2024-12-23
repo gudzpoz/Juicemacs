@@ -1432,7 +1432,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         bufferDefaults.setCategoryTable(standardCategoryTable);
     }
     private void initBufferOnce() {
-        ELispBuffer.initBufferLocalVars(bufferDefaults);
+        ELispBuffer.initBufferLocalVars(ctx, bufferDefaults);
     }
     private void initMinibufOnce() {
         getMiniBuffer(0);

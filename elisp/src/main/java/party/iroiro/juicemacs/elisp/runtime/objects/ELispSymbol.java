@@ -123,12 +123,6 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
         return getStorage().isBufferLocalIfSet(buffer);
     }
 
-    public void initForwardTo(ValueStorage.AbstractForwarded<?> forwarded) {
-        ValueStorage storage = getStorage();
-        storage.setSpecial(true);
-        storage.initForwardTo(forwarded);
-    }
-
     public void aliasSymbol(ELispSymbol symbol) {
         getStorage().aliasSymbol(this, symbol);
     }
@@ -181,7 +175,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     public void setSpecial(boolean b) {
-        getStorage().setSpecial(b);
+        ELispContext context = ELispContext.get(null);
+        context.getStorage(this).setSpecial(context, b);
     }
 
     public void putProperty(Object k, Object v) {

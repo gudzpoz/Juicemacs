@@ -10,6 +10,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.eclipse.jdt.annotation.Nullable;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
@@ -39,10 +43,21 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final String ID = "elisp";
     public static final String MIME_TYPE = "text/x-elisp";
 
+    @Option(
+            name = "bare", help = "Inhibit initializing globals.",
+            category = OptionCategory.INTERNAL, stability = OptionStability.STABLE
+    )
+    public static final OptionKey<Boolean> BARE = new OptionKey<>(false);
+
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
 
     public final SharedIndicesMap globalVariablesMap = new SharedIndicesMap();
     public final SharedIndicesMap globalFunctionsMap = new SharedIndicesMap();
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new ELispLanguageOptionDescriptors();
+    }
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {

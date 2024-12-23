@@ -72,12 +72,9 @@ public final class ValueStorage {
         return special;
     }
 
-    public void setSpecial(boolean special) {
+    public void setSpecial(ELispContext context, boolean special) {
         this.special = special;
-    }
-
-    public void initForwardTo(AbstractForwarded<?> forwarded) {
-        this.delegate = forwarded;
+        context.invalidateSpecialVariables();
     }
 
     @Idempotent

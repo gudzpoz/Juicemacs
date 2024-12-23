@@ -1852,7 +1852,7 @@ public class BuiltInData extends ELispBuiltIns {
                 @Cached GlobalIndirectLookupNode lookup
         ) {
             Optional<ValueStorage> storage = lookup.execute(this, symbol);
-            return storage.isPresent() && !storage.get().isDefaultBound();
+            return storage.isPresent() && storage.get().isDefaultBound();
         }
     }
 

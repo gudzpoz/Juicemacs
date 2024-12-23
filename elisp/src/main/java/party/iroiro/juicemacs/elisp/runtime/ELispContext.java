@@ -1,8 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
@@ -31,9 +33,11 @@ public final class ELispContext implements ELispParser.InternContext {
 
     private final ELispLanguage language;
     private final ConcurrentHashMap<String, String> env;
+    private final boolean postInit;
     private final ELispGlobals globals;
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
     private final SharedIndicesMap.ContextArray<FunctionStorage> functionsArray;
+    private final CyclicAssumption specialVariablesUnchanged;
 
     public final ThreadLocalStorage currentBuffer = new ThreadLocalStorage(false);
 
@@ -41,8 +45,10 @@ public final class ELispContext implements ELispParser.InternContext {
         this.language = language;
         if (env == null) {
             this.env = new ConcurrentHashMap<>();
+            this.postInit = false;
         } else {
             this.env = new ConcurrentHashMap<>(env.getEnvironment());
+            this.postInit = !env.getOptions().get(ELispLanguage.BARE);
         }
         this.globals = new ELispGlobals(this);
         variablesArray = new SharedIndicesMap.ContextArray<>(
@@ -55,6 +61,7 @@ public final class ELispContext implements ELispParser.InternContext {
                 FunctionStorage[]::new,
                 FunctionStorage::new
         );
+        specialVariablesUnchanged = new CyclicAssumption("Special variables unchanged");
     }
 
     public ELispGlobals globals() {
@@ -95,7 +102,7 @@ public final class ELispContext implements ELispParser.InternContext {
     }
 
     public void initGlobal(ELispLanguage language) {
-        globals.init(language, true);
+        globals.init(language, postInit);
     }
 
     //#region Symbol lookup
@@ -147,7 +154,17 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public void forwardTo(ELispSymbol symbol, ValueStorage.AbstractForwarded<?> value) {
         int index = language.getGlobalVariableIndex(symbol);
-        variablesArray.set(index, new ValueStorage(value));
+        ValueStorage storage = new ValueStorage(value);
+        storage.setSpecial(this, true);
+        variablesArray.set(index, storage);
+    }
+
+    public Assumption getSpecialVariablesUnchangedAssumption() {
+        return specialVariablesUnchanged.getAssumption();
+    }
+
+    public void invalidateSpecialVariables() {
+        specialVariablesUnchanged.invalidate();
     }
     //#endregion Symbol lookup
 
