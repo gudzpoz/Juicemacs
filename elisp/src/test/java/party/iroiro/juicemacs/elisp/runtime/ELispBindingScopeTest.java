@@ -40,6 +40,38 @@ public class ELispBindingScopeTest extends BaseFormTest {
     public static final Object[] TESTS = {
             """
             ;;; -*- lexical-binding: t -*-
+            (let ((a 1)) a)
+            """, 1L,
+            """
+            ;;; -*- lexical-binding: t -*-
+            (let* ((a 1)) a)
+            """, 1L,
+            // Partially materialized but not in a loop
+            """
+            ;;; -*- lexical-binding: t -*-
+            (let* ((a 1)
+                   (inc #'(lambda () (setq a (1+ a)))))
+              (while (< a 10)
+                (let ((aa (* a a)))
+                  (setq a aa)
+                  (funcall inc)))
+              a)
+            """, 26L,
+            // Partially materialized in a loop
+            """
+            ;;; -*- lexical-binding: t -*-
+            (let* ((a 1)
+                   (total 0)
+                   (inc #'(lambda () (setq a (1+ a)))))
+              (while (< a 10)
+                (let* ((list (mapcar #'(lambda (i) (+ a i)) '(1 2 3)))
+                       (sum (apply #'+ list)))
+                  (setq total (+ total sum))
+                  (funcall inc)))
+              total)
+            """, 189L,
+            """
+            ;;; -*- lexical-binding: t -*-
             (apply
              #'+
              (mapcar

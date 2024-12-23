@@ -8,7 +8,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.NON_VAR_SLOT0;
-import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.getMaterializedTop;
 import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.getVariable;
 import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.setVariable;
 
@@ -35,19 +34,6 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
     protected ELispFrameSlotNode(int slot, @Nullable MaterializedFrame parentFrame) {
         this.slot = slot;
         this.parentFrame = parentFrame;
-    }
-
-    public boolean isFrameTopValid(VirtualFrame currentFrame, int top) {
-        // The parent frame is materialized and should never change.
-        // So access to it will always be valid.
-        if (parentFrame != null) {
-            return true;
-        }
-        return getValidFrameTop(currentFrame) == top;
-    }
-
-    public int getValidFrameTop(VirtualFrame currentFrame) {
-        return getMaterializedTop(currentFrame);
     }
 
     public int getSlot() {

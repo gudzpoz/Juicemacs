@@ -377,6 +377,49 @@ interop, but otherwise simply using some classes with public member should do.
 
 * Considered Done (For Now)
 
+** DONE [#B] Optimize lexical variable access
+
+*** Step One: Use assumptions instead of checking at every access
+
+For simple functions, the stack slot number assign to each variable is constant
+and we do not need to check for changes every time.
+
+The step introduces for each root node an assumption that stays true as long as
+the materialized top is not changed: slot numbers are indead constant.
+
+*** Step Two: Optimize conditions for assumption invalidation
+
+It is possible that a portion of the stack is materialized and yet the slot
+numbers do not change:
+
+#+begin_src elisp
+  (let ((a 1)                ; a: slot #1
+        (f #'(lambda () a))) ; <- frame materialized as the lexical context, f: slot #2
+    (while (< 0 (funcall f))
+      (let ((b -1))          ; even when the stack is materialized, b is always at slot #3
+        (setq a b))))
+#+end_src
+
+So we want to differentiate the case above with the following:
+
+#+begin_src elisp
+  (dolist (v '(1 2 3))
+    (let ((vv (* v v)))  ; <- we have three "vv"s, at slot #1, #2 and #3
+      #'(lambda () vv)))
+#+end_src
+
+The changes required are actually quite simple: instead of root nodes, we
+introduces assumptions at each =let/let*= scope.
+
+The assumption is invalidated when:
+
+- The frame is materialized.
+- The scope is entered the second time, with a different =materializedTop=.
+
+The changes bring down the execution time of =mandelbrotNestedLets= from 2.2s to
+0.5s (i.e. from 55x Java to 14x Java). (BTW, =mandelbrot= (with a single huge
+=let=) is around 3x Java.)
+
 ** DONE [#A] Strings & Buffers (Step 1)
 
 For string processing in any language, I suppose there are always at least two
@@ -531,7 +574,7 @@ beyond those slots to be reused.
 ** DONE [#A] Undertanding =Lisp_Symbol= (Variables)
 
 I really doubt I get the implementation of =ELispSymbol= wrong (to some degree).
-Basicall, a =symbol= can:
+Basically, a =symbol= can:
 
 - Contain a lisp value (plain value symbol)
 - Point to a field in a global C struct (forward symbol)

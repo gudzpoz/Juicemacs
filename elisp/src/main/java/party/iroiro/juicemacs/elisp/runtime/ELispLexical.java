@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -62,7 +63,6 @@ public final class ELispLexical {
     public final static LexicalReference DYNAMIC = new LexicalReference(null, 0);
 
     public final static int NON_VAR_SLOT0 = 0;
-    public final static int NON_VAR_SLOT1 = 1;
     private final static int MATERIALIZED_TOP_SLOT = 0;
     private final static int LEXICAL_FRAME_SLOT = 1;
     private final static int SPILL_LIST_SLOT = 2;
@@ -99,36 +99,64 @@ public final class ELispLexical {
     private final MaterializedFrame materializedParent;
     @Nullable
     private final ELispLexical parent;
+    private final MaterializedAssumption materializedTopUnchanged;
 
-    public ELispLexical(VirtualFrame frame,
-                        @Nullable VirtualFrame parentFrame,
-                        @Nullable ELispLexical parent,
-                        List<ELispSymbol> requiredArgs) {
+    private ELispLexical(
+            VirtualFrame frame,
+            @Nullable MaterializedFrame parentFrame,
+            @Nullable ELispLexical parent,
+            List<ELispSymbol> requiredArgs,
+            int startSlot,
+            MaterializedAssumption assumption
+    ) {
         this.args = requiredArgs;
         this.variables = new ArrayList<>();
         this.variableIndices = new IntArrayList();
         this.parent = parent;
+        this.topIndex = startSlot;
         this.materialized = false;
-        if (parent == null) {
-            // A root frame
-            assert parentFrame == null;
-            this.materializedParent = null;
-            this.topIndex = START_SLOT;
-            setMaterializedTop(frame, START_SLOT);
-        } else {
-            if (parentFrame == null) {
-                // A lexical frame (called from [#fork])
-                this.materializedParent = null;
-                this.topIndex = parent.topIndex;
-            } else {
-                // A root frame (of a called function)
-                parent.materialize(parentFrame);
-                this.materializedParent = parentFrame.materialize();
-                this.topIndex = START_SLOT;
-                setMaterializedTop(frame, START_SLOT);
-            }
-        }
+        this.materializedTopUnchanged = assumption;
+        this.materializedParent = parentFrame;
         frame.setObject(LEXICAL_FRAME_SLOT, this);
+    }
+
+    /// Creates a lexical scope, typically created by `let`
+    public static ELispLexical create(
+            VirtualFrame frame,
+            ELispLexical parent,
+            MaterializedAssumption assumption
+    ) {
+        ELispLexical lexical = new ELispLexical(
+                frame,
+                null,
+                parent,
+                List.of(),
+                parent.topIndex,
+                assumption
+        );
+        assumption.invalidate(parent.topIndex);
+        return lexical;
+    }
+
+    /// Creates a lexical scope for a root node
+    public static ELispLexical create(VirtualFrame frame, MaterializedAssumption assumption) {
+        ELispLexical lexical = new ELispLexical(frame, null, null, List.of(), START_SLOT, assumption);
+        setMaterializedTop(frame, START_SLOT);
+        return lexical;
+    }
+
+    /// Creates a lexical scope for a root node created inside a parent frame
+    public static ELispLexical create(
+            VirtualFrame frame,
+            ELispLexical parent,
+            VirtualFrame parentFrame,
+            List<ELispSymbol> requiredArgs,
+            MaterializedAssumption assumption
+    ) {
+        parent.materialize(parentFrame);
+        ELispLexical lexical = new ELispLexical(frame, parentFrame.materialize(), parent, requiredArgs, START_SLOT, assumption);
+        setMaterializedTop(frame, START_SLOT);
+        return lexical;
     }
 
     private void materialize(VirtualFrame frame) {
@@ -149,8 +177,8 @@ public final class ELispLexical {
      * @param frame the current backing frame
      * @return a new frame
      */
-    public ELispLexical fork(VirtualFrame frame) {
-        return new ELispLexical(frame, null, this, List.of());
+    public ELispLexical fork(VirtualFrame frame, MaterializedAssumption assumption) {
+        return create(frame, this, assumption);
     }
 
     /**
@@ -261,12 +289,25 @@ public final class ELispLexical {
         return (List<Object>) frame.getObject(SPILL_LIST_SLOT);
     }
 
-    public static int getMaterializedTop(VirtualFrame frame) {
+    private static int getMaterializedTop(VirtualFrame frame) {
         return frame.getInt(MATERIALIZED_TOP_SLOT);
     }
 
-    private static void setMaterializedTop(VirtualFrame frame, int value) {
-        frame.setInt(MATERIALIZED_TOP_SLOT, value);
+    public Assumption getMaterializedTopUnchanged() {
+        return materializedTopUnchanged.stableMaterializedTop;
+    }
+
+    private static void setMaterializedTop(VirtualFrame frame, int newTop) {
+        int original = getMaterializedTop(frame);
+        if (original != newTop) {
+            if (newTop != START_SLOT) {
+                ELispLexical lexical = getLexicalFrame(frame);
+                if (lexical != null) {
+                    lexical.materializedTopUnchanged.invalidate(newTop);
+                }
+            }
+            frame.setInt(MATERIALIZED_TOP_SLOT, newTop);
+        }
     }
 
     public static Object getVariable(VirtualFrame frame, int i) {
@@ -348,6 +389,36 @@ public final class ELispLexical {
             for (int i = 0; i < symbols.length; i++) {
                 symbols[i].swapThreadLocalValue(prevValues[i]);
             }
+        }
+    }
+
+    public static final class MaterializedAssumption {
+        private final Assumption stableMaterializedTop;
+        private int materializedTop;
+
+        public MaterializedAssumption(Assumption stableMaterializedTop, int materializedTop) {
+            this.stableMaterializedTop = stableMaterializedTop;
+            this.materializedTop = materializedTop;
+        }
+
+        public MaterializedAssumption() {
+            this(NON_VAR_SLOT0);
+        }
+
+        public MaterializedAssumption(int materializedTop) {
+            this(Assumption.create(), materializedTop);
+        }
+
+        public void invalidate(int materializedTop) {
+            if (this.materializedTop == NON_VAR_SLOT0) {
+                this.materializedTop = materializedTop;
+            } else if (this.materializedTop != materializedTop) {
+                stableMaterializedTop.invalidate();
+            }
+        }
+
+        public boolean isValid() {
+            return stableMaterializedTop.isValid();
         }
     }
 }

@@ -39,6 +39,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
     public static ELispInterpretedNode create(Object expression) {
         return switch (expression) {
+            case ELispSymbol symbol when symbol == NIL -> literal(false);
+            case ELispSymbol symbol when symbol == T -> literal(true);
+            case ELispSymbol symbol when symbol.isKeyword() -> literal(symbol);
             case ELispSymbol symbol -> new ELispSymbolDereferenceNode(symbol);
             case ELispCons cons -> new ELispConsExpressionNode(cons);
             default -> literal(expression);
@@ -77,31 +80,29 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Child
         private ELispExpressionNode node;
 
-        @SuppressWarnings("FieldMayBeFinal")
-        @CompilerDirectives.CompilationFinal
-        private boolean lexical;
+        private final ELispLexical.@Nullable MaterializedAssumption lexical;
 
         public ELispRootExpressions(Object[] expressions, boolean lexical) {
             this.node = BuiltInEval.FProgn.progn(expressions);
-            this.lexical = lexical;
+            this.lexical = lexical ? new ELispLexical.MaterializedAssumption() : null;
         }
 
         @Override
         public void executeVoid(VirtualFrame frame) {
-            if (lexical) {
-                new ELispLexical(frame, null, null, List.of());
+            if (lexical != null) {
+                ELispLexical.create(frame, lexical);
             }
-            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
                 node.executeVoid(frame);
             }
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            if (lexical) {
-                new ELispLexical(frame, null, null, List.of());
+            if (lexical != null) {
+                ELispLexical.create(frame, lexical);
             }
-            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
                 return node.executeGeneric(frame);
             }
         }
@@ -189,15 +190,14 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private final static class ELispSymbolDereferenceNode extends ELispInterpretedNode {
-        public static final int INVALID = ELispLexical.NON_VAR_SLOT0;
-        public static final int DYNAMIC = ELispLexical.NON_VAR_SLOT1;
         private final ELispSymbol symbol;
 
-        @CompilerDirectives.CompilationFinal
-        private int top = INVALID;
-
         @Child
-        private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode;
+        @Nullable
+        private ELispExpressionNode readNode;
+
+        @CompilerDirectives.CompilationFinal
+        private Assumption topUnchanged;
 
         @Child
         @Nullable
@@ -219,10 +219,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (symbol == T) {
                 return true;
             }
-            if (symbol.isKeyword()) {
-                return symbol;
-            }
-            ELispFrameSlotNode.ELispFrameSlotReadNode read = updateSlotInfo(frame);
+            ELispExpressionNode read = updateSlotInfo(frame);
             if (read == null) {
                 return getGlobal();
             } else {
@@ -232,37 +229,37 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         private Object getGlobal() {
             GlobalVariableReadNode readGlobal = globalReadNode;
-            if (readGlobal == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readGlobal = GlobalVariableReadNodeGen.create(symbol);
-                globalReadNode = insert(readGlobal);
-            }
+            assert readGlobal != null;
             return readGlobal.execute();
         }
 
-        private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode updateSlotInfo(VirtualFrame currentFrame) {
-            if (top == DYNAMIC) {
+        private ELispExpressionNode updateSlotInfo(VirtualFrame currentFrame) {
+            Assumption top = topUnchanged;
+            if (globalReadNode != null) {
                 return null;
             }
-            ELispFrameSlotNode.ELispFrameSlotReadNode readNode = this.readNode;
+            @Nullable ELispExpressionNode readNode = this.readNode;
             if (CompilerDirectives.injectBranchProbability(
                     CompilerDirectives.FASTPATH_PROBABILITY,
-                    readNode != null && readNode.isFrameTopValid(currentFrame, top)
+                    readNode != null && top.isValid()
             )) {
                 return readNode;
             }
+
             ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(currentFrame);
             ELispLexical.LexicalReference lexical = lexicalFrame == null
                     ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (lexical == null) {
-                top = DYNAMIC;
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                GlobalVariableReadNode readGlobal = GlobalVariableReadNodeGen.create(symbol);
+                globalReadNode = insert(readGlobal);
                 return null;
             } else {
                 ELispFrameSlotNode.ELispFrameSlotReadNode reader =
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
                 this.readNode = insertOrReplace(reader, readNode);
-                top = reader.getValidFrameTop(currentFrame);
+                this.topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
                 return reader;
             }
         }
@@ -554,7 +551,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Child
         @Nullable
-        private volatile ConsCallNode callNode;
+        private ConsCallNode callNode;
 
         public ELispConsExpressionNode(ELispCons cons) {
             this.cons = cons;

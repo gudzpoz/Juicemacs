@@ -142,10 +142,13 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Nullable
         private final LexicalEnvironment lexical;
 
+        private final ELispLexical.MaterializedAssumption assumption;
+
         public ELispClosureCallNode() {
             Object env = getEnv();
             isLexical = !isNil(env);
             lexical = isLexical ? initializeLexical(env) : null;
+            assumption = new ELispLexical.MaterializedAssumption();
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
             this.args = ClosureArgs.parse(getArgs());
@@ -181,8 +184,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         new Object[0],
                         ELispLexical.frameDescriptor(true)
                 );
-                ELispLexical lexical =
-                        new ELispLexical(frame, null, null, List.of());
+                ELispLexical lexical = ELispLexical.create(frame, new ELispLexical.MaterializedAssumption());
                 ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
                 while (i.hasNext()) {
                     ELispSymbol symbol = (ELispSymbol) i.next();
@@ -195,8 +197,9 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
         public ELispLexical.@Nullable Dynamic pushScope(VirtualFrame frame, Object[] newValues) {
             if (isLexical && lexical != null) {
-                ELispLexical lexicalFrame =
-                        new ELispLexical(frame, lexical.frame, lexical.lexicalFrame, List.of(lexicallyBoundSymbols));
+                ELispLexical lexicalFrame = ELispLexical.create(
+                        frame, lexical.lexicalFrame, lexical.frame, List.of(lexicallyBoundSymbols), assumption
+                );
                 for (int i = 0; i < variableLikeBoundSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols
                     // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
