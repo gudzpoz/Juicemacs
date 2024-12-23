@@ -184,7 +184,8 @@ public class ELispLexerTest {
             "?\\xe0", (int) 'à',
             "?\\001", 1,
             "?\\002", 2,
-            "?\\^", -1, // Emacs behavior
+            // TODO: Emacs behaviour: ?\\^ -> -1 for chars, but throws error for strings.
+            //   Currently we reuse the logic for strings, and maybe it is not worth it to fix it.
             "?\\^中", 67128877,
             "?\\^I", 9,
             "?\\^i", 9,

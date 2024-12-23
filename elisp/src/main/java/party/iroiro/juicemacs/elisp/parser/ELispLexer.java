@@ -767,6 +767,11 @@ class ELispLexer {
         return new Token.Symbol(symbol, !uninterned, !noShorthand);
     }
 
+    private static final long SIGNIFICAND_BITS = 52;
+    private static final long SIGNIFICAND_MASK = (0x1L << (SIGNIFICAND_BITS - 1)) - 1;
+    private static final long EXP_BITS = 11;
+    private static final long NAN_EXP = (0x1 << (EXP_BITS + 1)) - 1;
+
     private static double parseFloat(String symbol) {
         double f;
         // Handle 1.0e+INF or 1.0e+NaN
@@ -776,14 +781,9 @@ class ELispLexer {
             // Emacs encodes (number)e+NaN into the significand of the NaN...
             double base = Double.parseDouble(symbol.substring(0, symbol.length() - 5));
             boolean neg = Math.copySign(1.0, base) == -1.0;
-            long SIGNIFICAND_BITS = 52;
-            long SIGNIFICAND_MASK = (0x1L << (SIGNIFICAND_BITS - 1)) - 1;
-            long EXP_BITS = 11;
-            long NAN_EXP = (0x1 << (EXP_BITS + 1)) - 1;
             long significand = ((long) Math.abs(base)) & SIGNIFICAND_MASK;
-            f = Double.longBitsToDouble(
-                    ((neg ? 0x1L : 0x0L) << 63) | significand | (NAN_EXP << (SIGNIFICAND_BITS - 1))
-            );
+            long rawLong = ((neg ? 0x1L : 0x0L) << 63) | significand | (NAN_EXP << (SIGNIFICAND_BITS - 1));
+            f = Double.longBitsToDouble(rawLong);
         } else {
             f = Double.parseDouble(symbol);
         }

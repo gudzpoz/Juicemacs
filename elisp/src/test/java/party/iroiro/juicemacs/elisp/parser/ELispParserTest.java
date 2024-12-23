@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.parser;
 import com.oracle.truffle.api.source.Source;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -13,21 +14,24 @@ import java.math.BigInteger;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.*;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CHARTAB_SIZE_BITS_1;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CHAR_TABLE_STANDARD_SLOTS;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
 public class ELispParserTest {
 
-    private final static ELispContext context = new ELispContext();
+    private static final ELispContext context = new ELispContext(new ELispLanguage(), null);
 
     @BeforeAll
-    public static void setup() {
-        context.initGlobal(null);
+    public static void init() {
+        context.globals().initSymbols();
     }
 
     private Object read(String content) throws IOException {
         return ELispParser.read(
+                context,
                 Source.newBuilder("elisp", content, null).build()
         );
     }
@@ -65,7 +69,7 @@ public class ELispParserTest {
         assertSame(FLOAT, noShorthand);
 
         ELispSymbol dot = assertInstanceOf(ELispSymbol.class, read("."));
-        assertEquals(".", dot.name());
+        assertEquals(".", dot.name().toString());
 
         ELispBoolVector bVec = assertInstanceOf(ELispBoolVector.class, read("#&2\"\\1\""));
         assertEquals(2, bVec.size());
@@ -78,7 +82,7 @@ public class ELispParserTest {
         Object[] array = cons.toArray();
         for (int i = 0; i < array.length; i++) {
             ELispSymbol symbol = assertInstanceOf(ELispSymbol.class, array[i]);
-            assertEquals(symbols[i], symbol.name());
+            assertEquals(symbols[i], symbol.name().toString());
         }
     }
 
@@ -113,6 +117,7 @@ public class ELispParserTest {
     @Test
     public void testLexicalBindingDetect() throws IOException {
         ELispParser parser = new ELispParser(
+                context,
                 Source.newBuilder(
                         "elisp",
                         ";; -*- lexical-binding: t -*-\nnil",
@@ -140,7 +145,7 @@ public class ELispParserTest {
 
         ELispRecord rec = assertInstanceOf(ELispRecord.class, read("#1=#s(rec #1#)"));
         assertEquals(2, rec.size());
-        assertEquals("rec", assertInstanceOf(ELispSymbol.class, rec.getFirst()).name());
+        assertEquals("rec", assertInstanceOf(ELispSymbol.class, rec.getFirst()).name().toString());
         assertSame(rec, rec.get(1));
 
         // Emacs does not handle recursive references inside hash tables
@@ -152,13 +157,13 @@ public class ELispParserTest {
         assertEquals(3, table.size());
         assertEquals(
                 "v1",
-                assertInstanceOf(ELispSymbol.class, table.get(intern("k1"))).name()
+                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k1"))).name().toString()
         );
         assertEquals(
                 "v2",
-                assertInstanceOf(ELispSymbol.class, table.get(intern("k2"))).name()
+                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k2"))).name().toString()
         );
-        ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(intern("k3")));
+        ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(context.intern("k3")));
          assertSame(NIL, placeholder.car());
 
         ELispString str = assertInstanceOf(ELispString.class, read("#1=#(\"text here\" 0 1 (key #1#))"));
@@ -180,14 +185,14 @@ public class ELispParserTest {
 
     @Test
     public void testCharTables() throws IOException {
-        String charTableString = "#^[" + "t ".repeat(ELispCharTable.CHARTAB_STANDARD_SLOTS) + "]";
+        String charTableString = "#^[" + "t ".repeat(CHAR_TABLE_STANDARD_SLOTS) + "]";
         ELispCharTable table = assertInstanceOf(ELispCharTable.class, read(charTableString));
-        assertEquals(ELispCharTable.CHARTAB_STANDARD_SLOTS, table.slots());
-        assertEquals(ELispCharTable.MAX_CHAR + 1, table.size());
+        assertEquals(CHAR_TABLE_STANDARD_SLOTS, table.slots());
+        assertEquals(ELispCharTable.MAX_CHAR_INDEX + 1, table.size());
         table.forEach((ele) -> assertSame(T, ele));
-        String subTableString = "#^^[1 1024 " + "t ".repeat(1 << ELispCharTable.CHARTAB_SIZE_BITS_1) + "]";
+        String subTableString = "#^^[1 1024 " + "t ".repeat(1 << CHARTAB_SIZE_BITS_1) + "]";
         ELispCharTable.SubTable sub = assertInstanceOf(ELispCharTable.SubTable.class, read(subTableString));
-        assertEquals(2 + (1 << ELispCharTable.CHARTAB_SIZE_BITS_1), sub.size());
+        assertEquals(2 + (1 << CHARTAB_SIZE_BITS_1), sub.size());
         assertEquals(1, sub.getDepth());
         assertEquals(1024, sub.getMinChar());
         sub.forEach((ele) -> {

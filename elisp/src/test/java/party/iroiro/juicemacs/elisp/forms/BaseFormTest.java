@@ -3,6 +3,8 @@ package party.iroiro.juicemacs.elisp.forms;
 import org.graalvm.polyglot.Context;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -17,12 +19,16 @@ public abstract class BaseFormTest {
     private final static boolean WARM_UP = true;
     private final static int WARM_UP_COUNT = 10000;
 
+    public static Context getTestingContext() {
+        return Context.newBuilder("elisp")
+                .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
+                .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
+                .build();
+    }
+
     @Test
     public void test() {
-        try (Context context = Context.newBuilder("elisp")
-                .environment("ELISP_PATH", "")
-                .build()
-        ) {
+        try (Context context = getTestingContext()) {
             Object[] entries = entries();
             for (int i = 0; i < entries.length; i += 2) {
                 String expr = (String) entries[i];

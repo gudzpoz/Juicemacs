@@ -5,11 +5,12 @@ import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 
 public class ELispInterpretedNodeTest {
     @Test
     public void testSimple() {
-        try (Context context = Context.create()) {
+        try (Context context = getTestingContext()) {
             Value v = context.eval("elisp", """
                     ((lambda (x) (* 10 x)) 1)
                     """);
@@ -19,7 +20,7 @@ public class ELispInterpretedNodeTest {
 
     @Test
     public void testFormChange() {
-        try (Context context = Context.create()) {
+        try (Context context = getTestingContext()) {
             Value v = context.eval("elisp", """
                     (let ((form-change-var 1)
                           (result 0))

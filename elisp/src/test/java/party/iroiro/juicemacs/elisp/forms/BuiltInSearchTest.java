@@ -90,9 +90,7 @@ public class BuiltInSearchTest extends BaseFormTest {
 
     @Test
     void testOsrShouldNotBailout() {
-        try (Context context = Context.newBuilder("elisp")
-                .build()
-        ) {
+        try (Context context = getTestingContext()) {
             assertEquals(24L, context.eval("elisp", REGEXP_TEST).asLong());
             assertEquals(0L, context.eval("elisp", """
                     (string-match "\\\\`<[^ <>\\t\\n\\f][^>\\t\\n\\f]*>" "<mouse-1>")
@@ -107,9 +105,7 @@ public class BuiltInSearchTest extends BaseFormTest {
 
     @Test
     void testCaseFold() {
-        try (Context context = Context.newBuilder("elisp")
-                .build()
-        ) {
+        try (Context context = getTestingContext()) {
             assertEquals(0L, context.eval("elisp", """
                     (let ((case-fold-search t))
                       (string-match "^\\\\(az_\\\\)\\\\1[a-z][a-z][A-Z][A-Z]文🧃$" "AZ_az_lUlU文🧃"))
@@ -126,7 +122,7 @@ public class BuiltInSearchTest extends BaseFormTest {
 
     @Setup
     public void setup() throws IOException {
-        context = Context.newBuilder("elisp").build();
+        context = getTestingContext();
         context.eval(Source.newBuilder("elisp", """
             ;;; -*- lexical-binding: t -*-
             (defalias

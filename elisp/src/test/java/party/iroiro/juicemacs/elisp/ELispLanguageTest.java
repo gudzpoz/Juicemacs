@@ -2,14 +2,10 @@ package party.iroiro.juicemacs.elisp;
 
 import org.graalvm.polyglot.Context;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import java.nio.file.Path;
 
@@ -19,17 +15,13 @@ public class ELispLanguageTest {
     @Test
     public void test() {
         try (Context context = Context.newBuilder("elisp")
-                .environment("ELISP_PATH", "")
+                .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
+                .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
                 .build()
         ) {
-            ELispGlobals.loadPath.setValue(new ELispCons(new ELispString(
-                    Path.of(".", "emacs", "lisp").toAbsolutePath().toString()
-            )));
-            ELispGlobals.charsetMapPath.setValue(new ELispCons(new ELispString(
-                    Path.of(".", "emacs", "etc", "charsets").toAbsolutePath().toString()
-            )));
-            ELispContext.COMMAND_LINE_ARGS.setValue(NIL);
             context.eval("elisp", "(load \"loadup\")");
+        } catch (PolyglotException e) {
+            e.printStackTrace();
         }
     }
 

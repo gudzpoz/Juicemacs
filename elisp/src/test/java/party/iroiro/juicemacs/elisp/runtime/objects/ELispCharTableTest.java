@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCharTab.charTableMap;
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.NIL;
-import static party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable.*;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 
 public class ELispCharTableTest {
     @Test

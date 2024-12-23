@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -127,11 +128,12 @@ public class ELispInterpreterTest {
             nil
             """;
 
+    @SuppressWarnings("NotNullFieldNotInitialized")
     private Context context;
 
     @Setup
     public void setup() throws IOException {
-        context = Context.newBuilder("elisp").build();
+        context = getTestingContext();
         context.eval(Source.newBuilder("elisp", FIB, "fib").build());
         context.eval(Source.newBuilder("elisp", MANDELBROT, "mandelbrot").build());
         context.eval(Source.newBuilder("elisp", MANDELBROT_NESTED_LETS, "mandelbrot-lets").build());
@@ -312,7 +314,7 @@ public class ELispInterpreterTest {
 
     @Test
     public void testAstCache() {
-        try (Context c = Context.newBuilder("elisp").build()) {
+        try (Context c = getTestingContext()) {
             String source = "(equal (nconc '(1 2 3) nil '(4 5 6)) '(1 2 3 4 5 6))";
             assertTrue(c.eval("elisp", source).asBoolean());
             // Ast caching can be disastrous...
@@ -322,7 +324,7 @@ public class ELispInterpreterTest {
 
     @Test
     public void testEmacsDiff() {
-        try (Context c = Context.newBuilder("elisp").build()) {
+        try (Context c = getTestingContext()) {
             c.eval("elisp", "(setq ast '(equal (nconc '(1 2 3) nil '(4 5 6)) '(1 2 3 4 5 6)) _ 0)");
             // Emacs: true
             assertTrue(c.eval("elisp", "(eval ast)").asBoolean());
@@ -333,7 +335,7 @@ public class ELispInterpreterTest {
 
     @Test
     public void testFullStackTrace() {
-        try (Context c = Context.newBuilder("elisp").build()) {
+        try (Context c = getTestingContext()) {
             // Lisp functions
             {
                 PolyglotException e = assertThrows(PolyglotException.class, () -> c.eval("elisp", """
@@ -421,7 +423,7 @@ public class ELispInterpreterTest {
                 Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
                 List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
                 assertEquals("signal", list.getFirst().getRootName());
-                assertEquals("Unnamed", list.get(1).getRootName());
+                assertEquals("<eval>", list.get(1).getRootName());
                 assertEquals(2, list.get(1).getSourceLocation().getStartLine());
             }
             // Inlined

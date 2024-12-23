@@ -61,7 +61,7 @@ public class ELispBindingScopeTest extends BaseFormTest {
 
     @Test
     public void testDynamicBinding() {
-        try (Context context = Context.create()) {
+        try (Context context = getTestingContext()) {
             Value result = context.eval("elisp", DYNAMIC_BINDING_TEST
             );
             assertEquals(2L, result.asLong());
@@ -70,7 +70,7 @@ public class ELispBindingScopeTest extends BaseFormTest {
 
     @Test
     public void testLexicalBinding() {
-        try (Context context = Context.create()) {
+        try (Context context = getTestingContext()) {
             Value result = context.eval("elisp", LEXICAL_BINDING_TEST);
             assertEquals(1L, result.asLong());
 

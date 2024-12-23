@@ -3,12 +3,12 @@ package party.iroiro.juicemacs.elisp.forms;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Test;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.LEXICAL_BINDING_TEST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.SPECIAL_IN_LEXICAL_BINDING_TEST;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.WRONG_TYPE_ARGUMENT;
 
 public class BuiltInEvalTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
@@ -115,7 +115,7 @@ public class BuiltInEvalTest extends BaseFormTest {
 
     @Test
     public void testSignals() {
-        try (Context context = Context.create("elisp")) {
+        try (Context context = getTestingContext()) {
             assertErrorMessage(context, "((lambda ()) 1)",
                     "(wrong-number-of-arguments (lambda nil (nil) nil nil nil nil) 1)");
             assertErrorMessage(context, "((lambda (x)))",
@@ -125,7 +125,7 @@ public class BuiltInEvalTest extends BaseFormTest {
             assertErrorMessage(context, "(1+ 1 1 1)", "(wrong-number-of-arguments 1+ 3)");
             assertErrorMessage(context, "(1- 1 1 1)", "(wrong-number-of-arguments 1- 3)");
             assertErrorMessage(context, "(garbage-collect 1)", "(wrong-number-of-arguments garbage-collect 1)");
-            assertErrorMessage(context, "(lognot nil)", ELispContext.WRONG_TYPE_ARGUMENT);
+            assertErrorMessage(context, "(lognot nil)", WRONG_TYPE_ARGUMENT);
         }
     }
 }
