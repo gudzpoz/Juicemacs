@@ -30,11 +30,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     private final boolean isKeyword;
 
     public ELispSymbol(String name) {
-        this(name, name.startsWith(":"));
-    }
-
-    public ELispSymbol(String name, boolean isKeyword) {
-        this(MuleString.fromString(name), isKeyword);
+        this(MuleString.fromString(name), name.startsWith(":"));
     }
 
     public ELispSymbol(MuleString name) {

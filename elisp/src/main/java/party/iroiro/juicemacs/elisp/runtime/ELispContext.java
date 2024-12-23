@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
+import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,12 +33,15 @@ public final class ELispContext implements ELispParser.InternContext {
 
     private final ELispLanguage language;
     private final ConcurrentHashMap<String, String> env;
+    private final Options options;
     private final boolean postInit;
+
     private final ELispGlobals globals;
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
     private final SharedIndicesMap.ContextArray<FunctionStorage> functionsArray;
     private final Options options;
     private final CyclicAssumption specialVariablesUnchanged;
+    private final Cleaner cleaner = Cleaner.create();
 
     public ELispContext(ELispLanguage language, TruffleLanguage.@Nullable Env env) {
         this.language = language;
@@ -169,6 +173,10 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public void invalidateSpecialVariables() {
         specialVariablesUnchanged.invalidate();
+    }
+
+    public void autoCleanUp(Object symbols) {
+        // TODO
     }
     //#endregion Symbol lookup
 
