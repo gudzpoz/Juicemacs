@@ -17,3 +17,7 @@ dependencies {
 application {
     mainClass = 'party.iroiro.juicemacs.juice.ELispRepl'
 }
+
+tasks.run.configure {
+    standardInput = System.in
+}

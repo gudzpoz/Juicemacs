@@ -24,6 +24,16 @@ project) will need to live with:
 - Sloooow startup (and with Truffle, it actually needs two warm-ups)
 - It bloats (and we can only hope Project Valhalla somehow tackles that)
 
+* Running
+
+It is still a long long way to go before Juicemacs can load all of =loadup.el=.
+Currently it stops halfway due to unimplemented subroutines, but can already use
+a lot of functions/macros loaded in the "upper half" of =loadup.el=.
+
+To run it:
+1. =./gradlew :app:shadowJar= to build a fat JAR for the REPL.
+2. =cd app && java -jar build/libs/app-all.jar= to run the JAR.
+
 * Notes
 
 - [[file:docs/Notes.org]]

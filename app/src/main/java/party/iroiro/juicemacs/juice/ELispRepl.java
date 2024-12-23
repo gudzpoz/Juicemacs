@@ -38,7 +38,11 @@ import java.util.regex.Pattern;
 )
 public class ELispRepl implements Callable<Integer> {
     @Option(names = {"-L", "--directory"}, description = "Prepend DIR to load-path")
-    File @Nullable[] directories;
+    File @Nullable[] userLoadPaths;
+
+    @Option(names = {"--emacs-data"}, description = "Emacs data directory")
+    @Nullable
+    File emacsDataDir;
 
     private final static String PROMPT_STRING = new AttributedStringBuilder()
             .style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
@@ -52,16 +56,20 @@ public class ELispRepl implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        if (directories == null || directories.length == 0) {
-            directories = new File[]{Path.of(".", "elisp", "emacs", "lisp").toFile()};
+
+        if (userLoadPaths == null || userLoadPaths.length == 0) {
+            userLoadPaths = new File[]{Path.of("..", "elisp", "emacs", "lisp").toFile()};
         }
         String loadPaths = String.join(
                 File.pathSeparator,
-                Arrays.stream(directories).map(File::getAbsolutePath).toArray(String[]::new)
+                Arrays.stream(userLoadPaths).map(File::getAbsolutePath).toArray(String[]::new)
         );
+        String emacsData = emacsDataDir == null
+                ? Path.of("..", "elisp", "emacs", "etc").toAbsolutePath().toString()
+                : emacsDataDir.getAbsolutePath();
         try (Context context = Context.newBuilder("elisp")
                 .environment("EMACSLOADPATH", loadPaths)
-                .environment("EMACSDATA", Path.of("elisp", "emacs", "etc").toAbsolutePath().toString())
+                .environment("EMACSDATA", emacsData)
                 .build()) {
             LineReader lineReader = getLineReader(context);
             try {

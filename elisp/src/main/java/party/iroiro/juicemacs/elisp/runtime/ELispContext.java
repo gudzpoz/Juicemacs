@@ -39,7 +39,6 @@ public final class ELispContext implements ELispParser.InternContext {
     private final ELispGlobals globals;
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
     private final SharedIndicesMap.ContextArray<FunctionStorage> functionsArray;
-    private final Options options;
     private final CyclicAssumption specialVariablesUnchanged;
     private final Cleaner cleaner = Cleaner.create();
 
