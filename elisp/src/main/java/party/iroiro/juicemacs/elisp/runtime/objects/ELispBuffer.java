@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -806,7 +807,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public static void initDirectory() {
         String cwd = ELispContext.get(null).getEnv("user.dir");
-        ELispBuffer currentBuffer = ELispContext.get(null).currentBuffer();
+        ELispBuffer currentBuffer = currentBuffer();
         if (cwd == null) {
             currentBuffer.setDirectory(false);
         } else {

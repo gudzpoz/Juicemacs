@@ -3,9 +3,11 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
 @NodeChild(value = "arguments", type = ELispExpressionNode[].class)
 public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
@@ -15,7 +17,7 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
             .build();
 
     public static ELispBuffer currentBuffer() {
-        return ELispContext.get(null).currentBuffer();
+        return asBuffer(ELispLanguage.get(null).currentBuffer().getValue());
     }
 
     @Override

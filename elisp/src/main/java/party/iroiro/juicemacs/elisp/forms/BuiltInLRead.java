@@ -412,7 +412,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         public boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix,
                             @Cached FunctionDispatchNode dispatchNode) {
             // TODO: Potential lock candidate
-            ELispRootNode root = loadFile(ELispLanguage.get(this), file, isNil(noerror));
+            ELispRootNode root = loadFile(getLanguage(), file, isNil(noerror));
             if (root == null) {
                 return false;
             }

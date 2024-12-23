@@ -113,12 +113,12 @@ function.
 
     - [ ] Constants
 
-  - [ ] Maybe use a =ContextThreadLocal= for current buffer tracking
+  - [X] Maybe use a =ContextThreadLocal= for current buffer tracking
 
   - [ ] Automatically free container objects when the corresponding symbol goes
     out of scope
 
-- [ ] Make tests pass again
+- [X] Make tests pass again
 
 *** Why sharing symbols & functions?
 

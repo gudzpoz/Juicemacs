@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
@@ -689,11 +690,11 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @Specialization
         public static Object setBuffer(Object bufferOrName) {
             // TODO: Real buffers
-            ELispContext context = ELispContext.get(null);
+            ValueStorage.Forwarded storage = ELispLanguage.get(null).currentBuffer();
             if (bufferOrName instanceof ELispBuffer buffer) {
-                context.currentBuffer.setValue(buffer);
+                storage.setValue(buffer);
             }
-            return context.currentBuffer();
+            return storage.getValue();
         }
     }
 

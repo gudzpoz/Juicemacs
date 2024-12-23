@@ -6,10 +6,10 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.net.InetAddress;
@@ -444,25 +444,35 @@ public class BuiltInEditFns extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
-                long point = prevBuffer.getPoint();
+                ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
+                Object prevBuffer = forwarded.getValue();
+                long point = prevBuffer instanceof ELispBuffer buffer
+                        ? buffer.getPoint()
+                        : -1;
                 try {
                     bodyNode.executeVoid(frame);
                 } finally {
-                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
-                    prevBuffer.setPoint(point);
+                    forwarded.setValue(prevBuffer);
+                    if (point >= 0) {
+                        ((ELispBuffer) prevBuffer).setPoint(point);
+                    }
                 }
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
-                long point = prevBuffer.getPoint();
+                ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
+                Object prevBuffer = forwarded.getValue();
+                long point = prevBuffer instanceof ELispBuffer buffer
+                        ? buffer.getPoint()
+                        : -1;
                 try {
                     return bodyNode.executeGeneric(frame);
                 } finally {
-                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
-                    prevBuffer.setPoint(point);
+                    forwarded.setValue(prevBuffer);
+                    if (point >= 0) {
+                        ((ELispBuffer) prevBuffer).setPoint(point);
+                    }
                 }
             }
         }
@@ -495,21 +505,23 @@ public class BuiltInEditFns extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
+                ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
+                Object prevBuffer = forwarded.getValue();
                 try {
                     bodyNode.executeVoid(frame);
                 } finally {
-                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
+                    forwarded.setValue(prevBuffer);
                 }
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                ELispBuffer prevBuffer = ELispContext.get(null).currentBuffer();
+                ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
+                Object prevBuffer = forwarded.getValue();
                 try {
                     return bodyNode.executeGeneric(frame);
                 } finally {
-                    ELispContext.get(null).currentBuffer.setValue(prevBuffer);
+                    forwarded.setValue(prevBuffer);
                 }
             }
         }

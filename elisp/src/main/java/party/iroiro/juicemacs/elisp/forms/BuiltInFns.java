@@ -10,7 +10,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
@@ -1969,7 +1968,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(filename)) {
                 filename = new ELispString(feature.name());
             }
-            ELispRootNode root = BuiltInLRead.loadFile(ELispLanguage.get(this), filename, isNil(noerror));
+            ELispRootNode root = BuiltInLRead.loadFile(getLanguage(), filename, isNil(noerror));
             if (root == null) {
                 return false;
             }

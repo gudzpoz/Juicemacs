@@ -1779,7 +1779,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             boolean ignoreErrors = !isMacro && !isNil(macroOnly);
             // TODO: load_with_autoload_queue
-            ELispRootNode root = loadFile(ELispLanguage.get(this), asCons(def.cdr()).car(), !ignoreErrors);
+            ELispRootNode root = loadFile(getLanguage(), asCons(def.cdr()).car(), !ignoreErrors);
             if (root != null) {
                 dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
             }
@@ -1835,7 +1835,7 @@ public class BuiltInEval extends ELispBuiltIns {
         ) {
             ELispExpressionNode expr = ELispInterpretedNode.create(new Object[]{form}, lexical);
             return new ELispRootNode(
-                    node == null ? ELispLanguage.getLanguageSlow() : ELispLanguage.get(node),
+                    ELispLanguage.get(node),
                     expr,
                     form instanceof ELispCons cons
                             ? cons.getSourceSection(EVAL_SOURCE)

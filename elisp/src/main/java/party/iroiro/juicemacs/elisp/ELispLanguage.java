@@ -8,23 +8,20 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
-import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
-import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
@@ -53,6 +50,8 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     public final SharedIndicesMap globalVariablesMap = new SharedIndicesMap();
     public final SharedIndicesMap globalFunctionsMap = new SharedIndicesMap();
+    private final ContextThreadLocal<ValueStorage.Forwarded> currentBuffer =
+            locals.createContextThreadLocal((_, _) -> new ValueStorage.Forwarded());
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -96,32 +95,12 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
         return globalFunctionsMap.lookup(name);
     }
 
-    public static ELispLanguage get(Node node) {
-        return REFERENCE.get(node);
+    public ValueStorage.Forwarded currentBuffer() {
+        return currentBuffer.get();
     }
 
-    /// Finds a [Node] instance by walking the stack
-    ///
-    /// If you have a [Node] instance at hand, please use [#get(Node)] instead.
-    /// This method is slow and should only be used if you have no other choice,
-    /// i.e., Emacs calls `eval_sub` out of nowhere in a relatively rare situation.
-    public static ELispLanguage getLanguageSlow() {
-        @Nullable
-        Node node = Truffle.getRuntime().iterateFrames((frame) -> {
-            CallTarget callTarget = frame.getCallTarget();
-            if (callTarget instanceof RootCallTarget rootCallTarget) {
-                RootNode rootNode = rootCallTarget.getRootNode();
-                if (rootNode instanceof ELispRootNode || rootNode instanceof FunctionRootNode) {
-                    return rootNode;
-                }
-            }
-            Node callNode = frame.getCallNode();
-            if (callNode instanceof ELispExpressionNode || callNode instanceof FunctionDispatchNode) {
-                return callNode;
-            }
-            return null;
-        });
-        return get(node);
+    public static ELispLanguage get(@Nullable Node node) {
+        return REFERENCE.get(node);
     }
 
     @ExportLibrary(InteropLibrary.class)

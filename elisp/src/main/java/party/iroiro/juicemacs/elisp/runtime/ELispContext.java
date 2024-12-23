@@ -15,7 +15,6 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
-import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -38,8 +37,6 @@ public final class ELispContext implements ELispParser.InternContext {
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
     private final SharedIndicesMap.ContextArray<FunctionStorage> functionsArray;
     private final CyclicAssumption specialVariablesUnchanged;
-
-    public final ThreadLocalStorage currentBuffer = new ThreadLocalStorage(false);
 
     public ELispContext(ELispLanguage language, TruffleLanguage.@Nullable Env env) {
         this.language = language;
@@ -98,7 +95,7 @@ public final class ELispContext implements ELispParser.InternContext {
     }
 
     public ELispBuffer currentBuffer() {
-        return asBuffer(currentBuffer.getValue());
+        return asBuffer(language.currentBuffer().getValue());
     }
 
     public void initGlobal(ELispLanguage language) {

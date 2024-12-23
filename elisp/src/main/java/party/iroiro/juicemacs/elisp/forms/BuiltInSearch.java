@@ -171,10 +171,9 @@ public class BuiltInSearch extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
-            ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
+            ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
             int from = isNil(start) ? 0 : asInt(start);
-            Object buffer = getContext().currentBuffer();
-            Object result = pattern.call(string.value(), true, from, -1, buffer);
+            Object result = pattern.call(string.value(), true, from, -1, getLanguage().currentBuffer().getValue());
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
                     setMatch(this, result, string);
@@ -294,7 +293,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public boolean reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
             long limit = notNilOr(bound, Long.MAX_VALUE);
             ELispBuffer buffer = getContext().currentBuffer();
-            ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(this), regexp, null);
+            ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
             int from = Math.toIntExact(buffer.getPoint());
             int repeat = Math.toIntExact(notNilOr(count, 1));
             for (int i = 0; i < repeat; i++) {

@@ -5,6 +5,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
@@ -14,6 +15,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Objects;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -352,7 +354,7 @@ public final class ValueStorage {
         }
 
         private void updateCache() {
-            ELispBuffer buffer = ELispContext.get(null).currentBuffer();
+            ELispBuffer buffer = asBuffer(ELispLanguage.get(null).currentBuffer().getValue());
             if (cachedBuffer != buffer) {
                 cachedBuffer = buffer;
                 value = cachedBuffer.getLocal(symbol);
@@ -485,13 +487,11 @@ public final class ValueStorage {
         }
         @Override
         public Object getValue() {
-            ELispContext context = ELispContext.get(null);
-            return context.currentBuffer().getSlot(index);
+            return currentBuffer().getSlot(index);
         }
         @Override
         public void setValue(Object value) {
-            ELispContext context = ELispContext.get(null);
-            setBufferValue(value, context.currentBuffer());
+            setBufferValue(value, currentBuffer());
         }
         public void setBufferValue(Object value, ELispBuffer buffer) {
             ELispSymbol predicate = asSym(this.value);

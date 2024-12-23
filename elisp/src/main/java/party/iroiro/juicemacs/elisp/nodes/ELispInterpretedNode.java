@@ -10,7 +10,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
@@ -634,7 +633,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             IndirectCallNode indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
             ELispString file = asStr(asCons(function.cdr()).car());
-            ELispRootNode root = BuiltInLRead.loadFile(ELispLanguage.get(this), file, true);
+            ELispRootNode root = BuiltInLRead.loadFile(getLanguage(), file, true);
             indirectCallNode.call(Objects.requireNonNull(root).getCallTarget());
             return getIndirectFunction(cons.car());
         }
