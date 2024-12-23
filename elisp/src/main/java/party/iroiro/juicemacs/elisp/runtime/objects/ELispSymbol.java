@@ -7,6 +7,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -65,7 +66,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
      * @return the value of the symbol, or {@link ValueStorage#UNBOUND}
      */
     private Object getAnyValue() {
-        return getStorage().getAnyValue();
+        Optional<ValueStorage> storage = tryGetStorage();
+        return storage.map(ValueStorage::getAnyValue).orElse(UNBOUND);
     }
 
     public Object getValue() {
@@ -95,7 +97,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
             }
             throw ELispSignals.settingConstant(this);
         }
-        getStorage().setValue(value, this);
+        ELispContext context = ELispContext.get(null);
+        context.getStorage(this).setValue(value, this, context);
     }
 
     public boolean isBound() {
@@ -103,12 +106,13 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     public Object getDefaultValue() {
-        Object value = getStorage().getDefaultValue();
+        Object value = tryGetStorage().map(ValueStorage::getDefaultValue).orElse(UNBOUND);
         return checkUnbound(value);
     }
 
     public void setDefaultValue(Object value) {
-        getStorage().setDefaultValue(value, this);
+        ELispContext context = ELispContext.get(null);
+        context.getStorage(this).setDefaultValue(value, this, context);
     }
 
     public void setBufferLocal(boolean localIfSet) {
@@ -116,11 +120,21 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     public boolean isBufferLocal(Object buffer) {
-        return getStorage().isBufferLocal(buffer);
+        Optional<ValueStorage> storage = tryGetStorage();
+        //noinspection OptionalIsPresent
+        if (storage.isEmpty()) {
+            return false;
+        }
+        return storage.get().isBufferLocal(buffer);
     }
 
     public boolean isBufferLocalIfSet(Object buffer) {
-        return getStorage().isBufferLocalIfSet(buffer);
+        Optional<ValueStorage> storage = tryGetStorage();
+        //noinspection OptionalIsPresent
+        if (storage.isEmpty()) {
+            return false;
+        }
+        return storage.get().isBufferLocalIfSet(buffer);
     }
 
     public void aliasSymbol(ELispSymbol symbol) {
@@ -155,7 +169,8 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     }
 
     public Object getFunction() {
-        return ELispContext.get(null).getFunctionStorage(this).get();
+        Optional<FunctionStorage> storage = ELispContext.get(null).getFunctionStorageLazy(this);
+        return storage.map(FunctionStorage::get).orElse(false);
     }
 
     public void setFunction(Object function) {

@@ -89,7 +89,7 @@ access. A usual mitigation to this is to cache the value container objects, but,
 ..., it can be hard to do so since we have multiple workers sharing the same
 function.
 
-** TODO Progress [1/3]
+** TODO Progress [2/3]
 
 - [X] Move global things to fields in =ELispGlobal=
 
@@ -99,7 +99,7 @@ function.
 
 - [-] Optimize
 
-  - [ ] Use get contexts with =ELispContext.get(this)=
+  - Cancelled: Use get contexts with =ELispContext.get(this)=: Too much work.
 
   - [X] Read/write to global values with some =ReadGlobalNode=
 
@@ -107,11 +107,11 @@ function.
 
     - [X] Write? (=setq= only; =let/let*= require too much changes)
 
-  - [-] Cache constant globals
+  - [X] Cache constant globals
 
     - [X] Keywords (turned into literal node)
 
-    - [ ] Constants
+    - [X] Constants
 
   - [X] Maybe use a =ContextThreadLocal= for current buffer tracking
 

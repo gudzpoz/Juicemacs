@@ -471,6 +471,7 @@ public final class ELispCharset {
                 }
                 long c = index + charset.codeOffset;
                 if (charset.unifiedP && Character.MAX_CODE_POINT < c && c <= MAX_CHAR) {
+                    // TODO: Is ELispContext.get(null) efficient enough?
                     ValueStorage.Forwarded charUnifyTable = ELispContext.get(null).globals().builtInCharSet.CHAR_UNIFY_TABLE;
                     Object result = asCharTable(charUnifyTable.getValue()).getChar(Math.toIntExact(c));
                     return notNilOr(result, c);

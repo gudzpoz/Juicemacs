@@ -111,10 +111,12 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                     return;
                 }
             }
-            ELispBuffer buffer = ELispContext.get(null).currentBuffer();
-            for (ELispRegExp.CompiledRegExp regExp : regExps) {
-                if (isNil(regExp.call(s, true, 0, -1, buffer))) {
-                    return;
+            if (regExps.length != 0) {
+                ELispBuffer buffer = ELispContext.get(null).currentBuffer();
+                for (ELispRegExp.CompiledRegExp regExp : regExps) {
+                    if (isNil(regExp.call(s, true, 0, -1, buffer))) {
+                        return;
+                    }
                 }
             }
             record(s, key);

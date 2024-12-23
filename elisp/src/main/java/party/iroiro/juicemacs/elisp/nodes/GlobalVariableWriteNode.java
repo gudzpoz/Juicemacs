@@ -24,7 +24,7 @@ public abstract class GlobalVariableWriteNode extends ELispExpressionNode {
             @Cached(value = "getContext().getStorage(symbol)", neverDefault = true) ValueStorage storage
     ) {
         Object value = this.value.executeGeneric(frame);
-        storage.setValue(value, symbol);
+        storage.setValue(value, symbol, getContext());
         return value;
     }
 }

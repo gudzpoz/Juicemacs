@@ -30,15 +30,15 @@ public class BuiltInSearch extends ELispBuiltIns {
     private final ThreadLocalStorage MATCH_DATA = new ThreadLocalStorage(false);
     private final ThreadLocalStorage MATCHED_STR = new ThreadLocalStorage(false);
 
-    private static Object matchData(@Nullable Node node) {
+    private static Object matchData(Node node) {
         return ELispContext.get(node).globals().builtInSearch.MATCH_DATA.getValue();
     }
 
-    private static Object matchStr(@Nullable Node node) {
+    private static Object matchStr(Node node) {
         return ELispContext.get(node).globals().builtInSearch.MATCHED_STR.getValue();
     }
 
-    private static void setMatch(@Nullable Node node, Object data, Object str) {
+    private static void setMatch(Node node, Object data, Object str) {
         BuiltInSearch builtInSearch = ELispContext.get(node).globals().builtInSearch;
         builtInSearch.MATCH_DATA.setValue(data);
         builtInSearch.MATCHED_STR.setValue(str);

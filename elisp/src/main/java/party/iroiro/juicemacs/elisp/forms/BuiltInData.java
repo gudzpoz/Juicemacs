@@ -8,7 +8,6 @@ import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -1373,7 +1372,7 @@ public class BuiltInData extends ELispBuiltIns {
                 if (value.isConstant()) {
                     throw ELispSignals.settingConstant(symbol);
                 }
-                value.makeUnbound();
+                value.makeUnbound(getContext());
             }
             return symbol;
         }
@@ -2304,7 +2303,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringToNumber extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object stringToNumber(ELispString string, Object base) {
+        public Object stringToNumber(ELispString string, Object base) {
             String s = string.toString();
             long b = notNilOr(base, 10);
             if (b != 10) {
@@ -2312,7 +2311,7 @@ public class BuiltInData extends ELispBuiltIns {
                 s = "#" + b + "r" + s;
             }
             try {
-                Object read = ELispParser.read(ELispContext.get(null), s);
+                Object read = ELispParser.read(getContext(), s);
                 if (read instanceof Long || read instanceof Double || read instanceof ELispBigNum) {
                     return read;
                 }

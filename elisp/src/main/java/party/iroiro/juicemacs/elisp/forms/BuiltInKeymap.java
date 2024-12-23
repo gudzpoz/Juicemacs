@@ -5,7 +5,6 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -672,7 +671,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
             if (!FKeymapp.keymapp(keymap)) {
                 throw ELispSignals.wrongTypeArgument(KEYMAPP, keymap);
             }
-            ELispContext.get(this).globals().builtInKeymap.globalMap = keymap;
+            getContext().globals().builtInKeymap.globalMap = keymap;
             return false;
         }
     }
@@ -716,8 +715,8 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentGlobalMap extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object currentGlobalMap() {
-            return ELispContext.get(null).globals().builtInKeymap.globalMap;
+        public Object currentGlobalMap() {
+            return getContext().globals().builtInKeymap.globalMap;
         }
     }
 

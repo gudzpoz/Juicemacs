@@ -46,6 +46,14 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     )
     public static final OptionKey<Boolean> BARE = new OptionKey<>(false);
 
+    @Option(
+            name = "globalVariableMaxInvalidations",
+            help = "Number of assignments to a global variable to disable auto-constant folding.",
+            category = OptionCategory.EXPERT,
+            stability = OptionStability.STABLE
+    )
+    public static final OptionKey<Integer> GLOBAL_MAX_INVALIDATIONS = new OptionKey<>(3);
+
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
 
     public final SharedIndicesMap globalVariablesMap = new SharedIndicesMap();

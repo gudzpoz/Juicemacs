@@ -582,13 +582,13 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReadFromString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object readFromString(ELispString string, Object start, Object end) {
+        public Object readFromString(ELispString string, Object start, Object end) {
             long from = notNilOr(start, 0L);
             long to = notNilOr(end, string.length());
             MuleString sub = string.value().subSequence((int) from, (int) to);
             try {
                 Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
-                ELispParser parser = new ELispParser(ELispContext.get(null), elisp);
+                ELispParser parser = new ELispParser(getContext(), elisp);
                 Object o = parser.nextLisp();
                 return new ELispCons(o, from + parser.getCodepointOffset());
             } catch (IOException e) {

@@ -89,7 +89,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         }
     }
     private Object setAndCheckLoadPath() {
-        String path = ELispContext.get(null).getEnv("EMACSLOADPATH");
+        String path = ctx.getEnv("EMACSLOADPATH");
         ELispCons loadPaths;
         if (path != null) {
             loadPaths = decodeEnvPath(null, path, true);

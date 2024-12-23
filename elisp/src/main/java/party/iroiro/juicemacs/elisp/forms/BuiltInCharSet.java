@@ -529,7 +529,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         public boolean defineCharsetAlias(ELispSymbol alias, Object charset) {
             ELispVector attr = getCharsetAttr(charset);
             getThis(this).CHARSET_HASH_TABLE.put(alias, attr);
-            ELispContext context = ELispContext.get(null);
+            ELispContext context = getContext();
             context.setValue(CHARSET_LIST, new ELispCons(alias, context.getValue(CHARSET_LIST)));
             return false;
         }

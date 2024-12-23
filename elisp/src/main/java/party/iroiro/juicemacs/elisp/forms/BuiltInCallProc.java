@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import java.util.List;
@@ -138,12 +137,12 @@ public class BuiltInCallProc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetenvInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object getenvInternal(ELispString variable, Object env) {
+        public Object getenvInternal(ELispString variable, Object env) {
             if (!isNil(env)) {
                 // TODO: process-environment?
                 throw new UnsupportedOperationException();
             }
-            String value = ELispContext.get(null).getEnv(variable.asString());
+            String value = getContext().getEnv(variable.asString());
             return value == null ? false : new ELispString(value);
         }
     }

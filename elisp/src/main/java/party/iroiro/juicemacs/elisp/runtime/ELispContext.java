@@ -36,6 +36,7 @@ public final class ELispContext implements ELispParser.InternContext {
     private final ELispGlobals globals;
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
     private final SharedIndicesMap.ContextArray<FunctionStorage> functionsArray;
+    private final Options options;
     private final CyclicAssumption specialVariablesUnchanged;
 
     public ELispContext(ELispLanguage language, TruffleLanguage.@Nullable Env env) {
@@ -43,9 +44,11 @@ public final class ELispContext implements ELispParser.InternContext {
         if (env == null) {
             this.env = new ConcurrentHashMap<>();
             this.postInit = false;
+            this.options = new Options(3);
         } else {
             this.env = new ConcurrentHashMap<>(env.getEnvironment());
             this.postInit = !env.getOptions().get(ELispLanguage.BARE);
+            this.options = new Options(env.getOptions().get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
         }
         this.globals = new ELispGlobals(this);
         variablesArray = new SharedIndicesMap.ContextArray<>(
@@ -67,6 +70,10 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public ELispObarray obarray() {
         return globals.globalObarray;
+    }
+
+    public Options options() {
+        return options;
     }
 
     //#region InternContext
@@ -146,7 +153,7 @@ public final class ELispContext implements ELispParser.InternContext {
         if (storage.isConstant()) {
             throw ELispSignals.settingConstant(symbol);
         }
-        storage.setValue(value, symbol);
+        storage.setValue(value, symbol, this);
     }
 
     public void forwardTo(ELispSymbol symbol, ValueStorage.AbstractForwarded<?> value) {
@@ -171,5 +178,10 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public static ELispContext get(@Nullable Node node) {
         return CONTEXT_REFERENCE.get(node);
+    }
+
+    public record Options(
+            int globalVariableMaxInvalidations
+    ) {
     }
 }

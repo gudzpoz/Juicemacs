@@ -150,7 +150,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
     public abstract static class FStandardSyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
         public ELispCharTable standardSyntaxTable() {
-            return ELispContext.get(this).globals().builtInSyntax.standardSyntaxTable;
+            return getContext().globals().builtInSyntax.standardSyntaxTable;
         }
     }
 

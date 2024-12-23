@@ -93,12 +93,12 @@ public final class ValueStorage {
         return assumeConstant;
     }
     @CompilerDirectives.TruffleBoundary
-    public void updateAssumeConstant() {
+    public void updateAssumeConstant(ELispContext context) {
         if (!assumeConstant) {
             return;
         }
         synchronized (this) {
-            if (changes <= 3) {
+            if (changes <= context.options().globalVariableMaxInvalidations()) {
                 changes++;
                 unchangedAssumption.invalidate();
             } else {
@@ -166,20 +166,20 @@ public final class ValueStorage {
         }
     }
 
-    public void setValue(Object value, ELispSymbol symbol) {
+    public void setValue(Object value, ELispSymbol symbol, ELispContext context) {
         if (isConstant()) {
             throw ELispSignals.settingConstant(symbol);
         }
         if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(value)) {
             return;
         }
-        updateAssumeConstant();
+        updateAssumeConstant(context);
         this.delegate.setValue(value);
     }
 
-    public void makeUnbound() {
+    public void makeUnbound(ELispContext context) {
         this.delegate = new PlainValue(UNBOUND);
-        updateAssumeConstant();
+        updateAssumeConstant(context);
     }
 
     //#endregion Value API
@@ -201,7 +201,7 @@ public final class ValueStorage {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void setDefaultValue(Object value, ELispSymbol symbol) {
+    public void setDefaultValue(Object value, ELispSymbol symbol, ELispContext context) {
         if (isConstant()) {
             if (symbol.isKeyword() && value == symbol) {
                 // "Allow setting keywords to their own value"?
@@ -217,7 +217,7 @@ public final class ValueStorage {
             // Recursive call: Truffle bails out
             target.setDefaultValue(value);
         } else {
-            updateAssumeConstant();
+            updateAssumeConstant(context);
             delegate.setValue(value);
         }
     }
