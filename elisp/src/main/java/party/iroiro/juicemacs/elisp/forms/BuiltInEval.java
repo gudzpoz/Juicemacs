@@ -297,8 +297,8 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispExpressionNode[] thenCases;
 
             public CondNode(Object[] clauses) {
-                List<ELispExpressionNode> conditionNodes = new ArrayList<>();
-                List<ELispExpressionNode> cases = new ArrayList<>();
+                List<ELispExpressionNode> conditionNodes = new ArrayList<>(clauses.length);
+                List<ELispExpressionNode> cases = new ArrayList<>(clauses.length);
                 for (Object clause : clauses) {
                     ELispCons cons = asCons(clause);
                     conditionNodes.add(ELispInterpretedNode.create(cons.car()));

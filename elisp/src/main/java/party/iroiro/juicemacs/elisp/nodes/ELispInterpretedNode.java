@@ -281,16 +281,16 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         protected static ELispExpressionNode[] initChildren(ELispCons cons, boolean special) {
-            List<ELispExpressionNode> childrenList = new ArrayList<>();
+            // Trade time for allocation amount. Hopefully most conses are short.
+            ELispExpressionNode[] children = new ELispExpressionNode[cons.size() - 1];
             ELispCons.BrentTortoiseHareIterator argIterator = cons.listIterator(1);
-            while (argIterator.hasNext()) {
-                if (special) {
-                    childrenList.add(literal(argIterator.next()));
-                } else {
-                    childrenList.add(ELispInterpretedNode.create(argIterator.next()));
-                }
+            for (int i = 0; argIterator.hasNext(); i++) {
+                Object arg = argIterator.next();
+                children[i] = special
+                        ? literal(arg)
+                        : ELispInterpretedNode.create(arg);
             }
-            return childrenList.toArray(new ELispExpressionNode[0]);
+            return children;
         }
 
         public Object getFunction() {

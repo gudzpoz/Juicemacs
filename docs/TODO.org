@@ -14,6 +14,45 @@ So, old Emacs had a bug:
 
 It seems... we also have this bug.
 
+* TODO [#A] Use =ert.el=
+
+I have stopped writing tests for newly implemented subroutines. We should
+definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
+
+* TODO [#C] Reminder: Trivial things
+
+- [ ] Avoid several duplicate allocations, esp. =new Object[]= for function arguments
+- [X] =(let/let* () ...)= is equivalent to =(progn ...)=.
+- [X] Concurrent class loading
+
+  Built-in function initialization loads thousands of classes. Since each
+  factory is independent of each other, we can make them concurrent. (The init
+  function used to take ~0.5s, and now it takes ~0.3s. Not much, but still good
+  to have and fun to concurrentize things.)
+
+* TODO [#B] Concurrent =load=?
+
+Parsing huge files can be costly. And yet most of the operations have nothing to
+do with the current context: we can offload the job to other threads.
+
+For the following snippet:
+
+#+begin_src elisp
+  (load "a.el")
+  (load "b.el")
+#+end_src
+
+We want to silently turn it into something like:
+
+#+begin_src elisp
+  (concurrent
+   (parse-cache "a.el")
+   (parse-cache "b.el"))
+
+  (run-cached "a.el")
+  (run-cached "b.el")
+#+end_src
+
 ** TODO [#B] Automatically free container objects when the corresponding symbol goes out of scope
 
 Currently we follow TruffleRuby to store symbol values similar to global
