@@ -64,7 +64,7 @@ public final class ELispContext implements ELispParser.InternContext {
                 FunctionStorage[]::new,
                 FunctionStorage::new
         );
-        specialVariablesUnchanged = new CyclicAssumption("Special variables unchanged");
+        specialVariablesUnchanged = new CyclicAssumption("special variables unchanged");
     }
 
     public ELispGlobals globals() {

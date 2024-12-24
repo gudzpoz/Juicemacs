@@ -23,7 +23,7 @@ public final class ValueStorage {
     /// The unbound value, used as the value of void variables and not exposed to any caller.
     public static final Object UNBOUND = new Object();
 
-    private final CyclicAssumption unchangedAssumption = new CyclicAssumption("unchanged");
+    private final CyclicAssumption unchangedAssumption = new CyclicAssumption("variable assumed constant");
     private int changes = 0;
     @CompilerDirectives.CompilationFinal
     private volatile boolean assumeConstant = true;

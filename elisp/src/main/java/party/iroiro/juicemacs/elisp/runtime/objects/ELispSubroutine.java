@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
@@ -43,18 +42,11 @@ public record ELispSubroutine(
     /// Also, [special forms](https://www.gnu.org/software/emacs/manual/html_node/elisp/Special-Forms.html)
     /// are inlined by default and do not need a factory (and [#factory()] is null).
     ///
-    /// [#stable()] is used to detect if any *bad* users rewrites these special functions...
-    /// (Emacs allows overriding `+`, `-` and even special forms like `if`.)
-    /// It boosts the performance if the user does not do that, when the interpreter can slack and
-    /// does not need to check if the function is still the same.
-    /// It is only invalidated by [ELispSymbol], when the user assigns a new function to those special symbols
-    /// like `+`, `-`, `if`, etc.
-    ///
     /// The execution of inlined nodes and special forms are defined in
     /// [party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode].
     ///
     /// @see party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode
-    public record InlineInfo(ELispBuiltIn info, @Nullable Object factory, Assumption stable) {
+    public record InlineInfo(ELispBuiltIn info, @Nullable Object factory) {
         public ELispExpressionNode createNode(ELispExpressionNode[] args) {
             if (factory instanceof NodeFactory<?> nodeFactory) {
                 return (ELispExpressionNode) nodeFactory.createNode((Object) args);

@@ -41,6 +41,7 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
     }
 
     @Nullable
+    @NonIdempotent
     protected SlotPrimitiveContainer getContainer(VirtualFrame frame) {
         return slot != BYPASS && getVariable(getFrame(frame), slot) instanceof SlotPrimitiveContainer container
                 ? container : null;
@@ -91,7 +92,14 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             super(slot, frame);
         }
 
-        @Specialization(guards = {"container != null", "!container.isDouble"})
+        final boolean isLong(SlotPrimitiveContainer container) {
+            return container != null && !container.isDouble;
+        }
+        final boolean isDouble(SlotPrimitiveContainer container) {
+            return container != null && container.isDouble;
+        }
+
+        @Specialization(guards = "isLong(container)")
         protected final long readLong(
                 @SuppressWarnings("unused") VirtualFrame frame,
                 @Bind(value = "getContainer(frame)") SlotPrimitiveContainer container
@@ -99,7 +107,7 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             return container.getLong();
         }
 
-        @Specialization(guards = {"container != null", "container.isDouble"})
+        @Specialization(guards = "isDouble(container)")
         protected final double readDouble(
                 @SuppressWarnings("unused") VirtualFrame frame,
                 @Bind(value = "getContainer(frame)") SlotPrimitiveContainer container

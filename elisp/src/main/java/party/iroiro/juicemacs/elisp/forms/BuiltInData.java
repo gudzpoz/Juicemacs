@@ -8,6 +8,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -1528,8 +1529,15 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FFset extends ELispBuiltInBaseNode {
         @Specialization
         public ELispSymbol fset(ELispSymbol symbol, Object definition) {
-            getContext().getFunctionStorage(symbol).set(definition, symbol);
+            fset(symbol, definition, getContext());
             return symbol;
+        }
+
+        public static void fset(ELispSymbol symbol, Object definition, ELispContext context) {
+            if (symbol == NIL && !isNil(definition)) {
+                throw ELispSignals.settingConstant(symbol);
+            }
+            context.getFunctionStorage(symbol).set(definition, symbol);
         }
     }
 
@@ -1553,7 +1561,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
             // TODO: Handle defalias-fset-function
-            getContext().getFunctionStorage(symbol).set(definition, symbol);
+            FFset.fset(symbol, definition, getContext());
             return symbol;
         }
     }

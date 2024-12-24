@@ -146,7 +146,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             if (target.toFile().isFile()) {
                 try {
-                    System.out.println("load: " + target);
+                    System.out.println("load: " + Path.of(".").toAbsolutePath().relativize(target));
                     return ELispParser.parse(
                             language,
                             ELispContext.get(null),

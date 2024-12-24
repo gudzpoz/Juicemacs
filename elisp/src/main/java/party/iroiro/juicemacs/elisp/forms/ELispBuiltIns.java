@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
@@ -86,20 +85,7 @@ public abstract class ELispBuiltIns {
                 );
                 MuleString symbol = MuleString.fromString(builtIn.name());
                 FunctionRootNode rootNode = new FunctionRootNode(language, symbol, wrapper, null); // NOPMD
-                ELispSubroutine.@Nullable InlineInfo inlineInfo = null;
-                @Nullable Object inliner = null;
-                if (function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory) {
-                    inliner = inlineFactory;
-                } else if (inline && !builtIn.rawArg()) {
-                    inliner = factory;
-                }
-                if (inliner != null || builtIn.rawArg()) {
-                    inlineInfo = new ELispSubroutine.InlineInfo(
-                            builtIn,
-                            inliner,
-                            Truffle.getRuntime().createAssumption()
-                    );
-                }
+                ELispSubroutine.InlineInfo inlineInfo = getInlineInfo(factory, builtIn, function);
                 results.add(Map.entry(
                         symbol,
                         new ELispSubroutine(
@@ -111,6 +97,24 @@ public abstract class ELispBuiltIns {
             }
         }
         return new InitializationResult(results);
+    }
+
+    private ELispSubroutine.@Nullable InlineInfo getInlineInfo(
+            NodeFactory<? extends ELispExpressionNode> factory,
+            ELispBuiltIn builtIn,
+            ELispExpressionNode function
+    ) {
+        ELispSubroutine.@Nullable InlineInfo inlineInfo = null;
+        @Nullable Object inliner = null;
+        if (function instanceof ELispBuiltInBaseNode.InlineFactory inlineFactory) {
+            inliner = inlineFactory;
+        } else if (inline && !builtIn.rawArg()) {
+            inliner = factory;
+        }
+        if (inliner != null || builtIn.rawArg()) {
+            inlineInfo = new ELispSubroutine.InlineInfo(builtIn, inliner);
+        }
+        return inlineInfo;
     }
 
     public record InitializationResult(List<Map.Entry<MuleString, ELispSubroutine>> subroutines) {
