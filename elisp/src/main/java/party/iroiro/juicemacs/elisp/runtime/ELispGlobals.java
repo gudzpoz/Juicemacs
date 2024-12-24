@@ -59,7 +59,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         }
     }
 
-    public ELispSymbol intern(MuleString name) {
+    public ELispSymbol intern(String name) {
         return globalObarray.intern(name);
     }
 

@@ -3,14 +3,14 @@ package party.iroiro.juicemacs.elisp.runtime;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /// Custom globals
 ///
@@ -45,56 +45,94 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     }
 
     public void init(ELispLanguage language, boolean postInit) {
-        initBuiltIns(language, new BuiltInAlloc());
-        initBuiltIns(language, builtInBuffer);
-        initBuiltIns(language, new BuiltInCallInt());
-        initBuiltIns(language, new BuiltInCallProc());
-        initBuiltIns(language, new BuiltInCaseFiddle());
-        initBuiltIns(language, builtInCaseTab);
-        initBuiltIns(language, new BuiltInCategory());
-        initBuiltIns(language, new BuiltInCcl());
-        initBuiltIns(language, new BuiltInCharacter());
-        initBuiltIns(language, builtInCharSet);
-        initBuiltIns(language, new BuiltInCharTab());
-        initBuiltIns(language, new BuiltInCmds());
-        initBuiltIns(language, builtInCoding);
-        initBuiltIns(language, new BuiltInComp());
-        initBuiltIns(language, new BuiltInComposite());
-        initBuiltIns(language, new BuiltInData());
-        initBuiltIns(language, new BuiltInDoc());
-        initBuiltIns(language, new BuiltInEditFns());
-        initBuiltIns(language, new BuiltInEmacs());
-        initBuiltIns(language, new BuiltInEval());
-        initBuiltIns(language, new BuiltInFileIO());
-        initBuiltIns(language, new BuiltInFloatFns());
-        initBuiltIns(language, new BuiltInFns());
-        initBuiltIns(language, new BuiltInFrame());
-        initBuiltIns(language, new BuiltInKeyboard());
-        initBuiltIns(language, builtInKeymap);
-        initBuiltIns(language, new BuiltInLRead());
-        initBuiltIns(language, new BuiltInMacros());
-        initBuiltIns(language, new BuiltInMiniBuf());
-        initBuiltIns(language, new BuiltInPrint());
-        initBuiltIns(language, new BuiltInProcess());
-        initBuiltIns(language, builtInSearch);
-        initBuiltIns(language, builtInSyntax);
-        initBuiltIns(language, new BuiltInTextProp());
-        initBuiltIns(language, new BuiltInTimeFns());
-        initBuiltIns(language, new BuiltInWindow());
-        initBuiltIns(language, new BuiltInXDisp());
-        initBuiltIns(language, new BuiltInXFaces());
+        ELispBuiltIns[] builtIns = new ELispBuiltIns[]{
+                new BuiltInAlloc(),
+                builtInBuffer,
+                new BuiltInCallInt(),
+                new BuiltInCallProc(),
+                new BuiltInCaseFiddle(),
+                builtInCaseTab,
+                new BuiltInCategory(),
+                new BuiltInCcl(),
+                new BuiltInCharacter(),
+                builtInCharSet,
+                new BuiltInCharTab(),
+                new BuiltInCmds(),
+                builtInCoding,
+                new BuiltInComp(),
+                new BuiltInComposite(),
+                new BuiltInData(),
+                new BuiltInDoc(),
+                new BuiltInEditFns(),
+                new BuiltInEmacs(),
+                new BuiltInEval(),
+                new BuiltInFileIO(),
+                new BuiltInFloatFns(),
+                new BuiltInFns(),
+                new BuiltInFrame(),
+                new BuiltInKeyboard(),
+                builtInKeymap,
+                new BuiltInLRead(),
+                new BuiltInMacros(),
+                new BuiltInMiniBuf(),
+                new BuiltInPrint(),
+                new BuiltInProcess(),
+                builtInSearch,
+                builtInSyntax,
+                new BuiltInTextProp(),
+                new BuiltInTimeFns(),
+                new BuiltInWindow(),
+                new BuiltInXDisp(),
+                new BuiltInXFaces(),
+        };
+
+        AtomicInteger remaining = new AtomicInteger(builtIns.length);
+        ELispBuiltIns.@Nullable InitializationResult[] results = new ELispBuiltIns.InitializationResult[builtIns.length];
+        for (int i = 0; i < builtIns.length; i++) {
+            initBuiltIns(language, remaining, builtIns[i], i, results);
+        }
+        synchronized (this) {
+            while (remaining.get() != 0) {
+                try {
+                    this.wait();
+                } catch (InterruptedException ignored) {
+                }
+            }
+        }
+
+        for (int i = 0; i < results.length; i++) {
+            ELispBuiltIns.InitializationResult result = results[i];
+            if (result == null) {
+                throw ELispSignals.fatal(builtIns[i].toString());
+            }
+            for (Map.Entry<MuleString, ELispSubroutine> subroutine : result.subroutines()) {
+                ELispSymbol symbol = intern(subroutine.getKey());
+                registerFunction(symbol, subroutine.getValue());
+            }
+        }
     }
 
     public void registerFunction(ELispSymbol symbol, ELispValue function) {
         ctx.getFunctionStorage(symbol).set(function, symbol);
     }
 
-    private void initBuiltIns(@Nullable ELispLanguage language, ELispBuiltIns builtIns) {
-        //noinspection DataFlowIssue
-        builtIns.initialize(language, this);
+    private void initBuiltIns(ELispLanguage language, AtomicInteger lock, ELispBuiltIns builtIns,
+                              int i, ELispBuiltIns.InitializationResult[] results) {
+        ELispGlobalsBase globals = this;
+        Thread.ofVirtual().start(() -> {
+            try {
+                results[i] = builtIns.initialize(language);
+            } finally {
+                synchronized (globals) {
+                    if (lock.decrementAndGet() == 0) {
+                        globals.notify();
+                    }
+                }
+            }
+        });
     }
 
-    public ELispSymbol intern(String name) {
+    public ELispSymbol intern(MuleString name) {
         return globalObarray.intern(name);
     }
 }

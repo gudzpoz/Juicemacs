@@ -9,12 +9,12 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobalsBase;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class ELispBuiltIns {
@@ -57,7 +57,7 @@ public abstract class ELispBuiltIns {
 
     private final boolean inline;
 
-    public final void initialize(ELispLanguage language, ELispGlobalsBase globals) {
+    public final InitializationResult initialize(ELispLanguage language) {
         Source javaSource = Source.newBuilder(
                 "java", "", this.getClass().getSimpleName() + ".java"
         )
@@ -67,6 +67,7 @@ public abstract class ELispBuiltIns {
         BUILT_IN_SOURCES.put(this.getClass().getSimpleName(), javaSource);
 
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
+        List<Map.Entry<MuleString, ELispSubroutine>> results = new ArrayList<>(factories.size());
         for (NodeFactory<? extends ELispExpressionNode> factory : factories) {
             for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
                 boolean varArgs = builtIn.varArgs();
@@ -83,7 +84,7 @@ public abstract class ELispBuiltIns {
                         builtIn.minArgs(),
                         varArgs ? -1 : builtIn.maxArgs()
                 );
-                ELispSymbol symbol = globals.intern(builtIn.name());
+                MuleString symbol = MuleString.fromString(builtIn.name());
                 FunctionRootNode rootNode = new FunctionRootNode(language, symbol, wrapper, null); // NOPMD
                 ELispSubroutine.@Nullable InlineInfo inlineInfo = null;
                 @Nullable Object inliner = null;
@@ -99,16 +100,19 @@ public abstract class ELispBuiltIns {
                             Truffle.getRuntime().createAssumption()
                     );
                 }
-                globals.registerFunction(
+                results.add(Map.entry(
                         symbol,
                         new ELispSubroutine(
                                 new ELispFunctionObject(rootNode.getCallTarget()),
                                 builtIn.rawArg(),
                                 inlineInfo
                         )
-                );
+                ));
             }
         }
+        return new InitializationResult(results);
     }
 
+    public record InitializationResult(List<Map.Entry<MuleString, ELispSubroutine>> subroutines) {
+    }
 }
