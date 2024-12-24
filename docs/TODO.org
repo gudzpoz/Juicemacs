@@ -19,17 +19,6 @@ It seems... we also have this bug.
 I have stopped writing tests for newly implemented subroutines. We should
 definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
 
-* TODO [#C] Reminder: Trivial things
-
-- [ ] Avoid several duplicate allocations, esp. =new Object[]= for function arguments
-- [X] =(let/let* () ...)= is equivalent to =(progn ...)=.
-- [X] Concurrent class loading
-
-  Built-in function initialization loads thousands of classes. Since each
-  factory is independent of each other, we can make them concurrent. (The init
-  function used to take ~0.5s, and now it takes ~0.3s. Not much, but still good
-  to have and fun to concurrentize things.)
-
 * TODO [#B] Concurrent =load=?
 
 Parsing huge files can be costly. And yet most of the operations have nothing to
@@ -53,7 +42,10 @@ We want to silently turn it into something like:
   (run-cached "b.el")
 #+end_src
 
-** TODO [#B] Automatically free container objects when the corresponding symbol goes out of scope
+What we can do is to have the parser detect =require/load= (under "safe"
+conditions like during loadup) and load them in the background.
+
+* TODO [#B] Automatically free container objects when the corresponding symbol goes out of scope
 
 Currently we follow TruffleRuby to store symbol values similar to global
 variables. However, symbols can go out of scope and their corresponding values
@@ -268,6 +260,30 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#B] Cache function storage in function call nodes
+
+So a previous commit (=3465a76= perf: use assumptions for frame materialized top
+tracking) introduced a bug: =let/let*= statements should have =N + 1=
+assumptions instead of only one, since the value branches can also modify the
+stack and introduce more variables.
+
+This is not revealed until we implement this function storage caching.
+
+(BTW, the cache brings current =loadup.el= execution from ~7s to ~4s. Hopefully
+we are not getting things seriously wrong here.)
+
+** DONE [#C] Reminder: Trivial things
+
+- [X] Avoid several duplicate allocations, esp. =new Object[]= for function
+  arguments (incomplete optimizations done)
+- [X] =(let/let* () ...)= is equivalent to =(progn ...)=.
+- [X] Concurrent class loading
+
+  Built-in function initialization loads thousands of classes. Since each
+  factory is independent of each other, we can make them concurrent. (The init
+  function used to take ~0.5s, and now it takes ~0.3s. Not much, but still good
+  to have and fun to concurrentize things.)
 
 ** DONE [#A] Re-consider whether to stay =static= everywhere
 

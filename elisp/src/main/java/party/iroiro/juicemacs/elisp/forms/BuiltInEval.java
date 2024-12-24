@@ -72,8 +72,9 @@ public class BuiltInEval extends ELispBuiltIns {
         private final byte[] dynamicStates;
         @CompilerDirectives.CompilationFinal
         private Assumption globalSpecialAssumption;
-        @CompilerDirectives.CompilationFinal
-        protected final ELispLexical.MaterializedAssumption lexicalSpecialAssumption;
+        @CompilerDirectives.CompilationFinal(dimensions = 1)
+        protected final ELispLexical.MaterializedAssumption[] clauseEntryAssumptions;
+        protected final ELispLexical.MaterializedAssumption bodyEntryAssumption;
 
         @CompilerDirectives.CompilationFinal(dimensions = 1)
         protected final ELispSymbol[] symbols;
@@ -86,7 +87,11 @@ public class BuiltInEval extends ELispBuiltIns {
             this.symbols = symbols;
             this.valueNodes = values;
             globalSpecialAssumption = getContext().getSpecialVariablesUnchangedAssumption();
-            lexicalSpecialAssumption = new ELispLexical.MaterializedAssumption();
+            clauseEntryAssumptions = new ELispLexical.MaterializedAssumption[symbols.length];
+            for (int i = 0; i < symbols.length; i++) {
+                clauseEntryAssumptions[i] = new ELispLexical.MaterializedAssumption();
+            }
+            bodyEntryAssumption = new ELispLexical.MaterializedAssumption();
         }
 
         protected boolean isDynamic(VirtualFrame frame, int i, ELispSymbol symbol) {
@@ -96,7 +101,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 Arrays.fill(dynamicStates, (byte) 0);
                 globalSpecialAssumption = getContext().getSpecialVariablesUnchangedAssumption();
             }
-            if (!lexicalSpecialAssumption.isValid()) {
+            if (!clauseEntryAssumptions[i].isValid()) {
                 return ELispLexical.isDynamic(frame, symbol);
             }
 
@@ -1011,11 +1016,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 ArrayList<Object> specialValues = new ArrayList<>();
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                lexicalSpecialAssumption.checkEntry(lexicalFrame);
                 boolean dynamicBinding = lexicalFrame == null;
                 int length = symbols.length;
                 try {
                     for (int i = 0; i < length; i++) {
+                        ELispLexical.MaterializedAssumption assumption = clauseEntryAssumptions[i];
+                        if (lexicalFrame != null) {
+                            lexicalFrame.setMaterializedTopUnchanged(assumption);
+                        }
+
                         ELispSymbol symbol = symbols[i];
                         Object value = valueNodes[i].executeGeneric(frame);
                         if (dynamicBinding || isDynamic(frame, i, symbol)) {
@@ -1023,7 +1032,7 @@ public class BuiltInEval extends ELispBuiltIns {
                             specialValues.add(symbol.swapThreadLocalValue(value));
                         } else {
                             // TODO: Check if Truffle bail out on this.
-                            lexicalFrame = lexicalFrame.fork(frame, lexicalSpecialAssumption);
+                            lexicalFrame = lexicalFrame.fork(frame, assumption);
                             lexicalFrame.addVariable(frame, symbol, value);
                         }
                     }
@@ -1035,6 +1044,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     ).close();
                     // The caller is responsible for restoring lexical scopes.
                     throw e;
+                }
+                if (lexicalFrame != null) {
+                    lexicalFrame.setMaterializedTopUnchanged(bodyEntryAssumption);
                 }
                 ELispLexical.Dynamic handle = null;
                 if (!specialBindings.isEmpty()) {
@@ -1119,11 +1131,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 ArrayList<Object> specialValues = new ArrayList<>();
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
-                lexicalSpecialAssumption.checkEntry(lexicalFrame);
                 boolean dynamicBinding = lexicalFrame == null;
                 Object[] lexicalValues = dynamicBinding ? new Object[0] : new Object[symbols.length];
                 int length = symbols.length;
                 for (int i = 0; i < length; i++) {
+                    ELispLexical.MaterializedAssumption assumption = clauseEntryAssumptions[i];
+                    if (lexicalFrame != null) {
+                        lexicalFrame.setMaterializedTopUnchanged(assumption);
+                    }
+
                     ELispSymbol symbol = symbols[i];
                     Object value = valueNodes[i].executeGeneric(frame);
                     if (dynamicBinding || isDynamic(frame, i, symbol)) {
@@ -1143,7 +1159,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     );
                 }
                 if (!dynamicBinding) {
-                    lexicalFrame = lexicalFrame.fork(frame, lexicalSpecialAssumption);
+                    lexicalFrame = lexicalFrame.fork(frame, bodyEntryAssumption);
                     for (int i = 0; i < length; i++) {
                         Object value = lexicalValues[i];
                         if (value != null) {

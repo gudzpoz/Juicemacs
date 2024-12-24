@@ -99,7 +99,7 @@ public final class ELispLexical {
     private final MaterializedFrame materializedParent;
     @Nullable
     private final ELispLexical parent;
-    private final MaterializedAssumption materializedTopUnchanged;
+    private MaterializedAssumption materializedTopUnchanged;
 
     private ELispLexical(
             VirtualFrame frame,
@@ -171,12 +171,10 @@ public final class ELispLexical {
     /// should not be stored in a field unless it is a [MaterializedFrame]
     /// (which will add some overhead).
     ///
-    /// Please also remember to call [MaterializedAssumption#checkEntry(ELispLexical)]
-    /// before calling this node.
-    ///
     /// @param frame the current backing frame
     /// @return a new frame
     public ELispLexical fork(VirtualFrame frame, MaterializedAssumption assumption) {
+        assumption.checkEntry(this);
         return create(frame, this, assumption);
     }
 
@@ -292,6 +290,11 @@ public final class ELispLexical {
 
     public Assumption getMaterializedTopUnchanged() {
         return materializedTopUnchanged.stableMaterializedTop;
+    }
+
+    public void setMaterializedTopUnchanged(MaterializedAssumption assumption) {
+        assumption.checkEntry(this);
+        this.materializedTopUnchanged = assumption;
     }
 
     private static void setMaterializedTop(VirtualFrame frame, int newTop) {
@@ -418,10 +421,8 @@ public final class ELispLexical {
             return stableMaterializedTop.isValid();
         }
 
-        public void checkEntry(@Nullable ELispLexical parent) {
-            if (parent != null) {
-                invalidate(parent.topIndex);
-            }
+        public void checkEntry(ELispLexical parent) {
+            invalidate(parent.topIndex);
         }
     }
 }
