@@ -987,6 +987,9 @@ public class BuiltInEval extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode letxBailout(Object varlist, Object[] body) {
             CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            if (isNil(varlist)) {
+                return FProgn.progn(body);
+            }
             return new LetxNode(varlist, body);
         }
 
@@ -1196,6 +1199,9 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static ELispExpressionNode let(Object varlist, Object[] body) {
+            if (isNil(varlist)) {
+                return FProgn.progn(body);
+            }
             return new LetNode(varlist, body);
         }
 
