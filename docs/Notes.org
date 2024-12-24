@@ -109,7 +109,7 @@ builders) quite useful:
 #+begin_src text
   .allowExperimentalOptions(true)
   .option("engine.TraceCompilation", "true")
-  .option("engine.CompilationFailuReaction", "Diagnose")
+  .option("engine.CompilationFailureReaction", "Diagnose")
   .option("engine.SpecializationStatistics", "true")
   .option("compiler.TraceMethodExpansion", "truffleTier")
 #+end_src

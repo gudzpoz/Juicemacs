@@ -98,6 +98,7 @@ public final class MuleStringBuffer implements MuleString {
         return state < IS_BUILDING_BYTES ? buildingBytes.get(relIndex) : buildingCodePoints.get(relIndex);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private int offsetToStringIndex(int index) {
         if (index < 0) {
             throw new IndexOutOfBoundsException("Index out of bounds");
@@ -157,6 +158,7 @@ public final class MuleStringBuffer implements MuleString {
         return this;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public MuleStringBuffer appendCodePoint(int codePoint) {
         if (state == BUILDING_ASCII) {
             if (codePoint <= 0x7F) {
@@ -209,6 +211,7 @@ public final class MuleStringBuffer implements MuleString {
         return appendMuleString(string, start, end);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public MuleStringBuffer appendMuleString(MuleString string, int start, int end) {
         int addLength = end - start;
         if (addLength <= 0) {
@@ -294,6 +297,7 @@ public final class MuleStringBuffer implements MuleString {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     public MuleString build() {
         if (strings.isEmpty()) {
             return getBuildingString();

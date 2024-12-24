@@ -1,8 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -11,11 +13,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
+import org.graalvm.polyglot.Value;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.FileNotFoundException;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -211,16 +215,34 @@ public abstract class ELispSignals {
                 if (matcher.find()) {
                     String actual = matcher.group(1);
                     String expected = matcher.group(2);
-                    ELispSymbol predicate = CLASS_CAST_MAP.get(expected);
-                    if (predicate == null) {
-                        predicate = UNSPECIFIED;
-                    }
+                    ELispSymbol predicate = CLASS_CAST_MAP.getOrDefault(expected, UNSPECIFIED);
                     yield ELispSignals.wrongTypeArgument(predicate, actual);
                 }
                 yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
             }
-            case UnsupportedSpecializationException _ ->
-                    ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
+            case UnsupportedSpecializationException dsl -> {
+                Method[] methods = dsl.getNode().getClass().getMethods();
+                Object[] supplied = dsl.getSuppliedValues();
+                for (Method method : methods) {
+                    if (method.isAnnotationPresent(Specialization.class)) {
+                        Class<?>[] types = method.getParameterTypes();
+                        int typeI = types.length > 0 && Frame.class.isAssignableFrom(types[0])
+                                ? 1
+                                : 0;
+                        for (int i = 0; i < supplied.length && typeI < types.length; i++, typeI++) {
+                            Value value = Value.asValue(supplied[i]);
+                            Class<?> expected = types[typeI];
+                            try {
+                                value.as(expected);
+                            } catch (Exception ignored) {
+                                ELispSymbol predicate = CLASS_CAST_MAP.getOrDefault(expected.getName(), UNSPECIFIED);
+                                yield ELispSignals.wrongTypeArgument(predicate, supplied[i]);
+                            }
+                        }
+                    }
+                }
+                yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
+            }
             case ELispSignals.ELispSignalException signal -> ELispSignals.attachLocation(signal, location);
             default -> null;
         };

@@ -189,9 +189,8 @@ public class ELispRepl implements Callable<Integer> {
 
         @Override
         public ParsedLine parse(String line, int cursor, ParseContext context) throws SyntaxError {
-            ELispParser parser = new ELispParser(intern, Source.newBuilder("elisp", line, "<jline>").build());
             try {
-                parser.nextLisp();
+                ELispParser.read(intern, Source.newBuilder("elisp", line, "<jline>").build());
             } catch (IOException | ELispSignals.ELispSignalException e) {
                 if (context == ParseContext.ACCEPT_LINE) {
                     throw new EOFError(0, 0, e.getMessage());

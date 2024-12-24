@@ -108,6 +108,8 @@ So basically one can have autoload functions as well as autoload strings
 
 - Limit =jdk.virtualThreadScheduler.parallelism= to =1=.
 
+* TODO [#C] Rewrite FS operations with Truffle FileSystem
+
 * TODO [#B] Charsets & Coding
 
 Emacs MULE.
