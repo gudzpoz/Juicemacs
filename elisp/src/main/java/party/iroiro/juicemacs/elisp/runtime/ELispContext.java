@@ -67,6 +67,10 @@ public final class ELispContext implements ELispParser.InternContext {
         specialVariablesUnchanged = new CyclicAssumption("special variables unchanged");
     }
 
+    public ELispLanguage language() {
+        return language;
+    }
+
     public ELispGlobals globals() {
         return globals;
     }

@@ -8,6 +8,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInData.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInKeymap.*;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispKboard;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -135,6 +136,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         }
         charsetMapPath.setValue(new ELispCons(path));
     }
+
+    private void makeInitialWindowFrame() {
+        ctx.language().currentFrame().setValue(new ELispFrame());
+    }
     //#endregion extra globals
 
     //#region initGlobalVariables
@@ -155,6 +160,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         compVars();
         compositeVars();
         dataVars();
+        dispnewVars();
         docVars();
         editfnsVars();
         emacsVars();
@@ -471,6 +477,32 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);
         initForwardTo(MOST_NEGATIVE_FIXNUM, mostNegativeFixnum);
         initForwardTo(SYMBOLS_WITH_POS_ENABLED, symbolsWithPosEnabled);
+    }
+    private final ValueStorage.ForwardedLong baudRate = new ValueStorage.ForwardedLong();
+    private final ValueStorage.ForwardedBool inverseVideo = new ValueStorage.ForwardedBool();
+    private final ValueStorage.ForwardedBool visibleBell = new ValueStorage.ForwardedBool();
+    private final ValueStorage.ForwardedBool noRedrawOnReenter = new ValueStorage.ForwardedBool();
+    private final ValueStorage.Forwarded initialWindowSystem = new ValueStorage.Forwarded(false);
+    private final ValueStorage.ForwardedBool cursorInEchoArea = new ValueStorage.ForwardedBool();
+    private final ValueStorage.ForwardedBool mousePreferClosestGlyph = new ValueStorage.ForwardedBool(false);
+    private final ValueStorage.Forwarded glyphTable = new ValueStorage.Forwarded(false);
+    private final ValueStorage.Forwarded standardDisplayTable = new ValueStorage.Forwarded(false);
+    private final ValueStorage.ForwardedBool redisplayDontPause = new ValueStorage.ForwardedBool(true);
+    private final ValueStorage.Forwarded xShowTooltipTimeout = new ValueStorage.Forwarded(5L);
+    private final ValueStorage.Forwarded tabBarPosition = new ValueStorage.Forwarded();
+    private void dispnewVars() {
+        initForwardTo(BAUD_RATE, baudRate);
+        initForwardTo(INVERSE_VIDEO, inverseVideo);
+        initForwardTo(VISIBLE_BELL, visibleBell);
+        initForwardTo(NO_REDRAW_ON_REENTER, noRedrawOnReenter);
+        initForwardTo(INITIAL_WINDOW_SYSTEM, initialWindowSystem);
+        initForwardTo(CURSOR_IN_ECHO_AREA, cursorInEchoArea);
+        initForwardTo(MOUSE_PREFER_CLOSEST_GLYPH, mousePreferClosestGlyph);
+        initForwardTo(GLYPH_TABLE, glyphTable);
+        initForwardTo(STANDARD_DISPLAY_TABLE, standardDisplayTable);
+        initForwardTo(REDISPLAY_DONT_PAUSE, redisplayDontPause);
+        initForwardTo(X_SHOW_TOOLTIP_TIMEOUT, xShowTooltipTimeout);
+        initForwardTo(TAB_BAR_POSITION, tabBarPosition);
     }
     private final ValueStorage.Forwarded internalDocFileName = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded buildFiles = new ValueStorage.Forwarded(false);
@@ -1366,6 +1398,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         symsOfAlloc();
         symsOfCharset();
         symsOfCoding();
+        initWindowOnce();
         symsOfComp();
         initBuffer();
         initCallproc1();
@@ -1846,6 +1879,9 @@ character."""),
         asSym(codingCategoryTable.get(18)).setValue(NO_CONVERSION);
         asSym(codingCategoryTable.get(19)).setValue(NO_CONVERSION);
         asSym(codingCategoryTable.get(20)).setValue(NO_CONVERSION);
+    }
+    private void initWindowOnce() {
+        makeInitialWindowFrame();
     }
     private void symsOfComp() {
         FPut.put(NATIVE_COMPILER_ERROR, ERROR_CONDITIONS, ELispCons.listOf(NATIVE_COMPILER_ERROR, ERROR));
@@ -5306,6 +5342,7 @@ character."""),
     public static final ELispSymbol AUTO_WINDOW_VSCROLL = new ELispSymbol("auto-window-vscroll");
     public static final ELispSymbol BACKTRACE_ON_ERROR_NONINTERACTIVE = new ELispSymbol("backtrace-on-error-noninteractive");
     public static final ELispSymbol BACKTRACE_ON_REDISPLAY_ERROR = new ELispSymbol("backtrace-on-redisplay-error");
+    public static final ELispSymbol BAUD_RATE = new ELispSymbol("baud-rate");
     public static final ELispSymbol BEFORE_INIT_TIME = new ELispSymbol("before-init-time");
     public static final ELispSymbol BIDI_INHIBIT_BPA = new ELispSymbol("bidi-inhibit-bpa");
     public static final ELispSymbol BINARY_AS_UNSIGNED = new ELispSymbol("binary-as-unsigned");
@@ -5436,6 +5473,7 @@ character."""),
     public static final ELispSymbol GC_ELAPSED = new ELispSymbol("gc-elapsed");
     public static final ELispSymbol GLOBAL_DISABLE_POINT_ADJUSTMENT = new ELispSymbol("global-disable-point-adjustment");
     public static final ELispSymbol GLOBAL_MODE_STRING = new ELispSymbol("global-mode-string");
+    public static final ELispSymbol GLYPH_TABLE = new ELispSymbol("glyph-table");
     public static final ELispSymbol HELP_CHAR = new ELispSymbol("help-char");
     public static final ELispSymbol HELP_EVENT_LIST = new ELispSymbol("help-event-list");
     public static final ELispSymbol HELP_FORM = new ELispSymbol("help-form");
@@ -5466,6 +5504,7 @@ character."""),
     public static final ELispSymbol INHIBIT_X_RESOURCES = new ELispSymbol("inhibit-x-resources");
     public static final ELispSymbol INHIBIT__RECORD_CHAR = new ELispSymbol("inhibit--record-char");
     public static final ELispSymbol INITIAL_ENVIRONMENT = new ELispSymbol("initial-environment");
+    public static final ELispSymbol INITIAL_WINDOW_SYSTEM = new ELispSymbol("initial-window-system");
     public static final ELispSymbol INPUT_DECODE_MAP = new ELispSymbol("input-decode-map");
     public static final ELispSymbol INPUT_METHOD_FUNCTION = new ELispSymbol("input-method-function");
     public static final ELispSymbol INPUT_METHOD_PREVIOUS_MESSAGE = new ELispSymbol("input-method-previous-message");
@@ -5478,6 +5517,7 @@ character."""),
     public static final ELispSymbol INTERNAL__TEXT_QUOTING_FLAG = new ELispSymbol("internal--text-quoting-flag");
     public static final ELispSymbol INTERNAL__TOP_LEVEL_MESSAGE = new ELispSymbol("internal--top-level-message");
     public static final ELispSymbol INTERVALS_CONSED = new ELispSymbol("intervals-consed");
+    public static final ELispSymbol INVERSE_VIDEO = new ELispSymbol("inverse-video");
     public static final ELispSymbol INVOCATION_DIRECTORY = new ELispSymbol("invocation-directory");
     public static final ELispSymbol INVOCATION_NAME = new ELispSymbol("invocation-name");
     public static final ELispSymbol KEYBOARD_TRANSLATE_TABLE = new ELispSymbol("keyboard-translate-table");
@@ -5553,6 +5593,7 @@ character."""),
     public static final ELispSymbol MOUSE_FINE_GRAINED_TRACKING = new ELispSymbol("mouse-fine-grained-tracking");
     public static final ELispSymbol MOUSE_HIGHLIGHT = new ELispSymbol("mouse-highlight");
     public static final ELispSymbol MOUSE_POSITION_FUNCTION = new ELispSymbol("mouse-position-function");
+    public static final ELispSymbol MOUSE_PREFER_CLOSEST_GLYPH = new ELispSymbol("mouse-prefer-closest-glyph");
     public static final ELispSymbol MOVEMAIL_PROGRAM_NAME = new ELispSymbol("movemail-program-name");
     public static final ELispSymbol MOVE_FRAME_FUNCTIONS = new ELispSymbol("move-frame-functions");
     public static final ELispSymbol MULTIBYTE_SYNTAX_AS_SYMBOL = new ELispSymbol("multibyte-syntax-as-symbol");
@@ -5566,6 +5607,7 @@ character."""),
     public static final ELispSymbol NOBREAK_CHAR_ASCII_DISPLAY = new ELispSymbol("nobreak-char-ascii-display");
     public static final ELispSymbol NOBREAK_CHAR_DISPLAY = new ELispSymbol("nobreak-char-display");
     public static final ELispSymbol NONINTERACTIVE = new ELispSymbol("noninteractive");
+    public static final ELispSymbol NO_REDRAW_ON_REENTER = new ELispSymbol("no-redraw-on-reenter");
     public static final ELispSymbol NUM_INPUT_KEYS = new ELispSymbol("num-input-keys");
     public static final ELispSymbol NUM_NONMACRO_INPUT_EVENTS = new ELispSymbol("num-nonmacro-input-events");
     public static final ELispSymbol OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START = new ELispSymbol("open-paren-in-column-0-is-defun-start");
@@ -5648,6 +5690,7 @@ character."""),
     public static final ELispSymbol SIGNAL_HOOK_FUNCTION = new ELispSymbol("signal-hook-function");
     public static final ELispSymbol SOURCE_DIRECTORY = new ELispSymbol("source-directory");
     public static final ELispSymbol SPECIAL_EVENT_MAP = new ELispSymbol("special-event-map");
+    public static final ELispSymbol STANDARD_DISPLAY_TABLE = new ELispSymbol("standard-display-table");
     public static final ELispSymbol STANDARD_TRANSLATION_TABLE_FOR_DECODE = new ELispSymbol("standard-translation-table-for-decode");
     public static final ELispSymbol STANDARD_TRANSLATION_TABLE_FOR_ENCODE = new ELispSymbol("standard-translation-table-for-encode");
     public static final ELispSymbol STRINGS_CONSED = new ELispSymbol("strings-consed");
@@ -5666,6 +5709,7 @@ character."""),
     public static final ELispSymbol TAB_BAR_BUTTON_MARGIN = new ELispSymbol("tab-bar-button-margin");
     public static final ELispSymbol TAB_BAR_BUTTON_RELIEF = new ELispSymbol("tab-bar-button-relief");
     public static final ELispSymbol TAB_BAR_MODE = new ELispSymbol("tab-bar-mode");
+    public static final ELispSymbol TAB_BAR_POSITION = new ELispSymbol("tab-bar-position");
     public static final ELispSymbol TAB_BAR_SEPARATOR_IMAGE_EXPRESSION = new ELispSymbol("tab-bar-separator-image-expression");
     public static final ELispSymbol TAB_BAR__DRAGGING_IN_PROGRESS = new ELispSymbol("tab-bar--dragging-in-progress");
     public static final ELispSymbol TEMP_BUFFER_SHOW_FUNCTION = new ELispSymbol("temp-buffer-show-function");
@@ -5708,6 +5752,7 @@ character."""),
     public static final ELispSymbol USE_SYSTEM_TOOLTIPS = new ELispSymbol("use-system-tooltips");
     public static final ELispSymbol VALUES = new ELispSymbol("values");
     public static final ELispSymbol VECTOR_CELLS_CONSED = new ELispSymbol("vector-cells-consed");
+    public static final ELispSymbol VISIBLE_BELL = new ELispSymbol("visible-bell");
     public static final ELispSymbol VOID_TEXT_AREA_POINTER = new ELispSymbol("void-text-area-pointer");
     public static final ELispSymbol WHERE_IS_PREFERRED_MODIFIER = new ELispSymbol("where-is-preferred-modifier");
     public static final ELispSymbol WHILE_NO_INPUT_IGNORE_EVENTS = new ELispSymbol("while-no-input-ignore-events");
@@ -5717,6 +5762,7 @@ character."""),
     public static final ELispSymbol WINDOW_PERSISTENT_PARAMETERS = new ELispSymbol("window-persistent-parameters");
     public static final ELispSymbol WINDOW_RESIZE_PIXELWISE = new ELispSymbol("window-resize-pixelwise");
     public static final ELispSymbol WINDOW_RESTORE_KILLED_BUFFER_WINDOWS = new ELispSymbol("window-restore-killed-buffer-windows");
+    public static final ELispSymbol WINDOW_SYSTEM = new ELispSymbol("window-system");
     public static final ELispSymbol WORDS_INCLUDE_ESCAPES = new ELispSymbol("words-include-escapes");
     public static final ELispSymbol WORD_COMBINING_CATEGORIES = new ELispSymbol("word-combining-categories");
     public static final ELispSymbol WORD_SEPARATING_CATEGORIES = new ELispSymbol("word-separating-categories");
@@ -5725,6 +5771,7 @@ character."""),
     public static final ELispSymbol WRITE_REGION_INHIBIT_FSYNC = new ELispSymbol("write-region-inhibit-fsync");
     public static final ELispSymbol WRITE_REGION_POST_ANNOTATION_FUNCTION = new ELispSymbol("write-region-post-annotation-function");
     public static final ELispSymbol X_RESOURCE_CLASS = new ELispSymbol("x-resource-class");
+    public static final ELispSymbol X_SHOW_TOOLTIP_TIMEOUT = new ELispSymbol("x-show-tooltip-timeout");
     public static final ELispSymbol X_STRETCH_CURSOR = new ELispSymbol("x-stretch-cursor");
     public static final ELispSymbol YES_OR_NO_PROMPT = new ELispSymbol("yes-or-no-prompt");
     public static final ELispSymbol _TERMINAL_FRAME = new ELispSymbol("terminal-frame");
@@ -5752,6 +5799,7 @@ character."""),
             AUTO_WINDOW_VSCROLL,
             BACKTRACE_ON_ERROR_NONINTERACTIVE,
             BACKTRACE_ON_REDISPLAY_ERROR,
+            BAUD_RATE,
             BEFORE_INIT_TIME,
             BIDI_INHIBIT_BPA,
             BINARY_AS_UNSIGNED,
@@ -5882,6 +5930,7 @@ character."""),
             GC_ELAPSED,
             GLOBAL_DISABLE_POINT_ADJUSTMENT,
             GLOBAL_MODE_STRING,
+            GLYPH_TABLE,
             HELP_CHAR,
             HELP_EVENT_LIST,
             HELP_FORM,
@@ -5912,6 +5961,7 @@ character."""),
             INHIBIT_X_RESOURCES,
             INHIBIT__RECORD_CHAR,
             INITIAL_ENVIRONMENT,
+            INITIAL_WINDOW_SYSTEM,
             INPUT_DECODE_MAP,
             INPUT_METHOD_FUNCTION,
             INPUT_METHOD_PREVIOUS_MESSAGE,
@@ -5924,6 +5974,7 @@ character."""),
             INTERNAL__TEXT_QUOTING_FLAG,
             INTERNAL__TOP_LEVEL_MESSAGE,
             INTERVALS_CONSED,
+            INVERSE_VIDEO,
             INVOCATION_DIRECTORY,
             INVOCATION_NAME,
             KEYBOARD_TRANSLATE_TABLE,
@@ -5999,6 +6050,7 @@ character."""),
             MOUSE_FINE_GRAINED_TRACKING,
             MOUSE_HIGHLIGHT,
             MOUSE_POSITION_FUNCTION,
+            MOUSE_PREFER_CLOSEST_GLYPH,
             MOVEMAIL_PROGRAM_NAME,
             MOVE_FRAME_FUNCTIONS,
             MULTIBYTE_SYNTAX_AS_SYMBOL,
@@ -6012,6 +6064,7 @@ character."""),
             NOBREAK_CHAR_ASCII_DISPLAY,
             NOBREAK_CHAR_DISPLAY,
             NONINTERACTIVE,
+            NO_REDRAW_ON_REENTER,
             NUM_INPUT_KEYS,
             NUM_NONMACRO_INPUT_EVENTS,
             OPEN_PAREN_IN_COLUMN_0_IS_DEFUN_START,
@@ -6094,6 +6147,7 @@ character."""),
             SIGNAL_HOOK_FUNCTION,
             SOURCE_DIRECTORY,
             SPECIAL_EVENT_MAP,
+            STANDARD_DISPLAY_TABLE,
             STANDARD_TRANSLATION_TABLE_FOR_DECODE,
             STANDARD_TRANSLATION_TABLE_FOR_ENCODE,
             STRINGS_CONSED,
@@ -6112,6 +6166,7 @@ character."""),
             TAB_BAR_BUTTON_MARGIN,
             TAB_BAR_BUTTON_RELIEF,
             TAB_BAR_MODE,
+            TAB_BAR_POSITION,
             TAB_BAR_SEPARATOR_IMAGE_EXPRESSION,
             TAB_BAR__DRAGGING_IN_PROGRESS,
             TEMP_BUFFER_SHOW_FUNCTION,
@@ -6154,6 +6209,7 @@ character."""),
             USE_SYSTEM_TOOLTIPS,
             VALUES,
             VECTOR_CELLS_CONSED,
+            VISIBLE_BELL,
             VOID_TEXT_AREA_POINTER,
             WHERE_IS_PREFERRED_MODIFIER,
             WHILE_NO_INPUT_IGNORE_EVENTS,
@@ -6163,6 +6219,7 @@ character."""),
             WINDOW_PERSISTENT_PARAMETERS,
             WINDOW_RESIZE_PIXELWISE,
             WINDOW_RESTORE_KILLED_BUFFER_WINDOWS,
+            WINDOW_SYSTEM,
             WORDS_INCLUDE_ESCAPES,
             WORD_COMBINING_CATEGORIES,
             WORD_SEPARATING_CATEGORIES,
@@ -6171,6 +6228,7 @@ character."""),
             WRITE_REGION_INHIBIT_FSYNC,
             WRITE_REGION_POST_ANNOTATION_FUNCTION,
             X_RESOURCE_CLASS,
+            X_SHOW_TOOLTIP_TIMEOUT,
             X_STRETCH_CURSOR,
             YES_OR_NO_PROMPT,
             _TERMINAL_FRAME,

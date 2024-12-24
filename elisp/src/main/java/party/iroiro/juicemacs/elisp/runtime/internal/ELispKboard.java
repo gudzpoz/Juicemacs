@@ -155,6 +155,7 @@ public final class ELispKboard {
         context.forwardTo(DEFINING_KBD_MACRO, new ValueStorage.ForwardedPerKboard(KVAR_DEFINING_KBD_MACRO));
         context.forwardTo(LAST_KBD_MACRO, new ValueStorage.ForwardedPerKboard(KVAR_VLAST_KBD_MACRO));
         context.forwardTo(SYSTEM_KEY_ALIST, new ValueStorage.ForwardedPerKboard(KVAR_VSYSTEM_KEY_ALIST));
+        context.forwardTo(WINDOW_SYSTEM, new ValueStorage.ForwardedPerKboard(KVAR_VWINDOW_SYSTEM));
         context.forwardTo(LOCAL_FUNCTION_KEY_MAP, new ValueStorage.ForwardedPerKboard(KVAR_VLOCAL_FUNCTION_KEY_MAP));
         context.forwardTo(INPUT_DECODE_MAP, new ValueStorage.ForwardedPerKboard(KVAR_VINPUT_DECODE_MAP));
         context.forwardTo(DEFAULT_MINIBUFFER_FRAME, new ValueStorage.ForwardedPerKboard(KVAR_VDEFAULT_MINIBUFFER_FRAME));
