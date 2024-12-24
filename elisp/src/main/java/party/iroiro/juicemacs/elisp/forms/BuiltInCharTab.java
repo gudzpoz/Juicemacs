@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -7,10 +8,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.List;
@@ -25,26 +23,51 @@ public class BuiltInCharTab extends ELispBuiltIns {
         return BuiltInCharTabFactory.getFactories();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static void charTableMap(ELispCharTable table, BiConsumer<Object, Object> callback) {
+        @Nullable ELispVector decoder = null;
+        if (table.getPurpose() == CHAR_CODE_PROPERTY_TABLE && table.extraSlots() == 5) {
+            Object decoderId = table.getExtra(1);
+            if (decoderId instanceof Long id) {
+                if (id != 0) {
+                    throw ELispSignals.fatal("Invalid char-table decoder");
+                }
+                if (table.getExtra(4) instanceof ELispVector v) {
+                    decoder = v;
+                }
+            }
+        }
+        final ELispVector runLengthDecoder = decoder;
         table.map(new ELispCharTable.MapConsumer<Void>() {
             long prevChar = 0L;
             Object prev = false;
 
             @Override
             public Void accept(int codepoint, Object o) {
-                if (BuiltInData.FEq.eq(prev, o)) {
+                Object value = prev;
+                if (BuiltInData.FEq.eq(value, o)) {
                     return null; // NOPMD
                 }
-                if (!isNil(prev)) {
+                if (!isNil(value)) {
+                    if (runLengthDecoder != null) {
+                        value = runLengthDecode(value, runLengthDecoder);
+                    }
                     if (prevChar == codepoint - 1) {
-                        callback.accept(prevChar, prev);
+                        callback.accept(prevChar, value);
                     } else {
-                        callback.accept(new ELispCons(prevChar, (long) codepoint - 1), prev);
+                        callback.accept(new ELispCons(prevChar, (long) codepoint - 1), value);
                     }
                 }
                 prevChar = codepoint;
                 prev = o;
                 return null; // NOPMD
+            }
+
+            private static Object runLengthDecode(Object o, ELispVector runLengthDecoder) {
+                if (o instanceof Long category && 0 <= category && category < runLengthDecoder.size()) {
+                    return runLengthDecoder.get(category.intValue());
+                }
+                return o;
             }
         }, 0);
     }
@@ -165,8 +188,14 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharTableRange extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charTableRange(Object charTable, Object range) {
-            throw new UnsupportedOperationException();
+        public static Object charTableRange(ELispCharTable charTable, Object range) {
+            if (isNil(range)) {
+                return charTable.getDefault();
+            }
+            if (range instanceof Long l) {
+                return charTable.getChar(l.intValue());
+            }
+            return charTable.get(asInt(asCons(range).car()));
         }
     }
 

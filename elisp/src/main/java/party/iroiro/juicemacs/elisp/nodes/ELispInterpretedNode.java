@@ -558,26 +558,22 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public void executeVoid(VirtualFrame frame) {
-            ConsCallNode node = updateInnerNode();
-            node.executeVoid(frame);
+            updateInnerNode().executeVoid(frame);
         }
 
         @Override
         public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-           ConsCallNode node = updateInnerNode();
-           return node.executeLong(frame);
+           return updateInnerNode().executeLong(frame);
         }
 
         @Override
         public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-          ConsCallNode node = updateInnerNode();
-          return node.executeDouble(frame);
+          return updateInnerNode().executeDouble(frame);
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            ConsCallNode node = updateInnerNode();
-            return node.executeGeneric(frame);
+            return updateInnerNode().executeGeneric(frame);
         }
 
         private ConsCallNode updateInnerNode() {

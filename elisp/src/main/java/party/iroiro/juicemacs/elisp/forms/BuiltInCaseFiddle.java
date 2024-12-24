@@ -70,8 +70,18 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDowncase extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void downcase(Object obj) {
-            throw new UnsupportedOperationException();
+        public static long downcaseChar(long obj) {
+            Object downcase = asCharTable(currentBuffer().getDowncaseTable()).getChar(Math.toIntExact(obj));
+            return notNilOr(downcase, obj);
+        }
+        @Specialization
+        public static ELispString downcaseString(ELispString obj) {
+            MuleStringBuffer builder = new MuleStringBuffer();
+            PrimitiveIterator.OfInt iterator = obj.value().iterator(0);
+            while (iterator.hasNext()) {
+                builder.append(Math.toIntExact(downcaseChar(iterator.nextInt())));
+            }
+            return new ELispString(builder.build());
         }
     }
 

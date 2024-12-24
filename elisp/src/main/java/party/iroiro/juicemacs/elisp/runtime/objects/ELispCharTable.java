@@ -140,6 +140,10 @@ public final class ELispCharTable extends AbstractELispVector {
         return isNil(value) ? inner[DEFAULT_VALUT_SLOT] : value;
     }
 
+    public Object getDefault() {
+        return inner[DEFAULT_VALUT_SLOT];
+    }
+
     public void setDefault(Object value) {
         inner[DEFAULT_VALUT_SLOT] = value;
     }
@@ -246,6 +250,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setRange(int from, int to, Object value) {
         if (from == to) {
             setChar(from, value);
@@ -267,6 +272,7 @@ public final class ELispCharTable extends AbstractELispVector {
     }
 
     @Nullable
+    @CompilerDirectives.TruffleBoundary
     public <T> T map(MapConsumer<T> callback, int startingChar) {
         int i = charTableIndex(startingChar, 0, 0);
         Object defaultValue = inner[DEFAULT_VALUT_SLOT];
@@ -295,6 +301,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     public RefRangeResult refRange(int from, int target, int to) {
         return Objects.requireNonNull(map(new MapConsumer<>() {
             int last = from;

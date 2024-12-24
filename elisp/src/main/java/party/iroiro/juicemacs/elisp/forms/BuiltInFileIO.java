@@ -258,18 +258,21 @@ public class BuiltInFileIO extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispString expandFileName(ELispString name, Object defaultDirectory) {
+            return new ELispString(MuleString.fromString(
+                    expandFileNamePath(name, defaultDirectory).toAbsolutePath().toString()
+            ));
+        }
+
+        public static Path expandFileNamePath(ELispString name, Object defaultDirectory) {
             String path = name.toString();
             if (path.startsWith("~")) {
                 path = System.getProperty("user.home") + path.substring(1);
             } else if (!path.startsWith("/")) {
-                return new ELispString(MuleString.fromString(
-                        Path.of(isNil(defaultDirectory)
-                                        ? System.getProperty("user.home") // TODO: default-directory
-                                        : defaultDirectory.toString(), path)
-                                .toAbsolutePath().toString()
-                ));
+                return Path.of(isNil(defaultDirectory)
+                        ? System.getProperty("user.home") // TODO: default-directory
+                        : defaultDirectory.toString(), path);
             }
-            return new ELispString(MuleString.fromString(Path.of(path).toAbsolutePath().toString()));
+            return Path.of(path);
         }
     }
 
@@ -629,8 +632,9 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileAccessibleDirectoryP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileAccessibleDirectoryP(Object filename) {
-            throw new UnsupportedOperationException();
+        public static boolean fileAccessibleDirectoryP(ELispString filename) {
+            File file = FExpandFileName.expandFileNamePath(filename, false).toFile();
+            return file.isDirectory() && file.canRead();
         }
     }
 

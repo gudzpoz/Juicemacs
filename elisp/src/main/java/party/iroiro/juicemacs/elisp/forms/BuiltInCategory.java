@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -169,8 +170,8 @@ public class BuiltInCategory extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStandardCategoryTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void standardCategoryTable() {
-            throw new UnsupportedOperationException();
+        public Object standardCategoryTable() {
+            return getContext().globals().getBufferDefaults().getCategoryTable();
         }
     }
 
@@ -266,6 +267,7 @@ public class BuiltInCategory extends ELispBuiltIns {
     @ELispBuiltIn(name = "modify-category-entry", minArgs = 2, maxArgs = 4)
     @GenerateNodeFactory
     public abstract static class FModifyCategoryEntry extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static boolean modifyCategoryEntry(Object character, Object category, Object table, Object reset) {
             int start, end;
