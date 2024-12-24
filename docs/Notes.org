@@ -60,6 +60,8 @@ So, thank goodnees for making more things opaque, Emacs developers!
 
 ** Emacs MULE
 
+*** Example 1: =iso-2022-jp=
+
 I know little about the history behind Emacs. But according to [[http://www.xemacs.org/Documentation/21.5/html/lispref_64.html][XEmacs Lisp
 Reference Manual: 63. MULE]] and [[https://flex.phys.tohoku.ac.jp/texi/faq/faq_85.html][Frequently Asked Questions about Emacs - Question
 27 (What variants of GNU Emacs exist?)]], MULE comes from Japanese forks of Emacs,
@@ -100,6 +102,50 @@ The following example is inspired by [[https://scrapbox.io/shimizukawa/Unicode%E
 | Re-encoded bytes | "$B='yu?@<R(B"       |
 | Convertible char | 洲 (#x006d32 < #x10FFFF) |
 | Non-convertible  | __ (#x1420a4 > #x10FFFF) |
+
+*** Example 2: =lisp/language/ethiopic.el=
+
+So awhile ago I started bootstraping files from =emacs/lisp/language/*.el=,
+and... there you go. Another example right in the source code:
+
+#+begin_src elisp
+  (let ((non-unicode (with-temp-buffer
+                       (insert-file (locate-file "ethiopic.el" load-path))
+                       (replace-regexp "[\0-\U0010FFFF]+" "")
+                       (buffer-string))))
+    (format "#x%X > #x10FFFF" (aref non-unicode 0)))
+#+end_src
+
+#+RESULTS:
+: #x1A01CA > #x10FFFF
+
+There are some more files similar to =ethiopic.el=:
+
+#+begin_src elisp
+  (defun file-contains-non-unicode? (file)
+    (with-temp-buffer
+      (insert-file file)
+      (search-forward-regexp "[^\0-\U0010FFFF]" nil t)))
+
+  (let* ((language-dir (file-name-parent-directory (locate-file "ethiopic.el" load-path)))
+         (files (append (directory-files language-dir t ".*\\.el$")
+                        (directory-files (file-name-concat (file-name-parent-directory language-dir)
+                                                           "international")
+                                         t ".*\\.el$")))
+         non-unicode-files)
+    (dolist (file files)
+      (if (file-contains-non-unicode? file)
+          (push (list (file-name-nondirectory file)) non-unicode-files)))
+    non-unicode-files)
+#+end_src
+
+#+RESULTS:
+| titdic-cnv.el |
+| tibetan.el    |
+| tibet-util.el |
+| ind-util.el   |
+| ethiopic.el   |
+| ethio-util.el |
 
 ** Truffle Debugging
 

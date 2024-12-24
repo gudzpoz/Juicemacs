@@ -9,8 +9,10 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.io.EOFException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,6 +46,7 @@ public class ELispParserTest {
             "nil", NIL,
             "#@00", false,
             "?a", (long) 'a',
+            "e ?���� "
     };
 
     @Test
@@ -200,6 +203,20 @@ public class ELispParserTest {
                 assertSame(T, ele);
             }
         });
+    }
+
+    @Test
+    public void testEthiopic() throws IOException {
+        Path target = Path.of("emacs", "lisp", "language", "ethiopic.el");
+        Source ethiopic = Source.newBuilder(
+                "elisp",
+                new FileReader(target.toFile()),
+                target.toFile().getName()
+        ).build();
+        ELispParser parser = new ELispParser(context, ethiopic);
+        while (parser.hasNext()) {
+            assertDoesNotThrow(parser::nextLisp);
+        }
     }
 
     @Test

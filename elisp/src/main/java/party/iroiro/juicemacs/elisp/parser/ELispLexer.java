@@ -393,6 +393,10 @@ class ELispLexer {
         if (c1 == -1) {
             return -1;
         }
+        if (c1 == 0xFFFD) {
+            // FIXME: Actually support Emacs encodings and stop using Java readers.
+            return ' ';
+        }
         if (!Character.isHighSurrogate((char) c1)) {
             return c1;
         }
