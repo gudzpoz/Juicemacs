@@ -60,6 +60,8 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public final SharedIndicesMap globalFunctionsMap = new SharedIndicesMap();
     private final ContextThreadLocal<ValueStorage.Forwarded> currentBuffer =
             locals.createContextThreadLocal((_, _) -> new ValueStorage.Forwarded());
+    private final ContextThreadLocal<ValueStorage.Forwarded> currentFrame =
+            locals.createContextThreadLocal((_, _) -> new ValueStorage.Forwarded());
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -105,6 +107,10 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     public ValueStorage.Forwarded currentBuffer() {
         return currentBuffer.get();
+    }
+
+    public ValueStorage.Forwarded currentFrame() {
+        return currentFrame.get();
     }
 
     public static ELispLanguage get(@Nullable Node node) {

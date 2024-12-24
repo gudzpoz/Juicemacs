@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Collections;
@@ -293,5 +294,12 @@ public abstract class ELispTypeSystem {
             return t;
         }
         throw ELispSignals.wrongTypeArgument(CHAR_TABLE_P, table);
+    }
+
+    public static ELispFrame asFrame(Object frame) {
+        if (frame instanceof ELispFrame f) {
+            return f;
+        }
+        throw ELispSignals.wrongTypeArgument(FRAMEP, frame);
     }
 }

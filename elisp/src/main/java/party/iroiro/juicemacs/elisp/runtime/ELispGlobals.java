@@ -8,6 +8,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInData.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInKeymap.*;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispKboard;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -249,8 +250,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT, longLineOptimizationsBolSearchLimit);
         initForwardTo(LARGE_HSCROLL_THRESHOLD, largeHscrollThreshold);
     }
-    private final ValueStorage.Forwarded prefixArg = new ValueStorage.Forwarded(); /* TODO */
-    private final ValueStorage.Forwarded lastPrefixArg = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded currentPrefixArg = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded commandHistory = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded commandDebugStatus = new ValueStorage.Forwarded(false);
@@ -258,8 +257,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.Forwarded mouseLeaveBufferHook = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedBool inhibitMouseEventCheck = new ValueStorage.ForwardedBool(false);
     private void callintVars() {
-        initForwardTo(PREFIX_ARG, prefixArg);
-        initForwardTo(LAST_PREFIX_ARG, lastPrefixArg);
         initForwardTo(CURRENT_PREFIX_ARG, currentPrefixArg);
         initForwardTo(COMMAND_HISTORY, commandHistory);
         initForwardTo(COMMAND_DEBUG_STATUS, commandDebugStatus);
@@ -655,7 +652,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.Forwarded menuBarMode = new ValueStorage.Forwarded(true);
     private final ValueStorage.Forwarded tabBarMode = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded toolBarMode = new ValueStorage.Forwarded(false);
-    private final ValueStorage.Forwarded defaultMinibufferFrame = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded resizeMiniFrames = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded focusFollowsMouse = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedBool frameResizePixelwise = new ValueStorage.ForwardedBool(false);
@@ -682,7 +678,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(MENU_BAR_MODE, menuBarMode);
         initForwardTo(TAB_BAR_MODE, tabBarMode);
         initForwardTo(TOOL_BAR_MODE, toolBarMode);
-        initForwardTo(DEFAULT_MINIBUFFER_FRAME, defaultMinibufferFrame);
         initForwardTo(RESIZE_MINI_FRAMES, resizeMiniFrames);
         initForwardTo(FOCUS_FOLLOWS_MOUSE, focusFollowsMouse);
         initForwardTo(FRAME_RESIZE_PIXELWISE, frameResizePixelwise);
@@ -701,9 +696,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.Forwarded unreadPostInputMethodEvents = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded unreadInputMethodEvents = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded metaPrefixChar = new ValueStorage.Forwarded(27L);
-    private final ValueStorage.Forwarded lastCommand = new ValueStorage.Forwarded(); /* TODO */
-    private final ValueStorage.Forwarded realLastCommand = new ValueStorage.Forwarded(); /* TODO */
-    private final ValueStorage.Forwarded lastRepeatableCommand = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded thisCommand = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded realThisCommand = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded currentMinibufferCommand = new ValueStorage.Forwarded(false);
@@ -727,7 +719,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.Forwarded helpForm = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded prefixHelpCommand = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded topLevel = new ValueStorage.Forwarded(false);
-    private final ValueStorage.Forwarded keyboardTranslateTable = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.ForwardedBool cannotSuspend = new ValueStorage.ForwardedBool(false);
     private final ValueStorage.ForwardedBool menuPrompting = new ValueStorage.ForwardedBool(true);
     private final ValueStorage.Forwarded menuPromptMoreChar = new ValueStorage.Forwarded(32L);
@@ -739,14 +730,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.Forwarded menuBarFinalItems = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded tabBarSeparatorImageExpression = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded toolBarSeparatorImageExpression = new ValueStorage.Forwarded(false);
-    private final ValueStorage.Forwarded overridingTerminalLocalMap = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded overridingLocalMap = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded overridingLocalMapMenuFlag = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded specialEventMap = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded trackMouse = new ValueStorage.Forwarded();
-    private final ValueStorage.Forwarded systemKeyAlist = new ValueStorage.Forwarded(); /* TODO */
-    private final ValueStorage.Forwarded localFunctionKeyMap = new ValueStorage.Forwarded(); /* TODO */
-    private final ValueStorage.Forwarded inputDecodeMap = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded functionKeyMap = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded keyTranslationMap = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded delayedWarningsList = new ValueStorage.Forwarded(false);
@@ -786,9 +773,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(UNREAD_POST_INPUT_METHOD_EVENTS, unreadPostInputMethodEvents);
         initForwardTo(UNREAD_INPUT_METHOD_EVENTS, unreadInputMethodEvents);
         initForwardTo(META_PREFIX_CHAR, metaPrefixChar);
-        initForwardTo(LAST_COMMAND, lastCommand);
-        initForwardTo(REAL_LAST_COMMAND, realLastCommand);
-        initForwardTo(LAST_REPEATABLE_COMMAND, lastRepeatableCommand);
         initForwardTo(THIS_COMMAND, thisCommand);
         initForwardTo(REAL_THIS_COMMAND, realThisCommand);
         initForwardTo(CURRENT_MINIBUFFER_COMMAND, currentMinibufferCommand);
@@ -812,7 +796,6 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(HELP_FORM, helpForm);
         initForwardTo(PREFIX_HELP_COMMAND, prefixHelpCommand);
         initForwardTo(TOP_LEVEL, topLevel);
-        initForwardTo(KEYBOARD_TRANSLATE_TABLE, keyboardTranslateTable);
         initForwardTo(CANNOT_SUSPEND, cannotSuspend);
         initForwardTo(MENU_PROMPTING, menuPrompting);
         initForwardTo(MENU_PROMPT_MORE_CHAR, menuPromptMoreChar);
@@ -824,14 +807,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(MENU_BAR_FINAL_ITEMS, menuBarFinalItems);
         initForwardTo(TAB_BAR_SEPARATOR_IMAGE_EXPRESSION, tabBarSeparatorImageExpression);
         initForwardTo(TOOL_BAR_SEPARATOR_IMAGE_EXPRESSION, toolBarSeparatorImageExpression);
-        initForwardTo(OVERRIDING_TERMINAL_LOCAL_MAP, overridingTerminalLocalMap);
         initForwardTo(OVERRIDING_LOCAL_MAP, overridingLocalMap);
         initForwardTo(OVERRIDING_LOCAL_MAP_MENU_FLAG, overridingLocalMapMenuFlag);
         initForwardTo(SPECIAL_EVENT_MAP, specialEventMap);
         initForwardTo(TRACK_MOUSE, trackMouse);
-        initForwardTo(SYSTEM_KEY_ALIST, systemKeyAlist);
-        initForwardTo(LOCAL_FUNCTION_KEY_MAP, localFunctionKeyMap);
-        initForwardTo(INPUT_DECODE_MAP, inputDecodeMap);
         initForwardTo(FUNCTION_KEY_MAP, functionKeyMap);
         initForwardTo(KEY_TRANSLATION_MAP, keyTranslationMap);
         initForwardTo(DELAYED_WARNINGS_LIST, delayedWarningsList);
@@ -946,16 +925,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(MACROEXP__DYNVARS, macroexpDynvars);
     }
     private final ValueStorage.Forwarded kbdMacroTerminationHook = new ValueStorage.Forwarded(false);
-    private final ValueStorage.Forwarded definingKbdMacro = new ValueStorage.Forwarded(); /* TODO */
     private final ValueStorage.Forwarded executingKbdMacro = new ValueStorage.Forwarded(false);
     private final ValueStorage.ForwardedLong executingKbdMacroIndex = new ValueStorage.ForwardedLong();
-    private final ValueStorage.Forwarded lastKbdMacro = new ValueStorage.Forwarded(); /* TODO */
     private void macrosVars() {
         initForwardTo(KBD_MACRO_TERMINATION_HOOK, kbdMacroTerminationHook);
-        initForwardTo(DEFINING_KBD_MACRO, definingKbdMacro);
         initForwardTo(EXECUTING_KBD_MACRO, executingKbdMacro);
         initForwardTo(EXECUTING_KBD_MACRO_INDEX, executingKbdMacroIndex);
-        initForwardTo(LAST_KBD_MACRO, lastKbdMacro);
     }
     private final ValueStorage.Forwarded readExpressionHistory = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded readBufferFunction = new ValueStorage.Forwarded(false);
@@ -1414,6 +1389,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         symsOfWindow();
         symsOfXdisp();
         initCharset();
+        initKeyboard();
     }
 
     private void initObarrayOnce() {
@@ -2160,6 +2136,9 @@ character."""),
         redisplayAllWindowsCause.setValue(redisplayAllWindowsCauseJInit);
         var redisplayModeLinesCauseJInit = FMakeHashTable.makeHashTable(new Object[]{});
         redisplayModeLinesCause.setValue(redisplayModeLinesCauseJInit);
+    }
+    private void initKeyboard() {
+        ELispKboard.initKboardLocalVars(ctx);
     }
     //#endregion initializations
     //#region globals.h

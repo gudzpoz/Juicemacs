@@ -16,6 +16,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentBuffer;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentFrame;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -524,6 +525,30 @@ public final class ValueStorage {
         Object defaultValue() {
             throw CompilerDirectives.shouldNotReachHere();
         }
+        @Override
+        Object typeCheck(Object o) {
+            return o;
+        }
+    }
+
+    public static final class ForwardedPerKboard extends AbstractForwarded<Object> {
+        public ForwardedPerKboard(int index) {
+            super(index);
+        }
+        @Override
+        public Object getValue() {
+            return currentFrame().getKboard().getSlot((Integer) value);
+        }
+        @Override
+        public void setValue(Object newValue) {
+            currentFrame().getKboard().setSlot((Integer) value, newValue);
+        }
+
+        @Override
+        Object defaultValue() {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
         @Override
         Object typeCheck(Object o) {
             return o;

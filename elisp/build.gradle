@@ -64,7 +64,9 @@ tasks.register("emacsGen") {
             commandLine "${extractorDir}/.venv/bin/emacs-extractor", emacsSrc, '-o', 'extraction.json',
                     '-c', extractionConfig, '-f', extractionFinalizer,
                     '-g', file("${base}/runtime/ELispGlobals.java"),
-                    '-b', file("${base}/runtime/objects/ELispBuffer.java"),
+                    '--buffer', file("${base}/runtime/objects/ELispBuffer.java"),
+                    '--frame', file("${base}/runtime/internal/ELispFrame.java"),
+                    '--kboard', file("${base}/runtime/internal/ELispKboard.java"),
                     '-C', file("${base}/forms/ELispBuiltInConstants.java"),
                     '-d', file("${base}/forms")
         }
