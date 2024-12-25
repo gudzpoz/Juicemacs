@@ -46,11 +46,11 @@ public abstract class ELispRegExp {
     }
 
     public record CompiledRegExp(RootCallTarget callTarget) {
-        public Object call(MuleString value, boolean search, int from, int end, Object buffer) {
-            return callTarget.call(value, search, from, end, buffer); // NOPMD
+        public Object call(MuleString value, boolean search, long from, long end, Object buffer) {
+            return callTarget.call(value, search, from, end, buffer);
         }
-        public Object call(ELispBuffer value, boolean search, int from, int end) {
-            return callTarget.call(value, search, from, end, value); // NOPMD
+        public Object call(ELispBuffer value, boolean search, long from, long end) {
+            return callTarget.call(value, search, from, end, value);
         }
     }
 

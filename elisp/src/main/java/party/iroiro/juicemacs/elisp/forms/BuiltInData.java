@@ -2065,7 +2065,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Specialization
         public static Object arefStr(ELispString array, long idx) {
-            return array.codePointAt((int) idx);
+            return array.codePointAt(idx);
         }
         @Specialization
         public static Object arefCharTable(ELispCharTable array, long idx) {
@@ -2087,7 +2087,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static Object aref(Object array, long idx) {
             return switch (array) {
                 case ELispVector vec -> vec.get((int) idx);
-                case ELispString str -> str.codePointAt((int) idx);
+                case ELispString str -> str.codePointAt(idx);
                 case ELispCharTable charTable -> charTable.getChar((int) idx);
                 case ELispBoolVector boolVec -> boolVec.get((int) idx);
                 case ELispRecord record -> record.get((int) idx);

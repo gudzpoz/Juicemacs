@@ -91,7 +91,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return new ELispString(content.getLinesRawContent());
     }
 
-    public int length() {
+    public long length() {
         return content.getLength();
     }
 

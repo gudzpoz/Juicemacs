@@ -326,8 +326,43 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCompareStrings extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void compareStrings(Object str1, Object start1, Object end1, Object str2, Object start2, Object end2, Object ignoreCase) {
-            throw new UnsupportedOperationException();
+        public static Object compareStrings(ELispString str1, Object start1, Object end1, ELispString str2, Object start2, Object end2, boolean ignoreCase) {
+            PrimitiveIterator.OfInt chars1 = str1.value().iterator(notNilOr(start1, 0L));
+            PrimitiveIterator.OfInt chars2 = str2.value().iterator(notNilOr(start2, 0L));
+            long len1 = notNilOr(end1, str1.length());
+            long len2 = notNilOr(end2, str2.length());
+            long limit = Math.min(len1, len2);
+            int count = 0;
+            while (count < limit) {
+                if (chars1.hasNext() && chars2.hasNext()) {
+                    long c1 = chars1.nextInt();
+                    long c2 = chars2.nextInt();
+                    if (ignoreCase) {
+                        c1 = BuiltInCaseFiddle.FDowncase.downcaseChar(c1);
+                        c2 = BuiltInCaseFiddle.FDowncase.downcaseChar(c2);
+                    }
+                    if (c1 < c2) {
+                        return -count - 1;
+                    } else if (c1 > c2) {
+                        return count + 1;
+                    } else {
+                        count++;
+                        continue;
+                    }
+                }
+                if (chars1.hasNext()) {
+                    return -count - 1;
+                }
+                if (chars2.hasNext()) {
+                    return count + 1;
+                }
+                return true;
+            }
+            if (len1 < len2) {
+                return -count - 1;
+            } else {
+                return count + 1;
+            }
         }
     }
 
@@ -772,21 +807,21 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static ELispString substring(ELispString string, Object from, Object to) {
             MuleString s = string.value();
-            int length = s.length();
-            int start;
+            long length = s.length();
+            long start;
             if (isNil(from)) {
                 start = 0;
             } else {
-                start = asInt(from);
+                start = asLong(from);
                 if (start < 0) {
                     start = length + start;
                 }
             }
-            int end;
+            long end;
             if (isNil(to)) {
                 end = length;
             } else {
-                end = asInt(to);
+                end = asLong(to);
                 if (end < 0) {
                     end = length + end;
                 }
@@ -811,7 +846,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FSubstringNoProperties extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString substringNoProperties(ELispString string, Object from, Object to) {
-            int length = string.value().length();
+            long length = string.value().length();
             long start = notNilOr(from, 0);
             long end = notNilOr(to, length);
             if (start < 0) {
@@ -820,7 +855,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (end < 0) {
                 end = length + end;
             }
-            return new ELispString(string.value().subSequence(Math.toIntExact(start), Math.toIntExact(end)));
+            return new ELispString(string.value().subSequence(start, end));
         }
     }
 
@@ -900,7 +935,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             try {
-                return asCons(list).get((int) n);
+                return asCons(list).get(Math.toIntExact(n));
             } catch (IndexOutOfBoundsException ignored) {
                 return false;
             }
@@ -1262,7 +1297,7 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static ELispString nreverseString(ELispString seq) {
             MuleStringBuffer builder = new MuleStringBuffer();
-            for (int i = (int) (seq.length() - 1); i >= 0; i--) {
+            for (long i = (seq.length() - 1); i >= 0; i--) {
                 builder.appendCodePoint((int) seq.codePointAt(i));
             }
             return new ELispString(builder.build());
@@ -2724,16 +2759,16 @@ public class BuiltInFns extends ELispBuiltIns {
             // TODO: This is slow.
             MuleString needleS = needle.value();
             MuleString haystackS = haystack.value();
-            int start = (int) notNilOr(startPos, 0);
-            int end = (int) haystack.length();
-            int needleLength = needleS.length();
+            long start = notNilOr(startPos, 0);
+            long end = haystack.length();
+            long needleLength = needleS.length();
             if (needleLength == 0) {
                 return isNil(startPos) ? 0L : startPos;
             }
 
             int startChar = needleS.codePointAt(0);
             next:
-            for (int i = start; i < end - needleLength + 1; i++) {
+            for (long i = start; i < end - needleLength + 1; i++) {
                 int current = haystackS.codePointAt(i);
                 if (current != startChar) {
                     continue;
@@ -2743,7 +2778,7 @@ public class BuiltInFns extends ELispBuiltIns {
                         continue next;
                     }
                 }
-                return (long) i;
+                return i;
             }
             return false;
         }

@@ -74,24 +74,24 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     public Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         Object input = args[ARG_OBJ_INPUT];
-        int start = (int) args[ARG_INT_START];
-        int end = (int) args[ARG_INT_END];
+        long start = (long) args[ARG_INT_START];
+        long end = (long) args[ARG_INT_END];
         if (end == -1) {
             end = lengthNode.execute(frame, input);
         }
         boolean search = (boolean) args[ARG_BOOL_SEARCH];
 
-        IntArrayStackPool pool = new IntArrayStackPool(initStack(start, search));
+        LongArrayStackPool pool = new LongArrayStackPool(initStack(start, search));
         frame.setObject(TRUFFLE_SLOT_INPUT, input);
         frame.setObject(TRUFFLE_SLOT_STACK_POOL, pool);
         frame.setObject(TRUFFLE_SLOT_BUFFER, args[ARG_OBJ_BUFFER]);
-        frame.setInt(TRUFFLE_SLOT_START, start);
-        frame.setInt(TRUFFLE_SLOT_END, end);
+        frame.setLong(TRUFFLE_SLOT_START, start);
+        frame.setLong(TRUFFLE_SLOT_END, end);
         return dispatcher(frame, 0);
     }
 
-    private int[] initStack(int start, boolean search) {
-        int[] initStack = new int[stackSize];
+    private long[] initStack(long start, boolean search) {
+        long[] initStack = new long[stackSize];
         initStack[SP_SLOT] = start;
         initStack[PC_SLOT] = search ? 0 : 1;
         for (int startSlot : groupSlotMap) {
@@ -122,10 +122,10 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         // This loop must be separated from the inner loop to allow MERGE_EXPLODE,
         // since we do not know how many backtracking states we will need.
         Object input = frame.getObject(TRUFFLE_SLOT_INPUT);
-        IntArrayStackPool stacks = (IntArrayStackPool) frame.getObject(TRUFFLE_SLOT_STACK_POOL);
+        LongArrayStackPool stacks = (LongArrayStackPool) frame.getObject(TRUFFLE_SLOT_STACK_POOL);
         Object buffer = frame.getObject(TRUFFLE_SLOT_BUFFER);
-        int start = frame.getInt(TRUFFLE_SLOT_START);
-        int end = frame.getInt(TRUFFLE_SLOT_END);
+        long start = frame.getLong(TRUFFLE_SLOT_START);
+        long end = frame.getLong(TRUFFLE_SLOT_END);
 
         Object lastRun = dispatchFromBCI(frame, bci, input, start, end, stacks, buffer);
         if (lastRun != Boolean.FALSE) {
@@ -152,11 +152,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @HostCompilerDirectives.BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     private Object dispatchFromBCI(VirtualFrame frame, int bci,
-                                   Object input, int start, int end,
-                                   IntArrayStackPool stacks,
+                                   Object input, long start, long end,
+                                   LongArrayStackPool stacks,
                                    Object buffer) {
         CompilerAsserts.partialEvaluationConstant(bci);
-        final int[] stack = stacks.borrowStack();
+        final long[] stack = stacks.borrowStack();
         ELispCharTable canon = caseFold ? asCharTable(asBuffer(buffer).getCaseCanonTable()) : null;
         int cmpFlags = 0;
 
@@ -202,7 +202,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 CompilerAsserts.partialEvaluationConstant(bci);
                 continue;
             }
-            final int sp = stack[SP_SLOT];
+            final long sp = stack[SP_SLOT];
             boolean success = true;
             switch (opcode) {
                 case OP_MATCH -> {
@@ -213,11 +213,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 }
                 case OP_COUNTER_RESET -> stack[arg] = 0;
                 case OP_COUNTER_INC -> ++stack[arg];
-                case OP_COUNTER_CMP -> cmpFlags = Integer.compare(stack[arg], code[bci++]);
+                case OP_COUNTER_CMP -> cmpFlags = Long.compare(stack[arg], code[bci++]);
                 case OP_PROGRESS_REC -> stack[arg] = sp;
-                case OP_PROGRESS_CMP -> cmpFlags = Integer.compare(stack[arg], sp);
+                case OP_PROGRESS_CMP -> cmpFlags = Long.compare(stack[arg], sp);
                 case OP_JUMP_TABLE -> {
-                    final int target = stack[PC_SLOT];
+                    final int target = Math.toIntExact(stack[PC_SLOT]);
                     if (CompilerDirectives.inInterpreter()) {
                         bci = code[bci + target];
                         continue;
@@ -273,9 +273,9 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 case OP$BACKREF -> {
                     int groupStartSlot = groupSlotMap[arg];
                     int groupEndSlot = groupStartSlot + 1;
-                    int groupStart = stack[groupStartSlot];
-                    int groupEnd = stack[groupEndSlot];
-                    int groupLength = groupEnd - groupStart;
+                    long groupStart = stack[groupStartSlot];
+                    long groupEnd = stack[groupEndSlot];
+                    long groupLength = groupEnd - groupStart;
                     if (groupLength > 0) {
                         if (sp + groupLength > end) {
                             success = false;
@@ -398,20 +398,20 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         return c instanceof Long l ? l.intValue() : current;
     }
 
-    private int getChar(VirtualFrame frame, Object input, int sp) {
+    private int getChar(VirtualFrame frame, Object input, long sp) {
         return getCharNode.execute(frame, input, sp);
     }
 
-    private int getCharCanon(VirtualFrame frame, Object input, int sp, ELispCharTable canon) {
+    private int getCharCanon(VirtualFrame frame, Object input, long sp, ELispCharTable canon) {
         int c = getChar(frame, input, sp);
         return caseFold ? translate(c, canon) : c;
     }
 
-    private boolean substringEquals(VirtualFrame frame, Object input, int sp, int groupStart, int groupLength,
+    private boolean substringEquals(VirtualFrame frame, Object input, long sp, long groupStart, long groupLength,
                                     ELispCharTable canon) {
         for (int i = 0; i < groupLength; ++i) {
-            int from = groupStart + i;
-            int to = sp + i;
+            long from = groupStart + i;
+            long to = sp + i;
             if (getCharCanon(frame, input, from, canon) != getCharCanon(frame, input, to, canon)) {
                 return false;
             }
@@ -419,13 +419,13 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         return true;
     }
 
-    private Object packMatchResult(int[] stack) {
+    private Object packMatchResult(long[] stack) {
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
         for (int i : groupSlotMap) {
-            int start = stack[i];
-            builder.add(start == -1 ? false : (long) start);
-            int end = stack[i + 1];
-            builder.add(start == -1 ? false : (long) end);
+            long start = stack[i];
+            builder.add(start == -1 ? false : start);
+            long end = stack[i + 1];
+            builder.add(start == -1 ? false : end);
         }
         return builder.build();
     }
@@ -440,26 +440,26 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     static FrameDescriptor getFrameDescriptor() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
         builder.addSlots(3, FrameSlotKind.Object); // input, buffer, stackPool
-        builder.addSlots(2, FrameSlotKind.Int); // start, end
+        builder.addSlots(2, FrameSlotKind.Long); // start, end
         return builder.build();
     }
 
-    private static final class IntArrayStackPool {
-        private final ArrayList<int[]> stackPool;
+    private static final class LongArrayStackPool {
+        private final ArrayList<long[]> stackPool;
         private int stackPoolTop;
-        private int @Nullable [] currentStack;
+        private long @Nullable [] currentStack;
 
-        private IntArrayStackPool(int @Nullable [] initStack) {
+        private LongArrayStackPool(long @Nullable [] initStack) {
             stackPool = new ArrayList<>();
             stackPoolTop = 0;
             currentStack = initStack;
         }
 
-        private int[] addStackCopy(int[] stack) {
+        private long[] addStackCopy(long[] stack) {
             if (stackPoolTop == stackPool.size()) {
-                stackPool.add(new int[stack.length]);
+                stackPool.add(new long[stack.length]);
             }
-            int[] target = stackPool.get(stackPoolTop);
+            long[] target = stackPool.get(stackPoolTop);
             System.arraycopy(stack, 0, target, 0, stack.length);
             ++stackPoolTop;
             return target;
@@ -469,14 +469,14 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
             return currentStack == null && stackPoolTop == 0;
         }
 
-        private int[] borrowStack() {
+        private long[] borrowStack() {
             if (currentStack == null) {
                 if (stackPoolTop == stackPool.size()) {
                     currentStack = stackPool.removeLast();
                     --stackPoolTop;
                 } else {
                     currentStack = stackPool.get(--stackPoolTop);
-                    int[] last = stackPool.removeLast();
+                    long[] last = stackPool.removeLast();
                     stackPool.set(stackPoolTop, last);
                 }
             }

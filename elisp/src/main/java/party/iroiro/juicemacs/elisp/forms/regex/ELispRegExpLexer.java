@@ -13,14 +13,14 @@ import java.util.List;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 
 final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
-    private final TruffleStringReader reader;
+    private final MuleStringReader reader;
     private boolean hasPreviousPattern = false;
 
     @Nullable
     private REToken peeked = null;
 
     public ELispRegExpLexer(MuleString regExp) {
-        this.reader = new TruffleStringReader(regExp);
+        this.reader = new MuleStringReader(regExp);
     }
 
     @Override
@@ -248,14 +248,14 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
         if (reader.unexpectedNext((byte) '[', (byte) ':')) {
             return null;
         }
-        int index = reader.index + 2; // skip opening "[:"
+        long index = reader.index + 2; // skip opening "[:"
         MuleString cache = reader.string;
-        int limit = Math.min(index + CharClassContent.NamedCharClass.MAX_NAME_LENGTH, cache.length() - 2);
-        int end = index;
+        long limit = Math.min(index + CharClassContent.NamedCharClass.MAX_NAME_LENGTH, cache.length() - 2);
+        long end = index;
         for (; end <= limit; end++) {
             if (cache.codePointAt(end) == ':' && cache.codePointAt(end + 1) == ']') {
-                StringBuilder s = new StringBuilder(end - index);
-                for (int i = index; i < end; i++) {
+                StringBuilder s = new StringBuilder(Math.toIntExact(end - index));
+                for (long i = index; i < end; i++) {
                     s.append((char) cache.codePointAt(i));
                 }
                 reader.consume(end - reader.index + 2);
@@ -294,11 +294,11 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     ///
     /// This seems a very, very, very bad way to detect start of the pattern.
     /// But, it's always backwards compatibility.
-    private boolean atStartOfLine(int index) {
+    private boolean atStartOfLine(long index) {
         if (index == 0) {
             return true;
         }
-        int prev = index - 1;
+        long prev = index - 1;
         MuleString cache = reader.string;
         switch (cache.codePointAt(prev)) {
             case '(', '|' -> {}
@@ -332,7 +332,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
 
     /// Emacs `at_endline_loc_p`
     private REToken lineEnd() {
-        int index = reader.index;
+        long index = reader.index;
         MuleString cache = reader.string;
         if (index == cache.length()
                 || (cache.codePointAt(index) == '\\' && index + 1 < cache.length()
@@ -455,13 +455,12 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
         record BackReference(int index) implements REToken {}
     }
 
-    private static final class TruffleStringReader {
+    private static final class MuleStringReader {
         private final MuleString string;
-        private int index = 0;
+        private long index = 0;
 
-        private TruffleStringReader(MuleString string) {
+        private MuleStringReader(MuleString string) {
             this.string = string;
-            int length = string.length();
         }
 
         public boolean hasNext() {
@@ -472,7 +471,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             return string.codePointAt(index++);
         }
 
-        public void consume(int n) {
+        public void consume(long n) {
             index += n;
         }
 
@@ -481,7 +480,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
         }
 
         public boolean unexpectedNext(byte b1, byte b2) {
-            int rest = string.length() - index;
+            long rest = string.length() - index;
             if (rest < 2) {
                 return true;
             }

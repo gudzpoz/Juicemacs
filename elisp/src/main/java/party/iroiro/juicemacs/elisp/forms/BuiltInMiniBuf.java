@@ -529,7 +529,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                     return true;
                 }
                 MuleStringBuffer buffer = new MuleStringBuffer();
-                int index = target.length();
+                long index = target.length();
                 MuleString first = matches.getFirst();
                 buffer.appendMuleString(first, 0, index);
                 appendCommonChar:

@@ -205,7 +205,7 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     @Override
     public String display() {
         PrimitiveIterator.OfInt i = name.codePoints().iterator();
-        StringBuilder result = new StringBuilder(name.length());
+        StringBuilder result = new StringBuilder(Math.toIntExact(name.length()));
         while (i.hasNext()) {
             int c = i.nextInt();
             if (c <= ' ' || SPECIAL_CHARS.indexOf(c) != -1 || c == 0x00A0 /* no breaking space */) {

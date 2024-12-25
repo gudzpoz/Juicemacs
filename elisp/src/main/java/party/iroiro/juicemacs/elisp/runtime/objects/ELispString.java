@@ -50,7 +50,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         return value.length();
     }
 
-    public long codePointAt(int idx) {
+    public long codePointAt(long idx) {
         return value.codePointAt(idx);
     }
 

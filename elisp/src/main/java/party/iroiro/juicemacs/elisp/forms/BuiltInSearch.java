@@ -172,7 +172,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         @Specialization
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
-            int from = isNil(start) ? 0 : asInt(start);
+            long from = notNilOr(start, 0);
             Object result = pattern.call(string.value(), true, from, -1, getLanguage().currentBuffer().getValue());
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
@@ -294,13 +294,13 @@ public class BuiltInSearch extends ELispBuiltIns {
             long limit = notNilOr(bound, Long.MAX_VALUE);
             ELispBuffer buffer = getContext().currentBuffer();
             ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
-            int from = Math.toIntExact(buffer.getPoint());
-            int repeat = Math.toIntExact(notNilOr(count, 1));
-            for (int i = 0; i < repeat; i++) {
+            long from = buffer.getPoint();
+            long repeat = notNilOr(count, 1);
+            for (long i = 0; i < repeat; i++) {
                 while (from >= limit) {
                     Object result = pattern.call(buffer, false, from, -1);
                     if (result instanceof ELispCons cons) {
-                        int start = asInt(cons.car());
+                        long start = asLong(cons.car());
                         buffer.setPoint(start);
                         return false;
                     }
@@ -469,8 +469,8 @@ public class BuiltInSearch extends ELispBuiltIns {
             long subexpN = notNilOr(subexp, 0);
             ELispString s = asStr(isNil(string) ? matchStr(this) : string);
             ELispCons cons = asCons(matchData(this)).getCons((int) (subexpN * 2));
-            int start = asInt(cons.car());
-            int end = asInt(asCons(cons.cdr()).car());
+            long start = asLong(cons.car());
+            long end = asLong(asCons(cons.cdr()).car());
             MuleString before = s.value().subSequence(0, start);
             MuleString after = s.value().subSequence(end, s.value().length());
             MuleString result = new MuleStringBuffer()
