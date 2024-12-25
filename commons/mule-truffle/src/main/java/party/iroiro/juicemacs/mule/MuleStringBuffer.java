@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF32;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 import party.iroiro.juicemacs.mule.utils.ByteArrayList;
 import party.iroiro.juicemacs.mule.utils.IntArrayList;
 
@@ -24,8 +25,9 @@ public final class MuleStringBuffer implements MuleString {
     private static final TruffleStringBuilder.ToStringNode TO_STRING = TruffleStringBuilder.ToStringNode.create();
 
     private static final int MAX_COPY_LIMIT = 4096;
+    private static final int MAX_ARRAY_LENGTH = (1 << 16) - 1;
 
-    private final IntArrayList startingCodePointIndices;
+    private final LongArrayList startingCodePointIndices;
     private final ArrayList<MuleString> strings;
 
     /// State of the building array list
@@ -64,7 +66,7 @@ public final class MuleStringBuffer implements MuleString {
     private final IntArrayList buildingCodePoints;
 
     public MuleStringBuffer() {
-        startingCodePointIndices = new IntArrayList();
+        startingCodePointIndices = new LongArrayList();
         startingCodePointIndices.add(0);
         strings = new ArrayList<>();
         buildingBytes = new ByteArrayList();
@@ -90,26 +92,30 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     @Override
-    public int length() {
+    public long length() {
         return startingCodePointIndices.getLast() + buildingLength();
     }
 
     private int getBuildingCodePoint(int relIndex) {
-        return state < IS_BUILDING_BYTES ? buildingBytes.get(relIndex) : buildingCodePoints.get(relIndex);
+        if (state < IS_BUILDING_BYTES) {
+            int original = Byte.toUnsignedInt(buildingBytes.get(relIndex));
+            return state == BUILDING_UNI_BYTES ? MuleByteArrayString.uniByteCodePoint(original) : original;
+        }
+        return buildingCodePoints.get(relIndex);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private int offsetToStringIndex(int index) {
+    private int offsetToStringIndex(long index) {
         if (index < 0) {
             throw new IndexOutOfBoundsException("Index out of bounds");
         } else {
-            int last = startingCodePointIndices.getLast();
+            long last = startingCodePointIndices.getLast();
             if (index >= last) {
-                int buildingIndex = index - last;
+                int buildingIndex = Math.toIntExact(index - last);
                 if (buildingIndex >= buildingLength()) {
                     throw new IndexOutOfBoundsException("Index out of bounds");
                 }
-                return -1;
+                return -buildingIndex - 1;
             }
         }
         int stringIndex = startingCodePointIndices.binarySearch(index);
@@ -120,12 +126,12 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     @Override
-    public int codePointAt(int index) {
+    public int codePointAt(long index) {
         int stringIndex = offsetToStringIndex(index);
-        if (stringIndex == -1) {
-            return getBuildingCodePoint(index - startingCodePointIndices.getLast());
+        if (stringIndex < 0) {
+            return getBuildingCodePoint(-stringIndex - 1);
         }
-        int offset = startingCodePointIndices.get(stringIndex);
+        long offset = startingCodePointIndices.get(stringIndex);
         return strings.get(stringIndex).codePointAt(index - offset);
     }
 
@@ -138,6 +144,12 @@ public final class MuleStringBuffer implements MuleString {
         reset();
     }
 
+    private void ensureCapacity() {
+        if (buildingLength() >= MAX_ARRAY_LENGTH) {
+            finalizeCurrent();
+        }
+    }
+
     private MuleString getBuildingString() {
         if (state < IS_BUILDING_BYTES) {
             return new MuleByteArrayString(buildingBytes.toArray(), state);
@@ -148,7 +160,8 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     public MuleStringBuffer appendRawByte(byte rawByte) {
-        if (state == BUILDING_ASCII || state == BUILDING_UNI_BYTES) {
+        ensureCapacity();
+        if ((state == BUILDING_ASCII && rawByte >= 0) || state == BUILDING_UNI_BYTES) {
             buildingBytes.add(rawByte);
             return this;
         }
@@ -160,6 +173,7 @@ public final class MuleStringBuffer implements MuleString {
 
     @CompilerDirectives.TruffleBoundary
     public MuleStringBuffer appendCodePoint(int codePoint) {
+        ensureCapacity();
         if (state == BUILDING_ASCII) {
             if (codePoint <= 0x7F) {
                 buildingBytes.add((byte) codePoint);
@@ -207,23 +221,24 @@ public final class MuleStringBuffer implements MuleString {
         return appendCodePoint(codePoint);
     }
 
-    public MuleStringBuffer append(MuleString string, int start, int end) {
+    public MuleStringBuffer append(MuleString string, long start, long end) {
         return appendMuleString(string, start, end);
     }
 
     @CompilerDirectives.TruffleBoundary
-    public MuleStringBuffer appendMuleString(MuleString string, int start, int end) {
-        int addLength = end - start;
+    public MuleStringBuffer appendMuleString(MuleString string, long start, long end) {
+        long addLength = end - start;
         if (addLength <= 0) {
             return this;
         }
+        ensureCapacity();
         if (addLength > MAX_COPY_LIMIT && !(string instanceof MuleStringBuffer)) {
             state |= IS_BUILDING_COMMIT_NOW;
         }
         switch (string) {
             case MuleByteArrayString bytes when state < IS_BUILDING_BYTES
                     && (state | bytes.getState()) != (BUILDING_LATIN_1 | BUILDING_UNI_BYTES) -> {
-                buildingBytes.addAll(bytes.bytes(), start, addLength);
+                buildingBytes.addAll(bytes.bytes(), Math.toIntExact(start), (int) addLength);
                 state |= bytes.getState();
             }
             case MuleTruffleString tString when state == BUILDING_UNICODE -> {
@@ -233,7 +248,7 @@ public final class MuleStringBuffer implements MuleString {
                 }
             }
             case MuleIntArrayString intArray when state == BUILDING_MULE ->
-                    buildingCodePoints.addAll(intArray.intArray(), start, addLength);
+                    buildingCodePoints.addAll(intArray.intArray(), Math.toIntExact(start), (int) addLength);
             case MuleStringBuffer buffer -> appendBuffer(buffer, start, end);
             default -> {
                 finalizeCurrent();
@@ -245,12 +260,12 @@ public final class MuleStringBuffer implements MuleString {
         return this;
     }
 
-    private void appendBuffer(MuleStringBuffer buffer, int start, int end) {
+    private void appendBuffer(MuleStringBuffer buffer, long start, long end) {
         final int startI = buffer.offsetToStringIndex(start);
         final int endI = end == buffer.length() ? -1 : buffer.offsetToStringIndex(end);
 
         // Supplied buffer can be `this`. So we need to pre-store the states.
-        int last = buffer.startingCodePointIndices.getLast();
+        long last = buffer.startingCodePointIndices.getLast();
         int bufferState = buffer.state;
         byte[] trailingBytes = null;
         int[] trailingCodePoints = null;
@@ -267,13 +282,13 @@ public final class MuleStringBuffer implements MuleString {
             int currentI = startI;
             while (currentI <= iterEndI) {
                 MuleString substring = buffer.strings.get(currentI);
-                int substringStart;
+                long substringStart;
                 if (currentI == startI) {
                     substringStart = start - buffer.startingCodePointIndices.get(currentI);
                 } else {
                     substringStart = 0;
                 }
-                int substringEnd;
+                long substringEnd;
                 if (currentI == endI) {
                     substringEnd = end - buffer.startingCodePointIndices.get(currentI);
                 } else {
@@ -285,8 +300,8 @@ public final class MuleStringBuffer implements MuleString {
         }
         if (trailingBytes != null || trailingCodePoints != null) {
             finalizeCurrent();
-            int substringStart = last > start ? 0 : start - last;
-            int substringEnd = end - last;
+            int substringStart = last > start ? 0 : (int) (start - last);
+            int substringEnd = (int) (end - last);
             if (trailingBytes != null) {
                 buildingBytes.addAll(trailingBytes, substringStart, substringEnd);
             }
@@ -297,15 +312,21 @@ public final class MuleStringBuffer implements MuleString {
         }
     }
 
+    public MuleStringBuffer copy() {
+        return new MuleStringBuffer().appendMuleString(this, 0, length());
+    }
+
     @CompilerDirectives.TruffleBoundary
     public MuleString build() {
         if (strings.isEmpty()) {
             return getBuildingString();
         } else if (strings.size() == 1 && buildingLength() == 0) {
             return strings.getFirst();
+        } else if (length() > Integer.MAX_VALUE) {
+            return copy();
         }
+        int length = (int) this.length();
         int overallState = state;
-        int length = 0;
         for (MuleString string : strings) {
             overallState |= switch (string) {
                 case MuleByteArrayString s -> s.getState();
@@ -313,20 +334,19 @@ public final class MuleStringBuffer implements MuleString {
                 case MuleTruffleString _ -> BUILDING_UNICODE;
                 case MuleStringBuffer _ -> throw CompilerDirectives.shouldNotReachHere();
             };
-            length += string.length();
         }
-        length += buildingLength();
         if (overallState <= BUILDING_UNI_BYTES) { // ASCII + Latin1 or ASCII + Uni-byte
             byte[] bytes = new byte[length];
             int start = 0;
             for (MuleString string : strings) {
                 MuleByteArrayString latin1 = (MuleByteArrayString) string;
-                System.arraycopy(latin1.bytes(), 0, bytes, start, latin1.length());
-                start += latin1.length();
+                System.arraycopy(latin1.bytes(), 0, bytes, start, (int) latin1.length());
+                start += (int) latin1.length();
             }
             System.arraycopy(buildingBytes.inner(), 0, bytes, start, buildingBytes.size());
             return new MuleByteArrayString(bytes, overallState);
-        } else if (overallState <= (BUILDING_UNICODE | BUILDING_LATIN_1)) { // Unicode + Latin1 + ASCII but no uni-byte
+        } else if (overallState != (BUILDING_LATIN_1 | BUILDING_UNI_BYTES)
+                && overallState <= (BUILDING_LATIN_1 | BUILDING_UNICODE)) { // Unicode + Latin1 + ASCII but no uni-byte
             TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32(length * 2);
             for (MuleString string : strings) {
                 if (string instanceof MuleByteArrayString latin1) {
@@ -345,11 +365,11 @@ public final class MuleStringBuffer implements MuleString {
             }
             return new MuleTruffleString(TO_STRING.execute(builder));
         }
-        return new MuleStringBuffer().appendMuleString(this, 0, length());
+        return copy();
     }
 
     @Override
-    public MuleString subSequence(int start, int end) {
+    public MuleString subSequence(long start, long end) {
         return new MuleStringBuffer().appendMuleString(this, start, end).build();
     }
 
@@ -375,7 +395,7 @@ public final class MuleStringBuffer implements MuleString {
     }
 
     @Override
-    public IntStream codePoints(int start) {
+    public IntStream codePoints(long start) {
         return StreamSupport.intStream(
                 () -> Spliterators.spliterator(iterator(start), length() - start, Spliterator.ORDERED),
                 Spliterator.SUBSIZED | Spliterator.SIZED | Spliterator.ORDERED,
@@ -383,17 +403,17 @@ public final class MuleStringBuffer implements MuleString {
         );
     }
 
-    public PrimitiveIterator.OfInt iterator(int start) {
+    public PrimitiveIterator.OfInt iterator(long start) {
         int startStringI = start >= startingCodePointIndices.getLast() ? strings.size() : offsetToStringIndex(start);
-        int startOffset = start - startingCodePointIndices.get(startStringI);
+        long startOffset = start - startingCodePointIndices.get(startStringI);
         return new PrimitiveIterator.OfInt() {
             int stringI = startStringI;
-            int offset = startOffset;
+            long offset = startOffset;
 
             @Override
             public int nextInt() {
                 if (stringI >= strings.size()) {
-                    return getBuildingCodePoint(offset++);
+                    return getBuildingCodePoint(Math.toIntExact(offset++));
                 }
                 MuleString s = strings.get(stringI);
                 int c = s.codePointAt(offset++);

@@ -12,6 +12,8 @@ public final class MuleByteArrayString implements MuleString {
     private static final TruffleString.SwitchEncodingNode SWITCH_ENCODING = TruffleString.SwitchEncodingNode.create();
     private static final TruffleString.ToJavaStringNode TO_JAVA_STRING = TruffleString.ToJavaStringNode.create();
 
+    public static final int RAW_BYTE_BASE = 0x3FFF80;
+
     public static final int STATE_ASCII = 0;
     public static final int STATE_LATIN_1 = 0b01;
     public static final int STATE_UNI_BYTES = 0b10;
@@ -29,25 +31,38 @@ public final class MuleByteArrayString implements MuleString {
     }
 
     @Override
-    public int length() {
+    public long length() {
         return bytes.length;
     }
 
     @Override
-    public int codePointAt(int index) {
-        return Byte.toUnsignedInt(bytes[index]);
+    public int codePointAt(long index) {
+        int code = Byte.toUnsignedInt(bytes[Math.toIntExact(index)]);
+        if (state == STATE_UNI_BYTES) {
+            return uniByteCodePoint(code);
+        }
+        return code;
+    }
+
+    public static int uniByteCodePoint(int original) {
+        if (original <= Byte.MAX_VALUE) {
+            return original;
+        }
+        return (original - Byte.MAX_VALUE - 1) + RAW_BYTE_BASE;
     }
 
     @Override
-    public MuleString subSequence(int start, int end) {
-        byte[] bytes = new byte[end - start];
-        System.arraycopy(this.bytes, start, bytes, 0, bytes.length);
+    public MuleString subSequence(long start, long end) {
+        int startI = Math.toIntExact(start);
+        int endI = Math.toIntExact(end);
+        byte[] bytes = new byte[endI - startI];
+        System.arraycopy(this.bytes, startI, bytes, 0, bytes.length);
         return new MuleByteArrayString(bytes, state);
     }
 
     @Override
     public String toString() {
-        if (state == MuleStringBuffer.BUILDING_UNI_BYTES) {
+        if (state == STATE_UNI_BYTES) {
             return rawByteToString();
         }
         return TO_JAVA_STRING.execute(toTruffleString());

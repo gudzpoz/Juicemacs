@@ -2,8 +2,6 @@ package party.iroiro.juicemacs.mule;
 
 import com.oracle.truffle.api.strings.TruffleString;
 
-import java.util.Arrays;
-
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.ISO_8859_1;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 
@@ -24,18 +22,20 @@ public final class MuleTruffleString implements MuleString {
     }
 
     @Override
-    public int length() {
+    public long length() {
         return CODE_POINT_LENGTH.execute(string, UTF_32);
     }
 
     @Override
-    public int codePointAt(int index) {
-        return CODE_POINT_AT_INDEX.execute(string, index, UTF_32);
+    public int codePointAt(long index) {
+        return CODE_POINT_AT_INDEX.execute(string, Math.toIntExact(index), UTF_32);
     }
 
     @Override
-    public MuleString subSequence(int start, int end) {
-        return new MuleTruffleString(SUBSTRING.execute(string, start, end - start, UTF_32, false));
+    public MuleString subSequence(long start, long end) {
+        int startI = Math.toIntExact(start);
+        int endI = Math.toIntExact(end);
+        return new MuleTruffleString(SUBSTRING.execute(string, startI, endI - startI, UTF_32, false));
     }
 
     @Override

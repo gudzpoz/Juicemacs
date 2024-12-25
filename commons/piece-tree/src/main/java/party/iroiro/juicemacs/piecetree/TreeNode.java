@@ -46,7 +46,7 @@ final class TreeNode {
     /**
      * size of the left subtree (not in order)
      */
-    int size_left;
+    long size_left;
     /**
      * line feeds cnt in the left subtree (not in order)
      */
@@ -125,7 +125,7 @@ final class TreeNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private int calculateSize() {
+    private long calculateSize() {
         if (this == SENTINEL) {
             return 0;
         }
@@ -258,10 +258,10 @@ final class TreeNode {
         z.detach();
 
         if (x.parent.left == x) {
-            int newSizeLeft = x.calculateSize();
+            long newSizeLeft = x.calculateSize();
             int newLfLeft = x.calculateLf();
             if (newSizeLeft != x.parent.size_left || newLfLeft != x.parent.lf_left) {
-                int delta = newSizeLeft - x.parent.size_left;
+                long delta = newSizeLeft - x.parent.size_left;
                 int lfDelta = newLfLeft - x.parent.lf_left;
                 x.parent.size_left = newSizeLeft;
                 x.parent.lf_left = newLfLeft;
@@ -376,7 +376,7 @@ final class TreeNode {
         tree.root.color = TreeNode.BLACK;
     }
 
-    public static void updateTreeMetadata(PieceTreeBase tree, TreeNode x, int deltaSize, int deltaLf) {
+    public static void updateTreeMetadata(PieceTreeBase tree, TreeNode x, long deltaSize, int deltaLf) {
         while (x != tree.root && x != SENTINEL) {
             if (x == x.parent.left) {
                 x.parent.size_left += deltaSize;
@@ -387,7 +387,7 @@ final class TreeNode {
     }
 
     public static void recomputeTreeMetadata(PieceTreeBase tree, TreeNode x) {
-        int delta;
+        long delta;
         int deltaLf;
         if (x == tree.root) {
             return;

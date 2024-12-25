@@ -10,19 +10,21 @@ public final class MuleIntArrayString implements MuleString {
     }
 
     @Override
-    public int length() {
+    public long length() {
         return array.length;
     }
 
     @Override
-    public int codePointAt(int index) {
-        return array[index];
+    public int codePointAt(long index) {
+        return array[Math.toIntExact(index)];
     }
 
     @Override
-    public MuleString subSequence(int start, int end) {
-        int[] newArray = new int[end - start];
-        System.arraycopy(array, start, newArray, 0, newArray.length);
+    public MuleString subSequence(long start, long end) {
+        int startI = Math.toIntExact(start);
+        int endI = Math.toIntExact(end);
+        int[] newArray = new int[endI - startI];
+        System.arraycopy(array, startI, newArray, 0, newArray.length);
         return new MuleIntArrayString(newArray);
     }
 

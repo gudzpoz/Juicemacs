@@ -43,7 +43,7 @@ final class PieceTreeSearchCache {
     }
 
     @Nullable
-    public CacheEntry get(int offset) {
+    public CacheEntry get(long offset) {
         CacheEntry nodePos = cache;
         if (nodePos != null) {
             if (nodePos.nodeStartOffset <= offset &&
@@ -72,7 +72,7 @@ final class PieceTreeSearchCache {
         cache = nodePos;
     }
 
-    public void validate(int offset) {
+    public void validate(long offset) {
         CacheEntry nodePos = cache;
         if (nodePos != null) {
             if (nodePos.node.isDetached() || nodePos.nodeStartOffset >= offset) {
@@ -87,7 +87,7 @@ final class PieceTreeSearchCache {
 
     public record CacheEntry(
             TreeNode node,
-            int nodeStartOffset,
+            long nodeStartOffset,
             int nodeStartLineNumber
     ) {
     }

@@ -4,11 +4,47 @@ import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.PrimitiveIterator;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MuleStringBufferTest {
+    @Test
+    public void hugeStringTest() {
+        int singleStringLength = 1 << 16;
+        int repeat = 1 << 16;
+        long length = repeat * (long) singleStringLength;
+        //noinspection ConstantValue
+        assertTrue(length > Integer.MAX_VALUE);
+
+        byte[] array = new byte[singleStringLength];
+        Arrays.fill(array, (byte) 'a');
+
+        MuleByteArrayString template = MuleString.fromLatin1(array);
+        MuleStringBuffer buffer = new MuleStringBuffer();
+        for (int i = 0; i < repeat; i++) {
+            buffer.appendMuleString(template, 0, template.length());
+        }
+        assertEquals(length, buffer.length());
+    }
+
+    @Test
+    public void appendRawByteTest() {
+        MuleStringBuffer buffer = new MuleStringBuffer();
+        buffer.appendRawByte((byte) 'a')
+                .appendRawByte((byte) 0xFF);
+        MuleByteArrayString build = assertInstanceOf(MuleByteArrayString.class, buffer.build());
+        assertEquals("a\\377", build.toString());
+
+        assertEquals(0x3FFFFF, build.codePointAt(1));
+        assertEquals(0x3FFFFF, buffer.codePointAt(1));
+
+        buffer.appendCodePoint(0xFF);
+        assertEquals("a\\377\377", buffer.toString());
+        assertEquals("a\\377\377", buffer.build().toString());
+    }
+
     @Test
     public void appendCodePointTest() {
         MuleStringBuffer buffer = new MuleStringBuffer();

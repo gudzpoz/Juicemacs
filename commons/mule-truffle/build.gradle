@@ -11,4 +11,7 @@ repositories {
 
 dependencies {
     api "org.graalvm.truffle:truffle-api:${truffleVersion}"
+
+    implementation "org.eclipse.collections:eclipse-collections-api:${eclipseCollectionsVersion}"
+    implementation "org.eclipse.collections:eclipse-collections:${eclipseCollectionsVersion}"
 }

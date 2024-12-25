@@ -36,11 +36,11 @@ import java.util.stream.StreamSupport;
 public sealed interface MuleString
         extends Comparable<MuleString>
         permits MuleByteArrayString, MuleIntArrayString, MuleStringBuffer, MuleTruffleString {
-    int length();
+    long length();
 
-    int codePointAt(int index);
+    int codePointAt(long index);
 
-    MuleString subSequence(int start, int end);
+    MuleString subSequence(long start, long end);
 
     @Override
     String toString();
@@ -51,11 +51,11 @@ public sealed interface MuleString
     @Override
     int hashCode();
 
-    default int charAt(int index) {
+    default int charAt(long index) {
         return codePointAt(index);
     }
 
-    default MuleString substring(int start, int end) {
+    default MuleString substring(long start, long end) {
         return subSequence(start, end);
     }
 
@@ -63,7 +63,7 @@ public sealed interface MuleString
         return codePoints(0);
     }
 
-    default IntStream codePoints(int start) {
+    default IntStream codePoints(long start) {
         return StreamSupport.intStream(
                 () -> Spliterators.spliterator(iterator(start), length() - start, Spliterator.ORDERED),
                 Spliterator.SUBSIZED | Spliterator.SIZED | Spliterator.ORDERED,
@@ -71,9 +71,9 @@ public sealed interface MuleString
         );
     }
 
-    default PrimitiveIterator.OfInt iterator(int start) {
+    default PrimitiveIterator.OfInt iterator(long start) {
         final class CodePointIterator implements PrimitiveIterator.OfInt {
-            int index = start;
+            long index = start;
 
             @Override
             public int nextInt() {

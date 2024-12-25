@@ -317,7 +317,7 @@ public class EditingTracesTest {
     }
 
     @Benchmark
-    public int pieceTree(PieceState state) {
+    public long pieceTree(PieceState state) {
         for (Edit edit : state.trace.edits) {
             applyEdit(edit, state.tree);
         }

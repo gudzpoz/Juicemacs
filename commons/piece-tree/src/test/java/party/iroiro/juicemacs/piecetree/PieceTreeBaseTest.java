@@ -267,9 +267,9 @@ public class PieceTreeBaseTest {
         return new String(chars);
     }
 
-    private int[] assertValidNode(TreeNode node) {
+    private long[] assertValidNode(TreeNode node) {
         if (node == TreeNode.SENTINEL) {
-            return new int[]{ 0, 0 };
+            return new long[]{ 0, 0 };
         }
         TreeNode left = node.left;
         TreeNode right = node.right;
@@ -279,11 +279,11 @@ public class PieceTreeBaseTest {
         }
         assertTrue(node.lf_left >= 0);
         assertTrue(node.size_left >= 0);
-        int[] actualLeft = assertValidNode(left);
+        long[] actualLeft = assertValidNode(left);
         assertEquals(actualLeft[0], node.lf_left);
         assertEquals(actualLeft[1], node.size_left);
-        int[] actualRight = assertValidNode(right);
-        return new int[]{ node.lf_left + node.piece.lineFeedCnt() + actualRight[0], node.size_left + node.piece.length() + actualRight[1] };
+        long[] actualRight = assertValidNode(right);
+        return new long[]{ node.lf_left + node.piece.lineFeedCnt() + actualRight[0], node.size_left + node.piece.length() + actualRight[1] };
     }
 
     private int assertDepth(TreeNode node) {
@@ -295,7 +295,7 @@ public class PieceTreeBaseTest {
     }
 
     private void assertValidTree(PieceTreeBase tree) {
-        int[] stats = assertValidNode(tree.root);
+        long[] stats = assertValidNode(tree.root);
         assertEquals(stats[0] + 1, tree.getLineCount());
         assertEquals(stats[1], tree.getLength());
         assertDepth(tree.root);
@@ -349,7 +349,7 @@ public class PieceTreeBaseTest {
                 int offset = test.nextInt(content.length());
                 assertEquals(content.charAt(offset), tree.getCharCode(offset));
                 PieceTreeBase.Position position = tree.getPositionAt(offset);
-                int offsetAt = tree.getOffsetAt(position.line(), position.column());
+                long offsetAt = tree.getOffsetAt(position.line(), position.column());
                 assertEquals(offset, offsetAt);
             }
 
