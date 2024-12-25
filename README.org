@@ -30,9 +30,10 @@ It is still a long long way to go before Juicemacs can load all of =loadup.el=.
 Currently it stops halfway due to unimplemented subroutines, but can already use
 a lot of functions/macros loaded in the "upper half" of =loadup.el=.
 
-To run it:
-1. =./gradlew :app:shadowJar= to build a fat JAR for the REPL.
-2. =cd app && java -jar build/libs/app-all.jar= to run the JAR.
+To run it
+1. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
+   data/elisp files ready.
+2. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"=.
 
 * Notes
 

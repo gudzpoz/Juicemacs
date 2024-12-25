@@ -5,6 +5,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.jline.builtins.SyntaxHighlighter;
 import org.jline.keymap.KeyMap;
 import org.jline.reader.*;
@@ -70,6 +71,7 @@ public class ELispRepl implements Callable<Integer> {
         try (Context context = Context.newBuilder("elisp")
                 .environment("EMACSLOADPATH", loadPaths)
                 .environment("EMACSDATA", emacsData)
+                .allowIO(IOAccess.ALL)
                 .build()) {
             LineReader lineReader = getLineReader(context);
             try {
@@ -84,9 +86,12 @@ public class ELispRepl implements Callable<Integer> {
                     line = lineReader.readLine(PROMPT_STRING);
                 } catch (EndOfFileException ignored) {
                     break;
+                } catch (UserInterruptException ignored) {
+                    lineReader.printAbove("^C");
+                    continue;
                 }
                 try {
-                    Value value = context.eval("elisp", line);
+                    Value value = context.eval("elisp", ";;; -*- lexical-binding: t -*-\n" + line);
                     AttributedString output = lineReader.getHighlighter().highlight(lineReader, value.toString());
                     lineReader.printAbove(output.toAnsi());
                 } catch (PolyglotException e) {

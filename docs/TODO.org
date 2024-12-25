@@ -14,12 +14,57 @@ So, old Emacs had a bug:
 
 It seems... we also have this bug.
 
+** Thread-local buffer-locals
+
+Currently thread-local buffer-locals are treated as thread-locals. But they
+should be buffer-local thread-locals ;-) Buffalo buffalo buffalo.
+
+* TODO [#B] =cconv.el --- Closure conversion for statically scoped Emacs Lisp=
+
+Emacs offloads lexical scope analysis to =cconv.el=: =(function ...)= will call
+=internal-make-interpreted-closure-function= (set to
+=cconv-make-interpreted-closure=) to prune the AST and captured variables:
+
+#+begin_src elisp
+  (defmacro test-cconv-macroexp (x) (list '+ x 'y))
+  (cconv-make-interpreted-closure
+   ;; args
+   '(a b c)
+   ;; body
+   '((+ (test-cconv-macroexp x) a b c))
+   ;; env
+   '((x . 1) (y . 1) (z . 1))
+   nil nil)
+#+end_src
+
+#+RESULTS:
+: #[(a b c) ((+ (+ x y) a b c)) ((x . 1) (y . 1))]
+
+Note that in the example above, the function body is replaced with a
+macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
+1))= to =((x . 1) (y . 1))=.
+
+To support this, we will need to rethink how we handle our materialized frames.
+
 * TODO [#A] Use =ert.el=
 
 I have stopped writing tests for newly implemented subroutines. We should
 definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
 
-* TODO [#B] Concurrent =load=?
+* TODO [#B] Support =load-source-file-function=
+
+The C implementation of =load= is quite simplistic: similar to
+=internal-make-interpreted-closure-function=, Emacs relies on
+=load-source-file-function= to handle more complex scenarios and file encoding.
+
+** Actually support Emacs encodings when loading elisp files
+
+=emacs/lisp/language/ethiopic.el= is encoded with =utf-8-emacs=, containing a
+non-Unicode character. Currently we just treat these characters as white spaces.
+Also, =ethiopic.el= uses CCL, so it is probably time for yet another bytecode
+interpreter.
+
+** Is concurrent =load= possible?
 
 Parsing huge files can be costly. And yet most of the operations have nothing to
 do with the current context: we can offload the job to other threads.
@@ -43,7 +88,12 @@ We want to silently turn it into something like:
 #+end_src
 
 What we can do is to have the parser detect =require/load= (under "safe"
-conditions like during loadup) and load them in the background.
+conditions like during loadup) and parse them in the background.
+
+However, since we are yet to fully bootstrap =loadup.el=, we might end up
+pre-parsing all bunch of things that will not get loaded.
+
+With =load-source-file-function=, things are much more complex now.
 
 * TODO [#B] Automatically free container objects when the corresponding symbol goes out of scope
 
@@ -106,9 +156,15 @@ So basically one can have autoload functions as well as autoload strings
 
 * TODO [#B] Threading preparations
 
-- Limit =jdk.virtualThreadScheduler.parallelism= to =1=.
+Use a custom scheduler by using reflection. Also, Truffle has a bunch of
+thread-local fields that need to be initialized with
+=TruffleLanguage.Env#newTruffleThreadBuilder=. We will see if we can do this
+with our own scheduler.
 
-* TODO [#C] Rewrite FS operations with Truffle FileSystem
+* TODO [#C] Use Truffle FileSystems
+
+=FileSystem= is used by users. And I assume, as a language implementer, we
+should use the methonds in =TruffleLanguage.Env= instead.
 
 * TODO [#B] Charsets & Coding
 
@@ -127,13 +183,6 @@ See also:
 - [[file:~/Workspaces/Java/JVMacs/elisp/emacs/admin/charsets/][../elisp/emacs/admin/charsets]]
 - [[https://man7.org/linux/man-pages/man5/charmap.5.html][=man 5 charmap=]]
 - [[https://man7.org/linux/man-pages/man7/charsets.7.html][=man 7 charsets=]]
-
-* TODO Actually support Emacs encodings when loading elisp files
-
-=emacs/lisp/language/ethiopic.el= is encoded with =utf-8-emacs=, containing a
-non-Unicode character. Currently we just treat these characters as white spaces.
-Also, =ethiopic.el= uses CCL, so it is probably time for yet another bytecode
-interpreter.
 
 ** TODO Emacs Code Conversion Language (CCL)
 
@@ -165,6 +214,9 @@ IntelliJ always complains about =org.graalvm.truffle= not being read by
 It is still a long long way to go... But at least we have a piece table now. I
 might still need to look into CRDTs and the new Eg-walker if we want to merge
 buffers from different (virtual) threads.
+
+Edit: I think OT is better here to handle all the edge cases. Or maybe something
+like offsets organized into a tree?
 
 * Trackers
 

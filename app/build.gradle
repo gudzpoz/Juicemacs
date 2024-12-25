@@ -21,3 +21,13 @@ application {
 tasks.run.configure {
     standardInput = System.in
 }
+
+tasks.register('jvmCmd') {
+    dependsOn tasks.run.taskDependencies
+
+    doLast {
+        var classpath = tasks.run.classpath
+        var cmd = "java -cp ${classpath.asPath} ${application.mainClass.get()}"
+        println(cmd)
+    }
+}
