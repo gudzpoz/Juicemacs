@@ -345,7 +345,7 @@ public final class MuleStringBuffer implements MuleString {
             }
             System.arraycopy(buildingBytes.inner(), 0, bytes, start, buildingBytes.size());
             return new MuleByteArrayString(bytes, overallState);
-        } else if (overallState != (BUILDING_LATIN_1 | BUILDING_UNI_BYTES)
+        } else if ((overallState & BUILDING_UNI_BYTES) == 0
                 && overallState <= (BUILDING_LATIN_1 | BUILDING_UNICODE)) { // Unicode + Latin1 + ASCII but no uni-byte
             TruffleStringBuilderUTF32 builder = TruffleStringBuilderUTF32.createUTF32(length * 2);
             for (MuleString string : strings) {

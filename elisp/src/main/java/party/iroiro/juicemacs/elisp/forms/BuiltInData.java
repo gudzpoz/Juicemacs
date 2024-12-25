@@ -14,6 +14,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.mule.MuleByteArrayString;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -35,6 +37,14 @@ public class BuiltInData extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInDataFactory.getFactories();
+    }
+
+    public static boolean isMultibyte(MuleString value) {
+        if (value instanceof MuleByteArrayString s) {
+            int state = s.getState();
+            return state == MuleByteArrayString.STATE_LATIN_1;
+        }
+        return true;
     }
 
     @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
@@ -870,7 +880,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMultibyteStringP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean multibyteStringP(Object object) {
-            return object instanceof ELispString s && s.isMultibyte();
+            return object instanceof ELispString s && isMultibyte(s.value());
         }
     }
 

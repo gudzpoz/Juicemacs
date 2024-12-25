@@ -36,6 +36,19 @@ public final class MuleByteArrayString implements MuleString {
     }
 
     @Override
+    public long indexToByteOffset(long index) {
+        if (state == STATE_ASCII) {
+            return index;
+        }
+        long length = 0;
+        for (int i = 0; i < index; i++) {
+            byte b = bytes[i];
+            length += b >= 0 ? 1 : 2;
+        }
+        return length;
+    }
+
+    @Override
     public int codePointAt(long index) {
         int code = Byte.toUnsignedInt(bytes[Math.toIntExact(index)]);
         if (state == STATE_UNI_BYTES) {

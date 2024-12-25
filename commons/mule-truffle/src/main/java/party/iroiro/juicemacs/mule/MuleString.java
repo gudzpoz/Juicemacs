@@ -51,6 +51,16 @@ public sealed interface MuleString
     @Override
     int hashCode();
 
+    default long indexToByteOffset(long index) {
+        PrimitiveIterator.OfInt iterator = iterator(0);
+        long byteOffset = 0;
+        for (long i = 0; i < index; i++) {
+            int c = iterator.nextInt();
+            byteOffset += codePointByteLength(c);
+        }
+        return byteOffset;
+    }
+
     default int charAt(long index) {
         return codePointAt(index);
     }
@@ -161,5 +171,17 @@ public sealed interface MuleString
             }
         }
         return i.hasNext() ? 1 : (j.hasNext() ? -1 : 0);
+    }
+
+    static int codePointByteLength(int codePoint) {
+        return ((codePoint & ~0x7F) == 0)
+                ? 1
+                : (((codePoint & ~0x7FF) == 0)
+                ? 2
+                : (((codePoint & ~0xFFFF) == 0)
+                ? 3
+                : (((codePoint & ~0x1FFFFF) == 0)
+                ? 4
+                : ((codePoint > 0x3FFF7F) ? 2 : 5))));
     }
 }

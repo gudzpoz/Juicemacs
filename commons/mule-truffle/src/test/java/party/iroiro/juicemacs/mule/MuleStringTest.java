@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.mule;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.NoSuchElementException;
 
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
@@ -75,6 +76,21 @@ public class MuleStringTest {
             assertArrayEquals(new int[]{ 'a', 'b', 'c' }, s.codePoints(0).toArray());
             assertArrayEquals(new int[]{ 'c' }, s.codePoints(2).toArray());
             assertThrows(NoSuchElementException.class, () -> s.iterator(3).nextInt());
+        }
+    }
+
+    @Test
+    public void byteLengthTest() {
+        for (int i = 'b'; i <= Character.MAX_CODE_POINT; i += 256) {
+            int length = MuleString.codePointByteLength(i);
+            if (Character.isHighSurrogate((char) i) || Character.isLowSurrogate((char) i)) {
+                continue;
+            }
+            assertEquals(
+                    new StringBuilder().appendCodePoint(i).toString().getBytes(StandardCharsets.UTF_8).length,
+                    length,
+                    "Failed for " + Integer.toHexString(i)
+            );
         }
     }
 }

@@ -763,8 +763,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetBufferMultibyte extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setBufferMultibyte(Object flag) {
-            throw new UnsupportedOperationException();
+        public static boolean setBufferMultibyte(Object flag) {
+            currentBuffer().setMultibyte(flag);
+            return false;
         }
     }
 

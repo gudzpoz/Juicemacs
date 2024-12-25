@@ -7,14 +7,17 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.PrimitiveIterator;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
@@ -71,6 +74,15 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         if (text.length() == 0) {
             return;
         }
+        if (isNil(getEnableMultibyteCharacters()) && BuiltInData.isMultibyte(text)) {
+            MuleStringBuffer buffer = new MuleStringBuffer();
+            // TODO
+            PrimitiveIterator.OfInt iterator = text.iterator(0);
+            while (iterator.hasNext()) {
+                buffer.appendRawByte((byte) iterator.nextInt());
+            }
+            text = buffer;
+        }
         content.insert((int) point - 1, text, false);
         point += text.length();
     }
@@ -85,6 +97,13 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         } else if (point >= start + length) {
             point -= length;
         }
+    }
+
+    public void setMultibyte(Object flag) {
+        if (content.getLength() != 0) {
+            throw ELispSignals.error("unsupported");
+        }
+        setEnableMultibyteCharacters(!isNil(flag));
     }
 
     public ELispString bufferString() {

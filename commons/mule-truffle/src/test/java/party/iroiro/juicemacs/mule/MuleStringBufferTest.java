@@ -43,6 +43,9 @@ public class MuleStringBufferTest {
         buffer.appendCodePoint(0xFF);
         assertEquals("a\\377\377", buffer.toString());
         assertEquals("a\\377\377", buffer.build().toString());
+
+        assertEquals(5, buffer.indexToByteOffset(3));
+        assertEquals(5, buffer.build().indexToByteOffset(3));
     }
 
     @Test
