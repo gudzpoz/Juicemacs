@@ -17,6 +17,7 @@ public class ELispLanguageTest {
         try (Context context = Context.newBuilder("elisp")
                 .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
                 .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
+                .allowIO(IOAccess.ALL)
                 .build()
         ) {
             context.eval("elisp", "(load \"loadup\")");

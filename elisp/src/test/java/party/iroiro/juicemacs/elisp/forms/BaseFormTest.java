@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -23,6 +24,7 @@ public abstract class BaseFormTest {
         return Context.newBuilder("elisp")
                 .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
                 .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
+                .allowIO(IOAccess.ALL)
                 .build();
     }
 

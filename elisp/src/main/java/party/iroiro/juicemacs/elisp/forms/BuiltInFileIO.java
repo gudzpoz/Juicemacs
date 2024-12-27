@@ -1,16 +1,28 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemCategory;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -117,7 +129,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileNameAsDirectory extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString fileNameAsDirectory(Object file) {
-            return new ELispString(Path.of(asStr(file).toString()) + File.separator);
+            return new ELispString(new MuleStringBuffer()
+                    .append(asStr(file).value())
+                    .append(MuleString.fromString(File.separator))
+                    .build());
         }
     }
 
@@ -400,8 +415,9 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileNameCaseInsensitiveP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileNameCaseInsensitiveP(Object filename) {
-            throw new UnsupportedOperationException();
+        public boolean fileNameCaseInsensitiveP(ELispString filename) {
+            TruffleFile file = getContext().truffleEnv().getPublicTruffleFile(filename.toString());
+            return file.exists();
         }
     }
 
@@ -535,7 +551,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileReadableP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean fileReadableP(ELispString filename) {
-            return new File(filename.asString()).canRead();
+            return ELispContext.get(null).truffleEnv().getPublicTruffleFile(filename.asString()).isReadable();
         }
     }
 
@@ -609,7 +625,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
         @Specialization
         public static boolean fileDirectoryP(ELispString filename) {
             String path = filename.toString();
-            File file = new File(path.isEmpty() ? "." : path);
+            TruffleFile file = ELispContext.get(null).truffleEnv().getPublicTruffleFile(path.isEmpty() ? "." : path);
             return file.isDirectory();
         }
     }
@@ -634,8 +650,9 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileAccessibleDirectoryP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean fileAccessibleDirectoryP(ELispString filename) {
-            File file = FExpandFileName.expandFileNamePath(filename, false).toFile();
-            return file.isDirectory() && file.canRead();
+            TruffleFile file = ELispContext.get(null).truffleEnv()
+                    .getPublicTruffleFile(FExpandFileName.expandFileNamePath(filename, false).toString());
+            return file.isDirectory() && file.isReadable();
         }
     }
 
@@ -907,8 +924,85 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInsertFileContents extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void insertFileContents(Object filename, Object visit, Object beg, Object end, Object replace) {
-            throw new UnsupportedOperationException();
+        public ELispCons insertFileContents(ELispString filename, boolean visit, Object beg, Object end, Object replace) {
+            ELispContext context = getContext();
+            TruffleLanguage.Env env = context.truffleEnv();
+
+            ELispBuffer buffer = currentBuffer();
+            if (visit) {
+                if (!isNil(beg) || !isNil(end)) {
+                    throw ELispSignals.error("Attempt to visit less than an entire file");
+                }
+                if (buffer.length() != 0) {
+                    throw ELispSignals.error("Cannot do file visiting in a non-empty buffer");
+                }
+            }
+            TruffleFile file = env.getPublicTruffleFile(filename.toString());
+            try (SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
+                long start = notNilOr(beg, 0L);
+                long limit = Math.min(notNilOr(end, Long.MAX_VALUE), file.size());
+
+                Object codingSystem = detectCodingSystem(context, filename, channel, file.size());
+                BuiltInCoding.FCheckCodingSystem.checkCodingSystem(codingSystem);
+                CodingSystemCategory coding =
+                        context.globals().builtInCoding.setupCodingSystem(asSym(codingSystem), new CodingSystemCategory.RawText());
+
+                channel.position(start);
+                buffer.insert(coding.decode(channel, limit - start));
+                return ELispCons.listOf(new ELispString(file.getAbsoluteFile().toString()), limit - start);
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, filename);
+            }
+        }
+
+        private Object detectCodingSystem(ELispContext context, ELispString filename,
+                                          SeekableByteChannel file, long size) throws IOException {
+            Object codingSystem = getContext().getValue(CODING_SYSTEM_FOR_READ);
+            if (!isNil(codingSystem)) {
+                return codingSystem;
+            }
+            codingSystem = callSetAutoCodingSystem(context, filename, file, size);
+            if (!isNil(codingSystem)) {
+                return codingSystem;
+            }
+            codingSystem = callFindOperationCodingSystem();
+            if (isNil(codingSystem)) {
+                codingSystem = UNDECIDED;
+            }
+            return codingSystem;
+        }
+
+        private Object callSetAutoCodingSystem(ELispContext context, ELispString filename,
+                                               SeekableByteChannel file, long size)
+                throws IOException {
+            Object autoCodingFunction = context.getValue(SET_AUTO_CODING_FUNCTION);
+            if (isNil(autoCodingFunction)) {
+                return false;
+            }
+            file.position(0);
+            ByteBuffer headAndTail = ByteBuffer.allocate(4096);
+            if (size <= 4096) {
+                file.position(0).read(headAndTail);
+            } else {
+                headAndTail.limit(1024);
+                file.position(0).read(headAndTail);
+                headAndTail.limit(4096);
+                file.position(size - 3072).read(headAndTail);
+            }
+            long read = headAndTail.position();
+            headAndTail.flip();
+            try (var current = withInternalBufferReset(" *code-conversion-work*")) {
+                ELispBuffer buffer = current.current();
+                buffer.setEnableMultibyteCharacters(false);
+                buffer.insert(MuleString.fromRaw(headAndTail));
+                buffer.setPoint(1);
+                return BuiltInEval.FFuncall.funcall(autoCodingFunction, new Object[]{filename, read});
+            }
+        }
+
+        private Object callFindOperationCodingSystem() {
+            // TODO
+            return false;
         }
     }
 

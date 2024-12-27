@@ -19,8 +19,8 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.lang.ref.Cleaner;
+import java.util.HashMap;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
@@ -32,7 +32,8 @@ public final class ELispContext implements ELispParser.InternContext {
             TruffleLanguage.ContextReference.create(ELispLanguage.class);
 
     private final ELispLanguage language;
-    private final ConcurrentHashMap<String, String> env;
+    private final HashMap<String, String> env;
+    private final TruffleLanguage.Env truffleEnv;
     private final Options options;
     private final boolean postInit;
 
@@ -42,18 +43,13 @@ public final class ELispContext implements ELispParser.InternContext {
     private final CyclicAssumption specialVariablesUnchanged;
     private final Cleaner cleaner = Cleaner.create();
 
-    public ELispContext(ELispLanguage language, TruffleLanguage.@Nullable Env env) {
+    public ELispContext(ELispLanguage language, TruffleLanguage.Env env) {
         this.language = language;
-        if (env == null) {
-            this.env = new ConcurrentHashMap<>();
-            this.postInit = false;
-            this.options = new Options(3);
-        } else {
-            this.env = new ConcurrentHashMap<>(env.getEnvironment());
-            this.postInit = !env.getOptions().get(ELispLanguage.BARE);
-            this.options = new Options(env.getOptions().get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
-        }
+        this.env = new HashMap<>(env.getEnvironment());
+        this.postInit = !env.getOptions().get(ELispLanguage.BARE);
+        this.options = new Options(env.getOptions().get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
         this.globals = new ELispGlobals(this);
+        this.truffleEnv = env;
         variablesArray = new SharedIndicesMap.ContextArray<>(
                 language.globalVariablesMap,
                 ValueStorage[]::new,
@@ -99,8 +95,12 @@ public final class ELispContext implements ELispParser.InternContext {
     }
     //#endregion InternContext
 
-    public ConcurrentHashMap<String, String> env() {
+    public HashMap<String, String> env() {
         return env;
+    }
+
+    public ELispLanguage.Env truffleEnv() {
+        return truffleEnv;
     }
 
     @Nullable

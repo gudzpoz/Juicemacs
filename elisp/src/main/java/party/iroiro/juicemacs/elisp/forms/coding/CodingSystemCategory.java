@@ -5,11 +5,13 @@ import party.iroiro.juicemacs.elisp.parser.ByteSequenceReader;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.PrimitiveIterator;
 
 public abstract class CodingSystemCategory {
@@ -37,9 +39,14 @@ public abstract class CodingSystemCategory {
         return this;
     }
 
+    protected int fillTilLimit(ByteBuffer buffer, ReadableByteChannel input, long limit) throws IOException {
+        buffer.limit(buffer.position() + (int) Math.min(buffer.remaining(), limit));
+        return input.read(buffer);
+    }
+
     public abstract boolean detectCoding(ByteSequenceReader source);
-    public abstract MuleStringBuffer decode(InputStream inputStream) throws IOException;
-    public abstract void encode(OutputStream outputStream, PrimitiveIterator.OfInt input) throws IOException;
+    public abstract MuleStringBuffer decode(ReadableByteChannel inputStream, long limit) throws IOException;
+    public abstract void encode(WritableByteChannel outputStream, PrimitiveIterator.OfInt input) throws IOException;
 
     public record CodingSystem(ELispSymbol name, ELispVector attrs, ELispCons aliases, Object eolType) {
     }
@@ -52,28 +59,37 @@ public abstract class CodingSystemCategory {
         }
 
         @Override
-        public MuleStringBuffer decode(InputStream inputStream) throws IOException {
+        public MuleStringBuffer decode(ReadableByteChannel inputStream, long limit) throws IOException {
             MuleStringBuffer output = new MuleStringBuffer();
-            while (true) {
-                int c = inputStream.read();
-                if (c == -1) {
+            ByteBuffer buffer = ByteBuffer.allocate(4 * 0x400);
+            while (limit > 0) {
+                buffer.clear();
+                int c = fillTilLimit(buffer, inputStream, limit);
+                buffer.flip();
+                output.append(MuleString.fromRaw(buffer));
+                if (c <= 0) {
                     break;
                 }
-                output.append((char) inputStream.read());
+                limit -= c;
             }
             return output;
         }
 
+        private void fillBuffer(ByteBuffer buffer, PrimitiveIterator.OfInt input) {
+            while (buffer.hasRemaining() && input.hasNext()) {
+                buffer.put((byte) input.nextInt());
+                // TODO: Use Emacs internal encoding
+            }
+        }
+
         @Override
-        public void encode(OutputStream outputStream, PrimitiveIterator.OfInt input) throws IOException {
+        public void encode(WritableByteChannel outputStream, PrimitiveIterator.OfInt input) throws IOException {
+            ByteBuffer buffer = ByteBuffer.allocate(4 * 1024);
             while (input.hasNext()) {
-                int c = input.nextInt();
-                if (c <= 0xFF) {
-                    outputStream.write(c);
-                } else {
-                    // TODO: Use Emacs internal encoding
-                    outputStream.write(c & 0xFF);
-                }
+                fillBuffer(buffer, input);
+                buffer.flip();
+                outputStream.write(buffer);
+                buffer.clear();
             }
         }
     }

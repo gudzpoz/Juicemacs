@@ -81,7 +81,7 @@ public class BuiltInCoding extends ELispBuiltIns {
         }
     }
 
-    private CodingSystemCategory.@Nullable CodingSystem getCodingSystem(ELispSymbol name) {
+    public CodingSystemCategory.@Nullable CodingSystem getCodingSystem(ELispSymbol name) {
         return CODING_SYSTEM_HASH_TABLE.get(name);
     }
 
@@ -957,8 +957,15 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCodingSystemPlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void codingSystemPlist(Object codingSystem) {
-            throw new UnsupportedOperationException();
+        public Object codingSystemPlist(ELispSymbol codingSystem) {
+            if (codingSystem == NIL) {
+                codingSystem = UNDECIDED;
+            }
+            CodingSystemCategory.@Nullable CodingSystem system = getThis(this).getCodingSystem(codingSystem);
+            if (system == null) {
+                throw ELispSignals.wrongTypeArgument(CODING_SYSTEM_P, codingSystem);
+            }
+            return system.attrs().get(CODING_ATTR_PLIST);
         }
     }
 

@@ -19,6 +19,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -148,6 +149,9 @@ public abstract class ELispSignals {
     //#endregion Function operations
 
     //#region File operations
+    public static ELispSignalException reportFileError(IOException e, Object file) {
+        return signal(FILE_ERROR, e.getMessage(), file);
+    }
     public static ELispSignalException fileMissing(FileNotFoundException e, Object file) {
         return signal(FILE_MISSING, e.getClass().getSimpleName(), e.getMessage(), file);
     }

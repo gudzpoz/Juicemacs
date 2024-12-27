@@ -96,6 +96,15 @@ public abstract class ELispTypeSystem {
         return (long) maybeNil;
     }
 
+    public static Object or(Object... candidates) {
+        for (Object candidate : candidates) {
+            if (!isNil(candidate)) {
+                return candidate;
+            }
+        }
+        return false;
+    }
+
     public static int asInt(Object value) {
         if (value instanceof Long l) {
             return Math.toIntExact(l);
