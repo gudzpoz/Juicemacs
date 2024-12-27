@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -63,8 +64,14 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnibyteCharToMultibyte extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void unibyteCharToMultibyte(Object ch) {
-            throw new UnsupportedOperationException();
+        public static long unibyteCharToMultibyte(long ch) {
+            if (ch < 0 || 0xFF < ch) {
+                throw ELispSignals.error("not a unibyte char");
+            }
+            if (ch < 0x7F) {
+                return ch;
+            }
+            return ELispBuiltInConstants.MAX_5_BYTE_CHAR - 0x7F + ch;
         }
     }
 

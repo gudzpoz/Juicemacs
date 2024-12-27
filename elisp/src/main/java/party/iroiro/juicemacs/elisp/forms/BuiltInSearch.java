@@ -17,6 +17,7 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -236,8 +237,9 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSearchBackward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void searchBackward(Object string, Object bound, Object noerror, Object count) {
-            throw new UnsupportedOperationException();
+        public static Object searchBackward(ELispString string, Object bound, Object noerror, Object count) {
+            long repeat = notNilOr(count, 1);
+            return FSearchForward.searchForward(string, bound, noerror, -repeat);
         }
     }
 
@@ -268,8 +270,49 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSearchForward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void searchForward(Object string, Object bound, Object noerror, Object count) {
-            throw new UnsupportedOperationException();
+        public static Object searchForward(ELispString string, Object bound, Object noerror, Object count) {
+            long repeat = notNilOr(count, 1);
+            boolean forward = repeat >= 0;
+            repeat = Math.abs(repeat);
+            boolean caseFold = !isNil(CASE_FOLD_SEARCH.getValue());
+
+            ELispBuffer buffer = currentBuffer();
+            long start = buffer.getPoint() - 1;
+            long limit = FReSearchForward.getBound(bound, forward);
+            for (int i = 0; i < repeat; i++) {
+                if (currentMatch(buffer, string.value(), start, caseFold)) {
+                    if (forward) {
+                        start++;
+                    } else {
+                        start--;
+                    }
+                    continue;
+                }
+                if (isNil(noerror)) {
+                    throw ELispSignals.searchFailed();
+                }
+                return false;
+            }
+            buffer.setPoint(start + string.length() + 1);
+            return buffer.getPoint();
+        }
+
+        private static boolean currentMatch(ELispBuffer buffer, MuleString string, long start, boolean caseFold) {
+            PrimitiveIterator.OfInt iterator = string.iterator(0);
+            @Nullable ELispCharTable canon = caseFold ? asCharTable(buffer.getCaseCanonTable()) : null;
+            while (iterator.hasNext()) {
+                int c1 = iterator.nextInt();
+                long c2 = buffer.getChar(start);
+                if (caseFold) {
+                    c1 = (int) notNilOr(canon.getChar(c1), c1);
+                    c2 = (int) notNilOr(canon.getChar((int) c2), c2);
+                }
+                if (c1 != c2) {
+                    return false;
+                }
+                start++;
+            }
+            return true;
         }
     }
 
@@ -290,27 +333,9 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReSearchBackward extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
-            long limit = notNilOr(bound, Long.MAX_VALUE);
-            ELispBuffer buffer = getContext().currentBuffer();
-            ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
-            long from = buffer.getPoint();
+        public static Object reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
             long repeat = notNilOr(count, 1);
-            for (long i = 0; i < repeat; i++) {
-                while (from >= limit) {
-                    Object result = pattern.call(buffer, false, from, -1);
-                    if (result instanceof ELispCons cons) {
-                        long start = asLong(cons.car());
-                        buffer.setPoint(start);
-                        return false;
-                    }
-                    from--;
-                }
-            }
-            if (isNil(noerror)) {
-                throw ELispSignals.searchFailed();
-            }
-            return false;
+            return FReSearchForward.reSearchForward(regexp, bound, noerror, -repeat);
         }
     }
 
@@ -346,8 +371,60 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReSearchForward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void reSearchForward(Object regexp, Object bound, Object noerror, Object count) {
-            throw new UnsupportedOperationException();
+        public static Object reSearchForward(ELispString regexp, Object bound, Object noerror, Object count) {
+            long repeat = notNilOr(count, 1);
+            boolean forward = repeat >= 0;
+            repeat = Math.abs(repeat);
+
+            ELispBuffer buffer = currentBuffer();
+            ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(null), regexp, null);
+            long limit = getBound(bound, forward);
+
+            long at = buffer.getPoint() - 1;
+            for (long i = 0; i < repeat; i++) {
+                at = forward
+                        ? searchForwardOnce(pattern, buffer, at, limit)
+                        : searchBackwardOnce(pattern, buffer, at, limit);
+                if (at == -1) {
+                    if (isNil(noerror)) {
+                        throw ELispSignals.searchFailed();
+                    }
+                    return false;
+                }
+            }
+            buffer.setPoint(at + 1);
+            return buffer.getPoint();
+        }
+
+        public static long getBound(Object bound, boolean forward) {
+            return forward
+                    ? (isNil(bound) ? -1 : asLong(bound) - 1)
+                    : notNilOr(bound, 0);
+        }
+
+        private static long searchBackwardOnce(
+                ELispRegExp.CompiledRegExp pattern, ELispBuffer buffer,
+                long from, long limit
+        ) {
+            while (from >= limit) {
+                Object result = pattern.call(buffer, false, from, -1);
+                if (result instanceof ELispCons cons) {
+                    return asLong(cons.get(1));
+                }
+                from--;
+            }
+            return -1;
+        }
+
+        private static long searchForwardOnce(
+                ELispRegExp.CompiledRegExp pattern, ELispBuffer buffer,
+                long from, long limit
+        ) {
+            Object result = pattern.call(buffer, true, from, limit);
+            if (result instanceof ELispCons cons) {
+                return asLong(cons.get(1));
+            }
+            return -1;
         }
     }
 

@@ -5,12 +5,15 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asChar;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInAlloc extends ELispBuiltIns {
@@ -32,8 +35,24 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeString(Object length, Object init, Object multibyte) {
-            throw new UnsupportedOperationException();
+        public static ELispString makeString(long length, Object init, boolean multibyte) {
+            if (length <= 0) {
+                return new ELispString("");
+            }
+            int c = asChar(init);
+            if (length > Integer.MAX_VALUE || multibyte) {
+                throw new UnsupportedOperationException();
+            }
+            if (c <= 0xFF) {
+                byte[] bytes = new byte[(int) length];
+                Arrays.fill(bytes, (byte) c);
+                return new ELispString(MuleString.fromLatin1(bytes));
+            }
+            MuleStringBuffer buffer = new MuleStringBuffer();
+            for (int i = 0; i < length; i++) {
+                buffer.appendCodePoint(c);
+            }
+            return new ELispString(buffer.build());
         }
     }
 
@@ -301,18 +320,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FPurecopy extends ELispBuiltInBaseNode {
         @Specialization
         public static Object purecopy(Object obj) {
-            return pureCopyDeep(obj);
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private static Object pureCopyDeep(Object obj) {
-            // bool-vec, hash-table, etc. are not copied
-            return switch (obj) {
-                case ELispString s -> new ELispString(s.toString());
-                case ELispVector v -> new ELispVector(v);
-                case ELispCons cons -> new ELispCons(purecopy(cons.car()), purecopy(cons.cdr()));
-                default -> obj;
-            };
+            return obj;
         }
     }
 

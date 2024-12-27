@@ -3,8 +3,12 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.notNilOr;
 
 public class BuiltInCmds extends ELispBuiltIns {
     @Override
@@ -78,8 +82,17 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FForwardLine extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void forwardLine(Object n) {
-            throw new UnsupportedOperationException();
+        public long forwardLine(Object n) {
+            long line = notNilOr(n, 1);
+            ELispBuffer buffer = getContext().currentBuffer();
+            PieceTreeBase.Position position = buffer.getPosition();
+            int total = buffer.getLineCount();
+
+            int nextLine = Math.clamp(position.line() + line, 1, total);
+            PieceTreeBase.Position next =
+                    new PieceTreeBase.Position(nextLine, position.column());
+            buffer.setPosition(next);
+            return (long) total - nextLine;
         }
     }
 

@@ -116,8 +116,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGotoChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void gotoChar(Object position) {
-            throw new UnsupportedOperationException();
+        public boolean gotoChar(long position) {
+            getContext().currentBuffer().setPoint(position);
+            return true;
         }
     }
 
