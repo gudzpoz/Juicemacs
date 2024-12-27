@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.mule;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.PrimitiveIterator;
@@ -10,6 +11,19 @@ import java.util.PrimitiveIterator;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class MuleStringBufferTest {
+    @Test
+    public void directCommitTest() {
+        MuleStringBuffer buffer = new MuleStringBuffer();
+        buffer.appendCodePoint('a');
+        MuleByteArrayString s = MuleString.fromRaw(ByteBuffer.allocate(10000));
+        buffer.append(s);
+        assertEquals(10001, buffer.length());
+        assertEquals('a', buffer.codePointAt(0));
+        for (int i = 0; i < 10000; i++) {
+            assertEquals(0, buffer.codePointAt(i + 1));
+        }
+    }
+
     @Test
     public void hugeStringTest() {
         int singleStringLength = 1 << 16;

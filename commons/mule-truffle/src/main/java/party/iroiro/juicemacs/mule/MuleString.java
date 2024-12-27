@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.mule;
 
 import com.oracle.truffle.api.strings.TruffleString;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -107,6 +108,20 @@ public sealed interface MuleString
             min |= b;
         }
         return new MuleByteArrayString(bytes, min < 0 ? MuleStringBuffer.BUILDING_LATIN_1 : MuleStringBuffer.BUILDING_ASCII);
+    }
+
+    static MuleByteArrayString fromRaw(byte[] bytes) {
+        int min = 0;
+        for (byte b : bytes) {
+            min |= b;
+        }
+        return new MuleByteArrayString(bytes, min < 0 ? MuleStringBuffer.BUILDING_UNI_BYTES : MuleStringBuffer.BUILDING_ASCII);
+    }
+
+    static MuleByteArrayString fromRaw(ByteBuffer buffer) {
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        return MuleString.fromRaw(bytes);
     }
 
     static MuleString fromString(String string) {

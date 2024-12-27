@@ -25,7 +25,7 @@ public final class MuleStringBuffer implements MuleString {
     private static final TruffleStringBuilder.ToStringNode TO_STRING = TruffleStringBuilder.ToStringNode.create();
 
     private static final int MAX_COPY_LIMIT = 4096;
-    private static final int MAX_ARRAY_LENGTH = (1 << 16) - 1;
+    private static final int MAX_ARRAY_LENGTH = 1 << 16;
 
     private final LongArrayList startingCodePointIndices;
     private final ArrayList<MuleString> strings;
@@ -58,10 +58,6 @@ public final class MuleStringBuffer implements MuleString {
     private static final int BUILDING_UNICODE = 8;
     /// State `11`: Like `3`, but with non-Unicode code points over [Character#MAX_CODE_POINT]
     private static final int BUILDING_MULE = 16;
-    /// Not a valid state but a flag
-    ///
-    /// Used in [#appendMuleString(MuleString, int, int)] when trying to copy over [#MAX_COPY_LIMIT]
-    private static final int IS_BUILDING_COMMIT_NOW = 1 << 16;
     private final ByteArrayList buildingBytes;
     private final IntArrayList buildingCodePoints;
 
@@ -233,7 +229,8 @@ public final class MuleStringBuffer implements MuleString {
         }
         ensureCapacity();
         if (addLength > MAX_COPY_LIMIT && !(string instanceof MuleStringBuffer)) {
-            state |= IS_BUILDING_COMMIT_NOW;
+            finalizeAndCommit(string, start, end);
+            return this;
         }
         switch (string) {
             case MuleByteArrayString bytes when state < IS_BUILDING_BYTES
@@ -250,14 +247,15 @@ public final class MuleStringBuffer implements MuleString {
             case MuleIntArrayString intArray when state == BUILDING_MULE ->
                     buildingCodePoints.addAll(intArray.intArray(), Math.toIntExact(start), (int) addLength);
             case MuleStringBuffer buffer -> appendBuffer(buffer, start, end);
-            default -> {
-                finalizeCurrent();
-                state &= 0xFF;
-                startingCodePointIndices.add(startingCodePointIndices.getLast() + addLength);
-                strings.add(start == 0  && end == string.length() ? string : string.subSequence(start, end));
-            }
+            default -> finalizeAndCommit(string, start, end);
         }
         return this;
+    }
+
+    private void finalizeAndCommit(MuleString string, long start, long end) {
+        finalizeCurrent();
+        startingCodePointIndices.add(startingCodePointIndices.getLast() + end - start);
+        strings.add(start == 0  && end == string.length() ? string : string.subSequence(start, end));
     }
 
     private void appendBuffer(MuleStringBuffer buffer, long start, long end) {
