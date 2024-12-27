@@ -43,8 +43,12 @@ public class ELispParser {
     private boolean lexicalBinding;
 
     public ELispParser(InternContext context, Source source) {
+        this(context, new ELispLexer(source));
+    }
+
+    public ELispParser(InternContext context, ELispLexer lexer) {
         this.context = context;
-        this.lexer = new ELispLexer(source);
+        this.lexer = lexer;
         try {
             if (peek() instanceof SetLexicalBindingMode(boolean value)) {
                 lexicalBinding = value;
@@ -78,7 +82,7 @@ public class ELispParser {
     }
 
     private final HashMap<Long, Object> cyclicReferences = new HashMap<>();
-    private final HashSet<Object> readObjectsCompleted = new HashSet<>();
+    private final ELispHashtable readObjectsCompleted = new ELispHashtable();
 
     @CompilerDirectives.TruffleBoundary
     private Object nextObject() throws IOException {
@@ -194,17 +198,17 @@ public class ELispParser {
                     throw ELispSignals.invalidReadSyntax("Unexpected self reference");
                 }
                 if (def instanceof ELispCons cons) {
-                    readObjectsCompleted.add(placeholder);
+                    readObjectsCompleted.put(placeholder, true);
                     placeholder.setCar(cons.car());
                     placeholder.setCdr(cons.cdr());
                     yield placeholder;
                 } else {
-                    readObjectsCompleted.add(def);
                     BuiltInLRead.FLreadSubstituteObjectInSubtree.lreadSubstituteObjectInSubtree(
                             def,
                             placeholder,
                             readObjectsCompleted
                     );
+                    readObjectsCompleted.put(def, true);
                     cyclicReferences.put(i, def);
                     yield def;
                 }
@@ -249,7 +253,7 @@ public class ELispParser {
     }
 
     public int getCodepointOffset() {
-        return lexer.getCodepointOffset();
+        return lexer.getCodePointOffset();
     }
 
     public boolean hasNext() throws IOException {
@@ -266,6 +270,17 @@ public class ELispParser {
     @CompilerDirectives.TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source) throws IOException {
         ELispParser parser = new ELispParser(context, source);
+        return parse(language, parser, source);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source, ELispBuffer buffer)
+            throws IOException {
+        ELispParser parser = new ELispParser(context, new ELispLexer(CodePointReader.from(buffer)));
+        return parse(language, parser, source);
+    }
+
+    private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source) throws IOException {
         List<Object> expressions = new ArrayList<>();
         while (parser.hasNext()) {
             expressions.add(parser.nextLisp());

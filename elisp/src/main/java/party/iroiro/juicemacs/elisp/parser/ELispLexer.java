@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.parser;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.Reader;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
@@ -14,6 +13,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
+
+import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
 
 /// A ELisp lexer
 ///
@@ -89,9 +90,9 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 /// input file has invalid Unicode -> `error`).
 ///
 /// One more thing to note is that Emacs seems to read input files with Unicode errors
-/// just fine. But we choose to throw an error in such cases (see [#readCodepointFromCharReader()].
+/// just fine. But we choose to throw an error in such cases (see [#reader.readFromCharReader()].
 ///
-class ELispLexer {
+public class ELispLexer {
 
     public static final int LINE_CONTINUATION = Integer.MIN_VALUE;
 
@@ -304,131 +305,65 @@ class ELispLexer {
     private static final Pattern INTEGER_PATTERN = Pattern.compile("^([+-]?[0-9]+)\\.?$");
     private static final Pattern FLOAT_PATTERN = Pattern.compile("^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?$");
 
-    @Nullable
-    private final ByteSequenceReader byteReader;
-    @Nullable
-    private final Reader charReader;
+    private final CodePointReader reader;
 
     public ELispLexer(Source source) {
         if (source.hasBytes()) {
-            // TODO: Support other encodings
-            // TODO: Emacs actually handles invalid UTF-8 sequences?
-            this.byteReader = new ByteSequenceReader(source.getBytes(), StandardCharsets.UTF_8);
-            this.charReader = null;
+            this.reader = CodePointReader.from(new ByteSequenceReader(source.getBytes(), StandardCharsets.UTF_8));
         } else {
-            this.byteReader = null;
-            this.charReader = source.getReader();
+            this.reader = CodePointReader.from(source.getReader());
         }
+    }
+
+    public ELispLexer(CodePointReader reader) {
+        this.reader = reader;
     }
 
     boolean hasNext() {
-        return !eof;
+        return !reader.isEof();
     }
 
-    /**
-     * Maintained by {@link #readCodepoint()}. See also {@link Token}.
-     */
-    private int line = 1;
-    /**
-     * Maintained by {@link #readCodepoint()}. See also {@link Token}.
-     */
-    private int column = 1;
-    private int codepointOffset = 0;
-    /**
-     * Maintained by {@link #readCodepoint()}.
-     */
-    private boolean eof = false;
-    /**
-     * Maintained by {@link #readCodepoint()} and {@link #peekCodepoint()}.
-     */
-    private int peekedCodepoint = -1;
     private boolean shebang = false;
-
-    /**
-     * Reads a full Unicode codepoint from the reader.
-     *
-     * <p>
-     * The {@link #eof}, {@link #line} and {@link #column} fields are
-     * maintained in this method only. One should take care to not modify
-     * them elsewhere.
-     * </p>
-     */
-    private int readCodepoint() throws IOException {
-        int c = peekCodepoint();
-        peekedCodepoint = -1;
-        if (c == -1) {
-            eof = true;
-            return -1;
-        }
-        if (c == '\n') {
-            line++;
-            column = 1;
-        }
-        column++;
-        codepointOffset++;
-        return c;
-    }
 
     /**
      * @return 1-based line count
      */
     public int getLine() {
-        return line;
+        return reader.getLine();
     }
 
     /**
      * @return 1-based column count
      */
     public int getColumn() {
-        return column;
+        return reader.getColumn();
     }
 
-    public int getCodepointOffset() {
-        return codepointOffset;
-    }
-
-    private int readCodepointFromCharReader() throws IOException {
-        assert charReader != null;
-        int c1 = charReader.read();
-        if (c1 == -1) {
-            return -1;
-        }
-        if (c1 == 0xFFFD) {
-            // FIXME: Actually support Emacs encodings and stop using Java readers.
-            return ' ';
-        }
-        if (!Character.isHighSurrogate((char) c1)) {
-            return c1;
-        }
-        int c2 = noEOF(charReader.read());
-        if (!Character.isLowSurrogate((char) c2)) {
-            // Emacs seems to read text on a best-effort basis...
-            // But we choose to differ here.
-            throw ELispSignals.error("Invalid Unicode surrogate pair");
-        }
-        return Character.toCodePoint((char) c1, (char) c2);
-    }
-
-    private int peekCodepoint() throws IOException {
-        if (peekedCodepoint != -1) {
-            return peekedCodepoint;
-        }
-
-        peekedCodepoint = byteReader == null ? readCodepointFromCharReader() : byteReader.read();
-        return peekedCodepoint;
+    public int getCodePointOffset() {
+        return reader.getCodePointOffset();
     }
 
     private String readLine() throws IOException {
         StringBuilder sb = new StringBuilder();
         while (true) {
-            int c = peekCodepoint();
+            int c = reader.peek();
             if (c == -1 || c == '\n') {
                 break;
             }
-            readCodepoint();
-            sb.appendCodePoint(c);
+            reader.read();
+            sb.appendCodePoint(Character.isValidCodePoint(c) ? c : ' ');
         }
         return sb.toString();
+    }
+
+    private void skipLine() throws IOException {
+        while (true) {
+            int c = reader.peek();
+            if (c == -1 || c == '\n') {
+                break;
+            }
+            reader.read();
+        }
     }
 
     /**
@@ -476,13 +411,13 @@ class ELispLexer {
 
     private BigInteger readInteger(int base, int digits, boolean earlyReturn) throws IOException {
         BigInteger value = new BigInteger("0", base);
-        boolean negative = peekCodepoint() == '-';
+        boolean negative = reader.peek() == '-';
         if (negative) {
-            readCodepoint();
+            reader.read();
         }
         // When `digit == -1`, `i != digits` allows reading an infinitely large number.
         for (int i = 0; i != digits; i++) {
-            int c = peekCodepoint();
+            int c = reader.peek();
             if (earlyReturn) {
                 if (c == -1) {
                     return negative ? value.negate() : value;
@@ -506,7 +441,7 @@ class ELispLexer {
                 }
                 throw ELispSignals.invalidReadSyntax("Expecting fixed number of digits");
             }
-            readCodepoint();
+            reader.read();
             value = value.multiply(BigInteger.valueOf(base)).add(BigInteger.valueOf(digit));
         }
         return negative ? value.negate() : value;
@@ -521,7 +456,7 @@ class ELispLexer {
     }
 
     private int readControlChar(boolean inString) throws IOException {
-        if (peekCodepoint() == -1) {
+        if (reader.peek() == -1) {
             throw ELispSignals.invalidReadSyntax("Invalid modifier");
         }
         int c = readChar(inString);
@@ -538,7 +473,7 @@ class ELispLexer {
     }
 
     private void assertNoSymbolBehindChar() throws IOException {
-        int nch = peekCodepoint();
+        int nch = reader.peek();
         if (nch <= 32
                 || nch == '"' || nch == '\'' || nch == ';' || nch == '('
                 || nch == ')' || nch == '['  || nch == ']' || nch == '#'
@@ -563,17 +498,17 @@ class ELispLexer {
      */
     @CompilerDirectives.TruffleBoundary
     private int readChar(boolean inString) throws IOException {
-        int c = noEOF(readCodepoint());
+        int c = noEOF(reader.read());
         // Normal characters: ?a => 'a'
         if (c != '\\') {
             return c;
         }
-        int escaped = noEOF(peekCodepoint());
+        int escaped = noEOF(reader.peek());
         // Octal escape: ?\001 => '\001', ?\1 => '\001'
         if ('0' <= escaped && escaped <= '7') {
             return maybeRawByte(readEscapedCodepoint(8, 3, true), inString);
         }
-        readCodepoint();
+        reader.read();
         if (inString) {
             // Line continuation, ignored.
             if (escaped == ' ' || escaped == '\n') {
@@ -587,8 +522,8 @@ class ELispLexer {
         // Meta-prefix: ?\s-a => Bit annotated character
         int meta = mapMetaMask(escaped, inString);
         if (meta != -1) {
-            if (peekCodepoint() == '-') {
-                readCodepoint();
+            if (reader.peek() == '-') {
+                reader.read();
                 if (inString && meta > 0x80) {
                     throw ELispSignals.invalidReadSyntax("Invalid modifier in string");
                 }
@@ -606,8 +541,8 @@ class ELispLexer {
             // Control characters: ?\^I or ?\C-I
             case '^' -> readControlChar(inString);
             case 'C' -> {
-                if (peekCodepoint() == '-') {
-                    readCodepoint();
+                if (reader.peek() == '-') {
+                    reader.read();
                     yield readControlChar(inString);
                 } else {
                     throw ELispSignals.invalidReadSyntax("Invalid modifier");
@@ -617,12 +552,12 @@ class ELispLexer {
             case 'u' -> readEscapedCodepoint(16, 4, false);
             case 'U' -> readEscapedCodepoint(16, 8, false);
             case 'N' -> {
-                if (peekCodepoint() == '{') {
-                    readCodepoint();
+                if (reader.peek() == '{') {
+                    reader.read();
                     StringBuilder unicodeName = new StringBuilder();
                     boolean whitespace = false;
                     int u;
-                    while ((u = readCodepoint()) != '}') {
+                    while ((u = reader.read()) != '}') {
                         if (Character.isWhitespace(u)) {
                             if (!whitespace) {
                                 whitespace = true;
@@ -659,10 +594,10 @@ class ELispLexer {
     private MuleString readStr() throws IOException {
         MuleStringBuffer sb = new MuleStringBuffer();
         while (true) {
-            int c = noEOF(peekCodepoint());
+            int c = noEOF(reader.peek());
             switch (c) {
                 case '"' -> {
-                    readCodepoint();
+                    reader.read();
                     return sb.build();
                 }
                 case '\\' -> {
@@ -677,7 +612,7 @@ class ELispLexer {
                     }
                 }
                 default -> {
-                    readCodepoint();
+                    reader.read();
                     sb.appendCodePoint(c);
                 }
             }
@@ -690,15 +625,15 @@ class ELispLexer {
 
     private Token readHashNumToken(int base) throws IOException {
         BigInteger value = readInteger(base, -1, true);
-        switch (peekCodepoint()) {
+        switch (reader.peek()) {
             // #1#
             case '#' -> {
-                readCodepoint();
+                reader.read();
                 return new Token.CircularRef(value.longValueExact());
             }
             // #1=
             case '=' -> {
-                readCodepoint();
+                reader.read();
                 return new Token.CircularDef(value.longValueExact());
             }
             // #24r1k => base-24 integer
@@ -706,19 +641,19 @@ class ELispLexer {
                 if (base != 10) {
                     throw ELispSignals.invalidReadSyntax("Invalid base");
                 }
-                readCodepoint();
+                reader.read();
                 int realBase = value.intValueExact();
                 if (realBase > 36) {
                     throw ELispSignals.invalidReadSyntax("Invalid base");
                 }
                 BigInteger number = readInteger(realBase, -1, true);
-                if (isAlphaNumeric(peekCodepoint())) {
+                if (isAlphaNumeric(reader.peek())) {
                     throw ELispSignals.invalidReadSyntax("Invalid character");
                 }
                 return new Token.Num(NumberVariant.from(number));
             }
             default -> {
-                if (isAlphaNumeric(peekCodepoint())) {
+                if (isAlphaNumeric(reader.peek())) {
                     throw ELispSignals.invalidReadSyntax("Invalid character");
                 }
                 return new Token.Num(NumberVariant.from(value));
@@ -740,22 +675,22 @@ class ELispLexer {
     private Token readSymbolOrNumber(int alreadyRead, boolean uninterned, boolean noShorthand)
             throws IOException {
         boolean symbolOnly = uninterned || noShorthand;
-        StringBuilder sb = new StringBuilder();
+        MuleStringBuffer sb = new MuleStringBuffer();
         boolean escaped = false;
         int c = alreadyRead;
         while (potentialUnescapedSymbolChar(c)) {
             if (alreadyRead == -1) {
-                readCodepoint();
+                reader.read();
             } else {
                 alreadyRead = -1;
             }
             if (c == '\\') {
                 escaped = true;
-                sb.appendCodePoint(readCodepoint());
+                sb.appendCodePoint(reader.read());
             } else {
                 sb.appendCodePoint(c);
             }
-            c = peekCodepoint();
+            c = reader.peek();
         }
         String symbol = sb.toString();
         if (!symbolOnly && !escaped) {
@@ -768,7 +703,7 @@ class ELispLexer {
                 return new Token.Num(new NumberVariant.Float(parseFloat(symbol)));
             }
         }
-        return new Token.Symbol(symbol, !uninterned, !noShorthand);
+        return new Token.Symbol(sb.build(), !uninterned, !noShorthand);
     }
 
     private static final long SIGNIFICAND_BITS = 52;
@@ -815,11 +750,11 @@ class ELispLexer {
      */
     @Nullable
     private Token lexNext() throws IOException {
-        int c = readCodepoint();
+        int c = reader.read();
         if (c == -1) {
             return EOF;
         }
-        if (c == '.' && charNextToDotAllowed(peekCodepoint())) {
+        if (c == '.' && charNextToDotAllowed(reader.peek())) {
             return DOT;
         }
         return switch (c) {
@@ -828,24 +763,24 @@ class ELispLexer {
             case '[' -> SQUARE_OPEN;
             case ']' -> SQUARE_CLOSE;
             case '#' -> {
-                int next = peekCodepoint();
+                int next = reader.peek();
                 if ('0' <= next && next <= '9') {
                     yield readHashNumToken(10);
                 }
-                readCodepoint();
+                reader.read();
                 yield switch (next) {
                     case '\'' -> FUNCTION;
                     case '#' -> EMPTY_SYMBOL;
                     case 's' -> {
-                        if (noEOF(readCodepoint()) != '(') {
+                        if (noEOF(reader.read()) != '(') {
                             throw ELispSignals.invalidReadSyntax("Expected '('");
                         }
                         yield RECORD_OPEN;
                     }
                     case '^' -> {
-                        int subChar = noEOF(readCodepoint());
+                        int subChar = noEOF(reader.read());
                         if (subChar == '^') {
-                            if (noEOF(readCodepoint()) == '[') {
+                            if (noEOF(reader.read()) == '[') {
                                 yield SUB_CHAR_TABLE_OPEN;
                             }
                         } else if (subChar == '[') {
@@ -858,14 +793,14 @@ class ELispLexer {
                     case '&' -> {
                         BigInteger length = readInteger(10, -1, true);
                         long l = length.longValueExact();
-                        if (readCodepoint() != '\"') {
+                        if (reader.read() != '\"') {
                             throw ELispSignals.invalidReadSyntax("Expected '\"'");
                         }
                         yield new Token.BoolVec(l, readStr());
                     }
                     case '!' -> {
-                        readLine();
-                        if (line == 1) {
+                        skipLine();
+                        if (getLine() == 1) {
                             shebang = true;
                         }
                         yield null;
@@ -874,34 +809,30 @@ class ELispLexer {
                     case 'o', 'O' -> readHashNumToken(8);
                     case 'b', 'B' -> readHashNumToken(2);
                     case '@' -> {
-                        if (peekCodepoint() == '0') {
-                            readCodepoint();
-                            if (readCodepoint() == '0') {
+                        if (reader.peek() == '0') {
+                            reader.read();
+                            if (reader.read() == '0') {
                                 // #@00 skips to the end of the file
-                                readCodepoint();
-                                eof = true;
+                                reader.read();
+                                reader.setEof(true);
                                 yield SKIP_TO_END;
                             }
                         }
                         long skip = readInteger(10, -1, true).longValueExact();
-                        if (byteReader != null) {
-                            byteReader.skipBytes((int) skip, peekedCodepoint != -1);
-                            peekedCodepoint = -1;
-                        } else {
-                            //noinspection StatementWithEmptyBody
-                            while (readCodepoint() != '\037') {
-                                // Yes, it is how Emacs does it...
-                            }
+                        // TODO: More efficient way to skip?
+                        //noinspection StatementWithEmptyBody
+                        while (reader.read() != '\037') {
+                            // Yes, it is how Emacs does it...
                         }
                         yield null;
                     }
                     // TODO: #$ - Vload_file_name
                     case '$' -> NIL_SYMBOL;
-                    case ':' -> potentialUnescapedSymbolChar(peekCodepoint())
-                            ? readSymbolOrNumber(readCodepoint(), true, false)
+                    case ':' -> potentialUnescapedSymbolChar(reader.peek())
+                            ? readSymbolOrNumber(reader.read(), true, false)
                             : new Token.Symbol("", false, true);
-                    case '_' -> potentialUnescapedSymbolChar(peekCodepoint())
-                            ? readSymbolOrNumber(readCodepoint(), false, true)
+                    case '_' -> potentialUnescapedSymbolChar(reader.peek())
+                            ? readSymbolOrNumber(reader.read(), false, true)
                             : EMPTY_SYMBOL;
                     default -> throw ELispSignals.invalidReadSyntax("Expected a number base indicator");
                 };
@@ -915,21 +846,23 @@ class ELispLexer {
             case '\'' -> QUOTE;
             case '`' -> BACK_QUOTE;
             case ',' -> {
-                if (peekCodepoint() == '@') {
-                    readCodepoint();
+                if (reader.peek() == '@') {
+                    reader.read();
                     yield UNQUOTE_SPLICING;
                 }
                 yield UNQUOTE;
             }
             case ';' -> {
-                String comment = readLine();
-                if (line == 1 || (shebang && line == 2)) {
+                if (getLine() == 1 || (shebang && getLine() == 2)) {
+                    String comment = readLine();
                     Matcher matcher = LEXICAL_BINDING_PATTERN.matcher(comment);
                     if (matcher.find()) {
                         yield new Token.SetLexicalBindingMode(
                                 !matcher.group(1).equals("nil")
                         );
                     }
+                } else {
+                    skipLine();
                 }
                 yield null;
             }
@@ -939,16 +872,16 @@ class ELispLexer {
 
     @CompilerDirectives.TruffleBoundary
     Token next() throws IOException {
-        if (eof) {
+        if (!hasNext()) {
             throw new EOFException();
         }
         while (true) {
             while (true) {
-                int c = peekCodepoint();
+                int c = reader.peek();
                 if (c != ' ' && c != '\n' && c != '\r' && c != '\t') {
                     break;
                 }
-                readCodepoint();
+                reader.read();
             }
             Token data = lexNext();
             if (data != null) {
@@ -956,12 +889,4 @@ class ELispLexer {
             }
         }
     }
-
-    private static int noEOF(int c) throws IOException {
-        if (c == -1) {
-            throw new EOFException();
-        }
-        return c;
-    }
-
 }

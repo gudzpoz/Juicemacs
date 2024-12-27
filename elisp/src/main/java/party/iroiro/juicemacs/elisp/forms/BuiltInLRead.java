@@ -608,14 +608,13 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLreadSubstituteObjectInSubtree extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean lreadSubstituteObjectInSubtree(Object object, Object placeholder, Object completed) {
+        public static boolean lreadSubstituteObjectInSubtree(Object object, Object placeholder, ELispHashtable completed) {
             new SubstituteObjectRecurse(
                     object,
                     placeholder,
-                    completed instanceof ELispHashtable t ? t : null,
-                    completed instanceof ELispHashtable ? null : new HashSet<>()
+                    completed
             ).substitute(object);
-            return false; // return Qnil;
+            return false;
         }
     }
 

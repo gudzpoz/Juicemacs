@@ -1,18 +1,18 @@
 package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.EOFException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,13 +23,36 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
 public class ELispParserTest {
+    private static final ELispParser.InternContext context = new ELispParser.InternContext() {
+        final Map<MuleString, ELispSymbol> symbolMap = new HashMap<>(Map.of(
+                MuleString.fromString("t"), T,
+                MuleString.fromString("nil"), NIL,
+                MuleString.fromString("float"), FLOAT,
+                MuleString.fromString("hash-table"), HASH_TABLE,
+                MuleString.fromString("data"), DATA,
+                MuleString.fromString("key"), KEY
+        ));
 
-    private static final ELispContext context = new ELispContext(new ELispLanguage(), null);
+        @Override
+        public ELispSymbol intern(String name) {
+            return intern(MuleString.fromString(name));
+        }
 
-    @BeforeAll
-    public static void init() {
-        context.globals().initSymbols();
-    }
+        @Override
+        public ELispSymbol intern(MuleString name) {
+            ELispSymbol symbol = symbolMap.get(name);
+            if (symbol == null) {
+                symbol = new ELispSymbol(name);
+                symbolMap.put(name, symbol);
+            }
+            return symbol;
+        }
+
+        @Override
+        public MuleString applyShorthands(MuleString symbol) {
+            return symbol;
+        }
+    };
 
     private Object read(String content) throws IOException {
         return ELispParser.read(
@@ -46,7 +69,6 @@ public class ELispParserTest {
             "nil", NIL,
             "#@00", false,
             "?a", (long) 'a',
-            "e ?���� "
     };
 
     @Test

@@ -216,7 +216,7 @@ public class ELispLexerTest {
             int c = (int) CHAR_TESTS[i + 1];
             ELispLexer lexer = lexer(s);
             Char actual = (Char) lexer.next();
-            assertEquals(s.length(), lexer.getCodepointOffset(), s);
+            assertEquals(s.length(), lexer.getCodePointOffset(), s);
             assertEquals(c, actual.value(), s);
         }
         "\n \"';()[]#?`,.".chars().forEach((c) -> assertDoesNotThrow(() -> {
@@ -420,32 +420,27 @@ public class ELispLexerTest {
         }
     }
 
+    private static final Object[] STRING_TESTS = {
+            "\"test\"", "test",
+            "\"\\n\\ \\\n\"", "\n",
+            "\"\\M-1\"", MuleString.fromRaw(new byte[]{(byte) 0xb1}),
+            "\"\\70@\\70[\\70`\\70{\"", "8@8[8`8{",
+            "\"\\C-[\"", "\u001b",
+            "\"\\s\"", " ",
+            "\"\\\\`\\376\\377\"", MuleString.fromRaw(new byte[]{'\\', '`', (byte) 0xfe, (byte) 0xff}),
+    };
+
     @Test
     public void testStr() throws IOException {
-        assertEquals(Arrays.asList(
-                new Str(MuleString.fromString("test")),
-                new EOF()
-        ), lex("\"test\""));
-        assertEquals(Arrays.asList(
-                new Str(MuleString.fromString("\n")),
-                new EOF()
-        ), lex("\"\\n\\ \\\n\""));
-        assertEquals(Arrays.asList(
-                new Str(MuleString.fromString("±")),
-                new EOF()
-        ), lex("\"\\M-1\""));
-        assertEquals(Arrays.asList(
-                new Str(MuleString.fromString("8@8[8`8{")),
-                new EOF()
-        ), lex("\"\\70@\\70[\\70`\\70{\""));
-        assertEquals(Arrays.asList(
-                new Str(MuleString.fromString("\u001b")),
-                new EOF()
-        ), lex("\"\\C-[\""));
-        assertEquals(Arrays.asList(
-                new Str(MuleString.fromString(" ")),
-                new EOF()
-        ), lex("\"\\s\""));
+        for (int i = 0; i < STRING_TESTS.length; i += 2) {
+            String input = (String) STRING_TESTS[i];
+            Object expected = STRING_TESTS[i + 1];
+            MuleString expectedStr = expected instanceof MuleString s ? s : MuleString.fromString(expected.toString());
+            assertEquals(Arrays.asList(
+                    new Str(expectedStr),
+                    new EOF()
+            ), lex(input));
+        }
     }
 
     private static final String[] SYMBOL_TESTS = new String[]{
