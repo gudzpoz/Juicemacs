@@ -18,6 +18,7 @@ import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SYSTEM_NAME;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 

@@ -3,13 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asFrame;
 
 @NodeChild(value = "arguments", type = ELispExpressionNode[].class)
 public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
@@ -17,14 +11,6 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
             .content(Source.CONTENT_NONE)
             .internal(true)
             .build();
-
-    public static ELispBuffer currentBuffer() {
-        return asBuffer(ELispLanguage.get(null).currentBuffer().getValue());
-    }
-
-    public static ELispFrame currentFrame() {
-        return asFrame(ELispLanguage.get(null).currentFrame().getValue());
-    }
 
     @Override
     public SourceSection getSourceSection() {

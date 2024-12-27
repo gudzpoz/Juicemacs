@@ -12,8 +12,9 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asStr;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInFileIO extends ELispBuiltIns {
     @Override

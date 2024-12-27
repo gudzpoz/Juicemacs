@@ -21,7 +21,7 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentBuffer;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 

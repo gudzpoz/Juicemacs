@@ -15,8 +15,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Objects;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentBuffer;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.currentFrame;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentFrame;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 

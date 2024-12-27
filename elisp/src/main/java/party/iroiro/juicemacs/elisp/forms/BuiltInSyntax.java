@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.PrimitiveIterator;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 

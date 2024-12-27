@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInBuffer extends ELispBuiltIns {
@@ -455,8 +456,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetBufferModifiedP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setBufferModifiedP(Object flag) {
-            throw new UnsupportedOperationException();
+        public static boolean setBufferModifiedP(Object flag) {
+            // TODO
+            return false;
         }
     }
 
@@ -622,8 +624,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void killBuffer(Object bufferOrName) {
-            throw new UnsupportedOperationException();
+        public static boolean killBuffer(Object bufferOrName) {
+            // TODO
+            return false;
         }
     }
 
@@ -725,8 +728,10 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEraseBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void eraseBuffer() {
-            throw new UnsupportedOperationException();
+        public static boolean eraseBuffer() {
+            // TODO
+            currentBuffer().erase();
+            return false;
         }
     }
 
