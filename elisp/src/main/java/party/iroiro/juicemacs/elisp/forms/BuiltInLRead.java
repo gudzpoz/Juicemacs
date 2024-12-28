@@ -1,15 +1,18 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
+import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
+import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
@@ -18,11 +21,13 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
-import java.io.*;
+import java.io.EOFException;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -59,12 +64,14 @@ public class BuiltInLRead extends ELispBuiltIns {
     @Nullable
     public static ELispString locateOpenP(Object paths, ELispString name, Object suffixes,
                                           Object predicate, boolean newer, boolean noNative) {
+        TruffleLanguage.Env env = ELispContext.get(null).truffleEnv();
+
         Instant saveMtime = Instant.MIN;
         boolean absolute = completeFilenameP(name);
         ELispString original = name;
         @Nullable ELispString result = null;
         ELispCons pathList = paths instanceof ELispCons cons ? cons : new ELispCons(new ELispString("."));
-        ELispCons suffixList = suffixes instanceof ELispCons cons ? cons : new ELispCons(new ELispString(""));
+        ELispCons suffixList = new ELispCons(new ELispString(""), suffixes);
         ELispContext context = ELispContext.get(null);
         for (Object path : pathList) {
             ELispString directory = asStr(path);
@@ -90,7 +97,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
                 boolean exists;
                 if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
-                    exists = new File(test.asString()).canRead();
+                    exists = env.getPublicTruffleFile(test.toString()).isReadable();
                 } else {
                     if (isNil(predicate) || isT(predicate)) {
                         exists = BuiltInFileIO.FFileReadableP.fileReadableP(test);
@@ -107,7 +114,13 @@ public class BuiltInLRead extends ELispBuiltIns {
                     if (!newer) {
                         return test;
                     }
-                    Instant lastModified = Instant.ofEpochMilli(new File(test.asString()).lastModified());
+                    Instant lastModified;
+                    try {
+                        FileTime lastModifiedTime = env.getPublicTruffleFile(test.toString()).getLastModifiedTime();
+                        lastModified = lastModifiedTime.toInstant();
+                    } catch (IOException e) {
+                        throw ELispSignals.fileMissing(new FileNotFoundException(test.toString()), test);
+                    }
                     if (lastModified.isAfter(saveMtime)) {
                         result = test;
                     }
@@ -123,6 +136,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     @Nullable
     public static ELispRootNode loadFile(ELispLanguage language, Object file, boolean errorIfNotFound) {
         CompilerDirectives.transferToInterpreter();
+        TruffleLanguage.Env env = ELispContext.get(null).truffleEnv();
+
         Object loadPath = LOAD_PATH.getValue();
         if (isNil(loadPath)) {
             if (errorIfNotFound) {
@@ -132,29 +147,25 @@ public class BuiltInLRead extends ELispBuiltIns {
         }
         String stem = file.toString();
         for (Object path : asCons(loadPath)) {
-            Path directory = Path.of(asStr(path).toString());
-            Path target;
+            TruffleFile directory = env.getPublicTruffleFile(asStr(path).toString()).getAbsoluteFile();
+            TruffleFile target;
             if (stem.endsWith(".el") || stem.endsWith(".elc")) {
                 target = directory.resolve(stem);
             } else {
                 // TODO: Support bytecode before trying to load bytecode files
                 // target = directory.resolve(stem + ".elc");
                 target = directory.resolve(stem + ".el");
-                if (!target.toFile().isFile()) {
+                if (!target.isRegularFile()) {
                     target = directory.resolve(stem + ".el");
                 }
             }
-            if (target.toFile().isFile()) {
+            if (target.isRegularFile()) {
                 try {
-                    System.out.println("load: " + Path.of(".").toAbsolutePath().relativize(target));
+                    System.out.println("load: " + env.getCurrentWorkingDirectory().getAbsoluteFile().relativize(target));
                     return ELispParser.parse(
                             language,
                             ELispContext.get(null),
-                            Source.newBuilder(
-                                    "elisp",
-                                    new FileReader(target.toFile()),
-                                    target.toFile().getName()
-                            ).build()
+                            Source.newBuilder("elisp", target).build()
                     );
                 } catch (FileNotFoundException e) {
                     throw ELispSignals.fileMissing(e, target);
@@ -177,8 +188,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     public record SubstituteObjectRecurse(
             Object object,
             Object placeholder,
-            @Nullable ELispHashtable recursive,
-            @Nullable HashSet<Object> seen
+            ELispHashtable recursive
     ) {
         @CompilerDirectives.TruffleBoundary
         public Object substitute(Object tree) {
@@ -190,17 +200,22 @@ public class BuiltInLRead extends ELispBuiltIns {
                 case ELispString s when s.intervals() == 0 -> tree;
                 case ELispBoolVector _ -> tree;
                 default -> {
-                    if (recursive == null) {
-                        if (seen != null && seen.contains(tree)) {
-                            yield tree;
-                        }
-                    } else if (recursive.containsKey(tree)) {
+                    if (recursive.containsKey(tree)) {
                         yield tree;
                     }
                     yield switch (tree) {
                         case ELispCons cons -> {
-                            cons.setCar(substitute(cons.car()));
-                            cons.setCdr(substitute(cons.cdr()));
+                            ELispCons.ConsIterator iterator = cons.consIterator(0);
+                            ELispCons last = cons;
+                            while (iterator.hasNextCons()) {
+                                last = iterator.nextCons();
+                                last.setCar(substitute(last.car()));
+                                if (last.cdr() == placeholder) {
+                                    last.setCdr(object);
+                                    yield tree;
+                                }
+                            }
+                            last.setCdr(substitute(last.cdr()));
                             yield cons;
                         }
                         case ELispString s -> {
@@ -408,16 +423,43 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "load", minArgs = 1, maxArgs = 5)
     @GenerateNodeFactory
     public abstract static class FLoad extends ELispBuiltInBaseNode {
+        static GlobalVariableReadNode createReadNode() {
+            return GlobalVariableReadNodeGen.create(LOAD_SOURCE_FILE_FUNCTION);
+        }
+
         @Specialization
-        public boolean load(Object file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix,
-                            @Cached FunctionDispatchNode dispatchNode) {
+        public boolean load(VirtualFrame frame,
+                            ELispString file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix,
+                            @Cached(value = "createReadNode()", neverDefault = true) GlobalVariableReadNode loadSourceFileFunction,
+                            @Cached FunctionDispatchNode dispatchNode,
+                            @Bind("this") Node node) {
             // TODO: Potential lock candidate
-            ELispRootNode root = loadFile(getLanguage(), file, isNil(noerror));
-            if (root == null) {
-                return false;
+            Object loader = loadSourceFileFunction.executeGeneric(frame);
+            if (isNil(loader)) {
+                ELispRootNode root = loadFile(getLanguage(), file, isNil(noerror));
+                if (root == null) {
+                    return false;
+                }
+                dispatchNode.executeDispatch(node, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
+                return true;
+            } else {
+                ELispString path = locateOpenP(LOAD_PATH.getValue(), file,
+                        // LOAD_SUFFIXES.getValue(),
+                        new ELispCons(new ELispString(".el")),
+                        false, true, true);
+                if (path == null) {
+                    if (isNil(noerror)) {
+                        throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
+                    }
+                    return false;
+                }
+                return !isNil(BuiltInEval.FFuncall.funcall(loader, new Object[]{
+                        path,
+                        file,
+                        noerror,
+                        nomessage,
+                }));
             }
-            dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
-            return true;
         }
     }
 
@@ -479,8 +521,19 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEvalBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
-            throw new UnsupportedOperationException();
+        public boolean evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
+            ELispBuffer current = isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer);
+            ELispString name = asStr(or(current.getFileTruename(), current.getFilename(), current.getName()));
+            Source source = Source.newBuilder("elisp", "nil", name.toString())
+                    .content(Source.CONTENT_NONE)
+                    .build();
+            try {
+                ELispRootNode root = ELispParser.parse(getLanguage(), getContext(), source, current);
+                root.getCallTarget().call();
+            } catch (IOException e) {
+                throw ELispSignals.error(e.getMessage());
+            }
+            return true;
         }
     }
 
