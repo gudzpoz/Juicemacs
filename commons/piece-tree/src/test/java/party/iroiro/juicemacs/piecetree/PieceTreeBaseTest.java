@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.piecetree;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.mule.MuleString;
 
+import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -379,6 +380,21 @@ public class PieceTreeBaseTest {
             }
 
             assertValidTree(tree);
+        }
+    }
+
+    @Test
+    public void wholeFileTest() throws IOException {
+        File file = new File("../../elisp/emacs/lisp/ldefs-boot.el");
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            sb.append(reader.readLine()).append('\n');
+        }
+        String content = sb.toString();
+        for (boolean b : new boolean[]{true, false}) {
+            PieceTreeBase tree = from("");
+            tree.insert(0, MuleString.fromString(content), b);
+            assertEquals(content, tree.getLinesRawContent().toString());
         }
     }
 }

@@ -229,4 +229,13 @@ public class MuleStringBufferTest {
                         .build().toString()
         );
     }
+
+    @Test
+    public void substringTest() {
+        MuleStringBuffer buffer = new MuleStringBuffer();
+        for (int i = 0; i < 100; i++) {
+            buffer.appendCodePoint('a');
+        }
+        assertEquals("aaa", buffer.substring(3, 6).toString());
+    }
 }

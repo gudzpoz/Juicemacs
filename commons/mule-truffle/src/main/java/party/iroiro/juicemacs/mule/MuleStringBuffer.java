@@ -108,7 +108,7 @@ public final class MuleStringBuffer implements MuleString {
             long last = startingCodePointIndices.getLast();
             if (index >= last) {
                 int buildingIndex = Math.toIntExact(index - last);
-                if (buildingIndex >= buildingLength()) {
+                if (buildingIndex > buildingLength()) {
                     throw new IndexOutOfBoundsException("Index out of bounds");
                 }
                 return -buildingIndex - 1;
@@ -179,6 +179,10 @@ public final class MuleStringBuffer implements MuleString {
         }
         if (state == BUILDING_UNI_BYTES) {
             if (codePoint <= 0x7F) {
+                buildingBytes.add((byte) codePoint);
+                return this;
+            }
+            if (codePoint >= MuleByteArrayString.RAW_BYTE_BASE) {
                 buildingBytes.add((byte) codePoint);
                 return this;
             }
@@ -258,16 +262,16 @@ public final class MuleStringBuffer implements MuleString {
         strings.add(start == 0  && end == string.length() ? string : string.subSequence(start, end));
     }
 
-    private void appendBuffer(MuleStringBuffer buffer, long start, long end) {
+    private void appendBuffer(MuleStringBuffer buffer, final long start, final long end) {
         final int startI = buffer.offsetToStringIndex(start);
-        final int endI = end == buffer.length() ? -1 : buffer.offsetToStringIndex(end);
+        final int endI = buffer.offsetToStringIndex(end);
 
         // Supplied buffer can be `this`. So we need to pre-store the states.
-        long last = buffer.startingCodePointIndices.getLast();
+        final long last = buffer.startingCodePointIndices.getLast();
         int bufferState = buffer.state;
         byte[] trailingBytes = null;
         int[] trailingCodePoints = null;
-        if (endI == -1 && end != last) {
+        if (end > last) {
             if (bufferState < IS_BUILDING_BYTES) {
                 trailingBytes = buffer.buildingBytes.toArray();
             } else {
@@ -275,8 +279,8 @@ public final class MuleStringBuffer implements MuleString {
             }
         }
 
-        if (startI != -1) {
-            int iterEndI = endI == -1 ? buffer.strings.size() - 1 : endI;
+        if (startI >= 0) {
+            int iterEndI = endI < 0 ? buffer.strings.size() - 1 : endI;
             int currentI = startI;
             while (currentI <= iterEndI) {
                 MuleString substring = buffer.strings.get(currentI);
@@ -301,10 +305,10 @@ public final class MuleStringBuffer implements MuleString {
             int substringStart = last > start ? 0 : (int) (start - last);
             int substringEnd = (int) (end - last);
             if (trailingBytes != null) {
-                buildingBytes.addAll(trailingBytes, substringStart, substringEnd);
+                buildingBytes.addAll(trailingBytes, substringStart, substringEnd - substringStart);
             }
             if (trailingCodePoints != null) {
-                buildingCodePoints.addAll(trailingCodePoints, substringStart, substringEnd);
+                buildingCodePoints.addAll(trailingCodePoints, substringStart, substringEnd - substringStart);
             }
             state = bufferState;
         }

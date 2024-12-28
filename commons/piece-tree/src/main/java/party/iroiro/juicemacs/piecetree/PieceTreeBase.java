@@ -440,7 +440,7 @@ public final class PieceTreeBase {
         }
     }
 
-    public int getLineCharCode(int lineNumber, int index) {
+    public int getLineCharCode(int lineNumber, long index) {
         NodePosition nodePos = nodeAt2(lineNumber, index + 1);
         return getCharCode(nodePos);
     }
@@ -453,12 +453,12 @@ public final class PieceTreeBase {
         return getOffsetAt(lineNumber + 1, 1) - getOffsetAt(lineNumber, 1) - EOL.length();
     }
 
-    public int getCharCode(int offset) {
+    public int getCharCode(long offset) {
         NodePosition nodePos = nodeAt(offset);
         return getCharCode(nodePos);
     }
 
-    public MuleString getNearestChunk(int offset) {
+    public MuleString getNearestChunk(long offset) {
         NodePosition nodePos = nodeAt(offset);
         if (nodePos.remainder == nodePos.node.piece.length) {
             // the offset is at the head of next node.
