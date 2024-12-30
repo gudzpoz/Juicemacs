@@ -330,6 +330,9 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             case ELispCons quoted when car == QUOTE && isNil(quoted.cdr) -> {
                 return "'" + ELispValue.display(quoted.car);
             }
+            case ELispCons function when car == FUNCTION && isNil(function.cdr) -> {
+                return "#'" + ELispValue.display(function.car);
+            }
             case ELispCons backquote when car == BACKQUOTE && isNil(backquote.cdr) -> {
                 return "`" + ELispValue.display(backquote.car);
             }

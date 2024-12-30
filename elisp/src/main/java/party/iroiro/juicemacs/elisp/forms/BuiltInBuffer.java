@@ -28,18 +28,18 @@ public class BuiltInBuffer extends ELispBuiltIns {
         return BuiltInBufferFactory.getFactories();
     }
 
-    private final HashMap<MuleString, ELispBuffer> BUFFERS = new HashMap<>();
-    private final ValueStorage.Forwarded MINIBUFFER_LIST = new ValueStorage.Forwarded();
+    private final HashMap<MuleString, ELispBuffer> buffers = new HashMap<>();
+    private final ValueStorage.Forwarded minibufferList = new ValueStorage.Forwarded();
 
     @CompilerDirectives.TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(MuleString name) {
         // TODO: Handle name changes?
-        return ELispContext.get(null).globals().builtInBuffer.BUFFERS.get(name);
+        return ELispContext.get(null).globals().builtInBuffer.buffers.get(name);
     }
     @CompilerDirectives.TruffleBoundary
     private static void putBuffer(MuleString name, ELispBuffer buffer) {
-        ELispContext.get(null).globals().builtInBuffer.BUFFERS.put(name, buffer);
+        ELispContext.get(null).globals().builtInBuffer.buffers.put(name, buffer);
     }
 
     public static int downCase(int c, ELispBuffer buffer) {
@@ -58,22 +58,22 @@ public class BuiltInBuffer extends ELispBuiltIns {
     }
 
     public static ELispBuffer getMiniBuffer(int depth) {
-        ValueStorage.Forwarded miniBuffers = ELispContext.get(null).globals().builtInBuffer.MINIBUFFER_LIST;
+        ValueStorage.Forwarded miniBuffers = ELispContext.get(null).globals().builtInBuffer.minibufferList;
         Object tail = BuiltInFns.FNthcdr.nthcdr(depth, miniBuffers.getValue());
         if (isNil(tail)) {
             tail = new ELispCons(false);
             miniBuffers.setValue(BuiltInFns.FNconc.nconc(new Object[]{miniBuffers.getValue(), tail}));
         }
         Object buffer = BuiltInData.FCar.car(tail);
-        if (!(buffer instanceof ELispBuffer buf) || !buf.isLive()) {
+        if (buffer instanceof ELispBuffer buf && buf.isLive()) {
+            // TODO: reset
+            buf.resetLocalVariables(true);
+            return buf;
+        } else {
             ELispBuffer newBuffer = FGetBufferCreate.getBufferCreate(new ELispString(" *Minibuf-" + depth + "*"), false);
             BuiltInData.FSetcar.setcar(asCons(tail), newBuffer);
             FBufferEnableUndo.bufferEnableUndo(newBuffer);
             return newBuffer;
-        } else {
-            // TODO: reset
-            buf.resetLocalVariables(true);
-            return buf;
         }
     }
 

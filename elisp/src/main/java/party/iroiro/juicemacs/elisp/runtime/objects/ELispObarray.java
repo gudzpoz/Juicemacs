@@ -12,6 +12,7 @@ public record ELispObarray(HashMap<MuleString, ELispSymbol> symbols) {
         return symbols.computeIfAbsent(name, ELispSymbol::new);
     }
 
+    @SuppressWarnings("PMD.TruffleNoDirectRecursion")
     public ELispSymbol intern(String name) {
         return intern(MuleString.fromString(name));
     }

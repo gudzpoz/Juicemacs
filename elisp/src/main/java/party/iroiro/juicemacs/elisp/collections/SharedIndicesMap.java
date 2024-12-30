@@ -29,6 +29,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
  * each org.truffleruby.RubyContext have separate {@link ContextArray}s. This enables looking up names and
  * storing only a constant index in the AST and yet handle multiple contexts sharing that AST and having different
  * values for a name. */
+@SuppressWarnings("PMD.NoBoxedPrimitivesRule")
 public final class SharedIndicesMap {
 
     private final AtomicInteger nextIndex = new AtomicInteger(0);

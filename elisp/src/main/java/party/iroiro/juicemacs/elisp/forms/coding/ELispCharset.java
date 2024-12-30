@@ -382,7 +382,7 @@ public final class ELispCharset {
         }
         // TODO: Support lazy loading of charset maps
         @Nullable ELispVector decodingMap = null;
-        ELispCharTable unifyTable = asCharTable(builtInCharSet.CHAR_UNIFY_TABLE.getValue());
+        ELispCharTable unifyTable = asCharTable(builtInCharSet.charUnifyTable.getValue());
         ELispCharTable encodingTable;
         {
             // Decoding
@@ -472,7 +472,7 @@ public final class ELispCharset {
                 long c = index + charset.codeOffset;
                 if (charset.unifiedP && Character.MAX_CODE_POINT < c && c <= MAX_CHAR) {
                     // TODO: Is ELispContext.get(null) efficient enough?
-                    ValueStorage.Forwarded charUnifyTable = ELispContext.get(null).globals().builtInCharSet.CHAR_UNIFY_TABLE;
+                    ValueStorage.Forwarded charUnifyTable = ELispContext.get(null).globals().builtInCharSet.charUnifyTable;
                     Object result = asCharTable(charUnifyTable.getValue()).getChar(Math.toIntExact(c));
                     return notNilOr(result, c);
                 }

@@ -328,7 +328,7 @@ public class BuiltInFns extends ELispBuiltIns {
             long len1 = notNilOr(end1, str1.length());
             long len2 = notNilOr(end2, str2.length());
             long limit = Math.min(len1, len2);
-            int count = 0;
+            long count = 0;
             while (count < limit) {
                 if (chars1.hasNext() && chars2.hasNext()) {
                     long c1 = chars1.nextInt();
@@ -1508,10 +1508,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FGet extends ELispBuiltInBaseNode {
         @Specialization
         public static Object get(Object symbol, Object propname) {
-            if (symbol instanceof ELispSymbol sym) {
-                return sym.getProperty(propname);
-            }
-            return false;
+            return asSym(symbol).getProperty(propname);
         }
     }
 
@@ -1550,7 +1547,7 @@ public class BuiltInFns extends ELispBuiltIns {
             do {
                 Object key = i.next();
                 tail = i.currentCons();
-                if (key.equals(prop)) {
+                if (BuiltInData.FEq.eq(key, prop)) {
                     tail.setCar(val);
                     return list;
                     }

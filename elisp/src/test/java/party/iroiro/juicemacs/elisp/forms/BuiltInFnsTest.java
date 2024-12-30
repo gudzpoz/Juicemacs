@@ -1,5 +1,8 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import org.graalvm.polyglot.Context;
+import org.junit.jupiter.api.Test;
+
 public class BuiltInFnsTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
             "(length nil)", 0L,
@@ -36,6 +39,7 @@ public class BuiltInFnsTest extends BaseFormTest {
             "(null (member \"1\" '(\"1\" 2 3)))", false,
             "(member 4 '(1 2 3))", false,
             "(member 1 nil)", false,
+            "(member t '(t))", true,
             "(car (memq 1 '(1 2 3)))", 1L,
             "(null (memq \"1\" '(\"1\" 2 3)))", true,
             "(memq 1 nil)", false,

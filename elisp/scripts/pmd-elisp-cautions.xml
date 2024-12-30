@@ -80,6 +80,72 @@
         </properties>
     </rule>
 
+    <rule name="ELispDoNotUseEqualsToCompare"
+          language="java"
+          message="Instead of using Object::equals, use FEq::eq to avoid edge cases."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            In our interpreter, the t/nil values both have two representations:
+            true (as a symbol) and Boolean.TRUE, nil (as a symbol) and Boolean.FALSE.
+            The equality check is not reliable (e.g., Boolean.FALSE.equals(NIL) is false).
+            Use FEq::eq to handle this correctly.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+               //MethodCall[@MethodName="equals"]
+               [./*[1][pmd-java:typeIsExactly("java.lang.Object")]]
+               [count(./ArgumentList/*)=1]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="ELispConvertBooleansToSymbols"
+          language="java"
+          message="When using instanceof, remember to use toSym(...) to convert booleans over."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Boolean.TRUE/FALSE are treated as symbols in the interpreter.
+            Remember to use toSym(...) to convert booleans over.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //InfixExpression[@Operator="instanceof"]
+                [not(./MethodCall[@MethodName="toSym"])]
+                [
+                 ./TypeExpression/ClassType[@SimpleName="ELispSymbol"]
+                 or
+                 ./PatternExpression/TypePattern/ClassType[@SimpleName="ELispSymbol"]
+                ]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="ELispSwitchConvertBooleansToSymbols"
+          language="java"
+          message="When using switch pattern matching, remember to use toSym(...) to convert booleans over."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Boolean.TRUE/FALSE are treated as symbols in the interpreter.
+            Remember to use toSym(...) to convert booleans over.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //SwitchStatement
+                [not(./MethodCall[@MethodName="toSym"])]
+                [./SwitchArrowBranch/SwitchLabel/TypePattern/ClassType[@SimpleName="ELispSymbol"]]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <rule name="TruffleNodeMissingExecuteVoid"
           language="java"
           message="Please implement executeVoid()."
@@ -121,6 +187,7 @@
                 <value><![CDATA[
                 //NullLiteral
                 [not(ancestor::InfixExpression[@Operator=("==", "!=")])]
+                [not(ancestor::MethodCall[@MethodName="get" or @MethodName="getThis"])]
                 [not(ancestor::*//Annotation[@SimpleName="Nullable"])]
                 ]]></value>
             </property>

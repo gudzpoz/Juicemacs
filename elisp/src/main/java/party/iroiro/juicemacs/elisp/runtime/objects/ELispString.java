@@ -11,6 +11,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -182,7 +183,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         @Override
         public boolean equals(Object obj) {
             return obj instanceof Properties props
-                    && propertyList.equals(props.propertyList)
+                    && BuiltInData.FEq.eq(propertyList, props.propertyList)
                     && super.equals(obj);
         }
     }

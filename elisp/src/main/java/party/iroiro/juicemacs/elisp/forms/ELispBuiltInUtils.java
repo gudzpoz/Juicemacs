@@ -44,6 +44,7 @@ public abstract class ELispBuiltInUtils {
 
     public record CurrentBufferScope(ELispBuffer current, ValueStorage.Forwarded storage, Object prev)
             implements AutoCloseable {
+        @Override
         public void close() {
             storage.setValue(prev);
         }

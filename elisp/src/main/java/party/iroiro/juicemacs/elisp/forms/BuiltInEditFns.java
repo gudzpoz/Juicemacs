@@ -456,7 +456,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 } finally {
                     forwarded.setValue(prevBuffer);
                     if (point >= 0) {
-                        ((ELispBuffer) prevBuffer).setPoint(point);
+                        asBuffer(prevBuffer).setPoint(point);
                     }
                 }
             }
@@ -473,7 +473,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 } finally {
                     forwarded.setValue(prevBuffer);
                     if (point >= 0) {
-                        ((ELispBuffer) prevBuffer).setPoint(point);
+                        asBuffer(prevBuffer).setPoint(point);
                     }
                 }
             }

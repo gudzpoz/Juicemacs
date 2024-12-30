@@ -52,7 +52,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             category = OptionCategory.EXPERT,
             stability = OptionStability.STABLE
     )
-    public static final OptionKey<Integer> GLOBAL_MAX_INVALIDATIONS = new OptionKey<>(3);
+    public static final OptionKey<Integer> GLOBAL_MAX_INVALIDATIONS = new OptionKey<>(3); // NOPMD
 
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
 

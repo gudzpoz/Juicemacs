@@ -102,7 +102,14 @@ public class ELispParser {
                     symbol = context.applyShorthands(symbol);
                 }
                 if (intern) {
-                    yield context.intern(symbol);
+                    ELispSymbol interned = context.intern(symbol);
+                    if (interned == T) {
+                        yield true;
+                    }
+                    if (interned == NIL) {
+                        yield false;
+                    }
+                    yield interned;
                 }
                 yield new ELispSymbol(symbol);
             }
@@ -173,7 +180,7 @@ public class ELispParser {
             case RecordOpen() -> {
                 List<Object> list = readList();
                 Object type = list.getFirst();
-                if (type instanceof ELispSymbol sym && sym == HASH_TABLE) {
+                if (type == HASH_TABLE) {
                     yield ELispHashtable.hashTableFromPlist(list, true);
                 }
                 yield new ELispRecord(list);

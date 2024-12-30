@@ -50,7 +50,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     }
 
     public void init(ELispLanguage language, boolean postInit) {
-        ELispBuiltIns[] builtIns = new ELispBuiltIns[]{
+        ELispBuiltIns[] builtIns = {
                 new BuiltInAlloc(),
                 builtInBuffer,
                 new BuiltInCallInt(),

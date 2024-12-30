@@ -77,14 +77,14 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return BuiltInCharSetFactory.getFactories();
     }
 
-    private final ArrayList<ELispCharset> INTERNAL_CHARSET_LIST = new ArrayList<>();
-    private final HashMap<ELispSymbol, ELispVector> CHARSET_HASH_TABLE = new HashMap<>();
-    public final ValueStorage.Forwarded CHAR_UNIFY_TABLE =
+    private final ArrayList<ELispCharset> internalCharsetList = new ArrayList<>();
+    private final HashMap<ELispSymbol, ELispVector> charsetHashTable = new HashMap<>();
+    public final ValueStorage.Forwarded charUnifyTable =
             // Emacs initializes this in unify-charset, but we move it here.
             new ValueStorage.Forwarded(ELispCharTable.create(false, NIL, 0));
-    public final ValueStorage.Forwarded CHARSET_ORDERED_LIST = new ValueStorage.Forwarded();
-    public final ValueStorage.Forwarded ISO2022_CHARSET_LIST = new ValueStorage.Forwarded();
-    public final ValueStorage.Forwarded EMACS_MULE_CHARSET_LIST = new ValueStorage.Forwarded();
+    public final ValueStorage.Forwarded charsetOrderedList = new ValueStorage.Forwarded();
+    public final ValueStorage.Forwarded iso2022CharsetList = new ValueStorage.Forwarded();
+    public final ValueStorage.Forwarded emacsMuleCharsetList = new ValueStorage.Forwarded();
 
     public static BuiltInCharSet getThis(@Nullable Node node) {
         return ELispContext.get(node).globals().builtInCharSet;
@@ -98,12 +98,12 @@ public class BuiltInCharSet extends ELispBuiltIns {
     }
 
     public static ELispCharset getCharsetFromId(int id) {
-        return getThis(null).INTERNAL_CHARSET_LIST.get(id);
+        return getThis(null).internalCharsetList.get(id);
     }
 
     private static ELispVector getCharsetAttr(Object symbol) {
         //noinspection SuspiciousMethodCalls
-        ELispVector vec = getThis(null).CHARSET_HASH_TABLE.get(symbol);
+        ELispVector vec = getThis(null).charsetHashTable.get(symbol);
         if (vec == null) {
             throw ELispSignals.wrongTypeArgument(CHARSETP, symbol);
         }
@@ -153,7 +153,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 args[CHARSET_ARG_CODE_OFFSET]
         );
 
-        return defineCharsetInternal(args);
+        return defineCharsetInternal(args); // NOPMD
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -356,11 +356,11 @@ public class BuiltInCharSet extends ELispBuiltIns {
 
         attrs.set(CHARSET_PLIST, asCons(args[CHARSET_ARG_PLIST]));
 
-        boolean newDefinitionP = !CHARSET_HASH_TABLE.containsKey(name);
-        CHARSET_HASH_TABLE.put(name, attrs);
+        boolean newDefinitionP = !charsetHashTable.containsKey(name);
+        charsetHashTable.put(name, attrs);
         int id;
         if (newDefinitionP) {
-            id = INTERNAL_CHARSET_LIST.size();
+            id = internalCharsetList.size();
         } else {
             id = getCharset(name).id;
         }
@@ -392,9 +392,9 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 codeOffset
         );
         if (newDefinitionP) {
-            INTERNAL_CHARSET_LIST.add(charset);
+            internalCharsetList.add(charset);
         } else {
-            INTERNAL_CHARSET_LIST.set(id, charset);
+            internalCharsetList.set(id, charset);
         }
         attrs.set(CHARSET_ID, (long) id);
 
@@ -408,8 +408,8 @@ public class BuiltInCharSet extends ELispBuiltIns {
         if (isoFinal >= 0) {
             // TODO
             if (newDefinitionP) {
-                ISO2022_CHARSET_LIST.setValue(BuiltInFns.FNconc.nconc(
-                        new Object[]{ISO2022_CHARSET_LIST.getValue(), new ELispCons((long) id)}
+                iso2022CharsetList.setValue(BuiltInFns.FNconc.nconc(
+                        new Object[]{iso2022CharsetList.getValue(), new ELispCons((long) id)}
                 ));
             }
         }
@@ -417,17 +417,17 @@ public class BuiltInCharSet extends ELispBuiltIns {
         if (emacsMule >= 0) {
             // TODO
             if (newDefinitionP) {
-                EMACS_MULE_CHARSET_LIST.setValue(BuiltInFns.FNconc.nconc(
-                        new Object[]{EMACS_MULE_CHARSET_LIST.getValue(), new ELispCons((long) id)}
+                emacsMuleCharsetList.setValue(BuiltInFns.FNconc.nconc(
+                        new Object[]{emacsMuleCharsetList.getValue(), new ELispCons((long) id)}
                 ));
             }
         }
 
         if (newDefinitionP) {
             context.setValue(CHARSET_LIST, new ELispCons(name, context.getValue(CHARSET_LIST)));
-            Object charsetOrderedList = CHARSET_ORDERED_LIST.getValue();
+            Object charsetOrderedList = this.charsetOrderedList.getValue();
             if (charset.supplementaryP) {
-                CHARSET_ORDERED_LIST.setValue(BuiltInFns.FNconc.nconc(new Object[]{
+                this.charsetOrderedList.setValue(BuiltInFns.FNconc.nconc(new Object[]{
                         charsetOrderedList,
                         new ELispCons((long) id),
                 }));
@@ -443,7 +443,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                     prev = cons;
                 }
                 if (prev == null) {
-                    CHARSET_ORDERED_LIST.setValue(new ELispCons((long) id, charsetOrderedList));
+                    this.charsetOrderedList.setValue(new ELispCons((long) id, charsetOrderedList));
                 } else {
                     prev.insertAfter((long) id);
                 }
@@ -463,7 +463,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     public abstract static class FCharsetp extends ELispBuiltInBaseNode {
         @Specialization
         public boolean charsetp(Object object) {
-            return object instanceof ELispSymbol symbol && getThis(this).CHARSET_HASH_TABLE.containsKey(symbol);
+            return toSym(object) instanceof ELispSymbol symbol && getThis(this).charsetHashTable.containsKey(symbol);
         }
     }
 
@@ -528,7 +528,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         @Specialization
         public boolean defineCharsetAlias(ELispSymbol alias, Object charset) {
             ELispVector attr = getCharsetAttr(charset);
-            getThis(this).CHARSET_HASH_TABLE.put(alias, attr);
+            getThis(this).charsetHashTable.put(alias, attr);
             ELispContext context = getContext();
             context.setValue(CHARSET_LIST, new ELispCons(alias, context.getValue(CHARSET_LIST)));
             return false;
@@ -837,7 +837,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         @Specialization
         public boolean setCharsetPriority(ELispSymbol charsets, Object[] args) {
             BuiltInCharSet charSet = getThis(this);
-            Object oldList = charSet.CHARSET_ORDERED_LIST.getValue();
+            Object oldList = charSet.charsetOrderedList.getValue();
             oldList = isNil(oldList) ? false : BuiltInFns.FCopySequence.copySequenceList(asCons(oldList));
             ELispCons.ListBuilder newBuilder = new ELispCons.ListBuilder();
 
@@ -851,7 +851,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                     newBuilder.add(id);
                 }
             }
-            charSet.CHARSET_ORDERED_LIST.setValue(newBuilder.buildWithCdr(oldList));
+            charSet.charsetOrderedList.setValue(newBuilder.buildWithCdr(oldList));
             // TODO: Set other global variables
             return false;
         }

@@ -8,6 +8,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.MACRO;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.toSym;
 
 public final class FunctionStorage {
     private final CyclicAssumption stableAssumption = new CyclicAssumption("stable function");
@@ -24,7 +25,7 @@ public final class FunctionStorage {
         }
         this.function = function;
         stableAssumption.invalidate();
-        switch (function) {
+        switch (toSym(function)) {
             case ELispSymbol _ -> stableAssumption.getAssumption().invalidate();
             case ELispInterpretedClosure closure -> closure.setName(symbol);
             case ELispCons cons when cons.car() == MACRO && cons.cdr() instanceof ELispInterpretedClosure closure ->

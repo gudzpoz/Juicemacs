@@ -614,6 +614,7 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "eq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FEq extends ELispBuiltInBaseNode {
+        @SuppressWarnings("PMD.ELispDoNotUseEqualsToCompare")
         @Specialization
         public static boolean eq(Object obj1, Object obj2) {
             // Simulate the Emacs behavior of packed integers
@@ -778,7 +779,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FBareSymbolP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean bareSymbolP(Object object) {
-            return object instanceof ELispSymbol;
+            return toSym(object) instanceof ELispSymbol;
         }
     }
 
@@ -807,7 +808,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSymbolp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean symbolp(Object object) {
-            return object instanceof ELispSymbol || object instanceof Boolean;
+            return toSym(object) instanceof ELispSymbol;
         }
     }
 
@@ -823,7 +824,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FKeywordp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean keywordp(Object object) {
-            return object instanceof ELispSymbol symbol && symbol.isKeyword();
+            return toSym(object) instanceof ELispSymbol symbol && symbol.isKeyword();
         }
     }
 
@@ -1538,7 +1539,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFset extends ELispBuiltInBaseNode {
         @Specialization
-        public ELispSymbol fset(ELispSymbol symbol, Object definition) {
+        public ELispSymbol fsetDynamic(ELispSymbol symbol, Object definition) {
             fset(symbol, definition, getContext());
             return symbol;
         }
@@ -2051,7 +2052,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FIndirectFunction extends ELispBuiltInBaseNode {
         @Specialization
         public static Object indirectFunction(Object object, Object noerror) {
-            if (object instanceof ELispSymbol symbol) {
+            if (toSym(object) instanceof ELispSymbol symbol) {
                 // noerror is ignored by GNU Emacs?
                 return symbol.getIndirectFunction();
             }

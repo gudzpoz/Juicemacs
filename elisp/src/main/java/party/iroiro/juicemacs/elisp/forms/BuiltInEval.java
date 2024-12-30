@@ -1180,7 +1180,7 @@ public class BuiltInEval extends ELispBuiltIns {
             for (Object assignment : ELispCons.iterate(varlist)) {
                 Object symbol;
                 Object value;
-                if (assignment instanceof ELispSymbol sym) {
+                if (toSym(assignment) instanceof ELispSymbol sym) {
                     symbol = sym;
                     value = false;
                 } else {
@@ -1614,7 +1614,7 @@ public class BuiltInEval extends ELispBuiltIns {
                             shouldHandle = true;
                         } else if (conditionName instanceof ELispCons list) {
                             for (Object sym : list) {
-                                if (sym instanceof ELispSymbol symbol) {
+                                if (toSym(sym) instanceof ELispSymbol symbol) {
                                     if (matches(symbol, e.getTag())) {
                                         shouldHandle = true;
                                     }
@@ -2068,7 +2068,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FFunctionp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean functionp(Object object) {
-            if (object instanceof ELispSymbol symbol) {
+            if (toSym(object) instanceof ELispSymbol symbol) {
                 object = symbol.getIndirectFunction();
             }
             return (object instanceof ELispSubroutine(_, boolean special, _) && !special)
@@ -2093,8 +2093,12 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static ELispFunctionObject getFunctionObject(Object function) {
-            if (function instanceof ELispSymbol symbol) {
+            Object original = function;
+            if (toSym(function) instanceof ELispSymbol symbol) {
                 function = symbol.getIndirectFunction();
+            }
+            if (isNil(function)) {
+                throw ELispSignals.voidFunction(original);
             }
             return switch (function) {
                 case ELispSubroutine subroutine when !subroutine.specialForm() ->

@@ -15,6 +15,9 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.T;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.toSym;
 import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 
 
@@ -23,7 +26,7 @@ import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 /// Different from the C version, we do not keep the dynamically-bound value
 /// in the symbol, but in the Truffle context to allow parallel context usages.
 @ExportLibrary(InteropLibrary.class)
-public final class ELispSymbol extends AbstractELispIdentityObject implements TruffleObject {
+public final class ELispSymbol implements ELispValue, TruffleObject {
     public static final String SPECIAL_CHARS = "()[]#?\"'`,;.";
 
     private final MuleString name;
@@ -140,10 +143,13 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
     public Object getIndirectFunction() {
         ELispContext context = ELispContext.get(null);
         Object o = context.getFunctionStorage(this).get();
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, !(o instanceof ELispSymbol))) {
+        if (CompilerDirectives.injectBranchProbability(
+                CompilerDirectives.FASTPATH_PROBABILITY,
+                !(toSym(o) instanceof ELispSymbol))
+        ) {
             return o;
         }
-        return slowPathGetIndirectFunction((ELispSymbol) o, context);
+        return slowPathGetIndirectFunction((ELispSymbol) toSym(o), context);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -200,6 +206,36 @@ public final class ELispSymbol extends AbstractELispIdentityObject implements Tr
 
     public Object getProperties() {
         return getStorage().getProperties();
+    }
+
+    @SuppressWarnings("EqualsDoesntCheckParameterClass")
+    @Override
+    public boolean equals(Object obj) {
+        if ((obj == Boolean.FALSE && this == NIL) || (obj == Boolean.TRUE && this == T)) {
+            return true;
+        }
+        return this == obj;
+    }
+
+    @Override
+    public int hashCode() {
+        if (this == NIL) {
+            return Boolean.FALSE.hashCode();
+        }
+        if (this == T) {
+            return Boolean.TRUE.hashCode();
+        }
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean lispEquals(Object other) {
+        return equals(other);
+    }
+
+    @Override
+    public int lispHashCode() {
+        return hashCode();
     }
 
     @Override

@@ -19,16 +19,16 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 public class BuiltInSyntax extends ELispBuiltIns {
     public void initSyntaxOnce(ELispContext context) {
         for (int i = 0; i < SMAX; i++) {
-            SYNTAX_CODE_OBJECT.set(i, new ELispCons((long) i));
+            syntaxCodeObject.set(i, new ELispCons((long) i));
         }
         BuiltInFns.FPut.put(SYNTAX_TABLE, CHAR_TABLE_EXTRA_SLOTS, 0L);
         //noinspection SequencedCollectionMethodCanBeUsed
-        Object whitespace = SYNTAX_CODE_OBJECT.get(SWHITESPACE);
+        Object whitespace = syntaxCodeObject.get(SWHITESPACE);
         standardSyntaxTable = BuiltInCharTab.FMakeCharTable.makeCharTable(SYNTAX_TABLE, whitespace);
         context.globals().getBufferDefaults().setSyntaxTable(standardSyntaxTable);
 
         // Control characters
-        Object punctuation = SYNTAX_CODE_OBJECT.get(SPUNCT);
+        Object punctuation = syntaxCodeObject.get(SPUNCT);
         for (int i = 0; i < ' ' - 1; i++) {
             standardSyntaxTable.setChar(i, punctuation);
         }
@@ -42,7 +42,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
         standardSyntaxTable.setChar('\f', whitespace);
 
         // Word
-        Object word = SYNTAX_CODE_OBJECT.get(SWORD);
+        Object word = syntaxCodeObject.get(SWORD);
         for (int i = 'a'; i <= 'z'; i++) {
             standardSyntaxTable.setChar(i, word);
         }
@@ -64,7 +64,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
         standardSyntaxTable.setChar('"', new ELispCons((long) SSTRING));
         standardSyntaxTable.setChar('\\', new ELispCons((long) SESCAPE));
 
-        Object symbol = SYNTAX_CODE_OBJECT.get(SSYMBOL);
+        Object symbol = syntaxCodeObject.get(SSYMBOL);
         String symbols = "_-+*/&|<>=";
         for (char c : symbols.toCharArray()) {
             standardSyntaxTable.setChar(c, symbol);
@@ -86,7 +86,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @SuppressWarnings("NotNullFieldNotInitialized")
     private ELispCharTable standardSyntaxTable;
 
-    private final ELispVector SYNTAX_CODE_OBJECT = new ELispVector(Collections.nCopies(SMAX, false));
+    private final ELispVector syntaxCodeObject = new ELispVector(Collections.nCopies(SMAX, false));
 
     public static byte checkSyntaxChar(int next) {
         return switch (next) {

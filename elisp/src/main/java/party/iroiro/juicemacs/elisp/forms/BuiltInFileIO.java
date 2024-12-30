@@ -994,7 +994,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             }
             long read = headAndTail.position();
             headAndTail.flip();
-            try (var current = withInternalBufferReset(" *code-conversion-work*")) {
+            try (CurrentBufferScope current = withInternalBufferReset(" *code-conversion-work*")) {
                 ELispBuffer buffer = current.current();
                 buffer.setEnableMultibyteCharacters(false);
                 buffer.insert(MuleString.fromRaw(headAndTail));

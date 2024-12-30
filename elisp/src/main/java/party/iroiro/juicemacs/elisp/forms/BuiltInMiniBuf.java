@@ -798,7 +798,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     public abstract static class FAssocString extends ELispBuiltInBaseNode {
         @Specialization
         public static Object assocString(Object key, Object list, Object caseFold) {
-            MuleString keyString = key instanceof ELispSymbol sym ? sym.name() : asStr(key).value();
+            MuleString keyString = toSym(key) instanceof ELispSymbol sym ? sym.name() : asStr(key).value();
             boolean upcase = !isNil(caseFold);
             if (upcase) {
                 keyString = asStr(BuiltInCaseFiddle.FUpcase.upcaseString(new ELispString(keyString))).value();
@@ -809,7 +809,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                     target = cons.car();
                 }
                 MuleString rhs;
-                if (target instanceof ELispSymbol sym) {
+                if (toSym(target) instanceof ELispSymbol sym) {
                     rhs = sym.name();
                 } else if (target instanceof ELispString str) {
                     rhs = str.value();

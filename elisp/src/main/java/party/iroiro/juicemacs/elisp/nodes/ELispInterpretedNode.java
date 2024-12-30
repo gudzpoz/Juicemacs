@@ -68,7 +68,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private static Object getIndirectFunction(Object function) {
-        if (function instanceof ELispSymbol symbol) {
+        if (toSym(function) instanceof ELispSymbol symbol) {
             function = symbol.getIndirectFunction();
         }
         return function;
@@ -239,12 +239,12 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
             if (lexical == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                global = GlobalVariableReadNodeGen.create(symbol);
-                globalReadNode = insert(global);
+                GlobalVariableReadNode newNode = GlobalVariableReadNodeGen.create(symbol);
+                globalReadNode = insert(newNode);
                 if (lexicalFrame != null) {
                     this.topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
                 }
-                return global;
+                return newNode;
             } else {
                 if (readNode != null && lexical.index() == readNode.getSlot()) {
                     return readNode;
@@ -542,7 +542,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public ELispConsExpressionNode(ELispCons cons) {
             this.cons = cons;
             this.callNode = null;
-            if (cons.car() instanceof ELispSymbol symbol) {
+            if (toSym(cons.car()) instanceof ELispSymbol symbol) {
                 storage = getContext().getFunctionStorage(symbol);
                 stable = storage.getStableAssumption();
             } else {
@@ -584,7 +584,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             Object function;
             if (storage != null) {
                 function = storage.get();
-                if (function instanceof ELispSymbol symbol) {
+                if (toSym(function) instanceof ELispSymbol symbol) {
                     function = getIndirectFunction(symbol);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

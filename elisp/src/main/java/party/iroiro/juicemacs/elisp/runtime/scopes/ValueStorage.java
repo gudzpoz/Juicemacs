@@ -533,7 +533,7 @@ public final class ValueStorage {
 
     public static final class ForwardedPerKboard extends AbstractForwarded<Object> {
         public ForwardedPerKboard(int index) {
-            super(index);
+            super(index); // NOPMD
         }
         @Override
         public Object getValue() {

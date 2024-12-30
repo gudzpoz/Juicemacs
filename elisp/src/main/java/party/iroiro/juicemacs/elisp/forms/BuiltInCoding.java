@@ -70,7 +70,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             if (isNil(object)) {
                 return true;
             }
-            if (object instanceof ELispSymbol sym) {
+            if (toSym(object) instanceof ELispSymbol sym) {
                 return getThis(null).getCodingSystem(sym) != null || !isNil(BuiltInFns.FGet.get(sym, CODING_SYSTEM_DEFINE_FORM));
             }
             return false;
@@ -743,17 +743,17 @@ public class BuiltInCoding extends ELispBuiltIns {
             @Nullable ELispCons list;
             if (isNil(arg)) {
                 list = null;
-            } else if (arg instanceof ELispSymbol symbol) {
+            } else if (toSym(arg) instanceof ELispSymbol symbol) {
                 if (symbol == ISO_2022) {
                     if (codingType != ISO_2022) {
                         throw ELispSignals.error("Invalid charset-list");
                     }
-                    list = asCons(BuiltInCharSet.getThis(null).ISO2022_CHARSET_LIST.getValue());
+                    list = asCons(BuiltInCharSet.getThis(null).iso2022CharsetList.getValue());
                 } else if (symbol == EMACS_MULE) {
                     if (codingType != EMACS_MULE) {
                         throw ELispSignals.error("Invalid charset-list");
                     }
-                    list = asCons(BuiltInCharSet.getThis(null).EMACS_MULE_CHARSET_LIST.getValue());
+                    list = asCons(BuiltInCharSet.getThis(null).emacsMuleCharsetList.getValue());
                 } else {
                     throw ELispSignals.error("Invalid charset-list");
                 }
@@ -922,7 +922,8 @@ public class BuiltInCoding extends ELispBuiltIns {
             }
             ELispSymbol[] eolTypes = system.getSpec().eolTypes();
             if (eolTypes.length > 1) {
-                return new ELispVector(List.of((Object[]) eolTypes));
+                //noinspection RedundantCast
+                return new ELispVector(List.of((Object[]) eolTypes)); // NOPMD
             }
             return eolTypes[0] == UNIX ? 0L : (eolTypes[0] == DOS ? 1L : 2L);
         }

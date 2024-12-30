@@ -96,6 +96,7 @@ public abstract class ELispTypeSystem {
         return (long) maybeNil;
     }
 
+    @SuppressWarnings("PMD.ShortMethodName")
     public static Object or(Object... candidates) {
         for (Object candidate : candidates) {
             if (!isNil(candidate)) {
@@ -250,10 +251,20 @@ public abstract class ELispTypeSystem {
         if (isT(value)) {
             return T;
         }
-        if (value instanceof ELispSymbol s) {
+        if (value instanceof ELispSymbol s) { // NOPMD
             return s;
         }
         throw ELispSignals.wrongTypeArgument(SYMBOLP, value);
+    }
+
+    public static Object toSym(Object value) {
+        if (value == Boolean.FALSE) {
+            return NIL;
+        }
+        if (value == Boolean.TRUE) {
+            return T;
+        }
+        return value;
     }
 
     public static ELispString asStr(Object s) {

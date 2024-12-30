@@ -287,7 +287,7 @@ public class BuiltInCategory extends ELispBuiltIns {
             while (start <= end) {
                 ELispCharTable.RefRangeResult range = categoryTable.refRange(start, start, end);
                 ELispBoolVector categorySet = asBoolVec(range.value());
-                if (!categorySet.get(cat).equals(setValue)) {
+                if (categorySet.get(cat) != setValue) {
                     categorySet = BuiltInFns.FCopySequence.copySequenceBoolVec(categorySet);
                     categorySet.set(cat, setValue);
                     categorySet = hashGetCategorySet(categoryTable, categorySet);

@@ -28,21 +28,21 @@ public class BuiltInSearch extends ELispBuiltIns {
         return BuiltInSearchFactory.getFactories();
     }
 
-    private final ThreadLocalStorage MATCH_DATA = new ThreadLocalStorage(false);
-    private final ThreadLocalStorage MATCHED_STR = new ThreadLocalStorage(false);
+    private final ThreadLocalStorage matchData = new ThreadLocalStorage(false);
+    private final ThreadLocalStorage matchedStr = new ThreadLocalStorage(false);
 
     private static Object matchData(Node node) {
-        return ELispContext.get(node).globals().builtInSearch.MATCH_DATA.getValue();
+        return ELispContext.get(node).globals().builtInSearch.matchData.getValue();
     }
 
     private static Object matchStr(Node node) {
-        return ELispContext.get(node).globals().builtInSearch.MATCHED_STR.getValue();
+        return ELispContext.get(node).globals().builtInSearch.matchedStr.getValue();
     }
 
     private static void setMatch(Node node, Object data, Object str) {
         BuiltInSearch builtInSearch = ELispContext.get(node).globals().builtInSearch;
-        builtInSearch.MATCH_DATA.setValue(data);
-        builtInSearch.MATCHED_STR.setValue(str);
+        builtInSearch.matchData.setValue(data);
+        builtInSearch.matchedStr.setValue(str);
     }
 
     private record RegExpKey(MuleString regExp, @Nullable MuleString whitespaceRegExp, @Nullable ELispCharTable canon) {

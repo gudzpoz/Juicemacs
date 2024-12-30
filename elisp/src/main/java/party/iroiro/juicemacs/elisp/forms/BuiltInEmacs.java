@@ -14,8 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SAFE_MAGIC;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInEmacs extends ELispBuiltIns {
     @Override
@@ -41,7 +40,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
             ELispString current = element.isEmpty() ? emptyElement : new ELispString(element);
             if (current != null) {
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(current, true);
-                if (handler instanceof ELispSymbol symbol) {
+                if (toSym(handler) instanceof ELispSymbol symbol) {
                     if (!isNil(symbol.getProperty(SAFE_MAGIC))) {
                         handler = false;
                     }

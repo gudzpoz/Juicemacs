@@ -151,7 +151,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
                         output.appendCodePoint(codePoint);
                     }
                 }
-            };
+            }
         }
     }
 }
