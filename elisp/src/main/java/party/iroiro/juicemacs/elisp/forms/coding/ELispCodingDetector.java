@@ -47,7 +47,7 @@ final class ELispCodingDetector {
             // TODO: We should probably fallback to a customized implementation,
             //   since ISO-2022 categories in universalchardet do not map directly
             //   to Emacs ones.
-            case null, default -> CODING_CATEGORY_RAW_TEXT;
+            case null, default -> CODING_CATEGORY_UTF_8_NOSIG;
         };
     }
 

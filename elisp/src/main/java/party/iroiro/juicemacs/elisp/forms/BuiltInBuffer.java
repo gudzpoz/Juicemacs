@@ -41,6 +41,14 @@ public class BuiltInBuffer extends ELispBuiltIns {
     private static void putBuffer(MuleString name, ELispBuffer buffer) {
         ELispContext.get(null).globals().builtInBuffer.buffers.put(name, buffer);
     }
+    @CompilerDirectives.TruffleBoundary
+    private static Object getBufferList() {
+        ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+        for (ELispBuffer buffer : ELispContext.get(null).globals().builtInBuffer.buffers.values()) {
+            builder.add(buffer);
+        }
+        return builder.build();
+    }
 
     public static int downCase(int c, ELispBuffer buffer) {
         Object down = asCharTable(buffer.getDowncaseTable()).getChar(c);
@@ -104,8 +112,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferList extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferList(Object frame) {
-            throw new UnsupportedOperationException();
+        public static Object bufferList(Object frame) {
+            // TODO: Util we have frames
+            return getBufferList();
         }
     }
 
@@ -835,8 +844,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeOverlay extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeOverlay(Object beg, Object end, Object buffer, Object frontAdvance, Object rearAdvance) {
-            throw new UnsupportedOperationException();
+        public static Object makeOverlay(Object beg, Object end, Object buffer, Object frontAdvance, Object rearAdvance) {
+            // TODO
+            return new Object();
         }
     }
 
@@ -866,8 +876,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDeleteOverlay extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void deleteOverlay(Object overlay) {
-            throw new UnsupportedOperationException();
+        public static boolean deleteOverlay(Object overlay) {
+            // TODO
+            return false;
         }
     }
 
@@ -1068,8 +1079,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOverlayGet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void overlayGet(Object overlay, Object prop) {
-            throw new UnsupportedOperationException();
+        public static boolean overlayGet(Object overlay, Object prop) {
+            // TODO
+            return false;
         }
     }
 
@@ -1083,8 +1095,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOverlayPut extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void overlayPut(Object overlay, Object prop, Object value) {
-            throw new UnsupportedOperationException();
+        public static boolean overlayPut(Object overlay, Object prop, Object value) {
+            // TODO
+            return false;
         }
     }
 
