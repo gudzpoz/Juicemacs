@@ -516,7 +516,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         @Specialization
         public boolean evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
             ELispBuffer current = isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer);
-            ELispString name = asStr(or(current.getFileTruename(), current.getFilename(), current.getName()));
+            ELispString name = asStr(or(filename, current.getFileTruename(), current.getFilename(), current.getName()));
             Source source = Source.newBuilder("elisp", "nil", name.toString())
                     .content(Source.CONTENT_NONE)
                     .build();

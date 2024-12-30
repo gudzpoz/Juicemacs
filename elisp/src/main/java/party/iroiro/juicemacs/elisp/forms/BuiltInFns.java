@@ -228,8 +228,18 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FProperListP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void properListP(Object object) {
-            throw new UnsupportedOperationException();
+        public static Object properListP(Object object) {
+            if (!(object instanceof ELispCons cons)) {
+                return isNil(object);
+            }
+            try {
+                return (long) cons.size();
+            } catch (ELispSignals.ELispSignalException e) {
+                if (e.getTag() == LISTP) {
+                    return false;
+                }
+                throw e;
+            }
         }
     }
 

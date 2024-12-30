@@ -951,7 +951,11 @@ public class BuiltInFileIO extends ELispBuiltIns {
 
                 ValueStorage.Forwarded container = new ValueStorage.Forwarded();
                 buffer.insert(codings.decode(coding, channel, start, limit, container));
-                BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
+                if (visit) {
+                    BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
+                    BUFFER_FILE_NAME.setValue(new ELispString(file.getName()));
+                    BUFFER_FILE_TRUENAME.setValue(new ELispString(file.getAbsoluteFile().toString()));
+                }
                 return ELispCons.listOf(new ELispString(file.getAbsoluteFile().toString()), limit - start);
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, filename);

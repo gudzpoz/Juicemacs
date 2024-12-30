@@ -1360,8 +1360,38 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMacroexpand extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void macroexpand(Object form, Object environment) {
-            throw new UnsupportedOperationException();
+        public static Object macroexpand(Object form, Object environment) {
+            while (true) {
+                if (!(form instanceof ELispCons cons)) {
+                    return form;
+                }
+                Object function = cons.car();
+                if (toSym(function) instanceof ELispSymbol symbol) {
+                    while (toSym(function) instanceof ELispSymbol sym) {
+                        symbol = sym;
+                        Object envLookup = BuiltInFns.FAssq.assq(sym, environment);
+                        if (!isNil(envLookup)) {
+                            function = envLookup;
+                            break;
+                        }
+                        function = symbol.getFunction();
+                    }
+                    function = FAutoloadDoLoad.autoloadDoLoad(function, symbol, MACRO);
+                }
+                if (!(function instanceof ELispCons macro) || macro.car() != MACRO) {
+                    return form;
+                }
+                Object newForm = FFuncall.funcall(
+                        macro.cdr(),
+                        isNil(cons.cdr())
+                                ? new Object[0]
+                                : asCons(cons.cdr()).toArray()
+                );
+                if (BuiltInData.FEq.eq(newForm, form)) {
+                    return form;
+                }
+                form = newForm;
+            }
         }
     }
 
@@ -1789,8 +1819,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAutoloadDoLoad extends ELispBuiltInBaseNode {
         @Specialization
-        public Object autoloadDoLoad(Object fundef, ELispSymbol funname, Object macroOnly,
-                                     @Cached FunctionDispatchNode dispatchNode) {
+        public static Object autoloadDoLoad(Object fundef, ELispSymbol funname, Object macroOnly) {
             if (!(fundef instanceof ELispCons def) || def.car() != AUTOLOAD) {
                 return fundef;
             }
@@ -1801,7 +1830,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             boolean ignoreErrors = !isMacro && !isNil(macroOnly);
             // TODO: load_with_autoload_queue
-            loadFile(getLanguage(), asCons(def.cdr()).car(), !ignoreErrors);
+            loadFile(ELispLanguage.get(null), asCons(def.cdr()).car(), !ignoreErrors);
 
             if (funname == NIL || ignoreErrors) {
                 return false;

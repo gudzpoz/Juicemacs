@@ -26,6 +26,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
 
     public final BuiltInBuffer builtInBuffer = new BuiltInBuffer();
     public final BuiltInCaseTab builtInCaseTab = new BuiltInCaseTab();
+    public final BuiltInCcl builtInCcl = new BuiltInCcl();
     public final BuiltInCharSet builtInCharSet = new BuiltInCharSet();
     public final BuiltInCoding builtInCoding = new BuiltInCoding();
     public final BuiltInKeymap builtInKeymap = new BuiltInKeymap();
@@ -58,7 +59,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 new BuiltInCaseFiddle(),
                 builtInCaseTab,
                 new BuiltInCategory(),
-                new BuiltInCcl(),
+                builtInCcl,
                 new BuiltInCharacter(),
                 builtInCharSet,
                 new BuiltInCharTab(),

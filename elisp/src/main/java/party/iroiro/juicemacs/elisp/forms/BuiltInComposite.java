@@ -22,8 +22,9 @@ public class BuiltInComposite extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FClearCompositionCache extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void clearCompositionCache() {
-            throw new UnsupportedOperationException();
+        public static boolean clearCompositionCache() {
+            // TODO
+            return false;
         }
     }
 

@@ -187,7 +187,7 @@
                 <value><![CDATA[
                 //NullLiteral
                 [not(ancestor::InfixExpression[@Operator=("==", "!=")])]
-                [not(ancestor::MethodCall[@MethodName="get" or @MethodName="getThis"])]
+                [not(parent::*[parent::MethodCall])]
                 [not(ancestor::*//Annotation[@SimpleName="Nullable"])]
                 ]]></value>
             </property>

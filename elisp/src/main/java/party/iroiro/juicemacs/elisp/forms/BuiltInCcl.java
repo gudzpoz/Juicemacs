@@ -3,13 +3,29 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class BuiltInCcl extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInCclFactory.getFactories();
+    }
+
+    private final HashMap<ELispSymbol, Long> cclProgramIndices = new HashMap<>();
+    private final ArrayList<CclProgram> cclPrograms = new ArrayList<>();
+
+    private record CclProgram(ELispVector code) {
+    }
+
+    private static BuiltInCcl getThis(Node node) {
+        return ELispContext.get(node).globals().builtInCcl;
     }
 
     /**
@@ -105,8 +121,12 @@ public class BuiltInCcl extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRegisterCclProgram extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void registerCclProgram(Object name, Object cclProg) {
-            throw new UnsupportedOperationException();
+        public long registerCclProgram(ELispSymbol name, Object cclProg) {
+            BuiltInCcl ccl = getThis(this);
+            long index = ccl.cclPrograms.size();
+            ccl.cclProgramIndices.put(name, index);
+            ccl.cclPrograms.add(new CclProgram(cclProg instanceof ELispVector v ? v : new ELispVector(List.of())));
+            return index;
         }
     }
 

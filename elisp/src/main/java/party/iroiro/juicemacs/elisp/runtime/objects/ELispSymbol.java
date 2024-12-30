@@ -145,7 +145,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         Object o = context.getFunctionStorage(this).get();
         if (CompilerDirectives.injectBranchProbability(
                 CompilerDirectives.FASTPATH_PROBABILITY,
-                !(toSym(o) instanceof ELispSymbol))
+                !(o instanceof ELispSymbol sym) || sym == NIL || sym == T) // NOPMD
         ) {
             return o;
         }
@@ -159,7 +159,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         visited.add(symbol);
         while (true) {
             o = context.getFunctionStorage(symbol).get();
-            if (!(o instanceof ELispSymbol nextSymbol)) {
+            if (!(toSym(o) instanceof ELispSymbol nextSymbol)) {
                 return o;
             }
             if (visited.contains(nextSymbol)) {

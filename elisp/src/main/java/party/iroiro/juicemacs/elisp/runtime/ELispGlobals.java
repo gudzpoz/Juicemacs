@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.*;
@@ -90,14 +91,14 @@ public final class ELispGlobals extends ELispGlobalsBase {
             }
         }
     }
-    private Object setAndCheckLoadPath() {
+    private Object checkLoadPath() {
         String path = ctx.getEnv("EMACSLOADPATH");
         ELispCons loadPaths;
         if (path != null) {
             loadPaths = decodeEnvPath(null, path, true);
             loadPathCheck(loadPaths);
             if (!isNil(FMemq.memq(false, loadPaths))) {
-                ELispCons defaultPaths = loadPathDefault();
+                @Nullable ELispCons defaultPaths = loadPathDefault();
                 loadPathCheck(defaultPaths);
                 ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
                 for (Object o : loadPaths) {
@@ -1936,7 +1937,7 @@ character."""),
         execPath.setValue(execPathJInit1);
     }
     private void initLread() {
-        var loadPathJInit = setAndCheckLoadPath();
+        var loadPathJInit = checkLoadPath();
         loadPath.setValue(loadPathJInit);
     }
     private void symsOfLread() {

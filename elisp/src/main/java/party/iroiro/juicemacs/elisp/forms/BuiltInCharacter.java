@@ -32,7 +32,7 @@ public class BuiltInCharacter extends ELispBuiltIns {
     public abstract static class FCharacterp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean characterp(Object object, Object ignore) {
-            return object instanceof Long l && l <= FMaxChar.maxChar(true);
+            return object instanceof Long l && l <= FMaxChar.maxChar(false);
         }
     }
 
