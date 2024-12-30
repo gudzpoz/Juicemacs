@@ -67,6 +67,8 @@ public class BuiltInEval extends ELispBuiltIns {
         public static final byte UNKNOWN = 0;
         public static final byte DYNAMIC = 1;
         public static final byte LEXICAL = 2;
+        protected static final ELispLexical.MaterializedAssumption PLACEHOLDER =
+                new ELispLexical.MaterializedAssumption();
 
         @CompilerDirectives.CompilationFinal(dimensions = 1)
         private final byte[] dynamicStates;
@@ -1017,6 +1019,11 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                 boolean dynamicBinding = lexicalFrame == null;
+                if (!dynamicBinding) {
+                    // This fork is needed to prevent the assumption from parent scope from being
+                    // over-written by setMaterializedTopUnchanged.
+                    lexicalFrame = lexicalFrame.fork(frame, PLACEHOLDER);
+                }
                 int length = symbols.length;
                 try {
                     for (int i = 0; i < length; i++) {
@@ -1132,11 +1139,16 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
                 boolean dynamicBinding = lexicalFrame == null;
+                if (!dynamicBinding) {
+                    // This fork is needed to prevent the assumption from parent scope from being
+                    // over-written by setMaterializedTopUnchanged.
+                    lexicalFrame = lexicalFrame.fork(frame, PLACEHOLDER);
+                }
                 Object[] lexicalValues = dynamicBinding ? new Object[0] : new Object[symbols.length];
                 int length = symbols.length;
                 for (int i = 0; i < length; i++) {
                     ELispLexical.MaterializedAssumption assumption = clauseEntryAssumptions[i];
-                    if (lexicalFrame != null) {
+                    if (!dynamicBinding) {
                         lexicalFrame.setMaterializedTopUnchanged(assumption);
                     }
 
