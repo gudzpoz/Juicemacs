@@ -2,14 +2,15 @@ package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
 import org.junit.jupiter.api.Test;
+import org.mozilla.universalchardet.UniversalDetector;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
-import java.io.EOFException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigInteger;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -236,8 +237,27 @@ public class ELispParserTest {
                 target.toFile().getName()
         ).build();
         ELispParser parser = new ELispParser(context, ethiopic);
-        while (parser.hasNext()) {
-            assertDoesNotThrow(parser::nextLisp);
+        ELispSignals.ELispSignalException e = assertThrows(ELispSignals.ELispSignalException.class, () -> {
+            while (parser.hasNext()) {
+                parser.nextLisp();
+            }
+        });
+        assertEquals("(invalid-read-syntax \"Invalid char\")", e.getMessage());
+    }
+
+    @Test
+    public void testEncodingDetect() throws IOException {
+        for (String file : new String[]{"ethiopic.el", "tibetan.el"}) {
+            Path target = Path.of("emacs", "lisp", "language", file);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (FileChannel channel = FileChannel.open(target)) {
+                channel.transferTo(0, channel.size(), Channels.newChannel(out));
+            }
+            byte[] bytes = out.toByteArray();
+            UniversalDetector detector = new UniversalDetector();
+            detector.handleData(bytes);
+            detector.dataEnd();
+            assertEquals("UTF-8", detector.getDetectedCharset());
         }
     }
 

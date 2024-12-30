@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.runtime;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -38,6 +39,10 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
 
     public final ELispBuffer getBufferDefaults() {
         return Objects.requireNonNull(bufferDefaults);
+    }
+
+    public final ELispCodings getCodings() {
+        return builtInCoding.codings;
     }
 
     public final ELispContext getContext() {

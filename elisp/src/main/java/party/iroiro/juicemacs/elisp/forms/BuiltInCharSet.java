@@ -86,7 +86,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     public final ValueStorage.Forwarded ISO2022_CHARSET_LIST = new ValueStorage.Forwarded();
     public final ValueStorage.Forwarded EMACS_MULE_CHARSET_LIST = new ValueStorage.Forwarded();
 
-    static BuiltInCharSet getThis(@Nullable Node node) {
+    public static BuiltInCharSet getThis(@Nullable Node node) {
         return ELispContext.get(node).globals().builtInCharSet;
     }
 

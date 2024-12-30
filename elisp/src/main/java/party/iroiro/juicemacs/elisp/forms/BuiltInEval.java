@@ -1801,10 +1801,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             boolean ignoreErrors = !isMacro && !isNil(macroOnly);
             // TODO: load_with_autoload_queue
-            ELispRootNode root = loadFile(getLanguage(), asCons(def.cdr()).car(), !ignoreErrors);
-            if (root != null) {
-                dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
-            }
+            loadFile(getLanguage(), asCons(def.cdr()).car(), !ignoreErrors);
 
             if (funname == NIL || ignoreErrors) {
                 return false;

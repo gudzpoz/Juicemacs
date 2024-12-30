@@ -10,7 +10,7 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.ISO_2022;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
-public final class CodingSystemIso2022 implements ELispCodingSystemType {
+final class CodingSystemIso2022 implements ELispCodingSystemType {
     @Override
     public ELispSymbol codingType() {
         return ISO_2022;

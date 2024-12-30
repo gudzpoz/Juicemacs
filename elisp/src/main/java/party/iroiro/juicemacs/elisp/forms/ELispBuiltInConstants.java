@@ -306,4 +306,140 @@ public abstract class ELispBuiltInConstants {
     public static final int CODING_REQUIRE_DETECTION_MASK = 0x1000;
     public static final int CODING_RESET_AT_BOL_MASK = 0x2000;
     //#endregion CODING_\w+_MASK
+    //#region CCL_\w+
+    public static final int CCL_HEADER_BUF_MAG =  0 ;
+    public static final int CCL_HEADER_EOF =  1 ;
+    public static final int CCL_HEADER_MAIN =  2 ;
+    public static final int CCL_CODE_MAX = ( 1 << ( 28 - 1 )) - 1 ;
+    public static final int CCL_CODE_MIN = - 1 - CCL_CODE_MAX ;
+    public static final int CCL_SETREGISTER =  0x00 ;
+    public static final int CCL_SETSHORTCONST =  0x01 ;
+    public static final int CCL_SETCONST =  0x02 ;
+    public static final int CCL_SETARRAY =  0x03 ;
+    public static final int CCL_JUMP =  0x04 ;
+    public static final int CCL_JUMPCOND =  0x05 ;
+    public static final int CCL_WRITEREGISTERJUMP =  0x06 ;
+    public static final int CCL_WRITEREGISTERREADJUMP =  0x07 ;
+    public static final int CCL_WRITECONSTJUMP =  0x08 ;
+    public static final int CCL_WRITECONSTREADJUMP =  0x09 ;
+    public static final int CCL_WRITESTRINGJUMP =  0x0A ;
+    public static final int CCL_WRITEARRAYREADJUMP =  0x0B ;
+    public static final int CCL_READJUMP =  0x0C ;
+    public static final int CCL_BRANCH =  0x0D ;
+    public static final int CCL_READREGISTER =  0x0E ;
+    public static final int CCL_WRITEEXPRCONST =  0x0F ;
+    public static final int CCL_READBRANCH =  0x10 ;
+    public static final int CCL_WRITEREGISTER =  0x11 ;
+    public static final int CCL_WRITEEXPRREGISTER =  0x12 ;
+    public static final int CCL_CALL =  0x13 ;
+    public static final int CCL_WRITECONSTSTRING =  0x14 ;
+    public static final int CCL_WRITEARRAY =  0x15 ;
+    public static final int CCL_END =  0x16 ;
+    public static final int CCL_EXPRSELFCONST =  0x17 ;
+    public static final int CCL_EXPRSELFREG =  0x18 ;
+    public static final int CCL_SETEXPRCONST =  0x19 ;
+    public static final int CCL_SETEXPRREG =  0x1A ;
+    public static final int CCL_JUMPCONDEXPRCONST =  0x1B ;
+    public static final int CCL_JUMPCONDEXPRREG =  0x1C ;
+    public static final int CCL_READJUMPCONDEXPRCONST =  0x1D ;
+    public static final int CCL_READJUMPCONDEXPRREG =  0x1E ;
+    public static final int CCL_EXTENSION =  0x1F ;
+    public static final int CCL_READMULTIBYTECHAR2 =  0x00 ;
+    public static final int CCL_WRITEMULTIBYTECHAR2 =  0x01 ;
+    public static final int CCL_TRANSLATECHARACTER =  0x02 ;
+    public static final int CCL_TRANSLATECHARACTERCONSTTBL =  0x03 ;
+    public static final int CCL_ITERATEMULTIPLEMAP =  0x10 ;
+    public static final int CCL_MAPMULTIPLE =  0x11 ;
+    public static final int CCL_MAPSINGLE =  0x12 ;
+    public static final int CCL_LOOKUPINTCONSTTBL =  0x13 ;
+    public static final int CCL_LOOKUPCHARCONSTTBL =  0x14 ;
+    public static final int CCL_PLUS =  0x00 ;
+    public static final int CCL_MINUS =  0x01 ;
+    public static final int CCL_MUL =  0x02 ;
+    public static final int CCL_DIV =  0x03 ;
+    public static final int CCL_MOD =  0x04 ;
+    public static final int CCL_AND =  0x05 ;
+    public static final int CCL_OR =  0x06 ;
+    public static final int CCL_XOR =  0x07 ;
+    public static final int CCL_LSH =  0x08 ;
+    public static final int CCL_RSH =  0x09 ;
+    public static final int CCL_LSH8 =  0x0A ;
+    public static final int CCL_RSH8 =  0x0B ;
+    public static final int CCL_DIVMOD =  0x0C ;
+    public static final int CCL_LS =  0x10 ;
+    public static final int CCL_GT =  0x11 ;
+    public static final int CCL_EQ =  0x12 ;
+    public static final int CCL_LE =  0x13 ;
+    public static final int CCL_GE =  0x14 ;
+    public static final int CCL_NE =  0x15 ;
+    public static final int CCL_DECODE_SJIS =  0x16 ;
+    public static final int CCL_ENCODE_SJIS =  0x17 ;
+    public static final int CCL_DEBUG_BACKTRACE_LEN =  256 ;
+    public static final int CCL_EXECUTE_BUF_SIZE =  1024 ;
+    //#endregion CCL_\w+
+    //#region iso_code_class_type
+    public static final int ISO_CONTROL_0 = 0;
+    public static final int ISO_SHIFT_OUT = 1;
+    public static final int ISO_SHIFT_IN = 2;
+    public static final int ISO_SINGLE_SHIFT_2_7 = 3;
+    public static final int ISO_ESCAPE = 4;
+    public static final int ISO_CONTROL_1 = 5;
+    public static final int ISO_SINGLE_SHIFT_2 = 6;
+    public static final int ISO_SINGLE_SHIFT_3 = 7;
+    public static final int ISO_CONTROL_SEQUENCE_INTRODUCER = 8;
+    public static final int ISO_0X20_OR_0X7F = 9;
+    public static final int ISO_GRAPHIC_PLANE_0 = 10;
+    public static final int ISO_0XA0_OR_0XFF = 11;
+    public static final int ISO_GRAPHIC_PLANE_1 = 12;
+    //#endregion iso_code_class_type
+    //#region ISO_CODE_\w+
+    public static final int ISO_CODE_SO = 0x0E;
+    public static final int ISO_CODE_SI = 0x0F;
+    public static final int ISO_CODE_SS2_7 = 0x19;
+    public static final int ISO_CODE_ESC = 0x1B;
+    public static final int ISO_CODE_SS2 = 0x8E;
+    public static final int ISO_CODE_SS3 = 0x8F;
+    public static final int ISO_CODE_CSI = 0x9B;
+    //#endregion ISO_CODE_\w+
+    //#region CATEGORY_MASK_\w+
+    public static final int CATEGORY_MASK_ISO_7 = 1 << CODING_CATEGORY_ISO_7;
+    public static final int CATEGORY_MASK_ISO_7_TIGHT = 1 << CODING_CATEGORY_ISO_7_TIGHT;
+    public static final int CATEGORY_MASK_ISO_8_1 = 1 << CODING_CATEGORY_ISO_8_1;
+    public static final int CATEGORY_MASK_ISO_8_2 = 1 << CODING_CATEGORY_ISO_8_2;
+    public static final int CATEGORY_MASK_ISO_7_ELSE = 1 << CODING_CATEGORY_ISO_7_ELSE;
+    public static final int CATEGORY_MASK_ISO_8_ELSE = 1 << CODING_CATEGORY_ISO_8_ELSE;
+    public static final int CATEGORY_MASK_UTF_8_AUTO = 1 << CODING_CATEGORY_UTF_8_AUTO;
+    public static final int CATEGORY_MASK_UTF_8_NOSIG = 1 << CODING_CATEGORY_UTF_8_NOSIG;
+    public static final int CATEGORY_MASK_UTF_8_SIG = 1 << CODING_CATEGORY_UTF_8_SIG;
+    public static final int CATEGORY_MASK_UTF_16_AUTO = 1 << CODING_CATEGORY_UTF_16_AUTO;
+    public static final int CATEGORY_MASK_UTF_16_BE = 1 << CODING_CATEGORY_UTF_16_BE;
+    public static final int CATEGORY_MASK_UTF_16_LE = 1 << CODING_CATEGORY_UTF_16_LE;
+    public static final int CATEGORY_MASK_UTF_16_BE_NOSIG = 1 << CODING_CATEGORY_UTF_16_BE_NOSIG;
+    public static final int CATEGORY_MASK_UTF_16_LE_NOSIG = 1 << CODING_CATEGORY_UTF_16_LE_NOSIG;
+    public static final int CATEGORY_MASK_CHARSET = 1 << CODING_CATEGORY_CHARSET;
+    public static final int CATEGORY_MASK_SJIS = 1 << CODING_CATEGORY_SJIS;
+    public static final int CATEGORY_MASK_BIG5 = 1 << CODING_CATEGORY_BIG5;
+    public static final int CATEGORY_MASK_CCL = 1 << CODING_CATEGORY_CCL;
+    public static final int CATEGORY_MASK_EMACS_MULE = 1 << CODING_CATEGORY_EMACS_MULE;
+    public static final int CATEGORY_MASK_RAW_TEXT = 1 << CODING_CATEGORY_RAW_TEXT;
+    public static final int CATEGORY_MASK_ANY = CATEGORY_MASK_ISO_7 | CATEGORY_MASK_ISO_7_TIGHT | CATEGORY_MASK_ISO_8_1 | CATEGORY_MASK_ISO_8_2 | CATEGORY_MASK_ISO_7_ELSE | CATEGORY_MASK_ISO_8_ELSE | CATEGORY_MASK_UTF_8_AUTO | CATEGORY_MASK_UTF_8_NOSIG | CATEGORY_MASK_UTF_8_SIG | CATEGORY_MASK_UTF_16_AUTO | CATEGORY_MASK_UTF_16_BE | CATEGORY_MASK_UTF_16_LE | CATEGORY_MASK_UTF_16_BE_NOSIG | CATEGORY_MASK_UTF_16_LE_NOSIG | CATEGORY_MASK_CHARSET | CATEGORY_MASK_SJIS | CATEGORY_MASK_BIG5 | CATEGORY_MASK_CCL | CATEGORY_MASK_EMACS_MULE;
+    public static final int CATEGORY_MASK_ISO_7BIT = CATEGORY_MASK_ISO_7 | CATEGORY_MASK_ISO_7_TIGHT;
+    public static final int CATEGORY_MASK_ISO_8BIT = CATEGORY_MASK_ISO_8_1 | CATEGORY_MASK_ISO_8_2;
+    public static final int CATEGORY_MASK_ISO_ELSE = CATEGORY_MASK_ISO_7_ELSE | CATEGORY_MASK_ISO_8_ELSE;
+    public static final int CATEGORY_MASK_ISO_ESCAPE = CATEGORY_MASK_ISO_7 | CATEGORY_MASK_ISO_7_TIGHT | CATEGORY_MASK_ISO_7_ELSE | CATEGORY_MASK_ISO_8_ELSE;
+    public static final int CATEGORY_MASK_ISO = CATEGORY_MASK_ISO_7BIT | CATEGORY_MASK_ISO_8BIT | CATEGORY_MASK_ISO_ELSE;
+    public static final int CATEGORY_MASK_UTF_16 = CATEGORY_MASK_UTF_16_AUTO | CATEGORY_MASK_UTF_16_BE | CATEGORY_MASK_UTF_16_LE | CATEGORY_MASK_UTF_16_BE_NOSIG | CATEGORY_MASK_UTF_16_LE_NOSIG;
+    public static final int CATEGORY_MASK_UTF_8 = CATEGORY_MASK_UTF_8_AUTO | CATEGORY_MASK_UTF_8_NOSIG | CATEGORY_MASK_UTF_8_SIG;
+    //#endregion CATEGORY_MASK_\w+
+    //#region EOL_SEEN_\w+
+    public static final int EOL_SEEN_NONE = 0;
+    public static final int EOL_SEEN_LF = 1;
+    public static final int EOL_SEEN_CR = 2;
+    public static final int EOL_SEEN_CRLF = 4;
+    //#endregion EOL_SEEN_\w+
+    //#region UTF_8_BOM_\w+
+    public static final int UTF_8_BOM_1 = 0xEF;
+    public static final int UTF_8_BOM_2 = 0xBB;
+    public static final int UTF_8_BOM_3 = 0xBF;
+    //#endregion UTF_8_BOM_\w+
 }

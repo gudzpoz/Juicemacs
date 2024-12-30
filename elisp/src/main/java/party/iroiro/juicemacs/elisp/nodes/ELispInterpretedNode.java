@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -624,10 +623,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         private Object autoload(ELispCons function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            IndirectCallNode indirectCallNode = Truffle.getRuntime().createIndirectCallNode();
             ELispString file = asStr(asCons(function.cdr()).car());
-            ELispRootNode root = BuiltInLRead.loadFile(getLanguage(), file, true);
-            indirectCallNode.call(Objects.requireNonNull(root).getCallTarget());
+            BuiltInLRead.loadFile(getLanguage(), file, true);
             return getIndirectFunction(cons.car());
         }
 

@@ -5,7 +5,6 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -289,17 +288,16 @@ public class BuiltInCharTab extends ELispBuiltIns {
             }
             if (cons.cdr() instanceof ELispString path) {
                 // TODO: Uniprop decoder
-                @Nullable ELispRootNode rootNode = BuiltInLRead.loadFile(
+                boolean result = BuiltInLRead.loadFile(
                         getLanguage(),
                         new ELispString(MuleString.concat(
                                 MuleString.fromString("international/"),
                                 path.value())),
                         false
                 );
-                if (rootNode == null) {
+                if (!result) {
                     return false;
                 }
-                rootNode.getCallTarget().call();
             }
             if (!(cons.cdr() instanceof ELispCharTable table)
                     || table.getPurpose() != CHAR_CODE_PROPERTY_TABLE || table.extraSlots() != 5) {

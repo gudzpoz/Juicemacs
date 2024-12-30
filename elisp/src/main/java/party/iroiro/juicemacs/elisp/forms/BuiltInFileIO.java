@@ -6,12 +6,14 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemCategory;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystem;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -944,11 +946,12 @@ public class BuiltInFileIO extends ELispBuiltIns {
 
                 Object codingSystem = detectCodingSystem(context, filename, channel, file.size());
                 BuiltInCoding.FCheckCodingSystem.checkCodingSystem(codingSystem);
-                CodingSystemCategory coding =
-                        context.globals().builtInCoding.setupCodingSystem(asSym(codingSystem), new CodingSystemCategory.RawText());
+                ELispCodings codings = context.globals().getCodings();
+                ELispCodingSystem coding = codings.resolveCodingSystem(asSym(codingSystem));
 
-                channel.position(start);
-                buffer.insert(coding.decode(channel, limit - start));
+                ValueStorage.Forwarded container = new ValueStorage.Forwarded();
+                buffer.insert(codings.decode(coding, channel, start, limit, container));
+                BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
                 return ELispCons.listOf(new ELispString(file.getAbsoluteFile().toString()), limit - start);
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, filename);

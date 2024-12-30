@@ -7,13 +7,19 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
+
+import java.io.IOException;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.checkCodingSystem;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.EOL_SEEN_CRLF;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.DEFINE_CODING_SYSTEM_INTERNAL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
-public sealed interface ELispCodingSystemType
-        permits CodingSystemBig5, CodingSystemCcl, CodingSystemCharset, CodingSystemEmacsMule, CodingSystemIso2022, CodingSystemRawText, CodingSystemShiftJis, CodingSystemUndecided, CodingSystemUtf16, CodingSystemUtf8 {
+sealed interface ELispCodingSystemType
+        permits CodingSystemBig5, CodingSystemCcl, CodingSystemCharset, CodingSystemEmacsMule, CodingSystemIso2022,
+        CodingSystemRawText, CodingSystemShiftJis, CodingSystemUndecided, CodingSystemUtf16, CodingSystemUtf8 {
     /// Returns the coding type of the coding system.
     ///
     /// Possible values:
@@ -41,6 +47,10 @@ public sealed interface ELispCodingSystemType
     /// @return the category of the coding system
     int initExtraAttrs(ELispVector attrs, Object[] args, Object charsetListObject);
 
+    default ELispCodingSystem create(ELispCodingSystem.Spec spec, EolAwareStringBuilder.EndOfLine eol) {
+        return new EolDetectingCodingSystem(spec, new ELispSymbol[]{});
+    }
+
     static ELispSignals.ELispSignalException shortArgs(long length) {
         return ELispSignals.wrongNumberOfArguments(DEFINE_CODING_SYSTEM_INTERNAL, length);
     }
@@ -53,7 +63,46 @@ public sealed interface ELispCodingSystemType
         }
     }
 
-    default CodingSystemCategory create(CodingSystemCategory coding) {
-        return new CodingSystemCategory.RawText().copy(coding);
+    final class EolDetectingCodingSystem extends ELispCodingSystem {
+        private static final int PEEK_LIMIT = 16 * 1024;
+        private final ELispSymbol[] eolEncodings;
+
+        EolDetectingCodingSystem(Spec spec, ELispSymbol[] eolEncodings) {
+            super(ELispCodings.CODING_SYSTEM_UNDECIDED, spec, EolAwareStringBuilder.EndOfLine.LF);
+            this.eolEncodings = eolEncodings;
+        }
+
+        @Override
+        MuleStringBuffer decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+            int eolSeen = 0;
+            int count = 0;
+            while (input.hasNext() && count < PEEK_LIMIT) {
+                byte b = input.next();
+                do {
+                    count++;
+                    if (b == '\r') {
+                        if (input.hasNext()) {
+                            b = input.next();
+                            if (b == '\n') {
+                                count++;
+                                eolSeen |= EOL_SEEN_CRLF;
+                                break;
+                            }
+                        }
+                        eolSeen |= EOL_SEEN_CR;
+                        continue;
+                    } else if (b == '\n') {
+                        eolSeen |= EOL_SEEN_LF;
+                    }
+                    break;
+                } while (true);
+            }
+            ELispSymbol encoding = eolEncodings[switch (eolSeen) {
+                case EOL_SEEN_CR, EOL_SEEN_CR | EOL_SEEN_CRLF -> 1;
+                case EOL_SEEN_CRLF -> 2;
+                default -> 0;
+            }];
+            throw new OtherCodingDetectedException(encoding);
+        }
     }
 }

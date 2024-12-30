@@ -1857,7 +1857,7 @@ character."""),
             (long) (0),
             false
         });
-        builtInCoding.setupCodingSystem(NO_CONVERSION, builtInCoding.safeTerminalCoding);
+        getCodings().safeTerminalCoding = getCodings().getCodingSystem(NO_CONVERSION);
         asSym(codingCategoryTable.get(0)).setValue(NO_CONVERSION);
         asSym(codingCategoryTable.get(1)).setValue(NO_CONVERSION);
         asSym(codingCategoryTable.get(2)).setValue(NO_CONVERSION);

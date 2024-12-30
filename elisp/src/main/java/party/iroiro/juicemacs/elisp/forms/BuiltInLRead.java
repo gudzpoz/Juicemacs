@@ -4,18 +4,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
-import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
-import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
-import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
+import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -133,8 +127,40 @@ public class BuiltInLRead extends ELispBuiltIns {
         return result;
     }
 
+    public static boolean loadFile(ELispLanguage language, Object file, boolean errorIfNotFound) {
+        Object loader = LOAD_SOURCE_FILE_FUNCTION.getValue();
+        if (isNil(loader)) {
+            ELispRootNode root = loadFilePureJava(language, file, errorIfNotFound);
+            if (root == null) {
+                return false;
+            }
+            root.getCallTarget().call();
+            return true;
+        } else {
+            ELispString path = locateOpenP(
+                    LOAD_PATH.getValue(),
+                    asStr(file),
+                    // TODO: Support bytecode before trying to load bytecode files: LOAD_SUFFIXES.getValue(),
+                    new ELispCons(new ELispString(".el")),
+                    false, true, true
+            );
+            if (path == null) {
+                if (errorIfNotFound) {
+                    throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
+                }
+                return false;
+            }
+            return !isNil(BuiltInEval.FFuncall.funcall(loader, new Object[]{
+                    path,
+                    file,
+                    !errorIfNotFound,
+                    false,
+            }));
+        }
+    }
+
     @Nullable
-    public static ELispRootNode loadFile(ELispLanguage language, Object file, boolean errorIfNotFound) {
+    private static ELispRootNode loadFilePureJava(ELispLanguage language, Object file, boolean errorIfNotFound) {
         CompilerDirectives.transferToInterpreter();
         TruffleLanguage.Env env = ELispContext.get(null).truffleEnv();
 
@@ -423,43 +449,10 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "load", minArgs = 1, maxArgs = 5)
     @GenerateNodeFactory
     public abstract static class FLoad extends ELispBuiltInBaseNode {
-        static GlobalVariableReadNode createReadNode() {
-            return GlobalVariableReadNodeGen.create(LOAD_SOURCE_FILE_FUNCTION);
-        }
-
         @Specialization
-        public boolean load(VirtualFrame frame,
-                            ELispString file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix,
-                            @Cached(value = "createReadNode()", neverDefault = true) GlobalVariableReadNode loadSourceFileFunction,
-                            @Cached FunctionDispatchNode dispatchNode,
-                            @Bind("this") Node node) {
+        public boolean load(ELispString file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
             // TODO: Potential lock candidate
-            Object loader = loadSourceFileFunction.executeGeneric(frame);
-            if (isNil(loader)) {
-                ELispRootNode root = loadFile(getLanguage(), file, isNil(noerror));
-                if (root == null) {
-                    return false;
-                }
-                dispatchNode.executeDispatch(node, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
-                return true;
-            } else {
-                ELispString path = locateOpenP(LOAD_PATH.getValue(), file,
-                        // LOAD_SUFFIXES.getValue(),
-                        new ELispCons(new ELispString(".el")),
-                        false, true, true);
-                if (path == null) {
-                    if (isNil(noerror)) {
-                        throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
-                    }
-                    return false;
-                }
-                return !isNil(BuiltInEval.FFuncall.funcall(loader, new Object[]{
-                        path,
-                        file,
-                        noerror,
-                        nomessage,
-                }));
-            }
+            return loadFile(getLanguage(), file, isNil(noerror));
         }
     }
 

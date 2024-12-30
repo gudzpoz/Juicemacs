@@ -2,10 +2,13 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
+
+import java.io.IOException;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_UNDECIDED;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.UNDECIDED;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 
 public final class CodingSystemUndecided implements ELispCodingSystemType {
     @Override
@@ -22,5 +25,29 @@ public final class CodingSystemUndecided implements ELispCodingSystemType {
         attrs.set(CODING_ATTR_UNDECIDED_INHIBIT_ISO_ESCAPE_DETECTION, args[CODING_ARG_UNDECIDED_INHIBIT_ISO_ESCAPE_DETECTION]);
         attrs.set(CODING_ATTR_UNDECIDED_PREFER_UTF_8, args[CODING_ARG_UNDECIDED_PREFER_UTF_8]);
         return CODING_CATEGORY_UNDECIDED;
+    }
+
+    @Override
+    public ELispCodingSystem create(ELispCodingSystem.Spec spec, EolAwareStringBuilder.EndOfLine eol) {
+        boolean preferUtf8 = spec.preferUtf8();
+        return new DetectingCodingSystem(spec, eol, preferUtf8);
+    }
+
+    private final class DetectingCodingSystem extends ELispCodingSystem {
+        private final boolean preferUtf8;
+
+        DetectingCodingSystem(Spec spec, EolAwareStringBuilder.EndOfLine eol, boolean preferUtf8) {
+            super(CodingSystemUndecided.this, spec, eol);
+            this.preferUtf8 = preferUtf8;
+        }
+
+        @Override
+        MuleStringBuffer decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+            ELispSymbol detected = codings.getDetector().detect(input);
+            if (detected == RAW_TEXT && preferUtf8) {
+                detected = UTF_8;
+            }
+            throw new OtherCodingDetectedException(detected);
+        }
     }
 }
