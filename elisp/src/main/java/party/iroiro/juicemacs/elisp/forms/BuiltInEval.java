@@ -979,8 +979,10 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeVarNonSpecial extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeVarNonSpecial(Object symbol) {
-            throw new UnsupportedOperationException();
+        public boolean makeVarNonSpecial(ELispSymbol symbol) {
+            ELispContext context = getContext();
+            context.getStorage(symbol).setSpecial(context, false);
+            return false;
         }
     }
 

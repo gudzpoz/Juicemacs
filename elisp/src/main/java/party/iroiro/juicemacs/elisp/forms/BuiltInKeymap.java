@@ -851,8 +851,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FWhereIsInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void whereIsInternal(Object definition, Object keymap, Object firstonly, Object noindirect, Object noRemap) {
-            throw new UnsupportedOperationException();
+        public static boolean whereIsInternal(Object definition, Object keymap, Object firstonly, Object noindirect, Object noRemap) {
+            // TODO
+            return false;
         }
     }
 

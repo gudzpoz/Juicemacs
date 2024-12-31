@@ -1602,8 +1602,33 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPlistMember extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void plistMember(Object plist, Object prop, Object predicate) {
-            throw new UnsupportedOperationException();
+        public static Object plistMember(Object plist, Object prop, Object predicate) {
+            if (isNil(plist)) {
+                return false;
+            }
+            ELispCons cons = asCons(plist);
+            if (isNil(predicate)) {
+                return plistMemberEq(cons, prop);
+            }
+            ELispCons.ConsIterator iterator = cons.consIterator(0);
+            while (iterator.hasNextCons()) {
+                ELispCons current = iterator.nextCons();
+                if (!isNil(BuiltInEval.FFuncall.funcall(predicate, new Object[]{current.car(), prop}))) {
+                    return current;
+                }
+            }
+            return false;
+        }
+
+        private static Object plistMemberEq(ELispCons plist, Object prop) {
+            ELispCons.ConsIterator iterator = plist.consIterator(0);
+            while (iterator.hasNextCons()) {
+                ELispCons current = iterator.nextCons();
+                if (BuiltInData.FEq.eq(current.car(), prop)) {
+                    return current;
+                }
+            }
+            return false;
         }
     }
 
@@ -1914,7 +1939,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FLoadAverage extends ELispBuiltInBaseNode {
         @Specialization
         public static Void loadAverage(Object useFloats) {
-            throw new UnsupportedOperationException();
+            throw ELispSignals.error("load-average not implemented for this operating system");
         }
     }
 
@@ -2220,8 +2245,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSxhashEq extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void sxhashEq(Object obj) {
-            throw new UnsupportedOperationException();
+        public static long sxhashEq(Object obj) {
+            return obj.hashCode();
         }
     }
 

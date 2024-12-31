@@ -61,9 +61,23 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return point;
     }
 
+    public long getPoint(PieceTreeBase.Position position) {
+        int line = Math.clamp(position.line(), 1, content.getLineCount() + 1);
+        long length = content.getLineLength(line);
+        return content.getOffsetAt(line, Math.clamp(position.column(), 1, length + 1)) + 1;
+    }
+
+    public long pointMin() {
+        return 1L;
+    }
+
+    public long pointMax() {
+        return content.getLength() + 1;
+    }
+
     /// @param point 1-based index of the new editing point
     public void setPoint(long point) {
-        this.point = Math.clamp(point, 1, length() + 1);
+        this.point = Math.clamp(point, pointMin(), pointMax());
     }
 
     public PieceTreeBase.Position getPosition() {
@@ -72,15 +86,15 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public void setPosition(PieceTreeBase.Position position) {
         long lineLength = content.getLineLength(position.line());
-        point = content.getOffsetAt(position.line(), Math.min(lineLength + 1, position.column()));
+        setPoint(content.getOffsetAt(position.line(), Math.clamp(position.column(), 1, lineLength + 1)) + 1);
     }
 
     public int getLineCount() {
         return content.getLineCount();
     }
 
-    public long getChar(long point) {
-        return content.getCharCode(point);
+    public int getChar(long point) {
+        return content.getCharCode(point - 1);
     }
 
     public void insert(MuleString text) {
@@ -96,7 +110,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             }
             text = buffer;
         }
-        content.insert((int) point - 1, text, true);
+        content.insert(point - 1, text, true);
         point += text.length();
     }
 
@@ -104,7 +118,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         if (length == 0) {
             return;
         }
-        content.delete((int) start - 1, (int) length);
+        content.delete(start - 1, length);
         if (start < point && point < start + length) {
             point = start;
         } else if (point >= start + length) {
@@ -115,6 +129,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public void erase() {
         content.delete(0, content.getLength());
         content.setEOL(content.getEOL()); // reset internal tree
+        point = 1;
     }
 
     public void setMultibyte(Object flag) {
@@ -126,10 +141,6 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public ELispString bufferString() {
         return new ELispString(content.getLinesRawContent());
-    }
-
-    public long length() {
-        return content.getLength();
     }
 
     @Nullable

@@ -1818,8 +1818,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAddVariableWatcher extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void addVariableWatcher(Object symbol, Object watchFunction) {
-            throw new UnsupportedOperationException();
+        public static boolean addVariableWatcher(Object symbol, Object watchFunction) {
+            // TODO
+            return false;
         }
     }
 

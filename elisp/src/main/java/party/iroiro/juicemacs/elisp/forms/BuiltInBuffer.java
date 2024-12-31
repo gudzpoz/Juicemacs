@@ -326,8 +326,14 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferName(Object buffer) {
-            throw new UnsupportedOperationException();
+        public Object bufferName(Object buffer) {
+            ELispBuffer b;
+            if (buffer instanceof ELispBuffer supplied) {
+                b = supplied;
+            } else {
+                b = getContext().currentBuffer();
+            }
+            return b.getName();
         }
     }
 
@@ -680,8 +686,8 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getCurrentBuffer() {
-            throw new UnsupportedOperationException();
+        public ELispBuffer getCurrentBuffer() {
+            return getContext().currentBuffer();
         }
     }
 

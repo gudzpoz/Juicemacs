@@ -54,8 +54,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetTextProperty extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getTextProperty(Object position, Object prop, Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean getTextProperty(Object position, Object prop, Object object) {
+            // TODO
+            return false;
         }
     }
 

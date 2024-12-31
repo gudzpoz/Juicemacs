@@ -175,8 +175,9 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMinibufferp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void minibufferp(Object buffer, Object live) {
-            throw new UnsupportedOperationException();
+        public static boolean minibufferp(Object buffer, Object live) {
+            // TODO
+            return false;
         }
     }
 

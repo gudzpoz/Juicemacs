@@ -3,9 +3,12 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.Collections;
 import java.util.List;
@@ -301,7 +304,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
      *   "           string quote.         \\   escape.
      *   $           paired delimiter.     \\='   expression quote or prefix operator.
      *   &lt;           comment starter.      &gt;   comment ender.
-     *   /           character-quote.      @   inherit from parent table.
+     *   /           character-quote.      &#64;   inherit from parent table.
      *   |           generic string fence. !   generic comment fence.
      *
      * Only single-character comment start and end sequences are represented thus.
@@ -403,8 +406,30 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSkipCharsForward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void skipCharsForward(Object string, Object lim) {
-            throw new UnsupportedOperationException();
+        public long skipCharsForward(ELispString string, Object lim) {
+            return skipChars(getLanguage(), getContext().currentBuffer(), string, notNilOr(lim, Long.MAX_VALUE));
+        }
+
+        public static long skipChars(ELispLanguage language, ELispBuffer buffer,
+                                     ELispString string, long lim) {
+            // TODO: Better escape
+            ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
+                    language,
+                    new ELispString(new MuleStringBuffer()
+                            .appendCodePoint('[')
+                            .append(string.value())
+                            .appendCodePoint(']')
+                            .appendCodePoint('+')),
+                    null
+            );
+            long oldPoint = buffer.getPoint();
+            Object result = regExp.call(buffer, false, oldPoint, -1);
+            if (result instanceof ELispCons cons) {
+                long newPoint = Math.min(asLong(cons.get(1)), lim);
+                buffer.setPoint(newPoint);
+                return newPoint - oldPoint;
+            }
+            return 0;
         }
     }
 
@@ -437,8 +462,41 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSkipSyntaxForward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void skipSyntaxForward(Object syntax, Object lim) {
-            throw new UnsupportedOperationException();
+        public long skipSyntaxForward(ELispString syntax, Object lim) {
+            int mask = 0;
+            boolean invert = false;
+            PrimitiveIterator.OfInt iterator = syntax.value().iterator(0);
+            while (iterator.hasNext()) {
+                int c = iterator.nextInt();
+                if (c == '^' && mask == 0) {
+                    invert = true;
+                } else {
+                    byte syntaxClass = checkSyntaxChar(c);
+                    mask |= 1 << syntaxClass;
+                }
+            }
+            if (invert) {
+                mask = ~mask;
+            }
+            // TODO: lim
+            ELispBuffer buffer = getContext().currentBuffer();
+            ELispCharTable syntaxTable = asCharTable(buffer.getSyntaxTable());
+            long point = buffer.getPoint();
+            long oldPoint = point;
+            while (point < buffer.pointMax()) {
+                int c = buffer.getChar(point);
+                Object clazz = syntaxTable.getChar(c);
+                if (
+                        (isNil(clazz) && invert)
+                                || (clazz instanceof ELispCons cons && ((1 << asInt(cons.car())) & mask) != 0)
+                ) {
+                    point++;
+                    continue;
+                }
+                break;
+            }
+            buffer.setPoint(Math.min(point, notNilOr(lim, Long.MAX_VALUE)));
+            return point - oldPoint;
         }
     }
 
@@ -544,8 +602,10 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBackwardPrefixChars extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void backwardPrefixChars() {
-            throw new UnsupportedOperationException();
+        public boolean backwardPrefixChars() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            // TODO
+            return false;
         }
     }
 

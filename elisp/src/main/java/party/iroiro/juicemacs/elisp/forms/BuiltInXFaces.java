@@ -3,8 +3,11 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.UNSPECIFIED;
 
 public class BuiltInXFaces extends ELispBuiltIns {
     @Override
@@ -344,8 +347,9 @@ public class BuiltInXFaces extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalGetLispFaceAttribute extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalGetLispFaceAttribute(Object symbol, Object keyword, Object frame) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol internalGetLispFaceAttribute(ELispSymbol symbol, ELispSymbol keyword, Object frame) {
+            // TODO
+            return UNSPECIFIED;
         }
     }
 

@@ -130,18 +130,19 @@ public sealed abstract class CodePointReader implements AutoCloseable {
 
     private static final class BufferReader extends CodePointReader {
         private final ELispBuffer buffer;
-        private long offset = 0;
+        private long offset;
 
         private BufferReader(ELispBuffer buffer) {
             this.buffer = buffer;
+            this.offset = buffer.pointMin();
         }
 
         @Override
         protected int readInternal() {
-            if (offset >= buffer.length()) {
+            if (offset >= buffer.pointMax()) {
                 return -1;
             }
-            return (int) buffer.getChar(offset++);
+            return buffer.getChar(offset++);
         }
 
         @Override

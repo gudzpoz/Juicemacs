@@ -6,11 +6,11 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -19,6 +19,7 @@ import java.util.List;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SYSTEM_NAME;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -95,8 +96,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPointMarker extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void pointMarker() {
-            throw new UnsupportedOperationException();
+        public ELispMarker pointMarker() {
+            ELispContext context = getContext();
+            ELispBuffer buffer = context.currentBuffer();
+            return new ELispMarker(buffer, buffer.getPoint());
         }
     }
 
@@ -309,8 +312,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FConstrainToField extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void constrainToField(Object newPos, Object oldPos, Object escapeFromEdge, Object onlyInLine, Object inhibitCaptureProperty) {
-            throw new UnsupportedOperationException();
+        public static Object constrainToField(Object newPos, Object oldPos, Object escapeFromEdge, Object onlyInLine, Object inhibitCaptureProperty) {
+            // TODO
+            return oldPos;
         }
     }
 
@@ -404,8 +408,13 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLineEndPosition extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void lineEndPosition(Object n) {
-            throw new UnsupportedOperationException();
+        public long lineEndPosition(Object n) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            PieceTreeBase.Position position = buffer.getPosition();
+            return buffer.getPoint(new PieceTreeBase.Position(
+                    position.line() + (int) notNilOr(n, 1) - 1,
+                    Long.MAX_VALUE
+            ));
         }
     }
 
@@ -594,8 +603,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPointMax extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void pointMax() {
-            throw new UnsupportedOperationException();
+        public long pointMax() {
+            return getContext().currentBuffer().pointMax();
         }
     }
 
@@ -715,8 +724,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBobp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bobp() {
-            throw new UnsupportedOperationException();
+        public boolean bobp() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            return buffer.getPoint() == buffer.pointMin();
         }
     }
 
@@ -730,8 +740,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEobp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void eobp() {
-            throw new UnsupportedOperationException();
+        public boolean eobp() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            return buffer.getPoint() == buffer.pointMax();
         }
     }
 
@@ -1643,7 +1654,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
      *
      * The argument used for %d, %o, %x, %e, %f, %g or %c must be a number.
      * %o, %x, and %X treat arguments as unsigned if `binary-as-unsigned' is t
-     *   (this is experimental; email 32252@debbugs.gnu.org if you need it).
+     *   (this is experimental; email 32252&#64;debbugs.gnu.org if you need it).
      * Use %% to put a single % into the output.
      *
      * A %-sequence other than %% may contain optional field number, flag,
@@ -1746,8 +1757,18 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharEqual extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charEqual(Object c1, Object c2) {
-            throw new UnsupportedOperationException();
+        public boolean charEqual(long c1, long c2) {
+            int c1i = asChar(c1);
+            int c2i = asChar(c2);
+            ELispContext context = getContext();
+            ELispBuffer buffer = context.currentBuffer();
+            Object caseFold = context.getStorage(CASE_FOLD_SEARCH).getValue(CASE_FOLD_SEARCH);
+            if (!isNil(caseFold)) {
+                ELispCharTable canon = asCharTable(buffer.getCaseCanonTable());
+                c1i = (int) notNilOr(canon.getChar(c1i), c1i);
+                c2i = (int) notNilOr(canon.getChar(c2i), c2i);
+            }
+            return c1i == c2i;
         }
     }
 

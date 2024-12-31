@@ -78,13 +78,13 @@ public class BuiltInCallInt extends ELispBuiltIns {
      *
      * In addition, if the string begins with `*', an error is signaled if
      *   the buffer is read-only.
-     * If `@' appears at the beginning of the string, and if the key sequence
+     * If `&#64;' appears at the beginning of the string, and if the key sequence
      *  used to invoke the command includes any mouse events, then the window
      *  associated with the first of those events is selected before the
      *  command is run.
      * If the string begins with `^' and `shift-select-mode' is non-nil,
      *  Emacs first calls the function `handle-shift-selection'.
-     * You may use `@', `*', and `^' together.  They are processed in the
+     * You may use `&#64;', `*', and `^' together.  They are processed in the
      *  order that they appear, before reading any arguments.
      *
      * If MODES is present, it should be one or more mode names (symbols)

@@ -126,8 +126,14 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLookingAt extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void lookingAt(Object regexp, Object inhibitModify) {
-            throw new UnsupportedOperationException();
+        public boolean lookingAt(ELispString regexp, Object inhibitModify) {
+            ELispRegExp.CompiledRegExp regExp = compileRegExp(getLanguage(), regexp, null);
+            ELispBuffer buffer = getContext().currentBuffer();
+            Object result = regExp.call(buffer, false, buffer.getPoint(), -1);
+            if (isNil(inhibitModify)) {
+                setMatch(this, result, false);
+            }
+            return !isNil(result);
         }
     }
 
@@ -277,7 +283,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             boolean caseFold = !isNil(CASE_FOLD_SEARCH.getValue());
 
             ELispBuffer buffer = currentBuffer();
-            long start = buffer.getPoint() - 1;
+            long start = buffer.getPoint();
             long limit = FReSearchForward.getBound(bound, forward);
             for (int i = 0; i < repeat; i++) {
                 if (currentMatch(buffer, string.value(), start, caseFold)) {
@@ -333,9 +339,9 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReSearchBackward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
+        public Object reSearchBackward(ELispString regexp, Object bound, Object noerror, Object count) {
             long repeat = notNilOr(count, 1);
-            return FReSearchForward.reSearchForward(regexp, bound, noerror, -repeat);
+            return FReSearchForward.reSearchForward(this, regexp, bound, noerror, -repeat);
         }
     }
 
@@ -371,7 +377,13 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReSearchForward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object reSearchForward(ELispString regexp, Object bound, Object noerror, Object count) {
+        public Object reSearchForwardNode(ELispString regexp, Object bound, Object noerror, Object count) {
+            return reSearchForward(this, regexp, bound, noerror, count);
+        }
+
+        public static Object reSearchForward(
+                Node node, ELispString regexp, Object bound, Object noerror, Object count
+        ) {
             long repeat = notNilOr(count, 1);
             boolean forward = repeat >= 0;
             repeat = Math.abs(repeat);
@@ -380,35 +392,42 @@ public class BuiltInSearch extends ELispBuiltIns {
             ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(null), regexp, null);
             long limit = getBound(bound, forward);
 
-            long at = buffer.getPoint() - 1;
+            long at = buffer.getPoint();
             for (long i = 0; i < repeat; i++) {
-                at = forward
-                        ? searchForwardOnce(pattern, buffer, at, limit)
-                        : searchBackwardOnce(pattern, buffer, at, limit);
+                if (buffer.pointMin() <= at && at < buffer.pointMax()) {
+                    at = forward
+                            ? searchForwardOnce(node, pattern, buffer, at, limit)
+                            : searchBackwardOnce(node, pattern, buffer, at, limit);
+                } else {
+                    at = -1;
+                }
                 if (at == -1) {
                     if (isNil(noerror)) {
                         throw ELispSignals.searchFailed();
                     }
                     return false;
                 }
+                at += forward ? 1 : -1;
             }
-            buffer.setPoint(at + 1);
+            buffer.setPoint(at);
             return buffer.getPoint();
         }
 
         public static long getBound(Object bound, boolean forward) {
             return forward
-                    ? (isNil(bound) ? -1 : asLong(bound) - 1)
-                    : notNilOr(bound, 0);
+                    ? (isNil(bound) ? -1 : asLong(bound))
+                    : notNilOr(bound, 1);
         }
 
         private static long searchBackwardOnce(
+                Node node,
                 ELispRegExp.CompiledRegExp pattern, ELispBuffer buffer,
                 long from, long limit
         ) {
             while (from >= limit) {
                 Object result = pattern.call(buffer, false, from, -1);
                 if (result instanceof ELispCons cons) {
+                    setMatch(node, cons, false);
                     return asLong(cons.get(1));
                 }
                 from--;
@@ -417,11 +436,13 @@ public class BuiltInSearch extends ELispBuiltIns {
         }
 
         private static long searchForwardOnce(
+                Node node,
                 ELispRegExp.CompiledRegExp pattern, ELispBuffer buffer,
                 long from, long limit
         ) {
             Object result = pattern.call(buffer, true, from, limit);
             if (result instanceof ELispCons cons) {
+                setMatch(node, cons, false);
                 return asLong(cons.get(1));
             }
             return -1;

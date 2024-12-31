@@ -32,8 +32,11 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FForwardChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void forwardChar(Object n) {
-            throw new UnsupportedOperationException();
+        public boolean forwardChar(Object n) {
+            long count = notNilOr(n, 1);
+            ELispBuffer buffer = getContext().currentBuffer();
+            buffer.setPoint(buffer.getPoint() + count);
+            return false;
         }
     }
 
@@ -53,8 +56,11 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBackwardChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void backwardChar(Object n) {
-            throw new UnsupportedOperationException();
+        public boolean backwardChar(Object n) {
+            long count = notNilOr(n, 1);
+            ELispBuffer buffer = getContext().currentBuffer();
+            buffer.setPoint(buffer.getPoint() - count);
+            return false;
         }
     }
 
@@ -83,16 +89,17 @@ public class BuiltInCmds extends ELispBuiltIns {
     public abstract static class FForwardLine extends ELispBuiltInBaseNode {
         @Specialization
         public long forwardLine(Object n) {
-            long line = notNilOr(n, 1);
-            ELispBuffer buffer = getContext().currentBuffer();
-            PieceTreeBase.Position position = buffer.getPosition();
-            int total = buffer.getLineCount();
+            return forwardLineCtx(getContext().currentBuffer(), n);
+        }
 
-            int nextLine = Math.clamp(position.line() + line, 1, total);
-            PieceTreeBase.Position next =
-                    new PieceTreeBase.Position(nextLine, position.column());
-            buffer.setPosition(next);
-            return (long) total - nextLine;
+        public static long forwardLineCtx(ELispBuffer buffer, Object n) {
+            long line = notNilOr(n, 1);
+            PieceTreeBase.Position position = buffer.getPosition();
+            int maxLine = buffer.getLineCount() + 1;
+
+            int nextLine = Math.clamp(position.line() + line, 1, maxLine);
+            buffer.setPosition(new PieceTreeBase.Position(nextLine, 1));
+            return (long) maxLine - nextLine;
         }
     }
 
@@ -115,8 +122,10 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBeginningOfLine extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void beginningOfLine(Object n) {
-            throw new UnsupportedOperationException();
+        public boolean beginningOfLine(Object n) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            FForwardLine.forwardLineCtx(buffer, n);
+            return false;
         }
     }
 
@@ -138,8 +147,12 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEndOfLine extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void endOfLine(Object n) {
-            throw new UnsupportedOperationException();
+        public boolean endOfLine(Object n) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            FForwardLine.forwardLineCtx(buffer, n);
+            PieceTreeBase.Position position = buffer.getPosition();
+            buffer.setPosition(new PieceTreeBase.Position(position.line(), Long.MAX_VALUE));
+            return false;
         }
     }
 

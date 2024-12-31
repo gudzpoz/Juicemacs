@@ -36,7 +36,7 @@ public class BuiltInIndent extends ELispBuiltIns {
     public abstract static class FCurrentColumn extends ELispBuiltInBaseNode {
         @Specialization
         public long currentColumn() {
-            return getContext().currentBuffer().getPosition().column();
+            return getContext().currentBuffer().getPosition().column() - 1;
         }
     }
 
@@ -112,9 +112,9 @@ public class BuiltInIndent extends ELispBuiltIns {
             PieceTreeBase.Position position = buffer.getPosition();
             buffer.setPosition(new PieceTreeBase.Position(
                     position.line(),
-                    column
+                    column + 1
             ));
-            return buffer.getPosition().column();
+            return buffer.getPosition().column() - 1;
         }
     }
 

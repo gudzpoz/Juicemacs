@@ -935,7 +935,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 if (!isNil(beg) || !isNil(end)) {
                     throw ELispSignals.error("Attempt to visit less than an entire file");
                 }
-                if (buffer.length() != 0) {
+                if (buffer.pointMax() != 1) {
                     throw ELispSignals.error("Cannot do file visiting in a non-empty buffer");
                 }
             }
