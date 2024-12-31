@@ -1,16 +1,41 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+
 public class BuiltInFloatFns extends ELispBuiltIns {
+    public BuiltInFloatFns() {
+        super(true);
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInFloatFnsFactory.getFactories();
+    }
+
+    @TypeSystem({
+            long.class,
+            double.class,
+            ELispBigNum.class,
+    })
+    public static class FloatFnsTypeSystem {
+        @ImplicitCast
+        public static double longToDouble(long arg) {
+            return arg;
+        }
+        @ImplicitCast
+        public static double bigNumToDouble(ELispBigNum arg) {
+            return arg.doubleValue();
+        }
+    }
+
+    @TypeSystemReference(FloatFnsTypeSystem.class)
+    abstract static class ELispFloatFnsNode extends ELispBuiltInBaseNode {
     }
 
     /**
@@ -20,10 +45,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "acos", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FAcos extends ELispBuiltInBaseNode {
+    public abstract static class FAcos extends ELispFloatFnsNode {
         @Specialization
-        public static Void acos(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double acos(double arg) {
+            return Math.acos(arg);
         }
     }
 
@@ -34,10 +59,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "asin", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FAsin extends ELispBuiltInBaseNode {
+    public abstract static class FAsin extends ELispFloatFnsNode {
         @Specialization
-        public static Void asin(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double asin(double arg) {
+            return Math.asin(arg);
         }
     }
 
@@ -52,10 +77,13 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "atan", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FAtan extends ELispBuiltInBaseNode {
+    public abstract static class FAtan extends ELispFloatFnsNode {
         @Specialization
-        public static Void atan(Object y, Object x) {
-            throw new UnsupportedOperationException();
+        public static double atan(double y, Object x) {
+            if (isNil(x)) {
+                return Math.atan(y);
+            }
+            return Math.atan2(y, FloatFnsTypeSystemGen.asImplicitDouble(x));
         }
     }
 
@@ -66,10 +94,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "cos", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FCos extends ELispBuiltInBaseNode {
+    public abstract static class FCos extends ELispFloatFnsNode {
         @Specialization
-        public static Void cos(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double cos(double arg) {
+            return Math.cos(arg);
         }
     }
 
@@ -80,10 +108,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "sin", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FSin extends ELispBuiltInBaseNode {
+    public abstract static class FSin extends ELispFloatFnsNode {
         @Specialization
-        public static Void sin(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double sin(double arg) {
+            return Math.sin(arg);
         }
     }
 
@@ -94,10 +122,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "tan", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FTan extends ELispBuiltInBaseNode {
+    public abstract static class FTan extends ELispFloatFnsNode {
         @Specialization
-        public static Void tan(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double tan(double arg) {
+            return Math.tan(arg);
         }
     }
 
@@ -108,10 +136,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "isnan", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FIsnan extends ELispBuiltInBaseNode {
+    public abstract static class FIsnan extends ELispFloatFnsNode {
         @Specialization
-        public static Void isnan(Object x) {
-            throw new UnsupportedOperationException();
+        public static boolean isnan(double x) {
+            return Double.isNaN(x);
         }
     }
 
@@ -123,10 +151,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "copysign", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FCopysign extends ELispBuiltInBaseNode {
+    public abstract static class FCopysign extends ELispFloatFnsNode {
         @Specialization
-        public static Void copysign(Object x1, Object x2) {
-            throw new UnsupportedOperationException();
+        public static double copysign(double x1, double x2) {
+            return Math.copySign(x1, x2);
         }
     }
 
@@ -145,10 +173,12 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "frexp", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFrexp extends ELispBuiltInBaseNode {
+    public abstract static class FFrexp extends ELispFloatFnsNode {
         @Specialization
-        public static Void frexp(Object x) {
-            throw new UnsupportedOperationException();
+        public static ELispCons frexp(double x) {
+            int exponent = Math.getExponent(x);
+            double significand = Math.scalb(x, -exponent);
+            return new ELispCons(significand, (long) exponent);
         }
     }
 
@@ -160,10 +190,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "ldexp", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FLdexp extends ELispBuiltInBaseNode {
+    public abstract static class FLdexp extends ELispFloatFnsNode {
         @Specialization
-        public static Void ldexp(Object sgnfcand, Object exponent) {
-            throw new UnsupportedOperationException();
+        public static double ldexp(double sgnfcand, long exponent) {
+            return Math.scalb(sgnfcand, Math.clamp(exponent, Integer.MIN_VALUE, Integer.MAX_VALUE));
         }
     }
 
@@ -174,10 +204,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "exp", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FExp extends ELispBuiltInBaseNode {
+    public abstract static class FExp extends ELispFloatFnsNode {
         @Specialization
-        public static Void exp(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double exp(double arg) {
+            return Math.exp(arg);
         }
     }
 
@@ -188,10 +218,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "expt", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FExpt extends ELispBuiltInBaseNode {
+    public abstract static class FExpt extends ELispFloatFnsNode {
         @Specialization
-        public static Void expt(Object arg1, Object arg2) {
-            throw new UnsupportedOperationException();
+        public static double expt(double arg1, double arg2) {
+            return Math.pow(arg1, arg2);
         }
     }
 
@@ -203,10 +233,13 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "log", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FLog extends ELispBuiltInBaseNode {
+    public abstract static class FLog extends ELispFloatFnsNode {
         @Specialization
-        public static Void log(Object arg, Object base) {
-            throw new UnsupportedOperationException();
+        public static double log(double arg, Object base) {
+            if (isNil(base)) {
+                return Math.log(arg);
+            }
+            return Math.log(arg) / Math.log(FloatFnsTypeSystemGen.asImplicitDouble(base));
         }
     }
 
@@ -217,10 +250,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "sqrt", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FSqrt extends ELispBuiltInBaseNode {
+    public abstract static class FSqrt extends ELispFloatFnsNode {
         @Specialization
-        public static Void sqrt(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double sqrt(double arg) {
+            return Math.sqrt(arg);
         }
     }
 
@@ -232,9 +265,21 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "abs", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FAbs extends ELispBuiltInBaseNode {
+        static boolean safeLong(long arg) {
+            return arg != Long.MIN_VALUE;
+        }
+
+        @Specialization(guards = "safeLong(arg)")
+        public static long absLong(long arg) {
+            return Math.abs(arg);
+        }
         @Specialization
-        public static Void abs(Object arg) {
-            throw new UnsupportedOperationException();
+        public static Number absBigNum(ELispBigNum arg) {
+            return arg.abs();
+        }
+        @Specialization
+        public static double absDouble(double arg) {
+            return Math.abs(arg);
         }
     }
 
@@ -245,10 +290,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "float", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFloat extends ELispBuiltInBaseNode {
+    public abstract static class FFloat extends ELispFloatFnsNode {
         @Specialization
-        public static Void float_(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double float_(double arg) {
+            return arg;
         }
     }
 
@@ -291,10 +336,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "ceiling", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FCeiling extends ELispBuiltInBaseNode {
+    public abstract static class FCeiling extends ELispFloatFnsNode {
         @Specialization
-        public static Void ceiling(Object arg, Object divisor) {
-            throw new UnsupportedOperationException();
+        public static double ceiling(double arg, Object divisor) {
+            if (isNil(divisor)) {
+                return Math.ceil(arg);
+            }
+            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
+            return Math.ceil(arg / div);
         }
     }
 
@@ -307,10 +356,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "floor", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FFloor extends ELispBuiltInBaseNode {
+    public abstract static class FFloor extends ELispFloatFnsNode {
         @Specialization
-        public static Void floor(Object arg, Object divisor) {
-            throw new UnsupportedOperationException();
+        public static double floor(double arg, Object divisor) {
+            if (isNil(divisor)) {
+                return Math.floor(arg);
+            }
+            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
+            return Math.floor(arg / div);
         }
     }
 
@@ -327,10 +380,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "round", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FRound extends ELispBuiltInBaseNode {
+    public abstract static class FRound extends ELispFloatFnsNode {
         @Specialization
-        public static Void round(Object arg, Object divisor) {
-            throw new UnsupportedOperationException();
+        public static double round(double arg, Object divisor) {
+            if (isNil(divisor)) {
+                return Math.round(arg);
+            }
+            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
+            return Math.round(arg / div);
         }
     }
 
@@ -343,10 +400,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "truncate", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTruncate extends ELispBuiltInBaseNode {
+    public abstract static class FTruncate extends ELispFloatFnsNode {
         @Specialization
-        public static Void truncate(Object arg, Object divisor) {
-            throw new UnsupportedOperationException();
+        public static double truncate(double arg, Object divisor) {
+            if (isNil(divisor)) {
+                return (long) arg;
+            }
+            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
+            return (long) (arg / div);
         }
     }
 
@@ -358,10 +419,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "fceiling", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFceiling extends ELispBuiltInBaseNode {
+    public abstract static class FFceiling extends ELispFloatFnsNode {
         @Specialization
-        public static Void fceiling(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double fceiling(double arg) {
+            return Math.ceil(arg);
         }
     }
 
@@ -373,10 +434,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "ffloor", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFfloor extends ELispBuiltInBaseNode {
+    public abstract static class FFfloor extends ELispFloatFnsNode {
         @Specialization
-        public static Void ffloor(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double ffloor(double arg) {
+            return Math.floor(arg);
         }
     }
 
@@ -387,10 +448,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "fround", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFround extends ELispBuiltInBaseNode {
+    public abstract static class FFround extends ELispFloatFnsNode {
         @Specialization
-        public static Void fround(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double fround(double arg) {
+            return Math.round(arg);
         }
     }
 
@@ -402,10 +463,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "ftruncate", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFtruncate extends ELispBuiltInBaseNode {
+    public abstract static class FFtruncate extends ELispFloatFnsNode {
         @Specialization
-        public static Void ftruncate(Object arg) {
-            throw new UnsupportedOperationException();
+        public static double ftruncate(double arg) {
+            return (long) arg;
         }
     }
 }

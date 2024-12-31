@@ -1604,8 +1604,14 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSubrArity extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void subrArity(Object subr) {
-            throw new UnsupportedOperationException();
+        public static ELispCons subrArity(ELispSubroutine subr) {
+            ELispBuiltIn info = subr.info();
+            long min = info.minArgs();
+            long max = info.maxArgs();
+            return new ELispCons(
+                    min,
+                    info.rawArg() ? UNEVALLED : (info.varArgs() ? MANY : max)
+            );
         }
     }
 

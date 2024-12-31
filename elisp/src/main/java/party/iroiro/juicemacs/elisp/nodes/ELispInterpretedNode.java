@@ -299,7 +299,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         protected ELispFunctionObject getFunctionObject(Object function) {
             return switch (function) {
-                case ELispSubroutine(ELispFunctionObject body, _, _) -> body;
+                case ELispSubroutine sub -> sub.body();
                 case ELispInterpretedClosure closure -> closure.getFunction();
                 default -> throw new UnsupportedOperationException();
             };
@@ -602,10 +602,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (node == null || node.getFunction() != function) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ConsCallNode created = switch (function) {
-                    case ELispSubroutine(ELispFunctionObject object, boolean specialForm, _) when specialForm ->
-                            new ConsSpecialCallNode(function, object, cons);
-                    case ELispSubroutine(_, _, ELispSubroutine.InlineInfo factory) when factory != null ->
-                            new ConsInlinedAstNode(function, factory, cons);
+                    case ELispSubroutine sub when sub.specialForm() ->
+                            new ConsSpecialCallNode(function, sub.body(), cons);
+                    case ELispSubroutine sub when sub.inline() != null ->
+                            new ConsInlinedAstNode(function, sub.inline(), cons);
                     case ELispCons c when c.car() == MACRO ->
                             new ConsMacroCallNode(c, cons);
                     case ELispCons c when c.car() == LAMBDA ->

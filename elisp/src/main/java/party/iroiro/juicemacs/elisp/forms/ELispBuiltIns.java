@@ -91,7 +91,8 @@ public abstract class ELispBuiltIns {
                         new ELispSubroutine(
                                 new ELispFunctionObject(rootNode.getCallTarget()),
                                 builtIn.rawArg(),
-                                inlineInfo
+                                inlineInfo,
+                                builtIn
                         )
                 ));
             }

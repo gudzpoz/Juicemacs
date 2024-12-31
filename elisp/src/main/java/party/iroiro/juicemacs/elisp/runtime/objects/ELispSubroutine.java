@@ -18,7 +18,8 @@ import java.util.Objects;
 public record ELispSubroutine(
         ELispFunctionObject body,
         boolean specialForm,
-        @Nullable InlineInfo inline
+        @Nullable InlineInfo inline,
+        ELispBuiltIn info
 ) implements ELispValue {
     @Override
     public boolean lispEquals(Object other) {
