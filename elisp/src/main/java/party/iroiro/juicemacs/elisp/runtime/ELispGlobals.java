@@ -77,6 +77,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
     //#region extra globals
     private static final ELispString emptyUnibyteString = new ELispString("");
 
+    private void defineError(ELispSymbol errorType, String errorMessage, ELispSymbol parentType) {
+        Object parentConditions = ctx.getStorage(parentType).getProperty(ERROR_CONDITIONS);
+        ValueStorage storage = ctx.getStorage(errorType);
+        storage.putProperty(ERROR_CONDITIONS, new ELispCons(errorType, parentConditions));
+        storage.putProperty(ERROR_MESSAGE, new ELispString(errorMessage));
+    }
     private static ELispCons loadPathDefault() {
         // TODO
         return new ELispCons(new ELispString(Paths.get("").toAbsolutePath().toString()));
@@ -170,10 +176,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         floatfnsVars();
         fnsVars();
         frameVars();
+        indentVars();
         keyboardVars();
         keymapVars();
         lreadVars();
         macrosVars();
+        markerVars();
         minibufVars();
         printVars();
         processVars();
@@ -181,6 +189,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         syntaxVars();
         textpropVars();
         timefnsVars();
+        treesitVars();
         windowVars();
         xdispVars();
         xfacesVars();
@@ -721,6 +730,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(ICONIFY_CHILD_FRAME, iconifyChildFrame);
         initForwardTo(FRAME_INTERNAL_PARAMETERS, frameInternalParameters);
     }
+    private final ValueStorage.ForwardedBool indentTabsMode = new ValueStorage.ForwardedBool(true);
+    private void indentVars() {
+        initForwardTo(INDENT_TABS_MODE, indentTabsMode);
+    }
     private final ValueStorage.Forwarded internalTopLevelMessage = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded lastCommandEvent = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded lastNonmenuEvent = new ValueStorage.Forwarded();
@@ -965,6 +978,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(EXECUTING_KBD_MACRO, executingKbdMacro);
         initForwardTo(EXECUTING_KBD_MACRO_INDEX, executingKbdMacroIndex);
     }
+
+    private void markerVars() {
+
+    }
     private final ValueStorage.Forwarded readExpressionHistory = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded readBufferFunction = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded minibufferFollowsSelectedFrame = new ValueStorage.Forwarded(true);
@@ -1116,6 +1133,16 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.ForwardedBool currentTimeList = new ValueStorage.ForwardedBool(true);
     private void timefnsVars() {
         initForwardTo(CURRENT_TIME_LIST, currentTimeList);
+    }
+    private final ValueStorage.Forwarded treesitLoadNameOverrideList = new ValueStorage.Forwarded(false);
+    private final ValueStorage.Forwarded treesitExtraLoadPath = new ValueStorage.Forwarded(false);
+    private final ValueStorage.Forwarded treesitThingSettings = new ValueStorage.Forwarded(false);
+    private final ValueStorage.Forwarded treesitLanguageRemapAlist = new ValueStorage.Forwarded(false);
+    private void treesitVars() {
+        initForwardTo(TREESIT_LOAD_NAME_OVERRIDE_LIST, treesitLoadNameOverrideList);
+        initForwardTo(TREESIT_EXTRA_LOAD_PATH, treesitExtraLoadPath);
+        initForwardTo(TREESIT_THING_SETTINGS, treesitThingSettings);
+        initForwardTo(TREESIT_LANGUAGE_REMAP_ALIST, treesitLanguageRemapAlist);
     }
     private final ValueStorage.Forwarded tempBufferShowFunction = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded minibufferScrollWindow = new ValueStorage.Forwarded(false);
@@ -1418,6 +1445,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         symsOfSearch();
         symsOfFrame();
         symsOfSyntax();
+        symsOfTreesit();
         symsOfTextprop();
         symsOfComposite();
         symsOfWindow();
@@ -2104,6 +2132,37 @@ character."""),
         var findWordBoundaryFunctionTableJInit = FMakeCharTable.makeCharTable(NIL, NIL);
         findWordBoundaryFunctionTable.setValue(findWordBoundaryFunctionTableJInit);
         COMMENT_END_CAN_BE_ESCAPED.setBufferLocal(true);
+    }
+    private void symsOfTreesit() {
+        defineError(TREESIT_ERROR, "Generic tree-sitter error", ERROR);
+        defineError(TREESIT_QUERY_ERROR, "Query pattern is malformed", TREESIT_ERROR);
+        defineError(TREESIT_PARSE_ERROR, "Parse failed", TREESIT_ERROR);
+        defineError(TREESIT_RANGE_INVALID, "RANGES are invalid: they have to be ordered and should not overlap", TREESIT_ERROR);
+        defineError(TREESIT_BUFFER_TOO_LARGE, "Buffer too large (> 4GiB)", TREESIT_ERROR);
+        defineError(TREESIT_LOAD_LANGUAGE_ERROR, "Cannot load language definition", TREESIT_ERROR);
+        defineError(TREESIT_NODE_OUTDATED, "This node is outdated, please retrieve a new one", TREESIT_ERROR);
+        defineError(TREESIT_NODE_BUFFER_KILLED, "The buffer associated with this node is killed", TREESIT_ERROR);
+        defineError(TREESIT_PARSER_DELETED, "This parser is deleted and cannot be used", TREESIT_ERROR);
+        defineError(TREESIT_INVALID_PREDICATE, "Invalid predicate, see `treesit-thing-settings' for valid forms for a predicate", TREESIT_ERROR);
+        TREESIT_LANGUAGE_REMAP_ALIST.setBufferLocal(true);
+        var treesitStrLibtreeSitter = new ELispString("libtree-sitter-");
+        var treesitStrTreeSitter = new ELispString("tree-sitter-");
+        var treesitStrDot0 = new ELispString(".0");
+        var treesitStrDot = new ELispString(".");
+        var treesitStrQuestionMark = new ELispString("?");
+        var treesitStrStar = new ELispString("*");
+        var treesitStrPlus = new ELispString("+");
+        var treesitStrPoundEqual = new ELispString("#equal");
+        var treesitStrPoundMatch = new ELispString("#match");
+        var treesitStrPoundPred = new ELispString("#pred");
+        var treesitStrOpenBracket = new ELispString("[");
+        var treesitStrCloseBracket = new ELispString("]");
+        var treesitStrOpenParen = new ELispString("(");
+        var treesitStrCloseParen = new ELispString(")");
+        var treesitStrSpace = new ELispString(" ");
+        var treesitStrEqual = new ELispString("equal");
+        var treesitStrMatch = new ELispString("match");
+        var treesitStrPred = new ELispString("pred");
     }
     private void symsOfTextprop() {
         var textPropertyDefaultNonstickyJInit = ELispCons.listOf(FCons.cons(SYNTAX_TABLE, T), FCons.cons(DISPLAY, T));
@@ -5488,6 +5547,7 @@ character."""),
     public static final ELispSymbol HSCROLL_STEP = new ELispSymbol("hscroll-step");
     public static final ELispSymbol ICONIFY_CHILD_FRAME = new ELispSymbol("iconify-child-frame");
     public static final ELispSymbol ICON_TITLE_FORMAT = new ELispSymbol("icon-title-format");
+    public static final ELispSymbol INDENT_TABS_MODE = new ELispSymbol("indent-tabs-mode");
     public static final ELispSymbol INHERIT_PROCESS_CODING_SYSTEM = new ELispSymbol("inherit-process-coding-system");
     public static final ELispSymbol INHIBIT_BIDI_MIRRORING = new ELispSymbol("inhibit-bidi-mirroring");
     public static final ELispSymbol INHIBIT_EOL_CONVERSION = new ELispSymbol("inhibit-eol-conversion");
@@ -5736,6 +5796,9 @@ character."""),
     public static final ELispSymbol TRANSLATION_HASH_TABLE_VECTOR = new ELispSymbol("translation-hash-table-vector");
     public static final ELispSymbol TRANSLATION_TABLE_FOR_INPUT = new ELispSymbol("translation-table-for-input");
     public static final ELispSymbol TRANSLATION_TABLE_VECTOR = new ELispSymbol("translation-table-vector");
+    public static final ELispSymbol TREESIT_EXTRA_LOAD_PATH = new ELispSymbol("treesit-extra-load-path");
+    public static final ELispSymbol TREESIT_LOAD_NAME_OVERRIDE_LIST = new ELispSymbol("treesit-load-name-override-list");
+    public static final ELispSymbol TREESIT_THING_SETTINGS = new ELispSymbol("treesit-thing-settings");
     public static final ELispSymbol TRUNCATE_PARTIAL_WIDTH_WINDOWS = new ELispSymbol("truncate-partial-width-windows");
     public static final ELispSymbol TTY_ERASE_CHAR = new ELispSymbol("tty-erase-char");
     public static final ELispSymbol UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT = new ELispSymbol("unibyte-display-via-language-environment");
@@ -5945,6 +6008,7 @@ character."""),
             HSCROLL_STEP,
             ICONIFY_CHILD_FRAME,
             ICON_TITLE_FORMAT,
+            INDENT_TABS_MODE,
             INHERIT_PROCESS_CODING_SYSTEM,
             INHIBIT_BIDI_MIRRORING,
             INHIBIT_EOL_CONVERSION,
@@ -6193,6 +6257,9 @@ character."""),
             TRANSLATION_HASH_TABLE_VECTOR,
             TRANSLATION_TABLE_FOR_INPUT,
             TRANSLATION_TABLE_VECTOR,
+            TREESIT_EXTRA_LOAD_PATH,
+            TREESIT_LOAD_NAME_OVERRIDE_LIST,
+            TREESIT_THING_SETTINGS,
             TRUNCATE_PARTIAL_WIDTH_WINDOWS,
             TTY_ERASE_CHAR,
             UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT,

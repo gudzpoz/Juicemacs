@@ -9,6 +9,23 @@ public final class ELispMarker extends Number implements ELispValue {
     private ELispBuffer buffer;
     private long position;
 
+    public ELispMarker() {
+        this(null, 1);
+    }
+
+    public ELispMarker(@Nullable ELispBuffer buffer, long position) {
+        this.buffer = buffer;
+        this.position = position;
+    }
+
+    public @Nullable ELispBuffer getBuffer() {
+        return buffer;
+    }
+
+    public long getPosition() {
+        return position;
+    }
+
     @Override
     public boolean lispEquals(Object other) {
         return other instanceof ELispMarker marker && marker.buffer == buffer && marker.position == position;

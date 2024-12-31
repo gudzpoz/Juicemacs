@@ -206,7 +206,11 @@ public abstract class ELispSignals {
                 STRINGP,
                 "java.lang.Long",
                 INTEGERP,
+                "long",
+                INTEGERP,
                 "java.lang.Double",
+                FLOATP,
+                "double",
                 FLOATP
         );
     }

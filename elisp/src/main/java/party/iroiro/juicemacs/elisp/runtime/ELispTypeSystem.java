@@ -81,6 +81,11 @@ public abstract class ELispTypeSystem {
         return ELispBigNum.forceWrap(value);
     }
 
+    @ImplicitCast
+    public static long castMarkerToLong(ELispMarker marker) {
+        return marker.getPosition();
+    }
+
     public static boolean isNil(Object nil) {
         return nil == NIL || nil == Boolean.FALSE;
     }
@@ -127,6 +132,18 @@ public abstract class ELispTypeSystem {
             throw ELispSignals.argsOutOfRange(value, left, right);
         }
         return i;
+    }
+
+    public static int asRanged(long value, int left, int right) {
+        int i = Math.clamp(value, left, right);
+        if (i != value) {
+            throw ELispSignals.argsOutOfRange(value, left, right);
+        }
+        return i;
+    }
+
+    public static int asChar(long value) {
+        return asRanged(value, 0, MAX_CHAR);
     }
 
     public static int asChar(Object value) {
@@ -307,6 +324,13 @@ public abstract class ELispTypeSystem {
             return b;
         }
         throw ELispSignals.wrongTypeArgument(BUFFERP, buffer);
+    }
+
+    public static ELispMarker asMarker(Object marker) {
+        if (marker instanceof ELispMarker m) {
+            return m;
+        }
+        throw ELispSignals.wrongTypeArgument(MARKERP, marker);
     }
 
     public static ELispCharTable asCharTable(Object table) {

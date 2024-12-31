@@ -82,6 +82,10 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
         return wrap(value.divide(implicitELispBigNum.value));
     }
 
+    public Number abs() {
+        return wrap(value.abs());
+    }
+
     public Number xor(ELispBigNum other) {
         return wrap(value.xor(other.value));
     }
