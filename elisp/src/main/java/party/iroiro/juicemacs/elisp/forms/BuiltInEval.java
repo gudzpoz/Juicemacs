@@ -670,6 +670,12 @@ public class BuiltInEval extends ELispBuiltIns {
             return ELispInterpretedNode.literal(arg);
         }
 
+        public static Object getFunction(ELispCons def) {
+            CompilerDirectives.transferToInterpreter();
+            ELispExpressionNode definition = getDefinition(def);
+            return definition.executeGeneric(null);
+        }
+
         private static ELispExpressionNode getDefinition(ELispCons def) {
             CompilerDirectives.transferToInterpreter();
             ELispCons.BrentTortoiseHareIterator iterator = def.listIterator(1);
@@ -709,9 +715,9 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
 
                 @Override
-                public Object executeGeneric(VirtualFrame frame) {
+                public Object executeGeneric(@Nullable VirtualFrame frame) {
                     body.fillDebugInfo(getParent());
-                    @Nullable ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(frame);
+                    @Nullable ELispLexical lexicalFrame = frame == null ? null : ELispLexical.getLexicalFrame(frame);
                     return new ELispInterpretedClosure(
                             args,
                             body,
@@ -2109,6 +2115,9 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FFunctionp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean functionp(Object object) {
+            if (object instanceof ELispCons cons) {
+                return cons.car() == LAMBDA;
+            }
             if (toSym(object) instanceof ELispSymbol symbol) {
                 object = symbol.getIndirectFunction();
             }
@@ -2145,8 +2154,14 @@ public class BuiltInEval extends ELispBuiltIns {
                 case ELispSubroutine subroutine when !subroutine.specialForm() ->
                     subroutine.body();
                 case ELispInterpretedClosure closure -> closure.getFunction();
+                case ELispCons cons when cons.car() == LAMBDA -> getLambda(cons);
                 default -> throw new UnsupportedOperationException();
             };
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static ELispFunctionObject getLambda(ELispCons cons) {
+            return getFunctionObject(FFunction.getFunction(cons));
         }
 
         @Override
