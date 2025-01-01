@@ -2162,14 +2162,15 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FFunctionp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean functionp(Object object) {
-            if (object instanceof ELispCons cons) {
-                return cons.car() == LAMBDA;
-            }
             if (toSym(object) instanceof ELispSymbol symbol) {
                 object = symbol.getIndirectFunction();
+                if (object instanceof ELispCons cons && cons.car() == AUTOLOAD) {
+                    return true;
+                }
             }
             return (object instanceof ELispSubroutine sub && !sub.specialForm())
-                    || object instanceof ELispInterpretedClosure;
+                    || object instanceof ELispInterpretedClosure
+                    || object instanceof ELispCons cons && cons.car() == LAMBDA;
         }
     }
 
@@ -2191,8 +2192,12 @@ public class BuiltInEval extends ELispBuiltIns {
 
         public static ELispFunctionObject getFunctionObject(Object function) {
             Object original = function;
-            if (toSym(function) instanceof ELispSymbol symbol) {
-                function = symbol.getIndirectFunction();
+            ELispSymbol symbol;
+            if (toSym(function) instanceof ELispSymbol sym) {
+                symbol = sym;
+                function = sym.getIndirectFunction();
+            } else {
+                symbol = null;
             }
             if (isNil(function)) {
                 throw ELispSignals.voidFunction(original);
@@ -2202,8 +2207,15 @@ public class BuiltInEval extends ELispBuiltIns {
                     subroutine.body();
                 case ELispInterpretedClosure closure -> closure.getFunction();
                 case ELispCons cons when cons.car() == LAMBDA -> getLambda(cons);
+                case ELispCons cons when cons.car() == AUTOLOAD && symbol != null -> getAutoload(symbol, cons);
                 default -> throw new UnsupportedOperationException();
             };
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static ELispFunctionObject getAutoload(ELispSymbol symbol, ELispCons cons) {
+            FAutoloadDoLoad.autoloadDoLoad(cons, symbol, false);
+            return getFunctionObject(symbol);
         }
 
         @CompilerDirectives.TruffleBoundary
