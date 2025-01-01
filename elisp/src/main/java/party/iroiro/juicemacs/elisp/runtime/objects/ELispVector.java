@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +28,7 @@ public final class ELispVector extends AbstractELispVector {
     }
 
     @Override
-    public String toString() {
-        return toStringHelper("[", "]");
+    public void display(ELispPrint print) {
+        displayHelper(print, "[", "]");
     }
 }

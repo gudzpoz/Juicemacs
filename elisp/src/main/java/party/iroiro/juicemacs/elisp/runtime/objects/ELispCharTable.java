@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -360,8 +361,8 @@ public final class ELispCharTable extends AbstractELispVector {
     }
 
     @Override
-    public String toString() {
-        return vectorToStringHelper("#^[", "]", Arrays.asList(inner).iterator());
+    public void display(ELispPrint print) {
+        vectorPrintHelper(print, "#^[", "]", Arrays.asList(inner).iterator());
     }
 
     public static ELispCharTable create(List<Object> objects) {
@@ -556,8 +557,8 @@ public final class ELispCharTable extends AbstractELispVector {
         }
 
         @Override
-        public String toString() {
-            return toStringHelper("#^^[", "]");
+        public void display(ELispPrint print) {
+            displayHelper(print, "#^^[", "]");
         }
     }
 

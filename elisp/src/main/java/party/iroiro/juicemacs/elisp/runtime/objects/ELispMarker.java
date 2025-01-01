@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.Objects;
 
@@ -22,8 +23,16 @@ public final class ELispMarker extends Number implements ELispValue {
         return buffer;
     }
 
+    public void setBuffer(@Nullable ELispBuffer buffer) {
+        this.buffer = buffer;
+    }
+
     public long getPosition() {
         return position;
+    }
+
+    public void setPosition(long position) {
+        this.position = position;
     }
 
     @Override
@@ -33,6 +42,16 @@ public final class ELispMarker extends Number implements ELispValue {
     @Override
     public int lispHashCode() {
         return Objects.hash(buffer, position);
+    }
+
+    @Override
+    public void display(ELispPrint print) {
+        print.print(toString());
+    }
+
+    @Override
+    public String toString() {
+        return "#<marker@" + buffer + ":" + position + ">";
     }
 
     //#region Number

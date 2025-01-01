@@ -13,6 +13,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.Iterator;
@@ -72,8 +73,10 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
 
     @Override
-    public String display() {
-        return "\"" + toString().replace("\"", "\\\"") + "\"";
+    public void display(ELispPrint print) {
+        print.startString();
+        print.print(toString().replace("\"", "\\\""));
+        print.endString();
     }
 
     public int intervals() {
@@ -121,7 +124,7 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
     @ExportMessage
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return display();
+        return ELispPrint.toString(this).toString();
     }
     @ExportMessage
     public boolean hasLanguage() {

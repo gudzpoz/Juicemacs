@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+
 import java.util.BitSet;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
@@ -48,6 +50,17 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
             bits.set(size - i - 1, this.bits.get(i));
         }
         return new ELispBoolVector(bits, size);
+    }
+
+    @Override
+    public void display(ELispPrint print) {
+        print.print('#').print('&')
+                .printInt(size)
+                .startString();
+        for (byte b : bits.toByteArray()) {
+            print.printRawByte(b);
+        }
+        print.endString();
     }
 
     @Override

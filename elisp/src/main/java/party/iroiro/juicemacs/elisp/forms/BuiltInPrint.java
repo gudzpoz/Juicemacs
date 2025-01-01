@@ -3,10 +3,18 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
 public class BuiltInPrint extends ELispBuiltIns {
     @Override
@@ -91,8 +99,23 @@ public class BuiltInPrint extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPrin1 extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void prin1(Object object, Object printcharfun, Object overrides) {
-            throw new UnsupportedOperationException();
+        public static Object prin1(Object object, Object printcharfun, Object overrides) {
+            ELispPrint print = getPrint(printcharfun);
+            print.print(object).flush();
+            return object;
+        }
+
+        public static ELispPrint getPrint(Object printcharfun) {
+            if (isNil(printcharfun)) {
+                printcharfun = ELispContext.get(null).currentBuffer();
+            }
+            // TODO
+            @Nullable MuleStringBuffer output = isT(printcharfun) ? new MuleStringBuffer() : null;
+            return switch (printcharfun) {
+                case ELispBuffer buffer -> ELispPrint.fromBuffer(buffer);
+                case ELispMarker marker -> ELispPrint.fromMarker(marker);
+                default -> output == null ? ELispPrint.fromFunc(printcharfun) : ELispPrint.fromBuilder(output);
+            };
         }
     }
 
@@ -117,7 +140,7 @@ public class BuiltInPrint extends ELispBuiltIns {
     public abstract static class FPrin1ToString extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString prin1ToString(Object object, Object noescape, Object overrides) {
-            return new ELispString(ELispValue.display(object));
+            return new ELispString(ELispPrint.toString(object));
         }
     }
 
@@ -150,8 +173,14 @@ public class BuiltInPrint extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPrinc extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void princ(Object object, Object printcharfun) {
-            throw new UnsupportedOperationException();
+        public static Object princ(Object object, Object printcharfun) {
+            // TODO
+            ELispPrint print = FPrin1.getPrint(printcharfun);
+            if (object instanceof ELispString s) {
+                print.print(s.value()).flush();
+                return object;
+            }
+            return FPrin1.prin1(object, printcharfun, false);
         }
     }
 

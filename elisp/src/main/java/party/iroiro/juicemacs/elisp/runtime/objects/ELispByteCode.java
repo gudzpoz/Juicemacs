@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.List;
 
@@ -38,4 +39,8 @@ public final class ELispByteCode extends AbstractELispVector {
         return new ELispByteCode(inner);
     }
 
+    @Override
+    public void display(ELispPrint print) {
+        displayHelper(print, "#<compiled-function ", ">");
+    }
 }

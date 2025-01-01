@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+
 public interface ELispValue {
     /// Compares against another object with `equal`-like behavior
     ///
@@ -25,20 +27,5 @@ public interface ELispValue {
         return o instanceof ELispValue value ? value.lispHashCode() : o.hashCode();
     }
 
-    default String display() {
-        return toString();
-    }
-
-    static String display(Object o) {
-        if (o instanceof ELispValue value) {
-            return value.display();
-        }
-        if (o == Boolean.TRUE) {
-            return "t";
-        }
-        if (o == Boolean.FALSE) {
-            return "nil";
-        }
-        return o.toString();
-    }
+    void display(ELispPrint print);
 }

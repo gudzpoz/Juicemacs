@@ -1,5 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.mule.MuleString;
+
+import java.util.Objects;
+
 /// Abstract parent class for those objects that `eq` indicates `equal`
 public abstract class AbstractELispIdentityObject implements ELispValue {
     @Override
@@ -10,5 +15,17 @@ public abstract class AbstractELispIdentityObject implements ELispValue {
     @Override
     public final int lispHashCode() {
         return System.identityHashCode(this);
+    }
+
+    @Override
+    public void display(ELispPrint print) {
+        print.print('#').print('<')
+                .print(MuleString.fromString(Objects.toIdentityString(this)))
+                .print('>');
+    }
+
+    @Override
+    public String toString() {
+        return ELispPrint.toString(this).toString();
     }
 }

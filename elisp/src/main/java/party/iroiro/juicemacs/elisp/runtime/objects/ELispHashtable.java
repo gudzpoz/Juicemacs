@@ -8,6 +8,7 @@ import org.graalvm.collections.MapCursor;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -103,8 +104,8 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void remove(Object key) {
-        inner.removeKey(key);
+    public Object remove(Object key) {
+        return Objects.requireNonNullElse(inner.removeKey(key), false);
     }
 
     public void clear() {
@@ -113,6 +114,14 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject {
 
     public int size() {
         return inner.size();
+    }
+
+    public Object getTest() {
+        return eqSymbol;
+    }
+
+    public Object getWeakness() {
+        return weak;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -167,20 +176,14 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject {
     }
 
     @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder("#s(hash-table");
-        builder.append(" size ").append(size());
+    public void display(ELispPrint print) {
+        print.print("#s(hash-table size ").printInt(size());
         if (!isNil(weak)) {
-            builder.append(" weakness ").append(weak);
+            print.sep().print("weakness ").print(weak);
         }
-        builder.append(" test ").append(eqSymbol);
-        builder.append(" data (");
-        forEach((k, v) -> builder.append(ELispValue.display(k)).append(' ').append(ELispValue.display(v)).append(' '));
-        if (size() != 0) {
-            builder.deleteCharAt(builder.length() - 1);
-        }
-        builder.append("))");
-        return builder.toString();
+        print.sep().print("test ").print(eqSymbol).sep().print("data (").start(this);
+        forEach((k, v) -> print.sep().print(k).sep().print(v));
+        print.print("))").end();
     }
 
     private static final class ELispWeakHashtable extends ELispHashtable {

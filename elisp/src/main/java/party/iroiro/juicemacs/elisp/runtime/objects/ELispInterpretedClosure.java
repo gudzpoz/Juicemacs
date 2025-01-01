@@ -14,6 +14,7 @@ import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.*;
 
@@ -103,11 +104,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     }
 
     @Override
-    public String toString() {
+    public void display(ELispPrint print) {
         if (getEnv() instanceof LexicalEnvironment) {
-            return vectorToStringHelper("(lambda ", ")", subList(0, CLOSURE_CONSTANTS).iterator());
+            vectorPrintHelper(print, "#[", "]", subList(0, CLOSURE_CONSTANTS).iterator());
+        } else {
+            displayHelper(print, "#[", "]");
         }
-        return toStringHelper("(lambda ", ")");
     }
 
     public record LexicalEnvironment(MaterializedFrame frame, ELispLexical lexicalFrame) {

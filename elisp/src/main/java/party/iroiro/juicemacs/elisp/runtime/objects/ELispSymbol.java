@@ -7,6 +7,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -239,17 +240,15 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     }
 
     @Override
-    public String display() {
+    public void display(ELispPrint print) {
         PrimitiveIterator.OfInt i = name.codePoints().iterator();
-        StringBuilder result = new StringBuilder(Math.toIntExact(name.length()));
         while (i.hasNext()) {
             int c = i.nextInt();
             if (c <= ' ' || SPECIAL_CHARS.indexOf(c) != -1 || c == 0x00A0 /* no breaking space */) {
-                result.append('\\');
+                print.print('\\');
             }
-            result.appendCodePoint(c);
+            print.print(c);
         }
-        return result.toString();
     }
 
     @Override

@@ -8,6 +8,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.mule.MuleString;
 
 import java.math.BigInteger;
 
@@ -20,6 +22,11 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
 
     private ELispBigNum(BigInteger value) {
         this.value = value;
+    }
+
+    @Override
+    public void display(ELispPrint print) {
+        print.print(MuleString.fromString(value.toString()));
     }
 
     /// Wrap a BigInteger into an ELispBigNum or a long if it fits.

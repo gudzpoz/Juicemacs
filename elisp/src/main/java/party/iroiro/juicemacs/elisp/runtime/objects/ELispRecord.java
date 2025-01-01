@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class ELispRecord extends AbstractELispVector {
     }
 
     @Override
-    public String toString() {
-        return toStringHelper("#s(", ")");
+    public void display(ELispPrint print) {
+        displayHelper(print, "#s(", ")");
     }
 }

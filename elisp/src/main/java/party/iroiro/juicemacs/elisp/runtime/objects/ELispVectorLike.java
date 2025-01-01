@@ -6,6 +6,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.AbstractList;
 import java.util.Iterator;
@@ -27,20 +28,24 @@ public abstract class ELispVectorLike<T> extends AbstractList<T> implements List
         return System.identityHashCode(this);
     }
 
-    protected static String vectorToStringHelper(String prefix, String suffix, Iterator<?> iterator) {
-        StringBuilder builder = new StringBuilder(prefix);
-        if (iterator.hasNext()) {
-            builder.append(ELispValue.display(iterator.next()));
-        }
-        while (iterator.hasNext()) {
-            builder.append(" ");
-            builder.append(ELispValue.display(iterator.next()));
-        }
-        return builder.append(suffix).toString();
+    @Override
+    public String toString() {
+        return ELispPrint.toString(this).toString();
     }
 
-    protected String toStringHelper(String prefix, String suffix) {
-        return vectorToStringHelper(prefix, suffix, iterator());
+    protected void vectorPrintHelper(ELispPrint print, String prefix, String suffix, Iterator<?> iterator) {
+        print.print(prefix).start(this);
+        if (iterator.hasNext()) {
+            print.print(iterator.next());
+        }
+        while (iterator.hasNext()) {
+            print.sep().print(iterator.next());
+        }
+        print.print(suffix).end();
+    }
+
+    protected void displayHelper(ELispPrint print, String prefix, String suffix) {
+        vectorPrintHelper(print, prefix, suffix, iterator());
     }
 
     //#region Interop Array Elements

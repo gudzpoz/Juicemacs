@@ -12,6 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.*;
 
@@ -325,37 +326,13 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     @Override
+    public void display(ELispPrint print) {
+        print.printCons(this);
+    }
+
+    @Override
     public String toString() {
-        switch (cdr) {
-            case ELispCons quoted when car == QUOTE && isNil(quoted.cdr) -> {
-                return "'" + ELispValue.display(quoted.car);
-            }
-            case ELispCons function when car == FUNCTION && isNil(function.cdr) -> {
-                return "#'" + ELispValue.display(function.car);
-            }
-            case ELispCons backquote when car == BACKQUOTE && isNil(backquote.cdr) -> {
-                return "`" + ELispValue.display(backquote.car);
-            }
-            case ELispCons comma when car == COMMA && isNil(comma.cdr) -> {
-                return "," + ELispValue.display(comma.car);
-            }
-            case ELispCons comma when car == COMMA_AT && isNil(comma.cdr) -> {
-                return ",@" + ELispValue.display(comma.car);
-            }
-            default -> {}
-        }
-        StringBuilder sb = new StringBuilder("(").append(ELispValue.display(car()));
-        BrentTortoiseHareIterator i = listIterator(1);
-        while (i.hasNextCdr()) {
-            if (i.hasNextCons()) {
-                sb.append(" ").append(ELispValue.display(i.next()));
-            } else {
-                sb.append(" . ").append(ELispValue.display(i.current()));
-                break;
-            }
-        }
-        sb.append(")");
-        return sb.toString();
+        return ELispPrint.toString(this).toString();
     }
 
     //#region InteropLibrary

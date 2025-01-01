@@ -6,6 +6,7 @@ import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.Objects;
 
@@ -31,8 +32,13 @@ public record ELispSubroutine(
     }
 
     @Override
+    public void display(ELispPrint print) {
+        print.print(toString());
+    }
+
+    @Override
     public String toString() {
-        return "#<subr " + body.callTarget().toString() +  ">";
+        return "#<subr " + body.callTarget() +  ">";
     }
 
     /// Information about an inline-able built-in function
