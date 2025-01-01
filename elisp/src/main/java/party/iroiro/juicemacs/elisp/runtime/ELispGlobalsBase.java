@@ -73,6 +73,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 new BuiltInEmacs(),
                 new BuiltInEval(),
                 new BuiltInFileIO(),
+                new BuiltInFileLock(),
                 new BuiltInFloatFns(),
                 new BuiltInFns(),
                 new BuiltInFrame(),

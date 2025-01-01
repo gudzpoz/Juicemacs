@@ -139,8 +139,12 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeList extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeList(Object length, Object init) {
-            throw new UnsupportedOperationException();
+        public static Object makeList(long length, Object init) {
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            for (long i = 0; i < length; i++) {
+                builder.add(init);
+            }
+            return builder.build();
         }
     }
 

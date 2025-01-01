@@ -173,6 +173,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         emacsVars();
         evalVars();
         fileioVars();
+        filelockVars();
         floatfnsVars();
         fnsVars();
         frameVars();
@@ -659,6 +660,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(AUTO_SAVE_INCLUDE_BIG_DELETIONS, autoSaveIncludeBigDeletions);
         initForwardTo(WRITE_REGION_INHIBIT_FSYNC, writeRegionInhibitFsync);
         initForwardTo(DELETE_BY_MOVING_TO_TRASH, deleteByMovingToTrash);
+    }
+    private final ValueStorage.Forwarded temporaryFileDirectory = new ValueStorage.Forwarded(false);
+    private final ValueStorage.ForwardedBool createLockfiles = new ValueStorage.ForwardedBool(true);
+    private void filelockVars() {
+        initForwardTo(TEMPORARY_FILE_DIRECTORY, temporaryFileDirectory);
+        initForwardTo(CREATE_LOCKFILES, createLockfiles);
     }
 
     private void floatfnsVars() {
@@ -5446,6 +5453,7 @@ character."""),
     public static final ELispSymbol COMP_SUBR_LIST = new ELispSymbol("comp-subr-list");
     public static final ELispSymbol CONFIGURE_INFO_DIRECTORY = new ELispSymbol("configure-info-directory");
     public static final ELispSymbol CONS_CELLS_CONSED = new ELispSymbol("cons-cells-consed");
+    public static final ELispSymbol CREATE_LOCKFILES = new ELispSymbol("create-lockfiles");
     public static final ELispSymbol CTAGS_PROGRAM_NAME = new ELispSymbol("ctags-program-name");
     public static final ELispSymbol CURRENT_ISO639_LANGUAGE = new ELispSymbol("current-iso639-language");
     public static final ELispSymbol CURRENT_PREFIX_ARG = new ELispSymbol("current-prefix-arg");
@@ -5773,6 +5781,7 @@ character."""),
     public static final ELispSymbol TAB_BAR_POSITION = new ELispSymbol("tab-bar-position");
     public static final ELispSymbol TAB_BAR_SEPARATOR_IMAGE_EXPRESSION = new ELispSymbol("tab-bar-separator-image-expression");
     public static final ELispSymbol TAB_BAR__DRAGGING_IN_PROGRESS = new ELispSymbol("tab-bar--dragging-in-progress");
+    public static final ELispSymbol TEMPORARY_FILE_DIRECTORY = new ELispSymbol("temporary-file-directory");
     public static final ELispSymbol TEMP_BUFFER_SHOW_FUNCTION = new ELispSymbol("temp-buffer-show-function");
     public static final ELispSymbol TEXT_PROPERTY_DEFAULT_NONSTICKY = new ELispSymbol("text-property-default-nonsticky");
     public static final ELispSymbol TEXT_QUOTING_STYLE = new ELispSymbol("text-quoting-style");
@@ -5907,6 +5916,7 @@ character."""),
             COMP_SUBR_LIST,
             CONFIGURE_INFO_DIRECTORY,
             CONS_CELLS_CONSED,
+            CREATE_LOCKFILES,
             CTAGS_PROGRAM_NAME,
             CURRENT_ISO639_LANGUAGE,
             CURRENT_PREFIX_ARG,
@@ -6234,6 +6244,7 @@ character."""),
             TAB_BAR_POSITION,
             TAB_BAR_SEPARATOR_IMAGE_EXPRESSION,
             TAB_BAR__DRAGGING_IN_PROGRESS,
+            TEMPORARY_FILE_DIRECTORY,
             TEMP_BUFFER_SHOW_FUNCTION,
             TEXT_PROPERTY_DEFAULT_NONSTICKY,
             TEXT_QUOTING_STYLE,

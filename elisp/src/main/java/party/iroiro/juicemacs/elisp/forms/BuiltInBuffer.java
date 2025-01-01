@@ -814,8 +814,11 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillAllLocalVariables extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void killAllLocalVariables(Object killPermanent) {
-            throw new UnsupportedOperationException();
+        public boolean killAllLocalVariables(Object killPermanent) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            buffer.resetLocalVariables(false);
+            // TODO
+            return false;
         }
     }
 
@@ -828,8 +831,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOverlayp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void overlayp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean overlayp(Object object) {
+            // TODO
+            return false;
         }
     }
 

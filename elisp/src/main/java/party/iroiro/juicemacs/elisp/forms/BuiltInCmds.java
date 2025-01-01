@@ -171,8 +171,11 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDeleteChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void deleteChar(Object n, Object killflag) {
-            throw new UnsupportedOperationException();
+        public boolean deleteChar(long n, Object killflag) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            long point = buffer.getPoint();
+            buffer.delete(point, n);
+            return false;
         }
     }
 
