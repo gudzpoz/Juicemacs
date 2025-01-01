@@ -692,6 +692,10 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FSetMatchData extends ELispBuiltInBaseNode {
         @Specialization
         public boolean setMatchData(Object list, Object reseat) {
+            if (isNil(list)) {
+                BuiltInSearch.setMatch(this, false, false);
+                return false;
+            }
             if (!BuiltInData.FListp.listp(list)) {
                 throw ELispSignals.wrongTypeArgument(LISTP, list);
             }
