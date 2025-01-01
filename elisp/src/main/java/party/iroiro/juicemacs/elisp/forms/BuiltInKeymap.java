@@ -686,8 +686,10 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUseLocalMap extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void useLocalMap(Object keymap) {
-            throw new UnsupportedOperationException();
+        public boolean useLocalMap(Object keymap) {
+            // TODO
+            getContext().currentBuffer().setKeymap(keymap);
+            return false;
         }
     }
 
@@ -701,8 +703,8 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentLocalMap extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void currentLocalMap() {
-            throw new UnsupportedOperationException();
+        public Object currentLocalMap() {
+            return getContext().currentBuffer().getKeymap();
         }
     }
 

@@ -17,6 +17,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -24,6 +25,8 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.*;
@@ -34,6 +37,18 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInFileIOFactory.getFactories();
+    }
+
+    private static TruffleFile generateTempFileName(TruffleFile dir, String prefix, String suffix) {
+        String hexString = Long.toHexString(Integer.toUnsignedLong(new Random().nextInt()));
+        hexString = "0".repeat(8 - hexString.length()) + hexString;
+        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+            TruffleFile resolved = dir.resolve(prefix + hexString + i + suffix);
+            if (!resolved.exists()) {
+                return resolved;
+            }
+        }
+        throw ELispSignals.error("unable to create file");
     }
 
     /**
@@ -189,8 +204,32 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeTempFileInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeTempFileInternal(Object prefix, Object dirFlag, Object suffix, Object text) {
-            throw new UnsupportedOperationException();
+        public ELispString makeTempFileInternal(ELispString prefix, Object dirFlag, Object suffix, Object text) {
+            TruffleLanguage.Env env = getContext().truffleEnv();
+            TruffleFile file = env.getPublicTruffleFile(prefix.toString()).getAbsoluteFile();
+            TruffleFile parent = Objects.requireNonNull(file.getParent());
+            String suffixStr = isNil(suffix) ? "" : asStr(suffix).toString();
+            if (dirFlag instanceof Long l && l == 0) {
+                TruffleFile tempFile = generateTempFileName(parent, file.getName(), suffixStr);
+                return new ELispString(tempFile.toString());
+            }
+            try {
+                TruffleFile temp;
+                if (isNil(dirFlag)) {
+                    temp = env.createTempFile(parent, file.getName(), suffixStr);
+                    if (!isNil(text)) {
+                        try (BufferedWriter writer = temp.newBufferedWriter()) {
+                            writer.write(asStr(text).toString());
+                        }
+                    }
+                } else {
+                    temp = generateTempFileName(parent, file.getName(), suffixStr);
+                    temp.createDirectory();
+                }
+                return new ELispString(temp.toString());
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, prefix);
+            }
         }
     }
 
@@ -384,8 +423,14 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDeleteDirectoryInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void deleteDirectoryInternal(Object directory) {
-            throw new UnsupportedOperationException();
+        public boolean deleteDirectoryInternal(ELispString directory) {
+            TruffleFile file = getContext().truffleEnv().getPublicTruffleFile(directory.toString());
+            try {
+                file.delete();
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, directory);
+            }
+            return true;
         }
     }
 
@@ -601,8 +646,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileSymlinkP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileSymlinkP(Object filename) {
-            throw new UnsupportedOperationException();
+        public boolean fileSymlinkP(ELispString filename) {
+            TruffleLanguage.Env env = getContext().truffleEnv();
+            TruffleFile file = env.getPublicTruffleFile(filename.toString());
+            return file.isSymbolicLink();
         }
     }
 

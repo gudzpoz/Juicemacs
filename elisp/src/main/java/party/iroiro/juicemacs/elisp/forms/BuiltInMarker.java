@@ -74,8 +74,14 @@ public class BuiltInMarker extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetMarker extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setMarker(Object marker, Object position, Object buffer) {
-            throw new UnsupportedOperationException();
+        public ELispMarker setMarker(ELispMarker marker, Object position, Object buffer) {
+            if (isNil(position)) {
+                // TODO
+                return marker;
+            }
+            marker.setPosition(asLong(position));
+            marker.setBuffer(isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer));
+            return marker;
         }
     }
 

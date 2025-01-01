@@ -31,8 +31,9 @@ public class BuiltInFrame extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFramep extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void framep(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean framep(Object object) {
+            // TODO
+            return false;
         }
     }
 

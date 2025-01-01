@@ -1,10 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.*;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
@@ -250,7 +247,7 @@ public final class ELispLexical {
         }
     }
 
-    public Object toAssocList(MaterializedFrame frame) {
+    public Object toAssocList(Frame frame) {
         ELispCons.ListBuilder lb = new ELispCons.ListBuilder();
         for (ELispSymbol symbol : variables) {
             Object variable = getVariable(frame, getIndex(symbol));
@@ -271,7 +268,7 @@ public final class ELispLexical {
     }
 
     @Nullable
-    public static ELispLexical getLexicalFrame(VirtualFrame frame) {
+    public static ELispLexical getLexicalFrame(Frame frame) {
         if (getMaterializedTop(frame) == -1)  {
             return null;
         }
@@ -284,7 +281,7 @@ public final class ELispLexical {
         return (List<Object>) frame.getObject(SPILL_LIST_SLOT);
     }
 
-    private static int getMaterializedTop(VirtualFrame frame) {
+    private static int getMaterializedTop(Frame frame) {
         return frame.getInt(MATERIALIZED_TOP_SLOT);
     }
 
@@ -310,7 +307,7 @@ public final class ELispLexical {
         }
     }
 
-    public static Object getVariable(VirtualFrame frame, int i) {
+    public static Object getVariable(Frame frame, int i) {
         if (i > 0) {
             if (i >= MAX_SLOTS) {
                 return ((List<?>) frame.getObject(SPILL_LIST_SLOT)).get(i - MAX_SLOTS);

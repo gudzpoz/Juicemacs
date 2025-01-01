@@ -3,8 +3,13 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 
 import java.util.List;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInTextProp extends ELispBuiltIns {
     @Override
@@ -33,8 +38,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTextPropertiesAt extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void textPropertiesAt(Object position, Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean textPropertiesAt(Object position, Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -76,8 +82,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetCharProperty extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getCharProperty(Object position, Object prop, Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean getCharProperty(Object position, Object prop, Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -175,8 +182,13 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNextSingleCharPropertyChange extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void nextSingleCharPropertyChange(Object position, Object prop, Object object, Object limit) {
-            throw new UnsupportedOperationException();
+        public long nextSingleCharPropertyChange(Object position, Object prop, Object object, Object limit) {
+            // TODO
+            if (object instanceof ELispString s) {
+                return s.length();
+            }
+            ELispBuffer buffer = isNil(object) ? getContext().currentBuffer() : asBuffer(object);
+            return buffer.pointMax();
         }
     }
 
@@ -229,8 +241,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNextPropertyChange extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void nextPropertyChange(Object position, Object object, Object limit) {
-            throw new UnsupportedOperationException();
+        public static boolean nextPropertyChange(long position, Object object, Object limit) {
+            // TODO
+            return false;
         }
     }
 
@@ -326,8 +339,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAddTextProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void addTextProperties(Object start, Object end, Object properties, Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean addTextProperties(Object start, Object end, Object properties, Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -345,8 +359,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPutTextProperty extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void putTextProperty(Object start, Object end, Object property, Object value, Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean putTextProperty(Object start, Object end, Object property, Object value, Object object) {
+            // TODO
+            return false;
         }
     }
 

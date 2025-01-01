@@ -370,8 +370,11 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDecodeCodingString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void decodeCodingString(Object string, Object codingSystem, Object nocopy, Object buffer) {
-            throw new UnsupportedOperationException();
+        public Object decodeCodingString(ELispString string, ELispSymbol codingSystem, Object nocopy, Object buffer) {
+            ELispCodings codings = getThis(this);
+            ELispCodingSystem system = codings.resolveCodingSystem(codingSystem);
+            // TODO
+            return string;
         }
     }
 

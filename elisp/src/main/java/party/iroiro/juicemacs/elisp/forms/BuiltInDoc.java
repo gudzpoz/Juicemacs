@@ -45,8 +45,9 @@ public class BuiltInDoc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDocumentation extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void documentation(Object function, Object raw) {
-            throw new UnsupportedOperationException();
+        public static boolean documentation(Object function, Object raw) {
+            // TODO
+            return false;
         }
     }
 

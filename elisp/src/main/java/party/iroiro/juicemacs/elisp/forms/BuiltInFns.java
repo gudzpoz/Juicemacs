@@ -2281,8 +2281,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSxhashEqual extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void sxhashEqual(Object obj) {
-            throw new UnsupportedOperationException();
+        public static long sxhashEqual(Object obj) {
+            if (obj instanceof ELispValue v) {
+                return v.lispHashCode();
+            }
+            return obj.hashCode();
         }
     }
 
@@ -2372,8 +2375,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableCount extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableCount(Object table) {
-            throw new UnsupportedOperationException();
+        public static long hashTableCount(ELispHashtable table) {
+            return table.size();
         }
     }
 
@@ -2388,8 +2391,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableRehashSize extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableRehashSize(Object table) {
-            throw new UnsupportedOperationException();
+        public static double hashTableRehashSize(Object table) {
+            return 1.5;
         }
     }
 
@@ -2404,8 +2407,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableRehashThreshold extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableRehashThreshold(Object table) {
-            throw new UnsupportedOperationException();
+        public static double hashTableRehashThreshold(Object table) {
+            return 0.8125;
         }
     }
 
@@ -2425,8 +2428,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableSize extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableSize(Object table) {
-            throw new UnsupportedOperationException();
+        public static long hashTableSize(ELispHashtable table) {
+            return FHashTableCount.hashTableCount(table);
         }
     }
 
@@ -2439,8 +2442,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableTest extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableTest(Object table) {
-            throw new UnsupportedOperationException();
+        public static Object hashTableTest(ELispHashtable table) {
+            return table.getTest();
         }
     }
 
@@ -2453,8 +2456,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHashTableWeakness extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void hashTableWeakness(Object table) {
-            throw new UnsupportedOperationException();
+        public static Object hashTableWeakness(ELispHashtable table) {
+            return table.getWeakness();
         }
     }
 
@@ -2527,8 +2530,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRemhash extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void remhash(Object key, Object table) {
-            throw new UnsupportedOperationException();
+        public static Object remhash(Object key, ELispHashtable table) {
+            return table.remove(key);
         }
     }
 

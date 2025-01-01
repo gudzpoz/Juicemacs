@@ -5,11 +5,17 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
+import party.iroiro.juicemacs.elisp.parser.CodePointReader;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer;
+import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
+import java.io.EOFException;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.PrimitiveIterator;
@@ -138,8 +144,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void syntaxTable() {
-            throw new UnsupportedOperationException();
+        public Object syntaxTable() {
+            return getContext().currentBuffer().getSyntaxTable();
         }
     }
 
@@ -183,8 +189,9 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetSyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setSyntaxTable(Object table) {
-            throw new UnsupportedOperationException();
+        public boolean setSyntaxTable(Object table) {
+            getContext().currentBuffer().setSyntaxTable(table);
+            return false;
         }
     }
 
@@ -444,8 +451,31 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSkipCharsBackward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void skipCharsBackward(Object string, Object lim) {
-            throw new UnsupportedOperationException();
+        public long skipCharsBackward(ELispString string, Object lim) {
+            return skipChars(getLanguage(), getContext().currentBuffer(), string, notNilOr(lim, 1));
+        }
+
+        public static long skipChars(ELispLanguage language, ELispBuffer buffer,
+                                     ELispString string, long lim) {
+            // TODO: Better escape
+            ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
+                    language,
+                    new ELispString(new MuleStringBuffer()
+                            .appendCodePoint('[')
+                            .append(string.value())
+                            .appendCodePoint(']')),
+                    null
+            );
+            long oldPoint = buffer.getPoint();
+            long point = oldPoint;
+            while (point > lim) {
+                Object result = regExp.call(buffer, false, point - 1, -1);
+                if (isNil(result)) {
+                    break;
+                }
+                point--;
+            }
+            return point - oldPoint;
         }
     }
 
@@ -532,8 +562,9 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FForwardComment extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void forwardComment(Object count) {
-            throw new UnsupportedOperationException();
+        public static boolean forwardComment(Object count) {
+            // TODO
+            return false;
         }
     }
 
@@ -585,9 +616,40 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @ELispBuiltIn(name = "scan-sexps", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FScanSexps extends ELispBuiltInBaseNode {
+        private static final ELispParser.InternContext NO_OP = new ELispParser.InternContext() {
+            @Override
+            public ELispSymbol intern(String name) {
+                return NIL;
+            }
+            @Override
+            public ELispSymbol intern(MuleString name) {
+                return NIL;
+            }
+            @Override
+            public MuleString applyShorthands(MuleString symbol) {
+                return symbol;
+            }
+        };
+
         @Specialization
-        public static Void scanSexps(Object from, Object count) {
-            throw new UnsupportedOperationException();
+        public Object scanSexps(long from, long count) {
+            ELispContext context = getContext();
+            boolean invert = count < 0;
+            count = Math.abs(count);
+            ELispBuffer buffer = context.currentBuffer();
+            ELispLexer lexer = new ELispLexer(CodePointReader.from(buffer, from, invert));
+            ELispParser parser = new ELispParser(NO_OP, lexer);
+            try {
+                while (count-- > 0) {
+                    parser.nextLisp();
+                }
+            } catch (EOFException e) {
+                return false;
+            } catch (IOException e) {
+                throw ELispSignals.endOfFile();
+            }
+            int codepointOffset = parser.getCodepointOffset();
+            return invert ? from - codepointOffset : from + codepointOffset;
         }
     }
 

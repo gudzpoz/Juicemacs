@@ -34,6 +34,10 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         return prev;
     }
 
+    public long cardinality() {
+        return bits.cardinality();
+    }
+
     @Override
     public int size() {
         return size;

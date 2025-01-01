@@ -24,8 +24,9 @@ public class BuiltInProcess extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FProcessp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void processp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean processp(Object object) {
+            // TODO
+            return false;
         }
     }
 

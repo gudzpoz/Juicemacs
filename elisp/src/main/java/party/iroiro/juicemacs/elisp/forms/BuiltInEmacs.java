@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -108,8 +109,9 @@ public class BuiltInEmacs extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillEmacs extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void killEmacs(Object arg, Object restart) {
-            throw new UnsupportedOperationException();
+        public Void killEmacs(Object arg, Object restart) {
+            // TODO
+            throw ELispSignals.kill();
         }
     }
 

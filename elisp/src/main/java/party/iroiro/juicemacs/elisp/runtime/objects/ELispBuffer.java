@@ -84,8 +84,13 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return content.getPositionAt(point - 1);
     }
 
+    public PieceTreeBase.Position getPosition(long point) {
+        return content.getPositionAt(Math.clamp(point - 1, 0, content.getLength()));
+    }
+
     public void setPosition(PieceTreeBase.Position position) {
-        long lineLength = content.getLineLength(position.line());
+        int line = Math.clamp(position.line(), 1, content.getLineCount());
+        long lineLength = content.getLineLength(line);
         setPoint(content.getOffsetAt(position.line(), Math.clamp(position.column(), 1, lineLength + 1)) + 1);
     }
 
@@ -95,6 +100,14 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public int getChar(long point) {
         return content.getCharCode(point - 1);
+    }
+
+    public MuleString subString(long start, long end) {
+        PieceTreeBase.Position left = getPosition(start);
+        PieceTreeBase.Position right = getPosition(end);
+        return content.getValueInRange(new PieceTreeBase.Range(
+                left.line(), left.column(), right.line(), right.column()
+        ), PieceTreeBase.EndOfLine.LF);
     }
 
     public void insert(MuleString text) {

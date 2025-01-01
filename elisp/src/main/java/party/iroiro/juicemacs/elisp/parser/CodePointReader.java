@@ -68,7 +68,11 @@ public sealed abstract class CodePointReader implements AutoCloseable {
     }
 
     public static CodePointReader from(ELispBuffer buffer) {
-        return new BufferReader(buffer);
+        return new BufferReader(buffer, buffer.pointMin(), false);
+    }
+
+    public static CodePointReader from(ELispBuffer buffer, long start, boolean invert) {
+        return new BufferReader(buffer, start, invert);
     }
 
     protected static int noEOF(int c) throws IOException {
@@ -130,19 +134,29 @@ public sealed abstract class CodePointReader implements AutoCloseable {
 
     private static final class BufferReader extends CodePointReader {
         private final ELispBuffer buffer;
+        private boolean invert;
         private long offset;
 
-        private BufferReader(ELispBuffer buffer) {
+        private BufferReader(ELispBuffer buffer, long offset, boolean invert) {
             this.buffer = buffer;
-            this.offset = buffer.pointMin();
+            this.invert = invert;
+            this.offset = offset;
         }
 
         @Override
         protected int readInternal() {
-            if (offset >= buffer.pointMax()) {
-                return -1;
+            if (invert) {
+                if (offset <= buffer.pointMin()) {
+                    return -1;
+                }
+            } else {
+                if (offset >= buffer.pointMax()) {
+                    return -1;
+                }
             }
-            return buffer.getChar(offset++);
+            int c = buffer.getChar(offset);
+            offset += invert ? -1 : 1;
+            return c;
         }
 
         @Override

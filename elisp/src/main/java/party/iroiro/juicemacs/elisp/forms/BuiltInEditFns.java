@@ -624,8 +624,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPointMaxMarker extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void pointMaxMarker() {
-            throw new UnsupportedOperationException();
+        public ELispMarker pointMaxMarker() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            return new ELispMarker(buffer, buffer.pointMax());
         }
     }
 
@@ -763,7 +764,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
         public static boolean bolp() {
             ELispBuffer buffer = currentBuffer();
             long point = buffer.getPoint();
-            return point == 0 || buffer.getChar(point - 1) == '\n';
+            return point == 1 || (point != buffer.pointMax() && buffer.getChar(point - 1) == '\n');
         }
     }
 
@@ -793,8 +794,13 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharAfter extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charAfter(Object pos) {
-            throw new UnsupportedOperationException();
+        public Object charAfter(Object pos) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            long point = pos instanceof Long l ? l : buffer.getPoint();
+            if (point < buffer.pointMax()) {
+                return buffer.getChar(point);
+            }
+            return false;
         }
     }
 
@@ -809,8 +815,13 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharBefore extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charBefore(Object pos) {
-            throw new UnsupportedOperationException();
+        public Object charBefore(Object pos) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            long point = pos instanceof Long l ? l : buffer.getPoint();
+            if (point > buffer.pointMin()) {
+                return buffer.getChar(point - 1);
+            }
+            return false;
         }
     }
 
@@ -1172,10 +1183,11 @@ public class BuiltInEditFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "buffer-substring", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FBufferSubstring extends ELispBuiltInBaseNode {
+    public abstract static class FBufferSubstring extends ELispMarkerFnsNode {
         @Specialization
-        public static Void bufferSubstring(Object start, Object end) {
-            throw new UnsupportedOperationException();
+        public ELispString bufferSubstring(long start, long end) {
+            // TODO
+            return new ELispString(getContext().currentBuffer().subString(start, end));
         }
     }
 
@@ -1188,10 +1200,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "buffer-substring-no-properties", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FBufferSubstringNoProperties extends ELispBuiltInBaseNode {
+    public abstract static class FBufferSubstringNoProperties extends ELispMarkerFnsNode {
         @Specialization
-        public static Void bufferSubstringNoProperties(Object start, Object end) {
-            throw new UnsupportedOperationException();
+        public ELispString bufferSubstringNoProperties(long start, long end) {
+            return new ELispString(getContext().currentBuffer().subString(start, end));
         }
     }
 
@@ -1389,8 +1401,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FWiden extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void widen() {
-            throw new UnsupportedOperationException();
+        public static boolean widen() {
+            // TODO
+            return false;
         }
     }
 
@@ -1482,7 +1495,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public static ELispExpressionNode saveRestrictionBailout(Object[] body) {
             CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            throw new UnsupportedOperationException();
+            // TODO
+            return BuiltInEval.FProgn.progn(body);
         }
     }
 

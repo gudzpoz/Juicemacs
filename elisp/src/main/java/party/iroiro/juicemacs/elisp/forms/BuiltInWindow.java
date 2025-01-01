@@ -21,8 +21,9 @@ public class BuiltInWindow extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FWindowp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void windowp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean windowp(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -2219,8 +2220,9 @@ public class BuiltInWindow extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FWindowConfigurationP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void windowConfigurationP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean windowConfigurationP(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -2263,8 +2265,9 @@ public class BuiltInWindow extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetWindowConfiguration extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setWindowConfiguration(Object configuration, Object dontSetFrame, Object dontSetMiniwindow) {
-            throw new UnsupportedOperationException();
+        public static boolean setWindowConfiguration(Object configuration, Object dontSetFrame, Object dontSetMiniwindow) {
+            // TODO
+            return false;
         }
     }
 
@@ -2286,8 +2289,9 @@ public class BuiltInWindow extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentWindowConfiguration extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void currentWindowConfiguration(Object frame) {
-            throw new UnsupportedOperationException();
+        public static boolean currentWindowConfiguration(Object frame) {
+            // TODO
+            return false;
         }
     }
 
