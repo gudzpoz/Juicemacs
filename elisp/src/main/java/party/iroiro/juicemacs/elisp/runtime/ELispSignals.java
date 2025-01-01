@@ -181,8 +181,18 @@ public abstract class ELispSignals {
     }
     //#endregion Object operations
 
+    //#region Math
+    public static ELispSignalException arithError() {
+        return signal(ARITH_ERROR);
+    }
+    //#endregion Math
+
     //#region emacs_abort
     public static ELispSignalException fatal() {
+        return signal(FATAL);
+    }
+    public static ELispSignalException kill() {
+        // TODO
         return signal(FATAL);
     }
     public static ELispSignalException fatal(String message) {

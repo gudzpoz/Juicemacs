@@ -47,6 +47,21 @@ public class BuiltInData extends ELispBuiltIns {
         return true;
     }
 
+    @TypeSystem({
+            long.class,
+            ELispMarker.class
+    })
+    public static class MarkerFnsTypeSystem {
+        @ImplicitCast
+        public static long markerToLong(ELispMarker arg) {
+            return arg.longValue();
+        }
+    }
+
+    @TypeSystemReference(MarkerFnsTypeSystem.class)
+    abstract static class ELispDataFnsNode extends ELispExpressionNode {
+    }
+
     @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
     private static class NumberAsIsUnary extends ELispExpressionNode {
         @SuppressWarnings("FieldMayBeFinal")
@@ -62,6 +77,9 @@ public class BuiltInData extends ELispBuiltIns {
             Object o = arg.executeGeneric(frame);
             if (FNumberp.numberp(o)) {
                 return o;
+            }
+            if (o instanceof ELispMarker marker) {
+                return marker.longValue();
             }
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, o);
         }
@@ -83,12 +101,15 @@ public class BuiltInData extends ELispBuiltIns {
             if (FIntegerp.integerp(o)) {
                 return o;
             }
+            if (o instanceof ELispMarker marker) {
+                return marker.longValue();
+            }
             throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, o);
         }
     }
 
     @NodeChild(value = "value", type = ELispExpressionNode.class)
-    public abstract static class FMinusUnary extends ELispExpressionNode {
+    public abstract static class FMinusUnary extends ELispDataFnsNode {
         @Specialization(rewriteOn = ArithmeticException.class)
         public long negLong(long value) {
             return Math.negateExact(value);
@@ -108,7 +129,7 @@ public class BuiltInData extends ELispBuiltIns {
     }
 
     @NodeChild(value = "value", type = ELispExpressionNode.class)
-    public abstract static class FQuoUnary extends ELispExpressionNode {
+    public abstract static class FQuoUnary extends ELispDataFnsNode {
         @Specialization
         public long quoLong(long value) {
             return 1 / value;
@@ -128,7 +149,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    public abstract static class BinaryArithmeticNode extends ELispExpressionNode {
+    public abstract static class BinaryArithmeticNode extends ELispDataFnsNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
 
@@ -317,7 +338,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    public abstract static class BinaryBitwiseNode extends ELispExpressionNode {
+    public abstract static class BinaryBitwiseNode extends ELispDataFnsNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
 
@@ -412,7 +433,7 @@ public class BuiltInData extends ELispBuiltIns {
         return Long.compare(asLong(a), asLong(b));
     }
 
-    public abstract static class BinaryCompareNode extends ELispExpressionNode {
+    public abstract static class BinaryCompareNode extends ELispDataFnsNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
 
@@ -695,10 +716,12 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispSymbol sym when sym == NIL -> NULL;
                 case ELispSymbol _ -> SYMBOL;
                 case ELispString _ -> STRING;
+                case ELispCons _ -> CONS;
+
+                // vector
                 case ELispVector _ -> VECTOR;
                 case ELispBoolVector _ -> BOOL_VECTOR;
                 case ELispCharTable _ -> CHAR_TABLE;
-                case ELispHashtable _ -> HASH_TABLE;
                 case ELispRecord record -> {
                     if (record.getFirst() instanceof ELispRecord clazz && clazz.size() > 1) {
                         yield clazz.get(1);
@@ -706,7 +729,15 @@ public class BuiltInData extends ELispBuiltIns {
                     yield record.getFirst();
                 }
                 // TODO: Handle other pseudo-vectors
-                case ELispCons _ -> CONS;
+                case ELispInterpretedClosure _ -> INTERPRETED_FUNCTION;
+
+                // identity objects
+                case ELispHashtable _ -> HASH_TABLE;
+                case ELispObarray _ -> OBARRAY;
+                case ELispBuffer _ -> BUFFER;
+                case ELispMarker _ -> MARKER;
+                case ELispSubroutine sub when sub.specialForm() -> SPECIAL_FORM;
+                case ELispSubroutine _ -> PRIMITIVE_FUNCTION;
                 default -> throw new UnsupportedOperationException();
             };
         }
@@ -965,8 +996,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean bufferp(Object object) {
+            return object instanceof ELispBuffer;
         }
     }
 
@@ -979,8 +1010,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMarkerp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void markerp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean markerp(Object object) {
+            return object instanceof ELispMarker;
         }
     }
 
@@ -993,8 +1024,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUserPtrp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void userPtrp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean userPtrp(Object object) {
+            // TODO: implement
+            return false;
         }
     }
 
@@ -1066,8 +1098,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FModuleFunctionP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void moduleFunctionP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean moduleFunctionP(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -1109,8 +1142,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIntegerOrMarkerP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void integerOrMarkerP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean integerOrMarkerP(Object object) {
+            return FIntegerp.integerp(object) || object instanceof ELispMarker;
         }
     }
 
@@ -1152,8 +1185,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNumberOrMarkerP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void numberOrMarkerP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean numberOrMarkerP(Object object) {
+            return FNumberp.numberp(object) || object instanceof ELispMarker;
         }
     }
 
@@ -1180,8 +1213,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FThreadp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void threadp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean threadp(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -1194,8 +1228,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMutexp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mutexp(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean mutexp(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -1208,8 +1243,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FConditionVariableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void conditionVariableP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean conditionVariableP(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -1523,8 +1559,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPositionSymbol extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void positionSymbol(Object sym, Object pos) {
-            throw new UnsupportedOperationException();
+        public static Object positionSymbol(Object sym, Object pos) {
+            // TODO
+            return sym;
         }
     }
 
@@ -1639,8 +1676,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNativeCompFunctionP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void nativeCompFunctionP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean nativeCompFunctionP(Object object) {
+            // TODO
+            return false;
         }
     }
 
@@ -1726,8 +1764,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInteractiveForm extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void interactiveForm(Object cmd) {
-            throw new UnsupportedOperationException();
+        public static boolean interactiveForm(Object cmd) {
+            // TODO
+            return false;
         }
     }
 
@@ -2691,6 +2730,9 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMod extends ELispBuiltInBaseNode {
         @Specialization
         public static long modLong(long x, long y) {
+            if (y == 0) {
+                throw ELispSignals.arithError();
+            }
             return Long.remainderUnsigned(x, y);
         }
 
@@ -3161,8 +3203,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorCountPopulation extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorCountPopulation(Object a) {
-            throw new UnsupportedOperationException();
+        public static long boolVectorCountPopulation(ELispBoolVector a) {
+            return a.cardinality();
         }
     }
 

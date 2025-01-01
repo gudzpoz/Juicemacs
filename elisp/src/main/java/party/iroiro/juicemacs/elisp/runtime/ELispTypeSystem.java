@@ -81,11 +81,6 @@ public abstract class ELispTypeSystem {
         return ELispBigNum.forceWrap(value);
     }
 
-    @ImplicitCast
-    public static long castMarkerToLong(ELispMarker marker) {
-        return marker.getPosition();
-    }
-
     public static boolean isNil(Object nil) {
         return nil == NIL || nil == Boolean.FALSE;
     }
@@ -153,6 +148,19 @@ public abstract class ELispTypeSystem {
     public static long asLong(Object value) {
         if (value instanceof Long l) {
             return l;
+        }
+        if (value instanceof ELispMarker marker) {
+            return marker.longValue();
+        }
+        throw ELispSignals.wrongTypeArgument(INTEGERP, value);
+    }
+
+    public static ELispBigNum asBigNum(Object value) {
+        if (value instanceof ELispBigNum bigNum) {
+            return bigNum;
+        }
+        if (value instanceof Number number) {
+            return ELispBigNum.forceWrap(number.longValue());
         }
         throw ELispSignals.wrongTypeArgument(INTEGERP, value);
     }
