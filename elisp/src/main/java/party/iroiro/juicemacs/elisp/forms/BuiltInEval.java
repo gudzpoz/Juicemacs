@@ -364,7 +364,40 @@ public class BuiltInEval extends ELispBuiltIns {
             if (body.length == 0) {
                 return ELispInterpretedNode.literal(false);
             }
-            return new PrognBlockNode(ELispInterpretedNode.create(body));
+            if (body.length == 1) {
+                return ELispInterpretedNode.create(body[0]);
+            }
+            ELispInterpretedNode[] nodes = ELispInterpretedNode.create(body);
+            if (body.length <= 8) {
+                return new PrognSmallNode(nodes);
+            }
+            return new PrognBlockNode(nodes);
+        }
+
+        public static final class PrognSmallNode extends ELispExpressionNode {
+            @Children
+            ELispExpressionNode[] nodes;
+
+            public PrognSmallNode(ELispExpressionNode[] nodes) {
+                this.nodes = nodes;
+            }
+
+            @Override
+            @ExplodeLoop
+            public void executeVoid(VirtualFrame frame) {
+                for (int i = 0; i < nodes.length; i++) {
+                    nodes[i].executeVoid(frame);
+                }
+            }
+
+            @Override
+            @ExplodeLoop
+            public Object executeGeneric(VirtualFrame frame) {
+                for (int i = 0; i < nodes.length - 1; i++) {
+                    nodes[i].executeVoid(frame);
+                }
+                return nodes[nodes.length - 1].executeGeneric(frame);
+            }
         }
 
         public static final class PrognBlockNode extends ELispExpressionNode
@@ -1521,9 +1554,8 @@ public class BuiltInEval extends ELispBuiltIns {
             public void executeVoid(VirtualFrame frame) {
                 try {
                     body.executeVoid(frame);
-                } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
+                } finally {
                     unwind.executeVoid(frame);
-                    throw e;
                 }
             }
 
@@ -1532,9 +1564,8 @@ public class BuiltInEval extends ELispBuiltIns {
                 // TODO: Add test once we have signal support
                 try {
                     return body.executeGeneric(frame);
-                } catch (ELispSignals.ELispCatchException | ELispSignals.ELispSignalException e) {
+                } finally {
                     unwind.executeVoid(frame);
-                    throw e;
                 }
             }
         }
@@ -1611,6 +1642,34 @@ public class BuiltInEval extends ELispBuiltIns {
             return new ConditionCaseNode(bodyform, finalSuccessIndex, bodies, length, conditionNames, var);
         }
 
+        private static boolean matches(ELispSymbol conditionName, Object tag) {
+            Object property = asSym(tag).getProperty(ERROR_CONDITIONS);
+            if (property instanceof ELispCons list) {
+                return list.contains(conditionName);
+            }
+            return false;
+        }
+
+        static boolean shouldHandle(ELispSignals.ELispSignalException e, Object conditionName) {
+            boolean shouldHandle = false;
+            if (isT(conditionName)) {
+                shouldHandle = true;
+            } else if (conditionName instanceof ELispCons list) {
+                for (Object sym : list) {
+                    if (toSym(sym) instanceof ELispSymbol symbol) {
+                        if (matches(symbol, e.getTag())) {
+                            shouldHandle = true;
+                        }
+                    }
+                }
+            } else {
+                if (matches(asSym(conditionName), e.getTag())) {
+                    shouldHandle = true;
+                }
+            }
+            return shouldHandle;
+        }
+
         private static class ConditionCaseNode extends ELispExpressionNode {
             private final int finalSuccessIndex;
             private final @Nullable Object[] bodies;
@@ -1628,14 +1687,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 this.conditionNames = conditionNames;
                 this.var = var;
                 body = ELispInterpretedNode.create(bodyform);
-            }
-
-            private static boolean matches(ELispSymbol conditionName, Object tag) {
-                Object property = asSym(tag).getProperty(ERROR_CONDITIONS);
-                if (property instanceof ELispCons list) {
-                    return list.contains(conditionName);
-                }
-                return false;
             }
 
             @Override
@@ -1659,22 +1710,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     int i;
                     for (i = 0; i < length; i++) {
                         Object conditionName = conditionNames[i];
-                        boolean shouldHandle = false;
-                        if (isT(conditionName)) {
-                            shouldHandle = true;
-                        } else if (conditionName instanceof ELispCons list) {
-                            for (Object sym : list) {
-                                if (toSym(sym) instanceof ELispSymbol symbol) {
-                                    if (matches(symbol, e.getTag())) {
-                                        shouldHandle = true;
-                                    }
-                                }
-                            }
-                        } else {
-                            if (matches(asSym(conditionName), e.getTag())) {
-                                shouldHandle = true;
-                            }
-                        }
+                        boolean shouldHandle = shouldHandle(e, conditionName);
                         if (shouldHandle) {
                             Object handler = bodies[i];
                             if (handler == null) {
@@ -1722,8 +1758,17 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHandlerBind1 extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void handlerBind1(Object bodyfun, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static Object handlerBind1(Object bodyfun, Object[] args) {
+            try {
+                return FFuncall.funcall(bodyfun, new Object[0]);
+            } catch (ELispSignals.ELispSignalException signal) {
+                for (int i = 0; i < args.length; i += 2) {
+                    if (FConditionCase.shouldHandle(signal, args[i])) {
+                        return FFuncall.funcall(args[i + 1], new Object[]{new ELispCons(signal.getTag(), signal.getData())});
+                    }
+                }
+                throw signal;
+            }
         }
     }
 
