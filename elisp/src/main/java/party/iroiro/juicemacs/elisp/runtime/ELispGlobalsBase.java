@@ -9,7 +9,6 @@ import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -115,9 +114,10 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
             if (result == null) {
                 throw ELispSignals.fatal(builtIns[i].toString());
             }
-            for (Map.Entry<MuleString, ELispSubroutine> subroutine : result.subroutines()) {
-                ELispSymbol symbol = intern(subroutine.getKey());
-                registerFunction(symbol, subroutine.getValue());
+            for (ELispBuiltIns.SemiInitializedBuiltIn subroutine : result.subroutines()) {
+                ELispSymbol symbol = intern(subroutine.symbol());
+                registerFunction(symbol, subroutine.subroutine());
+                subroutine.node().setLispFunction(symbol);
             }
         }
     }

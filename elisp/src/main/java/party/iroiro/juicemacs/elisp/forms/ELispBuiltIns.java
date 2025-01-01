@@ -66,7 +66,7 @@ public abstract class ELispBuiltIns {
         BUILT_IN_SOURCES.put(this.getClass().getSimpleName(), javaSource);
 
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
-        List<Map.Entry<MuleString, ELispSubroutine>> results = new ArrayList<>(factories.size());
+        List<SemiInitializedBuiltIn> results = new ArrayList<>(factories.size());
         for (NodeFactory<? extends ELispExpressionNode> factory : factories) {
             for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
                 boolean varArgs = builtIn.varArgs();
@@ -84,9 +84,10 @@ public abstract class ELispBuiltIns {
                         varArgs ? -1 : builtIn.maxArgs()
                 );
                 MuleString symbol = MuleString.fromString(builtIn.name());
-                FunctionRootNode rootNode = new FunctionRootNode(language, symbol, wrapper, null); // NOPMD
+                FunctionRootNode rootNode = new FunctionRootNode(language, false, wrapper, null); // NOPMD
                 ELispSubroutine.InlineInfo inlineInfo = getInlineInfo(factory, builtIn, function);
-                results.add(Map.entry(
+                results.add(new SemiInitializedBuiltIn(
+                        rootNode,
                         symbol,
                         new ELispSubroutine(
                                 new ELispFunctionObject(rootNode.getCallTarget()),
@@ -118,6 +119,17 @@ public abstract class ELispBuiltIns {
         return inlineInfo;
     }
 
-    public record InitializationResult(List<Map.Entry<MuleString, ELispSubroutine>> subroutines) {
+    public record InitializationResult(List<SemiInitializedBuiltIn> subroutines) {
+    }
+
+    /// A semi-initialized built-in function
+    ///
+    /// The built-in function is fully initialized yet and
+    /// the caller should:
+    ///
+    /// 1. Intern the symbol
+    /// 2. Set the function value of the symbol to the subroutine
+    /// 3. Set the [FunctionRootNode#lispFunction] of the node to the interned symbol
+    public record SemiInitializedBuiltIn(FunctionRootNode node, MuleString symbol, ELispSubroutine subroutine) {
     }
 }

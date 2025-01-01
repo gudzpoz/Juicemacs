@@ -2252,8 +2252,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapbacktrace extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void mapbacktrace(Object function, Object base) {
-            throw new UnsupportedOperationException();
+        public static boolean mapbacktrace(Object function, Object base) {
+            FBacktraceFrameInternal.backtraceFrames((args, _) -> {
+                FFuncall.funcall(function, args);
+                return null;
+            }, 0, base);
+            return false;
         }
     }
 
@@ -2268,6 +2272,14 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FBacktraceFrameInternal extends ELispBuiltInBaseNode {
         @Specialization
         public static Object backtraceFrameInternal(Object function, long nframes, Object base) {
+            return backtraceFrames((args, _) -> FFuncall.funcall(function, args), nframes, base);
+        }
+
+        public static Object backtraceFrames(
+                BiFunction<Object[], FrameInstance, @Nullable Object> function,
+                long nframes,
+                Object base
+        ) {
             // TODO: get stack function symbols
             @Nullable
             Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
@@ -2291,9 +2303,9 @@ public class BuiltInEval extends ELispBuiltIns {
                         for (Object argument : frame.getArguments()) {
                             args.add(argument);
                         }
-                        ELispCons argInfo = ELispCons.listOf((long) frame.getArguments().length, args);
+                        ELispCons argInfo = ELispCons.listOf((long) frame.getArguments().length, args.build());
                         Object flags = false; // TODO: backtrace_debug_on_exit?
-                        return FFuncall.funcall(function, new Object[]{evaluated, f, argInfo, flags});
+                        return function.apply(new Object[]{evaluated, f, argInfo, flags}, frameInstance);
                     }
                     if (i != -1) {
                         i++;
@@ -2363,8 +2375,19 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBacktraceLocals extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void backtraceLocals(Object nframes, Object base) {
-            throw new UnsupportedOperationException();
+        public static Object backtraceLocals(long nframes, Object base) {
+            return FBacktraceFrameInternal.backtraceFrames((_, frame) -> {
+                Frame f = frame.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                @Nullable ELispLexical lexical = null;
+                if (f.getFrameDescriptor().getNumberOfSlots() >= 8) {
+                    lexical = ELispLexical.getLexicalFrame(f);
+                }
+                if (lexical == null) {
+                    // TODO: dynamic
+                    return false;
+                }
+                return lexical.toAssocList(f);
+            }, nframes, base);
         }
     }
 }
