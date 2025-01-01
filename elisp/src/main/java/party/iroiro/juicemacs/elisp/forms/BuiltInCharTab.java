@@ -290,6 +290,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
                 // TODO: Uniprop decoder
                 boolean result = BuiltInLRead.loadFile(
                         getLanguage(),
+                        this,
                         new ELispString(MuleString.concat(
                                 MuleString.fromString("international/"),
                                 path.value())),

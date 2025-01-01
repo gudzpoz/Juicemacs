@@ -2030,7 +2030,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(filename)) {
                 filename = new ELispString(feature.name());
             }
-            BuiltInLRead.loadFile(getLanguage(), filename, isNil(noerror));
+            BuiltInLRead.loadFile(getLanguage(), this, filename, isNil(noerror));
             return true;
         }
     }

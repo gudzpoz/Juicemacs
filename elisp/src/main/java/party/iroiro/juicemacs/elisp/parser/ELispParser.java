@@ -294,9 +294,7 @@ public class ELispParser {
         }
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
         ELispExpressionNode expr = valueToExpression(expressions.toArray(), parser.isLexicallyBound());
-        source = Source.newBuilder(source)
-                .content(Source.CONTENT_NONE)
-                .build();
+        source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
         return new ELispRootNode(language, expr, source.createSection(
                 1, 1,
                 parser.lexer.getLine(), parser.lexer.getColumn()

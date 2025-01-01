@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
+import java.io.PrintStream;
 import java.lang.ref.Cleaner;
 import java.util.HashMap;
 import java.util.Optional;
@@ -34,6 +35,7 @@ public final class ELispContext implements ELispParser.InternContext {
     private final ELispLanguage language;
     private final HashMap<String, String> env;
     private final TruffleLanguage.Env truffleEnv;
+    private final PrintStream out;
     private final Options options;
     private final boolean postInit;
 
@@ -50,6 +52,7 @@ public final class ELispContext implements ELispParser.InternContext {
         this.options = new Options(env.getOptions().get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
         this.globals = new ELispGlobals(this);
         this.truffleEnv = env;
+        this.out = new PrintStream(env.out());
         variablesArray = new SharedIndicesMap.ContextArray<>(
                 language.globalVariablesMap,
                 ValueStorage[]::new,
@@ -77,6 +80,10 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public Options options() {
         return options;
+    }
+
+    public PrintStream out() {
+        return out;
     }
 
     //#region InternContext

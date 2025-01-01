@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -127,14 +128,14 @@ public class BuiltInLRead extends ELispBuiltIns {
         return result;
     }
 
-    public static boolean loadFile(ELispLanguage language, Object file, boolean errorIfNotFound) {
+    public static boolean loadFile(ELispLanguage language, @Nullable Node caller, Object file, boolean errorIfNotFound) {
         Object loader = LOAD_SOURCE_FILE_FUNCTION.getValue();
         if (isNil(loader)) {
             ELispRootNode root = loadFilePureJava(language, file, errorIfNotFound);
             if (root == null) {
                 return false;
             }
-            root.getCallTarget().call();
+            root.getCallTarget().call(caller);
             return true;
         } else {
             ELispString path = locateOpenP(
@@ -162,7 +163,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     @Nullable
     private static ELispRootNode loadFilePureJava(ELispLanguage language, Object file, boolean errorIfNotFound) {
         CompilerDirectives.transferToInterpreter();
-        TruffleLanguage.Env env = ELispContext.get(null).truffleEnv();
+        ELispContext context = ELispContext.get(null);
+        TruffleLanguage.Env env = context.truffleEnv();
 
         Object loadPath = LOAD_PATH.getValue();
         if (isNil(loadPath)) {
@@ -187,10 +189,10 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             if (target.isRegularFile()) {
                 try {
-                    System.out.println("load: " + env.getCurrentWorkingDirectory().getAbsoluteFile().relativize(target));
+                    context.out().println("load: " + env.getCurrentWorkingDirectory().getAbsoluteFile().relativize(target));
                     return ELispParser.parse(
                             language,
-                            ELispContext.get(null),
+                            context,
                             Source.newBuilder("elisp", target).build()
                     );
                 } catch (FileNotFoundException e) {
@@ -452,7 +454,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         @Specialization
         public boolean load(ELispString file, Object noerror, Object nomessage, Object nosuffix, Object mustSuffix) {
             // TODO: Potential lock candidate
-            return loadFile(getLanguage(), file, isNil(noerror));
+            return loadFile(getLanguage(), this, file, isNil(noerror));
         }
     }
 
@@ -515,14 +517,23 @@ public class BuiltInLRead extends ELispBuiltIns {
     public abstract static class FEvalBuffer extends ELispBuiltInBaseNode {
         @Specialization
         public boolean evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
-            ELispBuffer current = isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer);
-            ELispString name = asStr(or(filename, current.getFileTruename(), current.getFilename(), current.getName()));
-            Source source = Source.newBuilder("elisp", "nil", name.toString())
-                    .content(Source.CONTENT_NONE)
-                    .build();
+            ELispContext context = getContext();
+            ELispBuffer current = isNil(buffer) ? context.currentBuffer() : asBuffer(buffer);
+            Object path = or(current.getFileTruename(), current.getFilename());
+            ELispString name = asStr(or(filename, path, current.getName()));
+            @Nullable Source source = null;
+            if (!isNil(path)) {
+                TruffleFile file = context.truffleEnv().getPublicTruffleFile(path.toString());
+                if (file.exists()) {
+                    source = Source.newBuilder("elisp", file).content(Source.CONTENT_NONE).build();
+                }
+            }
+            if (source == null) {
+                source = Source.newBuilder("elisp", "", name.toString()).build();
+            }
             try {
                 ELispRootNode root = ELispParser.parse(getLanguage(), getContext(), source, current);
-                root.getCallTarget().call();
+                root.getCallTarget().call(this);
             } catch (IOException e) {
                 throw ELispSignals.error(e.getMessage());
             }

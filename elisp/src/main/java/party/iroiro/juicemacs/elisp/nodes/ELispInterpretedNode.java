@@ -624,7 +624,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         private Object autoload(ELispCons function) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ELispString file = asStr(asCons(function.cdr()).car());
-            BuiltInLRead.loadFile(getLanguage(), file, true);
+            BuiltInLRead.loadFile(getLanguage(), this, file, true);
             return getIndirectFunction(cons.car());
         }
 

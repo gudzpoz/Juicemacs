@@ -64,6 +64,17 @@ non-Unicode character. Currently we just treat these characters as white spaces.
 Also, =ethiopic.el= uses CCL, so it is probably time for yet another bytecode
 interpreter.
 
+** TODO [#B] Fix stack-trace source position
+
+After switching to using =load-source-file-function=, the stack-trace for root
+nodes seems to miss source location info, probably caused by =eval-buffer=.
+
+#+begin_src text
+  at <elisp> /.../Juicemacs/elisp/emacs/lisp/electric.el(Unknown)
+    vs
+  at <elisp> loadup.el(emacs/lisp/loadup.el:393:0)
+#+end_src
+
 ** Is concurrent =load= possible?
 
 Parsing huge files can be costly. And yet most of the operations have nothing to

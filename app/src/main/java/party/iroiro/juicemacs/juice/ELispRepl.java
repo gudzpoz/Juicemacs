@@ -156,7 +156,12 @@ public class ELispRepl implements Callable<Integer> {
 
         @Override
         public AttributedString highlight(LineReader reader, String buffer) {
-            return highlighter.highlight(buffer);
+            try {
+                return highlighter.highlight(buffer);
+            } catch (StackOverflowError error) {
+                // Unable to highlight due to complex input
+                return new AttributedString(buffer);
+            }
         }
 
         @Override

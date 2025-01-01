@@ -1546,13 +1546,13 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMessage extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object message(Object formatString, Object[] args) {
+        public Object message(Object formatString, Object[] args) {
             if (isNil(formatString)) {
                 // TODO
                 return false;
             }
             ELispString formatted = FFormat.format(asStr(formatString), args);
-            System.out.println(formatted);
+            getContext().out().println(formatted);
             return formatted;
         }
     }
