@@ -1,20 +1,144 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.*;
+import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
+import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CURRENT_TIME_LIST;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInTimeFns extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInTimeFnsFactory.getFactories();
+    }
+
+    @TypeSystem({
+            boolean.class,
+            ELispSymbol.class,
+            long.class,
+            ELispCons.class,
+            Instant.class
+    })
+    public static class TimeFnsTypeSystem {
+        @ImplicitCast
+        public static Instant nilToInstant(boolean nil) {
+            if (nil) {
+                throw ELispSignals.error("Invalid time specification");
+            }
+            return Instant.now();
+        }
+        @ImplicitCast
+        public static Instant symbolToInstant(ELispSymbol symbol) {
+            return nilToInstant(!isNil(symbol));
+        }
+        @ImplicitCast
+        public static Instant longToInstant(long second) {
+            return Instant.ofEpochSecond(second);
+        }
+        @ImplicitCast
+        public static Instant consToInstant(ELispCons timestamp) {
+            if (timestamp.cdr() instanceof ELispCons tail) {
+                long high = asLong(timestamp.car());
+                long low = asLong(tail.car());
+                long micro, pico;
+                if (isNil(tail.cdr())) {
+                    micro = pico = 0;
+                } else {
+                    ELispCons microCons = asCons(tail.cdr());
+                    micro = asLong(microCons.car());
+                    if (isNil(microCons.cdr())) {
+                        pico = 0;
+                    } else {
+                        pico = asLong(asCons(microCons.cdr()).car());
+                    }
+                }
+                return Instant.ofEpochSecond(
+                        (high << 16) + low,
+                        micro * 1000 + pico / 1000
+                );
+            }
+            long hz = asLong(timestamp.cdr());
+            if (timestamp.car() instanceof Long ticks) {
+                long subSecond = ticks % hz;
+                long second = (ticks - subSecond) / hz;
+                return Instant.ofEpochSecond(
+                        second,
+                        hz == 1_000_000_000
+                                ? subSecond
+                                : (long) (subSecond * (1.0e9 / hz))
+                );
+            }
+            return bigNumToInstant(asBigNum(timestamp.car()).asBigInteger(), hz);
+        }
+        @CompilerDirectives.TruffleBoundary
+        private static Instant bigNumToInstant(BigInteger ticks, long hz) {
+            BigInteger nanos = BigInteger.valueOf(1_000_000_000);
+            BigInteger hzBig = BigInteger.valueOf(hz);
+
+            BigInteger nano = ticks.mod(hzBig).multiply(nanos).divide(hzBig);
+            BigInteger second = ticks.divide(hzBig);
+            return Instant.ofEpochSecond(second.longValue(), nano.longValue());
+        }
+    }
+
+    @TypeSystemReference(TimeFnsTypeSystem.class)
+    abstract static class ELispTimeFnsNode extends ELispBuiltInBaseNode {
+        @Child
+        GlobalVariableReadNode currentTimeList = GlobalVariableReadNodeGen.create(CURRENT_TIME_LIST);
+
+        static Object toTimeList(Instant instant) {
+            long seconds = instant.getEpochSecond();
+            long nanos = instant.getNano();
+            return ELispCons.listOf(
+                    seconds >> 16, seconds & 0xFFFF,
+                    nanos / 1000, (nanos % 1000) * 1000
+            );
+        }
+        static Object toTimeCons(Instant instant) {
+            return toTimeConsHz(instant, 1_000_000_000);
+        }
+        static Object toTimeConsHz(Instant instant, long hz) {
+            long seconds = instant.getEpochSecond();
+            long nanos = instant.getNano();
+            if (seconds < Long.MAX_VALUE / hz / 2) {
+                return new ELispCons(seconds * hz + nanos * hz / 1_000_000_000L, hz);
+            }
+            return toBigNumCons(seconds, nanos, BigInteger.valueOf(hz));
+        }
+        @CompilerDirectives.TruffleBoundary
+        static Object toBigNumCons(long seconds, long nanos, BigInteger hz) {
+            return new ELispCons(
+                    ELispBigNum.wrap(
+                            BigInteger.valueOf(seconds)
+                                    .multiply(hz)
+                                    .add(
+                                            BigInteger.valueOf(nanos)
+                                                    .multiply(hz)
+                                                    .divide(BigInteger.valueOf(1_000_000_000))
+                                    )
+                    ),
+                    1_000_000_000L
+            );
+        }
+
+        Object toTime(Instant instant) {
+            Object transition = currentTimeList.executeGeneric(null);
+            if (isT(transition)) {
+                return toTimeList(instant);
+            }
+            return toTimeCons(instant);
+        }
     }
 
     /**
@@ -26,10 +150,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "time-add", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTimeAdd extends ELispBuiltInBaseNode {
+    public abstract static class FTimeAdd extends ELispTimeFnsNode {
         @Specialization
-        public static Void timeAdd(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public Object timeAdd(Instant a, Instant b) {
+            return this.toTime(a.plus(Instant.EPOCH.until(b)));
         }
     }
 
@@ -43,10 +167,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "time-subtract", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTimeSubtract extends ELispBuiltInBaseNode {
+    public abstract static class FTimeSubtract extends ELispTimeFnsNode {
         @Specialization
-        public static Void timeSubtract(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public Object timeSubtract(Instant a, Instant b) {
+            return this.toTime(a.minus(Instant.EPOCH.until(b)));
         }
     }
 
@@ -59,10 +183,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "time-less-p", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTimeLessP extends ELispBuiltInBaseNode {
+    public abstract static class FTimeLessP extends ELispTimeFnsNode {
         @Specialization
-        public static Void timeLessP(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean timeLessP(Instant a, Instant b) {
+            return a.isBefore(b);
         }
     }
 
@@ -74,10 +198,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "time-equal-p", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTimeEqualP extends ELispBuiltInBaseNode {
+    public abstract static class FTimeEqualP extends ELispTimeFnsNode {
         @Specialization
-        public static Void timeEqualP(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean timeEqualP(Instant a, Instant b) {
+            return a.equals(b);
         }
     }
 
@@ -95,10 +219,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "float-time", minArgs = 0, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FFloatTime extends ELispBuiltInBaseNode {
+    public abstract static class FFloatTime extends ELispTimeFnsNode {
         @Specialization
-        public static Void floatTime(Object specifiedTime) {
-            throw new UnsupportedOperationException();
+        public static double floatTime(Instant specifiedTime) {
+            return specifiedTime.getEpochSecond() + specifiedTime.getNano() / 1.0e9;
         }
     }
 
@@ -183,10 +307,11 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "format-time-string", minArgs = 1, maxArgs = 3)
     @GenerateNodeFactory
-    public abstract static class FFormatTimeString extends ELispBuiltInBaseNode {
+    public abstract static class FFormatTimeString extends ELispTimeFnsNode {
         @Specialization
-        public static Void formatTimeString(Object formatString, Object time, Object zone) {
-            throw new UnsupportedOperationException();
+        public static ELispString formatTimeString(ELispString formatString, Instant time, Object zone) {
+            // TODO
+            return new ELispString(time.toString());
         }
     }
 
@@ -232,7 +357,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "decode-time", minArgs = 0, maxArgs = 3)
     @GenerateNodeFactory
-    public abstract static class FDecodeTime extends ELispBuiltInBaseNode {
+    public abstract static class FDecodeTime extends ELispTimeFnsNode {
         @Specialization
         public static Void decodeTime(Object time, Object zone, Object form) {
             throw new UnsupportedOperationException();
@@ -275,7 +400,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "encode-time", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FEncodeTime extends ELispBuiltInBaseNode {
+    public abstract static class FEncodeTime extends ELispTimeFnsNode {
         @Specialization
         public static Void encodeTime(Object time, Object[] obsolescentArguments) {
             throw new UnsupportedOperationException();
@@ -307,10 +432,25 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "time-convert", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTimeConvert extends ELispBuiltInBaseNode {
+    public abstract static class FTimeConvert extends ELispTimeFnsNode {
         @Specialization
-        public static Void timeConvert(Object time, Object form) {
-            throw new UnsupportedOperationException();
+        public Object timeConvert(Instant time, Object form) {
+            if (isT(form)) {
+                return toTimeCons(time);
+            }
+            if (form == INTEGER) {
+                return time.getEpochSecond();
+            }
+            if (form == LIST) {
+                return toTimeList(time);
+            }
+            if (isNil(form)) {
+                return this.toTime(time);
+            }
+            if (form instanceof ELispBigNum hz) {
+                return toBigNumCons(time.getEpochSecond(), time.getNano(), hz.asBigInteger());
+            }
+            return toTimeConsHz(time, asNat(form));
         }
     }
 
@@ -330,19 +470,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "current-time", minArgs = 0, maxArgs = 0)
     @GenerateNodeFactory
-    public abstract static class FCurrentTime extends ELispBuiltInBaseNode {
+    public abstract static class FCurrentTime extends ELispTimeFnsNode {
         @Specialization
-        public static Object currentTime() {
-            if (isNil(CURRENT_TIME_LIST.getValue())) {
-                return new ELispCons(System.currentTimeMillis(), 1000L);
-            }
-            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            Instant now = Instant.now();
-            long seconds = now.getEpochSecond();
-            builder.add(seconds >> 16).add(seconds & 0xffff);
-            long nano = now.getNano();
-            builder.add(nano / 1000).add(nano % 1000 * 1000);
-            return builder.build();
+        public Object currentTime() {
+            return this.toTime(Instant.now());
         }
     }
 
@@ -356,10 +487,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "current-cpu-time", minArgs = 0, maxArgs = 0)
     @GenerateNodeFactory
-    public abstract static class FCurrentCpuTime extends ELispBuiltInBaseNode {
+    public abstract static class FCurrentCpuTime extends ELispTimeFnsNode {
         @Specialization
-        public static Void currentCpuTime() {
-            throw new UnsupportedOperationException();
+        public static ELispCons currentCpuTime() {
+            return new ELispCons(System.nanoTime(), 1_000_000_000L);
         }
     }
 
@@ -386,7 +517,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "current-time-string", minArgs = 0, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FCurrentTimeString extends ELispBuiltInBaseNode {
+    public abstract static class FCurrentTimeString extends ELispTimeFnsNode {
         @Specialization
         public static Void currentTimeString(Object specifiedTime, Object zone) {
             throw new UnsupportedOperationException();
@@ -418,7 +549,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "current-time-zone", minArgs = 0, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FCurrentTimeZone extends ELispBuiltInBaseNode {
+    public abstract static class FCurrentTimeZone extends ELispTimeFnsNode {
         @Specialization
         public static Void currentTimeZone(Object specifiedTime, Object zone) {
             throw new UnsupportedOperationException();
@@ -446,7 +577,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "set-time-zone-rule", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
-    public abstract static class FSetTimeZoneRule extends ELispBuiltInBaseNode {
+    public abstract static class FSetTimeZoneRule extends ELispTimeFnsNode {
         @Specialization
         public static Void setTimeZoneRule(Object tz) {
             throw new UnsupportedOperationException();
