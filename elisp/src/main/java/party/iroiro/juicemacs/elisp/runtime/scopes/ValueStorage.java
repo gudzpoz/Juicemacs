@@ -516,7 +516,7 @@ public final class ValueStorage {
                     ));
                 }
                 if (BuiltInEval.FFunctionp.functionp(predicate)) {
-                    return isNil(BuiltInEval.FFuncall.funcall(predicate, new Object[]{value}));
+                    return isNil(BuiltInEval.FFuncall.funcall(null, predicate, value));
                 }
             }
             return false;

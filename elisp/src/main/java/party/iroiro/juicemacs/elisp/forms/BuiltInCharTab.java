@@ -237,13 +237,13 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOptimizeCharTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean optimizeCharTable(ELispCharTable charTable, Object test) {
+        public boolean optimizeCharTable(ELispCharTable charTable, Object test) {
             charTable.optimize(
                     (isNil(test) || test == EQUAL)
                             ? BuiltInFns.FEqual::equal
                             : (test == EQ
                             ? BuiltInData.FEq::eq
-                            : (a, b) -> !isNil(BuiltInEval.FFuncall.funcall(test, new Object[]{a, b})))
+                            : (a, b) -> !isNil(BuiltInEval.FFuncall.funcall(this, test, a, b)))
             );
             return false;
         }
@@ -263,7 +263,8 @@ public class BuiltInCharTab extends ELispBuiltIns {
     public abstract static class FMapCharTable extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean mapCharTable(Object function, ELispCharTable charTable) {
-            charTableMap(charTable, (key, value) -> BuiltInEval.FFuncall.funcall(function, new Object[]{key, value}));
+            charTableMap(charTable, (key, value) ->
+                    BuiltInEval.FFuncall.funcall(null, function, key, value));
             return false;
         }
     }

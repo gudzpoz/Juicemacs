@@ -97,7 +97,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                     if (isNil(predicate) || isT(predicate)) {
                         exists = BuiltInFileIO.FFileReadableP.fileReadableP(test);
                     } else {
-                        Object ret = BuiltInEval.FFuncall.funcall(predicate, new Object[]{test});
+                        Object ret = BuiltInEval.FFuncall.funcall(null, predicate, test);
                         if (isNil(ret)) {
                             exists = false;
                         } else {
@@ -151,12 +151,12 @@ public class BuiltInLRead extends ELispBuiltIns {
                 }
                 return false;
             }
-            return !isNil(BuiltInEval.FFuncall.funcall(loader, new Object[]{
+            return !isNil(BuiltInEval.FFuncall.funcall(caller, loader,
                     path,
                     file,
                     !errorIfNotFound,
-                    false,
-            }));
+                    false
+            ));
         }
     }
 
@@ -801,7 +801,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         public boolean mapatoms(Object function, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
             for (ELispSymbol symbol : array.symbols().values()) {
-                BuiltInEval.FFuncall.funcall(function, new Object[]{symbol});
+                BuiltInEval.FFuncall.funcall(null, function, symbol);
             }
             return false;
         }

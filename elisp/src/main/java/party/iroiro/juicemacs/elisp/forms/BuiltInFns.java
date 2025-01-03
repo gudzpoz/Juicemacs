@@ -1103,7 +1103,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             for (Object e : asCons(alist)) {
                 if (e instanceof ELispCons cons) {
-                    Object p = BuiltInEval.FFuncall.funcall(testfn, new Object[]{cons.car(), key});
+                    Object p = BuiltInEval.FFuncall.funcall(null, testfn, cons.car(), key);
                     if (!isNil(p)) {
                         return cons;
                     }
@@ -1422,11 +1422,11 @@ public class BuiltInFns extends ELispBuiltIns {
                 if (key == null) {
                     return element;
                 }
-                return BuiltInEval.FFuncall.funcall(key, new Object[]{element});
+                return BuiltInEval.FFuncall.funcall(null, key, element);
             }
 
             public boolean isLessThan(Object a, Object b) {
-                return asBool(BuiltInEval.FFuncall.funcall(Objects.requireNonNullElse(lessp, VALUELT), new Object[]{a, b}));
+                return asBool(BuiltInEval.FFuncall.funcall(null, Objects.requireNonNullElse(lessp, VALUELT), a, b));
             }
 
             static SortParameters parse(Object[] args) {
@@ -1484,7 +1484,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPlistGet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object plistGet(Object plist, Object prop, Object predicate) {
+        public Object plistGet(Object plist, Object prop, Object predicate) {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
             }
@@ -1495,7 +1495,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 args[0] = prop;
                 while (iterator.hasNext()) {
                     args[1] = iterator.next();
-                    if (!isNil(BuiltInEval.FFuncall.funcall(eq, args))) {
+                    if (!isNil(BuiltInEval.FFuncall.funcall(this, eq, args))) {
                         return iterator.next();
                     }
                     iterator.next();
@@ -1602,7 +1602,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPlistMember extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object plistMember(Object plist, Object prop, Object predicate) {
+        public Object plistMember(Object plist, Object prop, Object predicate) {
             if (isNil(plist)) {
                 return false;
             }
@@ -1613,7 +1613,7 @@ public class BuiltInFns extends ELispBuiltIns {
             ELispCons.ConsIterator iterator = cons.consIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons current = iterator.nextCons();
-                if (!isNil(BuiltInEval.FFuncall.funcall(predicate, new Object[]{current.car(), prop}))) {
+                if (!isNil(BuiltInEval.FFuncall.funcall(this, predicate, current.car(), prop))) {
                     return current;
                 }
             }
@@ -1805,11 +1805,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapconcat extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString mapconcat(Object function, Object sequence, Object separator) {
+        public ELispString mapconcat(Object function, Object sequence, Object separator) {
             Iterator<?> i = iterateSequence(sequence);
             MuleStringBuffer builder = new MuleStringBuffer();
             while (i.hasNext()) {
-                Object result = BuiltInEval.FFuncall.funcall(function, new Object[]{i.next()});
+                Object result = BuiltInEval.FFuncall.funcall(this, function, i.next());
                 builder.append(
                         BuiltInPrint.FPrin1ToString.prin1ToString(result, false, false)
                                 .value()
@@ -1833,11 +1833,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapcar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object mapcar(Object function, Object sequence) {
+        public Object mapcar(Object function, Object sequence) {
             Iterator<?> i = iterateSequence(sequence);
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             while (i.hasNext()) {
-                builder.add(BuiltInEval.FFuncall.funcall(function, new Object[]{i.next()}));
+                builder.add(BuiltInEval.FFuncall.funcall(this, function, i.next()));
             }
             return builder.build();
         }
@@ -1854,10 +1854,10 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapc extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object mapc(Object function, Object sequence) {
+        public Object mapc(Object function, Object sequence) {
             Iterator<?> i = iterateSequence(sequence);
             while (i.hasNext()) {
-                BuiltInEval.FFuncall.funcall(function, new Object[]{i.next()});
+                BuiltInEval.FFuncall.funcall(this, function, i.next());
             }
             return sequence;
         }
@@ -1874,11 +1874,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapcan extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object mapcan(Object function, Object sequence) {
+        public Object mapcan(Object function, Object sequence) {
             Iterator<?> iterator = iterateSequence(sequence);
             ArrayList<Object> results = new ArrayList<>();
             while (iterator.hasNext()) {
-                results.add(BuiltInEval.FFuncall.funcall(function, new Object[]{iterator.next()}));
+                results.add(BuiltInEval.FFuncall.funcall(this, function, iterator.next()));
             }
             return FNconc.nconc(results.toArray());
         }
@@ -2548,11 +2548,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMaphash extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean maphash(Object function, ELispHashtable table) {
-            table.forEach((key, value) -> BuiltInEval.FFuncall.funcall(
-                    function,
-                    new Object[]{key, value}
-            ));
+        public boolean maphash(Object function, ELispHashtable table) {
+            table.forEach((key, value) -> BuiltInEval.FFuncall.funcall(this, function, key, value));
             return false;
         }
     }

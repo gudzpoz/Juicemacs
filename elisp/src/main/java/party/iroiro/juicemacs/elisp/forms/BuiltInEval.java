@@ -1413,7 +1413,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMacroexpand extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object macroexpand(Object form, Object environment) {
+        public Object macroexpand(Object form, Object environment) {
             while (true) {
                 if (!(form instanceof ELispCons cons)) {
                     return form;
@@ -1435,6 +1435,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     return form;
                 }
                 Object newForm = FFuncall.funcall(
+                        this,
                         macro.cdr(),
                         isNil(cons.cdr())
                                 ? new Object[0]
@@ -1758,13 +1759,13 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FHandlerBind1 extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object handlerBind1(Object bodyfun, Object[] args) {
+        public Object handlerBind1(Object bodyfun, Object[] args) {
             try {
-                return FFuncall.funcall(bodyfun, new Object[0]);
+                return FFuncall.funcall(this, bodyfun);
             } catch (ELispSignals.ELispSignalException signal) {
                 for (int i = 0; i < args.length; i += 2) {
                     if (FConditionCase.shouldHandle(signal, args[i])) {
-                        return FFuncall.funcall(args[i + 1], new Object[]{new ELispCons(signal.getTag(), signal.getData())});
+                        return FFuncall.funcall(this, args[i + 1], new ELispCons(signal.getTag(), signal.getData()));
                     }
                 }
                 throw signal;
@@ -1971,14 +1972,14 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FApply extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object apply(Object function, Object[] arguments) {
+        public Object apply(Object function, Object[] arguments) {
             List<Object> objects = new ArrayList<>(Arrays.asList(arguments).subList(0, arguments.length - 1));
             Object last = arguments[arguments.length - 1];
             if (!isNil(last)) {
                 objects.addAll(asCons(last));
             }
             arguments = objects.toArray();
-            return FFuncall.funcall(function, arguments);
+            return FFuncall.funcall(this, function, arguments);
         }
     }
 
@@ -2004,7 +2005,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHooks extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean runHooks(Object[] hooks) {
+        public boolean runHooks(Object[] hooks) {
             for (Object hook : hooks) {
                 ELispSymbol symbol = asSym(hook);
                 if (!symbol.isBound()) {
@@ -2012,10 +2013,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
                 Object value = symbol.getValue();
                 if (FFunctionp.functionp(value)) {
-                    FFuncall.funcall(value, new Object[0]);
+                    FFuncall.funcall(this, value);
                 } else if (value instanceof ELispCons cons) {
                     for (Object element : cons) {
-                        FFuncall.funcall(element, new Object[0]);
+                        FFuncall.funcall(this, element);
                     }
                 }
             }
@@ -2040,18 +2041,18 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHookWithArgs extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean runHookWithArgs(ELispSymbol hook, Object[] args) {
+        public boolean runHookWithArgs(ELispSymbol hook, Object[] args) {
             if (!hook.isBound()) {
                 return false;
             }
             Object value = hook.getValue();
             if (!isNil(value)) {
                 if (FFunctionp.functionp(value)) {
-                    FFuncall.funcall(value, args);
+                    FFuncall.funcall(this, value, args);
                 } else {
                     // TODO: Handle buffer-local hooks
                     for (Object function : asCons(value)) {
-                        FFuncall.funcall(function, args);
+                        FFuncall.funcall(this, function, args);
                     }
                 }
             }
@@ -2078,7 +2079,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHookWithArgsUntilSuccess extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object runHookWithArgsUntilSuccess(ELispSymbol hook, Object[] args) {
+        public Object runHookWithArgsUntilSuccess(ELispSymbol hook, Object[] args) {
             if (!hook.isBound()) {
                 return false;
             }
@@ -2094,7 +2095,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             for (Object callable : hooks) {
                 // TODO: Handle buffer-local hooks
-                Object result = FFuncall.funcall(callable, args);
+                Object result = FFuncall.funcall(this, callable, args);
                 if (!isNil(result)) {
                     return result;
                 }
@@ -2186,8 +2187,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFuncall extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
-        public static Object funcall(Object function, Object[] arguments) {
-            return getFunctionObject(function).callTarget().call(arguments);
+        public Object funcallThis(Object function, Object[] arguments) {
+            return funcall(this, function, arguments);
+        }
+
+        public static Object funcall(@Nullable Node node, Object function, Object... arguments) {
+            return getFunctionObject(function).callTarget().call(node, arguments);
         }
 
         public static ELispFunctionObject getFunctionObject(Object function) {
@@ -2309,9 +2314,9 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapbacktrace extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean mapbacktrace(Object function, Object base) {
+        public boolean mapbacktrace(Object function, Object base) {
             FBacktraceFrameInternal.backtraceFrames((args, _) -> {
-                FFuncall.funcall(function, args);
+                FFuncall.funcall(this, function, args);
                 return null;
             }, 0, base);
             return false;
@@ -2328,8 +2333,12 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBacktraceFrameInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object backtraceFrameInternal(Object function, long nframes, Object base) {
-            return backtraceFrames((args, _) -> FFuncall.funcall(function, args), nframes, base);
+        public Object backtraceFrameInternal(Object function, long nframes, Object base) {
+            return backtraceFrames(
+                    (args, _) -> FFuncall.funcall(this, function, args),
+                    nframes,
+                    base
+            );
         }
 
         public static Object backtraceFrames(

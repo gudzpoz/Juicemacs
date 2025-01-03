@@ -505,7 +505,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             }
             TryCompletionMatcher matcher = new TryCompletionMatcher(string, predicate, dispatchNode, this);
             if (!matcher.forEachInCollection(collection)) {
-                return BuiltInEval.FFuncall.funcall(collection, new Object[]{string, predicate, false});
+                return BuiltInEval.FFuncall.funcall(this, collection, string, predicate, false);
             }
             return matcher.reduce();
         }
@@ -614,7 +614,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             }
             AllCompletionMatcher matcher = new AllCompletionMatcher(string, predicate, dispatchNode, this);
             if (!matcher.forEachInCollection(collection)) {
-                return BuiltInEval.FFuncall.funcall(collection, new Object[]{string, predicate, true});
+                return BuiltInEval.FFuncall.funcall(this, collection, string, predicate, true);
             }
             return matcher.reduce();
         }
@@ -742,7 +742,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             //   No ignore case, no regexp or anything?
             TestCompletionMatcher matcher = new TestCompletionMatcher(string, predicate, dispatchNode, this);
             if (!matcher.forEachInCollection(collection)) {
-                return BuiltInEval.FFuncall.funcall(collection, new Object[]{string, predicate, LAMBDA});
+                return BuiltInEval.FFuncall.funcall(this, collection, string, predicate, LAMBDA);
             }
             return matcher.matched;
         }

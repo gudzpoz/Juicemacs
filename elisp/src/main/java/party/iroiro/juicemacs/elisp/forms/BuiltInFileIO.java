@@ -1050,7 +1050,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 buffer.setEnableMultibyteCharacters(false);
                 buffer.insert(MuleString.fromRaw(headAndTail));
                 buffer.setPoint(1);
-                return BuiltInEval.FFuncall.funcall(autoCodingFunction, new Object[]{filename, read});
+                return BuiltInEval.FFuncall.funcall(this, autoCodingFunction, filename, read);
             }
         }
 

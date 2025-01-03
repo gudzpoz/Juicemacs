@@ -264,7 +264,7 @@ public final class ELispPrint {
     private record FuncPrintFunc(Object func) implements PrintFunc {
         @Override
         public void print(int c) {
-            BuiltInEval.FFuncall.funcall(func, new Object[]{(long) c});
+            BuiltInEval.FFuncall.funcall(null, func, (long) c);
         }
 
         @Override

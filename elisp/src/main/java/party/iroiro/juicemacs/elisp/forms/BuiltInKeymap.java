@@ -181,7 +181,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                     return current;
                 }
                 if (car instanceof ELispCons pair) {
-                    BuiltInEval.FFuncall.funcall(function, new Object[]{pair.car(), pair.cdr()});
+                    BuiltInEval.FFuncall.funcall(null, function, pair.car(), pair.cdr());
                 }
             }
             return false;

@@ -491,13 +491,11 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapCharsetChars extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean mapCharsetChars(Object function, ELispSymbol charset, Object arg, Object fromCode, Object toCode) {
+        public boolean mapCharsetChars(Object function, ELispSymbol charset, Object arg, Object fromCode, Object toCode) {
             ELispCharset cs = getCharset(charset);
             int from = (int) notNilOr(fromCode, cs.minCode);
             int to = (int) notNilOr(toCode, cs.maxCode);
-            cs.mapChars((range) -> BuiltInEval.FFuncall.funcall(function, new Object[]{
-                    range, arg,
-            }), from, to);
+            cs.mapChars((range) -> BuiltInEval.FFuncall.funcall(this, function, range, arg), from, to);
             return false;
         }
     }

@@ -507,7 +507,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 if (inlineLambdaNode != null) {
                     function = inlineLambdaNode.executeGeneric(frame);
                 }
-                Object o = getFunctionObject(function).callTarget().call(evalArgs(frame));
+                Object o = getFunctionObject(function).callTarget().call(this, evalArgs(frame));
                 if (o instanceof ELispCons debuggable) {
                     debuggable.setSourceLocation(
                             cons.getStartLine(),
