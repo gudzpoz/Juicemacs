@@ -126,6 +126,7 @@ public class ELispRepl implements Callable<Integer> {
                 .completer(new LispCompleter(context))
                 .highlighter(new LispHighlighter())
                 .parser(new LispParser())
+                .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true)
                 .option(LineReader.Option.INSERT_BRACKET, true)
                 .variable(LineReader.SECONDARY_PROMPT_PATTERN, SECONDARY_PROMPT_STRING)
                 .variable(LineReader.INDENTATION, 2)
@@ -193,8 +194,9 @@ public class ELispRepl implements Callable<Integer> {
 
         private LispParser() {
             lineCommentDelims(new String[]{";"})
-                    .eofOnUnclosedBracket(DefaultParser.Bracket.ROUND, DefaultParser.Bracket.SQUARE)
-                    .eofOnUnclosedQuote(false);
+                    .escapeChars(null)
+                    .quoteChars(new char[]{'"'})
+                    .eofOnUnclosedBracket(Bracket.ROUND, Bracket.SQUARE);
         }
 
         @Override

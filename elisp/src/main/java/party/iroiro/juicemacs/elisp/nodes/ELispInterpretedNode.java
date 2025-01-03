@@ -211,12 +211,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            if (symbol == NIL) {
-                return false;
-            }
-            if (symbol == T) {
-                return true;
-            }
             return updateSlotInfo(frame).executeGeneric(frame);
         }
 

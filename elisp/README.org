@@ -49,6 +49,9 @@ and loosely follows how language implementations structure their code.
   If a subroutine is not generated yet. One will need to modify
   =emacs-extractor= and run =./gradlew :elisp:emacsGen=.
 
+  - [[file:src/main/java/party/iroiro/juicemacs/elisp/forms/regex/][=party.iroiro.juicemacs.elisp.forms.regex=]] contains a tiny regex engine that
+    (I hope) conforms to the Emacs regex syntax.
+
 - [[file:src/main/java/party/iroiro/juicemacs/elisp/parser/][=party.iroiro.juicemacs.elisp.parser=]] holds a lexer and a parser.
 
 - [[file:src/main/java/party/iroiro/juicemacs/elisp/runtime/objects/][=party.iroiro.juicemacs.elisp.runtime.objects=]] holds the ELisp object

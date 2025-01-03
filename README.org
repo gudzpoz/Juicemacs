@@ -33,7 +33,8 @@ a lot of functions/macros loaded in the "upper half" of =loadup.el=.
 To run it
 1. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
    data/elisp files ready.
-2. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"=.
+2. Delete/rename the generated =lisp/loaddefs.el= file.
+3. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"=.
 
 ** ERT Testing
 
@@ -71,6 +72,8 @@ be implemented.)
 - https://github.com/CeleritasCelery/rune
 
 - https://github.com/federicotdn/pimacs
+
+- https://codeberg.org/ramin_hal9001/gypsum
 
 - [[https://www.cliki.net/cl-emacs][CL-Emacs]]: “Various people have proposed an emacs-like editor written in Common
   Lisp. This page collects together a few possibilities.”

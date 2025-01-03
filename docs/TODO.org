@@ -51,60 +51,39 @@ To support this, we will need to rethink how we handle our materialized frames.
 I have stopped writing tests for newly implemented subroutines. We should
 definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
 
-* TODO [#B] Support =load-source-file-function=
+* TODO [#B] Implement placeholder functions
 
-The C implementation of =load= is quite simplistic: similar to
-=internal-make-interpreted-closure-function=, Emacs relies on
-=load-source-file-function= to handle more complex scenarios and file encoding.
+I've made lots of functions no-op in order to bootstrap =ert.el=. And we should
+probably return to them some time:
 
-** Actually support Emacs encodings when loading elisp files
+- [ ] =decode-coding-string=
 
-=emacs/lisp/language/ethiopic.el= is encoded with =utf-8-emacs=, containing a
-non-Unicode character. Currently we just treat these characters as white spaces.
-Also, =ethiopic.el= uses CCL, so it is probably time for yet another bytecode
-interpreter.
+- [ ] =kill-emacs=: This actually will not run code in =unwind-protect=, so a
+  special exception probably will not do.
 
-** TODO [#B] Fix stack-trace source position
+- [ ] =framep=, =processp=, =windowp=, etc.
 
-After switching to using =load-source-file-function=, the stack-trace for root
-nodes seems to miss source location info, probably caused by =eval-buffer=.
+- [ ] Buffer keymaps
 
-#+begin_src text
-  at <elisp> /.../Juicemacs/elisp/emacs/lisp/electric.el(Unknown)
-    vs
-  at <elisp> loadup.el(emacs/lisp/loadup.el:393:0)
-#+end_src
+- [ ] Syntax-related functions
 
-** Is concurrent =load= possible?
+  - [ ] =skip-chars-backward=, =skip-chars-forward=
 
-Parsing huge files can be costly. And yet most of the operations have nothing to
-do with the current context: we can offload the job to other threads.
+  - [ ] =skip-syntax-forward=
 
-For the following snippet:
+  - [ ] =forward-comment=
 
-#+begin_src elisp
-  (load "a.el")
-  (load "b.el")
-#+end_src
+  - [ ] =scan-sexps=: Currently we use our ELisp parser for this. But this
+    actually scans "lisp-like" s-exps according to the syntax table?
 
-We want to silently turn it into something like:
+  - [ ] =backward-prefix-chars=
 
-#+begin_src elisp
-  (concurrent
-   (parse-cache "a.el")
-   (parse-cache "b.el"))
+- [ ] =format-time-string=
 
-  (run-cached "a.el")
-  (run-cached "b.el")
-#+end_src
+* TODO [#C] =add-variable-watcher=
 
-What we can do is to have the parser detect =require/load= (under "safe"
-conditions like during loadup) and parse them in the background.
-
-However, since we are yet to fully bootstrap =loadup.el=, we might end up
-pre-parsing all bunch of things that will not get loaded.
-
-With =load-source-file-function=, things are much more complex now.
+Currently I've only seen this used to =redisplay= things when certain variables
+change. So we can live without it for a while.
 
 * TODO [#B] Automatically free container objects when the corresponding symbol goes out of scope
 
@@ -150,6 +129,14 @@ The current performance is pretty good and we might consider adding more checks
 to ensure a consistent behavior. But we will need some benchmark to ensure it
 does not slow down too much.
 
+* TODO [#B] Bytecode interpreter
+
+Now that [[https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/BytecodeDSL.md][Truffle has a bytecode DSL]], we can probably implement a bytecode
+interpreter more easily. However, I don't think anything (Juicemacs currently
+can run) in Emacs actually /requires/ a working bytecode interpreter. Since our
+interpreter is more or less on par with nativecomp /when fully warmed up/, we
+can continue with our AST interpreter until we run into some real bottlenecks.
+
 * TODO [#B] Understanding Non-Bare Symbols
 
 I hope we can make all symbols bare.
@@ -171,11 +158,6 @@ Use a custom scheduler by using reflection. Also, Truffle has a bunch of
 thread-local fields that need to be initialized with
 =TruffleLanguage.Env#newTruffleThreadBuilder=. We will see if we can do this
 with our own scheduler.
-
-* TODO [#C] Use Truffle FileSystems
-
-=FileSystem= is used by users. And I assume, as a language implementer, we
-should use the methonds in =TruffleLanguage.Env= instead.
 
 * TODO [#B] Charsets & Coding
 
@@ -220,7 +202,7 @@ IntelliJ always complains about =org.graalvm.truffle= not being read by
 =module-info.java=, despite the fact that the =require= line the line is there.
 ([[https://youtrack.jetbrains.com/issue/IDEA-362046/Multi-release-module-info.class-causes-false-positive-errors][IDEA-362046]])
 
-* TODO Buffers
+* TODO [#B] Buffers
 
 It is still a long long way to go... But at least we have a piece table now. I
 might still need to look into CRDTs and the new Eg-walker if we want to merge
@@ -228,6 +210,16 @@ buffers from different (virtual) threads.
 
 Edit: I think OT is better here to handle all the edge cases. Or maybe something
 like offsets organized into a tree?
+
+** TODO [#B] Buffer interval properties & markers & overlays
+
+Also, currently our markers does not move when texts get inserted/deleted.
+
+Sidenote: I think we do not need those fany CRDTs or OTs. It seems that we cal
+simply keep some special thread-local marks/properties to make edits in a
+threaded context invisible to other threads. So each thread enjoys their own
+buffer, while the UI can "redisplay" changes by all threads (or changes done
+prior to redisplay).
 
 * Trackers
 
@@ -332,6 +324,66 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#B] Support =load-source-file-function=
+
+The C implementation of =load= is quite simplistic: similar to
+=internal-make-interpreted-closure-function=, Emacs relies on
+=load-source-file-function= to handle more complex scenarios and file encoding.
+
+*** Actually support Emacs encodings when loading elisp files
+
+=emacs/lisp/language/ethiopic.el= is encoded with =utf-8-emacs=, containing a
+non-Unicode character. Currently we just treat these characters as white spaces.
+Also, =ethiopic.el= uses CCL, so it is probably time for yet another bytecode
+interpreter.
+
+*** DONE [#B] Fix stack-trace source position
+
+After switching to using =load-source-file-function=, the stack-trace for root
+nodes seems to miss source location info, probably caused by =eval-buffer=.
+
+#+begin_src text
+  at <elisp> /.../Juicemacs/elisp/emacs/lisp/electric.el(Unknown)
+    vs
+  at <elisp> loadup.el(emacs/lisp/loadup.el:393:0)
+#+end_src
+
+*** Is concurrent =load= possible?
+
+Parsing huge files can be costly. And yet most of the operations have nothing to
+do with the current context: we can offload the job to other threads.
+
+For the following snippet:
+
+#+begin_src elisp
+  (load "a.el")
+  (load "b.el")
+#+end_src
+
+We want to silently turn it into something like:
+
+#+begin_src elisp
+  (concurrent
+   (parse-cache "a.el")
+   (parse-cache "b.el"))
+
+  (run-cached "a.el")
+  (run-cached "b.el")
+#+end_src
+
+What we can do is to have the parser detect =require/load= (under "safe"
+conditions like during loadup) and parse them in the background.
+
+However, since we are yet to fully bootstrap =loadup.el=, we might end up
+pre-parsing all bunch of things that will not get loaded.
+
+With =load-source-file-function=, things are much more complex now.
+
+** DONE [#C] Use Truffle FileSystems
+
+=FileSystem= is used by users. And I assume, as a language implementer, we
+should use the methonds in =TruffleLanguage.Env= instead.
 
 ** DONE [#B] Cache function storage in function call nodes
 
