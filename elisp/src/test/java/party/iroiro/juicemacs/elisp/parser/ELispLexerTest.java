@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 
 import com.oracle.truffle.api.source.Source;
 
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.BackQuote;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.BoolVec;
@@ -27,7 +26,6 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CircularRef;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Dot;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.EOF;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Function;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Num;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ParenClose;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ParenOpen;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Quote;
@@ -76,8 +74,10 @@ public class ELispLexerTest {
             "#o54", 44,
             "#o-54", -44,
             "#x2c", 44,
+            "#x+2c", 44,
             "#x-2c", -44,
             "#24r1k", 44,
+            "#24r+1k", 44,
             "#24r-1k", -44,
             "#xffffffffffffffffffffffffffffffffffffffffffffffff",
             new BigInteger("ffffffffffffffffffffffffffffffffffffffffffffffff", 16),
@@ -90,15 +90,16 @@ public class ELispLexerTest {
                 ELispLexer lexer = lexer(INTEGER_TESTS[i] + suffix);
                 assertTrue(lexer.hasNext());
                 Object expected = INTEGER_TESTS[i + 1];
-                NumberVariant expectedNum;
+                Token expectedNum;
                 if (expected instanceof BigInteger big) {
-                    expectedNum = new NumberVariant.BigNum(big);
+                    expectedNum = new Token.BigNum(big);
                 } else {
-                    expectedNum = new NumberVariant.FixNum((Integer) expected);
+                    expectedNum = new Token.FixNum((Integer) expected);
                 }
                 assertEquals(
-                        new Num(expectedNum),
-                        lexer.next()
+                        expectedNum,
+                        lexer.next(),
+                        INTEGER_TESTS[i] + suffix
                 );
                 assertTrue(lexer.hasNext());
                 if (suffix.isEmpty() || suffix.equals(" ")) {
@@ -134,15 +135,15 @@ public class ELispLexerTest {
         for (int i = 0; i < FLOAT_TESTS.length; i += 2) {
             ELispLexer lexer = lexer((String) FLOAT_TESTS[i]);
             double expected = (Double) FLOAT_TESTS[i + 1];
-            Num actual = (Num) lexer.next();
+            Token actual = lexer.next();
             if (Double.isNaN(expected)) {
                 assertTrue(
-                        Double.isNaN(((NumberVariant.Float) actual.value()).value()),
+                        Double.isNaN(((Token.FloatNum) actual).value()),
                         (String) FLOAT_TESTS[i]
                 );
             } else {
                 assertEquals(
-                        new Num(new NumberVariant.Float(expected)),
+                        new Token.FloatNum(expected),
                         actual
                 );
             }
@@ -411,7 +412,7 @@ public class ELispLexerTest {
                 ".;1",
                 ".(1)",
                 ".[1]",
-                ".#1",
+                ".#1=",
                 ".?1",
                 ".`a",
                 ".,1",
@@ -450,7 +451,7 @@ public class ELispLexerTest {
             "a\"\"", "a",
             "a'a", "a",
             "a;a", "a",
-            "a#1", "a",
+            "a#1#", "a",
             "a(1)", "a",
             "a[1]", "a",
             "a)1", "a",
@@ -464,7 +465,8 @@ public class ELispLexerTest {
     public void testSymbol() throws IOException {
         for (int i = 0; i < SYMBOL_TESTS.length; i += 2) {
             String expected = SYMBOL_TESTS[i + 1];
-            assertEquals(new Symbol(expected, true, true), lex(SYMBOL_TESTS[i]).getFirst());
+            String src = SYMBOL_TESTS[i];
+            assertEquals(new Symbol(expected, true, true), lex(src).getFirst(), src);
         }
     }
 
@@ -491,8 +493,8 @@ public class ELispLexerTest {
                         "<input>"
                 ).build()
         );
-        Num data = (Num) lexer.next();
-        assertEquals(42L, ((NumberVariant.FixNum) data.value()).value());
+        Token data = lexer.next();
+        assertEquals(42L, ((Token.FixNum) data).value());
     }
 
     private void assertError(String input, @Nullable String expected) {
@@ -519,10 +521,10 @@ public class ELispLexerTest {
         assertError("\ud83c\u0000", "Invalid Unicode surrogate pair");
         assertError("\"\\A-1\"", "Invalid modifier in string");
 
-        assertError("'(?\\u00)", "Expecting fixed number of digits");
-        assertError("'?\\u00z", "Expecting fixed number of digits");
+        assertError("'(?\\u00)", "Invalid number");
+        assertError("'?\\u00z", "Invalid number");
         assertError("?\\U0FFFFFFF", "Not a valid Unicode code point");
-        assertError("?\\U-0FFFFFFF", "Not a valid Unicode code point");
+        assertError("?\\U-0FFFFFFF", "Invalid number");
         assertError("?\\C", "Invalid modifier");
         assertError("?\\H", "Invalid modifier");
         assertError("?\\M", "Invalid modifier");
@@ -535,16 +537,16 @@ public class ELispLexerTest {
         assertError("?\\^aa", "Invalid char");
         assertError("?\\nn", "Invalid char");
 
-        assertError("#xfrf", "Invalid base");
+        assertError("#xfrf", "Invalid number");
         assertError("#40rz", "Invalid base");
         lex("#x1@");
         lex("#x1:");
         lex("#x1[");
         lex("#x1{");
-        assertError("#xffz", "Invalid character");
-        assertError("#xFFZ", "Invalid character");
-        assertError("#o779", "Invalid character");
-        assertError("#16rffz", "Invalid character");
+        assertError("#xffz", "Invalid number");
+        assertError("#xFFZ", "Invalid number");
+        assertError("#o779", "Invalid number");
+        assertError("#16rffz", "Invalid number");
         assertError("#z", "Expected a number base indicator");
 
         assertError("#&0", "Expected '\"'");

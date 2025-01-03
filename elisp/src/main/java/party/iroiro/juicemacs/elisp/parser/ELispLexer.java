@@ -14,6 +14,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
 
 /// A ELisp lexer
@@ -95,26 +96,6 @@ import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
 public class ELispLexer {
 
     public static final int LINE_CONTINUATION = Integer.MIN_VALUE;
-
-    sealed interface NumberVariant {
-
-        record BigNum(BigInteger value) implements NumberVariant {
-        }
-
-        record FixNum(long value) implements NumberVariant {
-        }
-
-        record Float(double value) implements NumberVariant {
-        }
-
-        static NumberVariant from(BigInteger value) {
-            if (value.bitLength() <= (Long.SIZE - 1)) {
-                return new FixNum(value.longValue());
-            }
-            return new BigNum(value);
-        }
-
-    }
 
     sealed interface Token {
 
@@ -262,7 +243,13 @@ public class ELispLexer {
         record Str(MuleString value) implements Token {
         }
 
-        record Num(NumberVariant value) implements Token {
+        record FixNum(long value) implements Token {
+        }
+
+        record BigNum(BigInteger value) implements Token {
+        }
+
+        record FloatNum(double value) implements Token {
         }
 
         record Symbol(MuleString value, boolean intern, boolean shorthand) implements Token {
@@ -409,18 +396,14 @@ public class ELispLexer {
         };
     }
 
-    private BigInteger readInteger(int base, int digits, boolean earlyReturn) throws IOException {
-        BigInteger value = new BigInteger("0", base);
-        boolean negative = reader.peek() == '-';
-        if (negative) {
-            reader.read();
-        }
+    private long readInteger(int base, int digits, boolean earlyReturn) throws IOException {
+        long value = 0;
         // When `digit == -1`, `i != digits` allows reading an infinitely large number.
         for (int i = 0; i != digits; i++) {
             int c = reader.peek();
             if (earlyReturn) {
                 if (c == -1) {
-                    return negative ? value.negate() : value;
+                    break;
                 }
             } else {
                 noEOF(c);
@@ -437,22 +420,49 @@ public class ELispLexer {
             }
             if (digit == -1 || digit >= base) {
                 if (earlyReturn) {
-                    return negative ? value.negate() : value;
+                    break;
                 }
-                throw ELispSignals.invalidReadSyntax("Expecting fixed number of digits");
+                throw ELispSignals.invalidReadSyntax("Invalid number");
             }
+            // 0 <= digit < base <= 37 < 64
+            if (value > (Long.MAX_VALUE >> 6)) {
+                try {
+                    value = Math.addExact(Math.multiplyExact(value, base), digit);
+                } catch (ArithmeticException e) {
+                    return value;
+                }
+            }
+            value = value * base + digit;
             reader.read();
-            value = value.multiply(BigInteger.valueOf(base)).add(BigInteger.valueOf(digit));
         }
-        return negative ? value.negate() : value;
+        return value;
+    }
+
+    private Token readIntToken(int base) throws IOException {
+        int leading = reader.peek();
+        boolean negative = leading == '-';
+        if (negative || leading == '+') {
+            reader.read();
+        }
+        long value = readInteger(base, -1, true);
+        if (!isAlphaNumeric(reader.peek())) {
+            return new Token.FixNum(negative ? -value : value);
+        }
+        BigInteger bigBase = BigInteger.valueOf(base);
+        BigInteger bigValue = BigInteger.valueOf(value);
+        do {
+            value = readInteger(base, 1, false);
+            bigValue = bigValue.multiply(bigBase).add(BigInteger.valueOf(value));
+        } while (isAlphaNumeric(reader.peek()));
+        return new Token.BigNum(negative ? bigValue.negate() : bigValue);
     }
 
     private int readEscapedCodepoint(int base, int digits, boolean earlyReturn) throws IOException {
-        BigInteger value = readInteger(base, digits, earlyReturn);
-        if (value.signum() < 0 || value.compareTo(BigInteger.valueOf(Character.MAX_CODE_POINT)) > 0) {
+        long value = readInteger(base, digits, earlyReturn);
+        if (value < 0 || MAX_CHAR < value) {
             throw ELispSignals.error("Not a valid Unicode code point");
         }
-        return value.intValue();
+        return (int) value;
     }
 
     private int readControlChar(boolean inString) throws IOException {
@@ -522,7 +532,7 @@ public class ELispLexer {
         // Meta-prefix: ?\s-a => Bit annotated character
         int meta = mapMetaMask(escaped, inString);
         if (meta != -1) {
-            if (reader.peek() == '-') {
+            if (reader.peek() == '-' && !(inString && escaped == 's')) { // "\s-x" => " -x"
                 reader.read();
                 if (inString && meta > 0x80) {
                     throw ELispSignals.invalidReadSyntax("Invalid modifier in string");
@@ -620,44 +630,31 @@ public class ELispLexer {
     }
 
     private static boolean isAlphaNumeric(int c) {
-        return '0' <= c && c <= '9' || 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z';
+        return ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
     }
 
-    private Token readHashNumToken(int base) throws IOException {
-        BigInteger value = readInteger(base, -1, true);
+    private Token readHashNumToken() throws IOException {
+        long value = readInteger(10, -1, true);
         switch (reader.peek()) {
             // #1#
             case '#' -> {
                 reader.read();
-                return new Token.CircularRef(value.longValueExact());
+                return new Token.CircularRef(value);
             }
             // #1=
             case '=' -> {
                 reader.read();
-                return new Token.CircularDef(value.longValueExact());
+                return new Token.CircularDef(value);
             }
             // #24r1k => base-24 integer
             case 'r' -> {
-                if (base != 10) {
-                    throw ELispSignals.invalidReadSyntax("Invalid base");
-                }
                 reader.read();
-                int realBase = value.intValueExact();
-                if (realBase > 36) {
+                if (value < 0 || 36 < value) {
                     throw ELispSignals.invalidReadSyntax("Invalid base");
                 }
-                BigInteger number = readInteger(realBase, -1, true);
-                if (isAlphaNumeric(reader.peek())) {
-                    throw ELispSignals.invalidReadSyntax("Invalid character");
-                }
-                return new Token.Num(NumberVariant.from(number));
+                return readIntToken((int) value);
             }
-            default -> {
-                if (isAlphaNumeric(reader.peek())) {
-                    throw ELispSignals.invalidReadSyntax("Invalid character");
-                }
-                return new Token.Num(NumberVariant.from(value));
-            }
+            default -> throw ELispSignals.invalidReadSyntax("Invalid character");
         }
     }
 
@@ -696,11 +693,19 @@ public class ELispLexer {
         if (!symbolOnly && !escaped) {
             Matcher integer = INTEGER_PATTERN.matcher(symbol);
             if (integer.matches()) {
-                NumberVariant inner = NumberVariant.from(new BigInteger(integer.group(1)));
-                return new Token.Num(inner);
+                String text = integer.group(1);
+                if (text.length() < 20) {
+                    return new Token.FixNum(Long.parseLong(
+                            text,
+                            0,
+                            text.endsWith(".") ? text.length() - 1 : text.length(),
+                            10
+                    ));
+                }
+                return new Token.BigNum(new BigInteger(text));
             }
             if (FLOAT_PATTERN.matcher(symbol).matches()) {
-                return new Token.Num(new NumberVariant.Float(parseFloat(symbol)));
+                return new Token.FloatNum(parseFloat(symbol));
             }
         }
         return new Token.Symbol(sb.build(), !uninterned, !noShorthand);
@@ -765,7 +770,7 @@ public class ELispLexer {
             case '#' -> {
                 int next = reader.peek();
                 if ('0' <= next && next <= '9') {
-                    yield readHashNumToken(10);
+                    yield readHashNumToken();
                 }
                 reader.read();
                 yield switch (next) {
@@ -791,12 +796,11 @@ public class ELispLexer {
                     case '(' -> STR_WITH_PROPS_OPEN;
                     case '[' -> BYTE_CODE_OPEN;
                     case '&' -> {
-                        BigInteger length = readInteger(10, -1, true);
-                        long l = length.longValueExact();
+                        long length = readInteger(10, -1, true);
                         if (reader.read() != '\"') {
                             throw ELispSignals.invalidReadSyntax("Expected '\"'");
                         }
-                        yield new Token.BoolVec(l, readStr());
+                        yield new Token.BoolVec(length, readStr());
                     }
                     case '!' -> {
                         skipLine();
@@ -805,9 +809,9 @@ public class ELispLexer {
                         }
                         yield null;
                     }
-                    case 'x', 'X' -> readHashNumToken(16);
-                    case 'o', 'O' -> readHashNumToken(8);
-                    case 'b', 'B' -> readHashNumToken(2);
+                    case 'x', 'X' -> readIntToken(16);
+                    case 'o', 'O' -> readIntToken(8);
+                    case 'b', 'B' -> readIntToken(2);
                     case '@' -> {
                         if (reader.peek() == '0') {
                             reader.read();
@@ -818,7 +822,7 @@ public class ELispLexer {
                                 yield SKIP_TO_END;
                             }
                         }
-                        long skip = readInteger(10, -1, true).longValueExact();
+                        long skip = readInteger(10, -1, true);
                         // TODO: More efficient way to skip?
                         //noinspection StatementWithEmptyBody
                         while (reader.read() != '\037') {

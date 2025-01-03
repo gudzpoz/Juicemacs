@@ -223,7 +223,7 @@ public class ELispParserTest {
         assertEquals(1024, sub.getMinChar());
         sub.forEach((ele) -> {
             if (!(ele instanceof Long)) {
-                assertSame(T, ele);
+                assertSame(true, ele);
             }
         });
     }

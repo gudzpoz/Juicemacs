@@ -7,7 +7,6 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.NumberVariant;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -91,9 +90,9 @@ public class ELispParser {
             case EOF() -> throw new EOFException();
             case SkipToEnd() -> false; // TODO: Skip to EOF
             case SetLexicalBindingMode _ -> throw ELispSignals.invalidReadSyntax("Unexpected lexical binding mode");
-            case Num(NumberVariant.FixNum(long value)) -> value;
-            case Num(NumberVariant.BigNum(BigInteger value)) -> ELispBigNum.wrap(value);
-            case Num(NumberVariant.Float(double value)) -> value;
+            case FixNum(long value) -> value;
+            case BigNum(BigInteger value) -> ELispBigNum.wrap(value);
+            case FloatNum(double value) -> value;
             case Char(int value) -> (long) value;
             case Str(MuleString value) -> new ELispString(value);
             case Symbol(MuleString value, boolean intern, boolean shorthand) -> {
