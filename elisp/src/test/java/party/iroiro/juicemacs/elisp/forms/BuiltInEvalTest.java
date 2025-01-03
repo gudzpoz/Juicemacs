@@ -3,12 +3,10 @@ package party.iroiro.juicemacs.elisp.forms;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Test;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.LEXICAL_BINDING_TEST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.SPECIAL_IN_LEXICAL_BINDING_TEST;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.WRONG_TYPE_ARGUMENT;
 
 public class BuiltInEvalTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
@@ -108,24 +106,48 @@ public class BuiltInEvalTest extends BaseFormTest {
         assertEquals(message, actual);
     }
 
-    private void assertErrorMessage(Context context, String expr, ELispSymbol type) {
-        String actual = assertThrows(PolyglotException.class, () -> context.eval("elisp", expr)).getMessage();
-        assertTrue(actual.startsWith("(" + type), "Expected: " + type + "; got: " + actual);
-    }
-
     @Test
     public void testSignals() {
         try (Context context = getTestingContext()) {
             assertErrorMessage(context, "((lambda ()) 1)",
-                    "(wrong-number-of-arguments (lambda nil (nil) nil nil nil nil) 1)");
+                    "(wrong-number-of-arguments #[nil (nil) nil nil nil nil] 1)");
             assertErrorMessage(context, "((lambda (x)))",
-                    "(wrong-number-of-arguments (lambda (x) (nil) nil nil nil nil) 0)");
+                    "(wrong-number-of-arguments #[(x) (nil) nil nil nil nil] 0)");
             assertDoesNotThrow(() -> context.eval("elisp", "((lambda (&rest x)))"));
             assertErrorMessage(context, "(1+)", "(wrong-number-of-arguments 1+ 0)");
             assertErrorMessage(context, "(1+ 1 1 1)", "(wrong-number-of-arguments 1+ 3)");
             assertErrorMessage(context, "(1- 1 1 1)", "(wrong-number-of-arguments 1- 3)");
             assertErrorMessage(context, "(garbage-collect 1)", "(wrong-number-of-arguments garbage-collect 1)");
-            assertErrorMessage(context, "(lognot nil)", WRONG_TYPE_ARGUMENT);
+            assertErrorMessage(context, "(lognot nil)", "(wrong-type-argument integerp nil)");
+        }
+    }
+
+    @Test
+    public void testEvalBufferStackTrace() {
+        try (Context context = getTestingContext()) {
+            PolyglotException e = assertThrows(PolyglotException.class, () -> context.eval("elisp", """
+                    (set-buffer (get-buffer-create " *temp-test-eval-buffer*"))
+                    (insert "(defalias 'fun #'(lambda () (signal 'error nil)))
+                    (fun)")
+                    (eval-buffer (current-buffer) nil "pseudo-file-name")
+                    """));
+            String[] expected = {
+                    "signal", "BuiltInEval.java:1",
+                    "fun", "pseudo-file-name:1",
+                    "pseudo-file-name", "pseudo-file-name:2",
+                    "eval-buffer", "BuiltInLRead.java:1",
+                    "Unnamed", "Unnamed:4",
+            };
+            StackTraceElement[] stackTrace = e.getStackTrace();
+            for (int i = 0; i < expected.length; i += 2) {
+                String f = expected[i];
+                String place = expected[i + 1];
+                StackTraceElement element = stackTrace[i / 2];
+                assertEquals("<elisp>", element.getClassName());
+                assertEquals(f, element.getMethodName());
+                assertEquals(place.split(":")[0], element.getFileName());
+                assertEquals(Integer.parseInt(place.split(":")[1]), element.getLineNumber());
+            }
         }
     }
 }

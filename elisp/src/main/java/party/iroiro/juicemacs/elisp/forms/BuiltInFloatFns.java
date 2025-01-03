@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.dsl.*;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
@@ -23,7 +24,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
             double.class,
             ELispBigNum.class,
     })
-    public static class FloatFnsTypeSystem {
+    public static class FloatFnsTypeSystem extends ELispTypeSystem {
         @ImplicitCast
         public static double longToDouble(long arg) {
             return arg;

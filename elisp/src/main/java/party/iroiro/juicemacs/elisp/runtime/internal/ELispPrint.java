@@ -85,9 +85,8 @@ public final class ELispPrint {
 
     public void printCons(ELispCons cons) {
         Object car = cons.car();
-        Object cdr = cons.cdr();
         start(cons);
-        switch (cdr) {
+        switch (cons.cdr()) {
             case ELispCons quoted when car == QUOTE && isNil(quoted.cdr()) ->
                     print('\'').print(quoted.car());
             case ELispCons function when car == FUNCTION && isNil(function.cdr()) ->
@@ -101,13 +100,14 @@ public final class ELispPrint {
             default -> {
                 print('(').print(car);
                 ELispCons.ConsIterator i = cons.consIterator(1);
-                while (i.hasNextCons()) {
-                    sep();
+                while (true) {
                     if (i.hasNextCons()) {
                         cons = i.nextCons();
-                        print(cons.car());
+                        sep().print(cons.car());
                     } else {
-                        print('.').sep().print(cons.cdr());
+                        if (!isNil(cons.cdr())) {
+                            sep().print('.').sep().print(cons.cdr());
+                        }
                         break;
                     }
                 }

@@ -39,7 +39,7 @@ public class BuiltInFnsTest extends BaseFormTest {
             "(null (member \"1\" '(\"1\" 2 3)))", false,
             "(member 4 '(1 2 3))", false,
             "(member 1 nil)", false,
-            "(member t '(t))", true,
+            "(null (member t '(t)))", false,
             "(car (memq 1 '(1 2 3)))", 1L,
             "(null (memq \"1\" '(\"1\" 2 3)))", true,
             "(memq 1 nil)", false,

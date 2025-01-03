@@ -150,7 +150,7 @@ public class ELispParserTest {
                         null
                 ).build()
         );
-        assertSame(NIL, parser.nextLisp());
+        assertSame(false, parser.nextLisp());
         assertTrue(parser.isLexicallyBound());
     }
 
@@ -215,7 +215,7 @@ public class ELispParserTest {
         ELispCharTable table = assertInstanceOf(ELispCharTable.class, read(charTableString));
         assertEquals(CHAR_TABLE_STANDARD_SLOTS, table.slots());
         assertEquals(ELispCharTable.MAX_CHAR_INDEX + 1, table.size());
-        table.forEach((ele) -> assertSame(T, ele));
+        table.forEach((ele) -> assertSame(true, ele));
         String subTableString = "#^^[1 1024 " + "t ".repeat(1 << CHARTAB_SIZE_BITS_1) + "]";
         ELispCharTable.SubTable sub = assertInstanceOf(ELispCharTable.SubTable.class, read(subTableString));
         assertEquals(2 + (1 << CHARTAB_SIZE_BITS_1), sub.size());
@@ -259,6 +259,22 @@ public class ELispParserTest {
             detector.dataEnd();
             assertEquals("UTF-8", detector.getDetectedCharset());
         }
+    }
+
+    @Test
+    public void testLReadTest() throws IOException {
+        Path target = Path.of("emacs", "test", "src", "lread-tests.el");
+        Source ethiopic = Source.newBuilder(
+                "elisp",
+                new FileReader(target.toFile()),
+                target.toFile().getName()
+        ).build();
+        ELispParser parser = new ELispParser(context, ethiopic);
+        assertDoesNotThrow(() -> {
+            while (parser.hasNext()) {
+                parser.nextLisp();
+            }
+        });
     }
 
     @Test

@@ -134,7 +134,7 @@ public sealed abstract class CodePointReader implements AutoCloseable {
 
     private static final class BufferReader extends CodePointReader {
         private final ELispBuffer buffer;
-        private boolean invert;
+        private final boolean invert;
         private long offset;
 
         private BufferReader(ELispBuffer buffer, long offset, boolean invert) {

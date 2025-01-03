@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.*;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -30,7 +31,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             ELispCons.class,
             Instant.class
     })
-    public static class TimeFnsTypeSystem {
+    public static class TimeFnsTypeSystem extends ELispTypeSystem {
         @ImplicitCast
         public static Instant nilToInstant(boolean nil) {
             if (nil) {

@@ -10,6 +10,7 @@ import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
@@ -51,7 +52,7 @@ public class BuiltInData extends ELispBuiltIns {
             long.class,
             ELispMarker.class
     })
-    public static class MarkerFnsTypeSystem {
+    public static class MarkerFnsTypeSystem extends ELispTypeSystem {
         @ImplicitCast
         public static long markerToLong(ELispMarker arg) {
             return arg.longValue();
