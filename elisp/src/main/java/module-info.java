@@ -20,6 +20,10 @@ module party.iroiro.juicemacs.elisp {
     requires org.graalvm.collections;
     requires org.graalvm.truffle;
     requires org.graalvm.polyglot;
+    requires party.iroiro.juicemacs.mule;
+    requires interval.tree;
+    requires org.eclipse.collections.impl;
+    requires party.iroiro.juicemacs.piecetree;
 
     exports party.iroiro.juicemacs.elisp;
 
