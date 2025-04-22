@@ -6,6 +6,7 @@ import party.iroiro.juicemacs.mule.MuleString;
 import java.io.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.PrimitiveIterator;
 import java.util.Random;
 import java.util.stream.IntStream;
 
@@ -396,5 +397,16 @@ public class PieceTreeBaseTest {
             tree.insert(0, MuleString.fromString(content), b);
             assertEquals(content, tree.getLinesRawContent().toString());
         }
+    }
+
+    @Test
+    public void iteratorTest() {
+        PieceTreeBase tree = from("abc\ndef\nghi\njkl\n");
+        PrimitiveIterator.OfInt i = tree.iterator(4, 8);
+        assertEquals('d', i.nextInt());
+        assertEquals('e', i.nextInt());
+        assertEquals('f', i.nextInt());
+        assertEquals('\n', i.nextInt());
+        assertFalse(i.hasNext());
     }
 }

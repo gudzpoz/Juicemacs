@@ -110,6 +110,10 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         ), PieceTreeBase.EndOfLine.LF);
     }
 
+    public PrimitiveIterator.OfInt iterator(long start, long end) {
+        return content.iterator(start - 1, end - 1);
+    }
+
     public void insert(MuleString text) {
         if (text.length() == 0) {
             return;

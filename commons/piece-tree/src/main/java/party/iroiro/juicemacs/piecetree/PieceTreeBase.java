@@ -1402,9 +1402,18 @@ public final class PieceTreeBase {
     }
 
     private class CharIterator implements PrimitiveIterator.OfInt {
-        private TreeNode currentNode = root.leftest();
-        private long cachedStartOffset = -1;
-        private long current = 0;
+        private TreeNode currentNode;
+        private long cachedStartOffset;
+        private long current;
+        private long remainder;
+
+        public CharIterator(long start, long end) {
+            NodePosition startPosition = nodeAt(start);
+            currentNode = startPosition.node;
+            cachedStartOffset = startPosition.nodeStartOffset;
+            current = startPosition.remainder;
+            remainder = end - start;
+        }
 
         @Override
         public int nextInt() {
@@ -1417,11 +1426,15 @@ public final class PieceTreeBase {
                 cachedStartOffset = offsetInBuffer(piece.bufferIndex, piece.start);
             }
             MuleStringBuffer buffer = buffers.get(piece.bufferIndex).buffer;
+            remainder--;
             return buffer.charAt(cachedStartOffset + current++);
         }
 
         @Override
         public boolean hasNext() {
+            if (remainder <= 0) {
+                return false;
+            }
             while (currentNode != SENTINEL) {
                 Piece piece = currentNode.piece;
                 if (current < piece.length()) {
@@ -1435,10 +1448,14 @@ public final class PieceTreeBase {
         }
     }
 
+    public PrimitiveIterator.OfInt iterator(long start, long end) {
+        return new CharIterator(start, end);
+    }
+
     public IntStream chars() {
         return StreamSupport.intStream(() ->
                         Spliterators.spliterator(
-                                new CharIterator(),
+                                new CharIterator(0, getLength()),
                                 getLength(),
                                 Spliterator.ORDERED),
                 Spliterator.SUBSIZED | Spliterator.SIZED | Spliterator.ORDERED,

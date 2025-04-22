@@ -6,6 +6,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.PrimitiveIterator;
 
 public sealed abstract class CodePointReader implements AutoCloseable {
     private int line = 1;
@@ -68,7 +69,7 @@ public sealed abstract class CodePointReader implements AutoCloseable {
     }
 
     public static CodePointReader from(ELispBuffer buffer) {
-        return new BufferReader(buffer, buffer.pointMin(), false);
+        return new IteratorReader(buffer.iterator(buffer.pointMin(), buffer.pointMax()));
     }
 
     public static CodePointReader from(ELispBuffer buffer, long start, boolean invert) {
@@ -125,6 +126,23 @@ public sealed abstract class CodePointReader implements AutoCloseable {
         @Override
         protected int readInternal() throws IOException {
             return reader.read();
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    private static final class IteratorReader extends CodePointReader {
+        private final PrimitiveIterator.OfInt iterator;
+
+        private IteratorReader(PrimitiveIterator.OfInt iterator) {
+            this.iterator = iterator;
+        }
+
+        @Override
+        protected int readInternal() {
+            return iterator.hasNext() ? iterator.nextInt() : -1;
         }
 
         @Override

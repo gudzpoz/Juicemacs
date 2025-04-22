@@ -289,8 +289,8 @@ public class ELispLexer {
     private static final Pattern LEXICAL_BINDING_PATTERN = Pattern.compile(
             "-\\*-(?:|.*;)[ \t]*lexical-binding:[ \t]*([^;]*[^ \t;]).*-\\*-"
     );
-    private static final Pattern INTEGER_PATTERN = Pattern.compile("^([+-]?[0-9]+)\\.?$");
-    private static final Pattern FLOAT_PATTERN = Pattern.compile("^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?$");
+    public static final Pattern INTEGER_PATTERN = Pattern.compile("^([+-]?[0-9]+)\\.?$");
+    public static final Pattern FLOAT_PATTERN = Pattern.compile("^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?$");
 
     private final CodePointReader reader;
 
@@ -674,6 +674,7 @@ public class ELispLexer {
         boolean symbolOnly = uninterned || noShorthand;
         MuleStringBuffer sb = new MuleStringBuffer();
         boolean escaped = false;
+        boolean nonNumber = false;
         int c = alreadyRead;
         while (potentialUnescapedSymbolChar(c)) {
             if (alreadyRead == -1) {
@@ -681,17 +682,21 @@ public class ELispLexer {
             } else {
                 alreadyRead = -1;
             }
+            int codePoint;
             if (c == '\\') {
                 escaped = true;
-                sb.appendCodePoint(reader.read());
+                codePoint = reader.read();
             } else {
-                sb.appendCodePoint(c);
+                codePoint = c;
             }
+            sb.appendCodePoint(codePoint);
+            nonNumber |= codePoint > 'e';
             c = reader.peek();
         }
-        String symbol = sb.toString();
-        if (!symbolOnly && !escaped) {
-            Matcher integer = INTEGER_PATTERN.matcher(symbol);
+        MuleString symbol = sb.build();
+        if (!symbolOnly && !escaped && !nonNumber) {
+            String number = symbol.toString();
+            Matcher integer = INTEGER_PATTERN.matcher(number);
             if (integer.matches()) {
                 String text = integer.group(1);
                 if (text.length() < 20) {
@@ -704,11 +709,11 @@ public class ELispLexer {
                 }
                 return new Token.BigNum(new BigInteger(text));
             }
-            if (FLOAT_PATTERN.matcher(symbol).matches()) {
-                return new Token.FloatNum(parseFloat(symbol));
+            if (FLOAT_PATTERN.matcher(number).matches()) {
+                return new Token.FloatNum(parseFloat(number));
             }
         }
-        return new Token.Symbol(sb.build(), !uninterned, !noShorthand);
+        return new Token.Symbol(symbol, !uninterned, !noShorthand);
     }
 
     private static final long SIGNIFICAND_BITS = 52;
