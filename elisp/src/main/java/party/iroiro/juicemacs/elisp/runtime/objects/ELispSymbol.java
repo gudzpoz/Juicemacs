@@ -14,7 +14,6 @@ import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.HashSet;
 import java.util.Optional;
-import java.util.PrimitiveIterator;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.T;
@@ -28,8 +27,6 @@ import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 /// in the symbol, but in the Truffle context to allow parallel context usages.
 @ExportLibrary(InteropLibrary.class)
 public final class ELispSymbol implements ELispValue, TruffleObject {
-    public static final String SPECIAL_CHARS = "()[]#?\"'`,;.";
-
     private final MuleString name;
     private final boolean isKeyword;
 
@@ -241,14 +238,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
 
     @Override
     public void display(ELispPrint print) {
-        PrimitiveIterator.OfInt i = name.codePoints().iterator();
-        while (i.hasNext()) {
-            int c = i.nextInt();
-            if (c <= ' ' || SPECIAL_CHARS.indexOf(c) != -1 || c == 0x00A0 /* no breaking space */) {
-                print.print('\\');
-            }
-            print.print(c);
-        }
+        print.printSymbol(this);
     }
 
     @Override

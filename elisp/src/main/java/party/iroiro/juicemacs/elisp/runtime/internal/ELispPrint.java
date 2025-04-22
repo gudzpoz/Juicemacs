@@ -2,9 +2,11 @@ package party.iroiro.juicemacs.elisp.runtime.internal;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.MuleByteArrayString;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -14,6 +16,7 @@ import java.util.HashMap;
 import java.util.PrimitiveIterator;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_5_BYTE_CHAR;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.NO_BREAK_SPACE;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -113,6 +116,51 @@ public final class ELispPrint {
                 }
                 print(')').end();
             }
+        }
+    }
+
+    private boolean isDigit(int c) {
+        return '0' <= c && c <= '9';
+    }
+
+    private boolean isNumber(MuleString s) {
+        if (s instanceof MuleByteArrayString unibyte && unibyte.getState() == MuleByteArrayString.STATE_ASCII) {
+            String str = unibyte.toString();
+            return ELispLexer.INTEGER_PATTERN.matcher(str).matches() || ELispLexer.FLOAT_PATTERN.matcher(str).matches();
+        }
+        return false;
+    }
+
+    private boolean isSpecialChar(int c) {
+        return c == '\"' || c == '\\' || c == '\''
+                || c == ';' || c == '#' || c == '(' || c == ')'
+                || c == ',' || c == '`'
+                || c == '[' || c == ']' || c <= ' '
+                || c == NO_BREAK_SPACE;
+    }
+
+    public void printSymbol(ELispSymbol symbol) {
+        // TODO: symbol interned -> #: prefix
+        MuleString name = symbol.name();
+        if (name.length() == 0) {
+            print('#').printInt('#');
+            return;
+        }
+        // If the symbol looks similar to a number, prefix it with a backslash
+        int c1 = name.charAt(0);
+        int numStart = ((c1 == '-' || c1 == '+') && name.length() > 1) ? 1 : 0;
+        int c2 = name.charAt(numStart);
+        if (((isDigit(c2) || c2 == '.') && isNumber(name)) || c1 == '?') {
+            print('\\');
+        }
+
+        PrimitiveIterator.OfInt iterator = name.iterator(0);
+        while (iterator.hasNext()) {
+            int c = iterator.nextInt();
+            if (isSpecialChar(c)) {
+                print('\\');
+            }
+            print(c);
         }
     }
 

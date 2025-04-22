@@ -9,6 +9,7 @@ import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
@@ -175,12 +176,12 @@ public class BuiltInPrint extends ELispBuiltIns {
         @Specialization
         public static Object princ(Object object, Object printcharfun) {
             // TODO
-            ELispPrint print = FPrin1.getPrint(printcharfun);
-            if (object instanceof ELispString s) {
-                print.print(s.value()).flush();
-                return object;
+            switch (object) {
+                case ELispString s -> FPrin1.getPrint(printcharfun).print(s.value()).flush();
+                case ELispSymbol s -> FPrin1.getPrint(printcharfun).print(s.name()).flush();
+                default -> FPrin1.prin1(object, printcharfun, false);
             }
-            return FPrin1.prin1(object, printcharfun, false);
+            return object;
         }
     }
 
