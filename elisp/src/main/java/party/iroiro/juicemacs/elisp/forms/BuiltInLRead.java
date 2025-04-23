@@ -225,7 +225,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             return switch (tree) {
                 case Long _, Double _, ELispBigNum _, ELispSymbol _ -> tree;
-                case ELispString s when s.intervals() == 0 -> tree;
+                case ELispString s when !s.hasIntervals() -> tree;
                 case ELispBoolVector _ -> tree;
                 default -> {
                     if (recursive.containsKey(tree)) {
@@ -247,7 +247,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                             yield cons;
                         }
                         case ELispString s -> {
-                            s.forProperties(this::substitute);
+                            s.forProperties((o, _, _) -> substitute(o));
                             yield s;
                         }
                         case ELispVectorLike<?> vec -> {

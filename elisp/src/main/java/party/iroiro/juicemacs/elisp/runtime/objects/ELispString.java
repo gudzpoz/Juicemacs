@@ -1,8 +1,5 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.lodborg.intervaltree.IntegerInterval;
-import com.lodborg.intervaltree.Interval;
-import com.lodborg.intervaltree.IntervalTree;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -11,32 +8,30 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.PrimitiveIterator;
-import java.util.Set;
-import java.util.function.Consumer;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
 
     private MuleString value;
-    private final IntervalTree<Integer> intervals;
+
+    @Nullable
+    private IntervalPieceTree<Object> intervals = null;
 
     /**
      * @param init the string value, no copy is performed
      */
     public ELispString(MuleString init) {
         this.value = init;
-        this.intervals = new IntervalTree<>();
     }
 
     public ELispString(String init) {
@@ -79,30 +74,36 @@ public final class ELispString implements TruffleObject, ELispValue {
         print.endString();
     }
 
-    public int intervals() {
-        return intervals.size();
+    public boolean hasIntervals() {
+        return intervals != null;
     }
 
-    public void forRangeProperties(int i, Consumer<Object> propertiesConsumer) {
-        Set<Interval<Integer>> query = intervals.query(i); // NOPMD
-        query.forEach((props) ->
-                propertiesConsumer.accept(((Properties) props).propertyList));
+    public void forRangeProperties(long i, IntervalPieceTree.IntervalConsumer<Object> propertiesConsumer) {
+        if (intervals == null) {
+            return;
+        }
+        intervals.forPropertiesIn(i, 1, propertiesConsumer);
     }
 
-    public void forProperties(Consumer<Object> propertiesConsumer) {
-        intervals.forEach((props) -> propertiesConsumer.accept(((Properties) props).propertyList));
+    public void forProperties(IntervalPieceTree.IntervalConsumer<Object> propertiesConsumer) {
+        if (intervals == null) {
+            return;
+        }
+        intervals.forPropertiesIn(0, Long.MAX_VALUE, propertiesConsumer);
     }
 
     public void syncFromPlist(List<Object> list) {
         if ((list.size() - 1) % 3 != 0) {
             throw ELispSignals.error("Odd length text property list");
         }
+        intervals = new IntervalPieceTree<>();
+        intervals.insert(0, length(), null);
         for (int i = 1; i < list.size(); i += 3) {
             long start = (long) list.get(i);
             long end = (long) list.get(i + 1);
             Object props = list.get(i + 2);
             if (isNil(props) || (props instanceof ELispCons cons && cons.size() % 2 == 0)) {
-                intervals.add(new Properties((int) start, (int) end, props));
+                intervals.putPropertiesFor(start, end - start, props);
             } else {
                 throw ELispSignals.argsOutOfRange(start, end);
             }
@@ -162,32 +163,5 @@ public final class ELispString implements TruffleObject, ELispValue {
 
     public PrimitiveIterator.OfInt codePointIterator() {
         return value.iterator(0);
-    }
-
-    public static final class Properties extends IntegerInterval {
-        Object propertyList;
-
-        Properties(int start, int end, Object propertyList) {
-            super(start, end, Bounded.CLOSED_LEFT); // NOPMD
-            this.propertyList = propertyList;
-        }
-
-        @Override
-        protected Properties create() {
-            return new Properties(0, 0, NIL);
-        }
-
-        @Override
-        public int hashCode() {
-            // OpenJDK Arrays::hashCode
-            return 31 + super.hashCode() * 31 + propertyList.hashCode() * 31 * 31;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            return obj instanceof Properties props
-                    && BuiltInData.FEq.eq(propertyList, props.propertyList)
-                    && super.equals(obj);
-        }
     }
 }

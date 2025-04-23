@@ -193,9 +193,9 @@ public class ELispParserTest {
          assertSame(NIL, placeholder.car());
 
         ELispString str = assertInstanceOf(ELispString.class, read("#1=#(\"text here\" 0 1 (key #1#))"));
-        assertEquals(1, str.intervals());
+        assertTrue(str.hasIntervals());
         AtomicInteger propCount = new AtomicInteger();
-        str.forRangeProperties(0, (props) -> {
+        str.forRangeProperties(0, (props, _, _) -> {
             propCount.incrementAndGet();
             ELispCons properties = assertInstanceOf(ELispCons.class, props);
             assertSame(KEY, properties.getFirst());

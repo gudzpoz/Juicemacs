@@ -6,4 +6,5 @@ module party.iroiro.juicemacs.piecetree {
     requires party.iroiro.juicemacs.mule;
 
     exports party.iroiro.juicemacs.piecetree;
+    exports party.iroiro.juicemacs.piecetree.meta;
 }
