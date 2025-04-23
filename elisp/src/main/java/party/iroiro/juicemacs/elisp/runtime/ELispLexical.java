@@ -226,8 +226,8 @@ public final class ELispLexical {
     }
 
     @Nullable
-    public LexicalReference getLexicalReference(VirtualFrame frame, ELispSymbol symbol) {
-        VirtualFrame virtualFrame = frame;
+    public LexicalReference getLexicalReference(Frame frame, ELispSymbol symbol) {
+        Frame virtualFrame = frame;
         ELispLexical currentFrame = this;
         while (true) {
             int i = currentFrame.getIndex(symbol);

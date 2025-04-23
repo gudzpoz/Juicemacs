@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.eclipse.jdt.annotation.Nullable;
+import org.graalvm.options.OptionValues;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -37,7 +38,6 @@ public final class ELispContext implements ELispParser.InternContext {
     private final TruffleLanguage.Env truffleEnv;
     private final PrintStream out;
     private final Options options;
-    private final boolean postInit;
 
     private final ELispGlobals globals;
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
@@ -48,8 +48,7 @@ public final class ELispContext implements ELispParser.InternContext {
     public ELispContext(ELispLanguage language, TruffleLanguage.Env env) {
         this.language = language;
         this.env = new HashMap<>(env.getEnvironment());
-        this.postInit = !env.getOptions().get(ELispLanguage.BARE);
-        this.options = new Options(env.getOptions().get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
+        this.options = Options.load(env);
         this.globals = new ELispGlobals(this);
         this.truffleEnv = env;
         this.out = new PrintStream(env.out());
@@ -120,7 +119,7 @@ public final class ELispContext implements ELispParser.InternContext {
     }
 
     public void initGlobal(ELispLanguage language) {
-        globals.init(language, postInit);
+        globals.init(language, options.postInit);
     }
 
     //#region Symbol lookup
@@ -199,7 +198,17 @@ public final class ELispContext implements ELispParser.InternContext {
     }
 
     public record Options(
-            int globalVariableMaxInvalidations
+            int globalVariableMaxInvalidations,
+            boolean postInit,
+            boolean debug
     ) {
+        public static Options load(TruffleLanguage.Env env) {
+            OptionValues options = env.getOptions();
+            int invalidations = options.get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS);
+            boolean postInit = !options.get(ELispLanguage.BARE);
+            boolean debug = options.get(ELispLanguage.TRUFFLE_DEBUG);
+
+            return new Options(invalidations, postInit, debug);
+        }
     }
 }

@@ -5,7 +5,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.*;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
@@ -14,11 +20,13 @@ import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.DebuggerScopeObject;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -253,7 +261,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
     }
 
-    private abstract static class ConsCallNode extends ELispExpressionNode {
+    @GenerateWrapper
+    @ExportLibrary(NodeLibrary.class)
+    abstract static class ConsCallNode extends ELispExpressionNode implements InstrumentableNode {
         protected final Object function;
 
         @Children
@@ -262,6 +272,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         protected ConsCallNode(Object function, @Nullable ELispCons cons, boolean special) {
             this.function = function;
             this.args = cons == null ? null : initChildren(cons, special);
+        }
+
+        /// Constructor only used by instrumentation wrapper nodes
+        ConsCallNode() {
+            this(NIL, null, false);
         }
 
         @ExplodeLoop
@@ -298,6 +313,46 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 default -> throw new UnsupportedOperationException();
             };
         }
+
+        @Override
+        public boolean isInstrumentable() {
+            SourceSection source = getSourceSection();
+            return source != null && source.isAvailable();
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new ConsCallNodeWrapper(this, probe);
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.StatementTag.class
+                    || tag == StandardTags.CallTag.class
+                    || tag == StandardTags.ExpressionTag.class;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return getParent().getSourceSection();
+        }
+
+        //#region NodeLibrary
+        @ExportMessage
+        public boolean hasScope(Frame frame) {
+            ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
+            return lexical != null;
+        }
+
+        @ExportMessage
+        public Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+            ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
+            if (lexical == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return new DebuggerScopeObject(getContext(), lexical, frame);
+        }
+        //#endregion NodeLibrary
     }
 
     abstract static class ConsFunctionCallNode extends ConsCallNode {
@@ -450,6 +505,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             return generated.executeGeneric(frame);
         }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.StatementTag.class || tag == StandardTags.ExpressionTag.class;
+        }
     }
 
     private static final class ConsMacroCallNode extends ConsCallNode {
@@ -520,7 +580,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
     }
 
-    public static final class ELispConsExpressionNode extends ELispInterpretedNode {
+    public static final class ELispConsExpressionNode extends ELispInterpretedNode implements InstrumentableNode {
         private final ELispCons cons;
 
         @Nullable
@@ -633,6 +693,47 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 return null;
             }
             return cons.getSourceSection(section.getSource());
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            SourceSection source = getSourceSection();
+            return source != null && source.isAvailable();
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            expandAllChildren();
+            return this;
+        }
+
+        private void expandAllChildren() {
+            if (callNode != null) {
+                return;
+            }
+            ConsCallNode consCallNode;
+            try {
+                Object function = getIndirectFunction(storage == null ? cons.car() : storage.get());
+                if (function instanceof ELispCons fCons && fCons.car() == AUTOLOAD) {
+                    return;
+                }
+                consCallNode = updateInnerNode();
+            } catch (Throwable ignored) {
+                return;
+            }
+            if (consCallNode.args == null) {
+                return;
+            }
+            for (ELispExpressionNode arg : consCallNode.args) {
+                if (arg instanceof ELispConsExpressionNode child) {
+                    child.expandAllChildren();
+                }
+            }
         }
     }
 

@@ -519,13 +519,22 @@ public class BuiltInLRead extends ELispBuiltIns {
         public boolean evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
             ELispContext context = getContext();
             ELispBuffer current = isNil(buffer) ? context.currentBuffer() : asBuffer(buffer);
-            Object path = or(current.getFileTruename(), current.getFilename());
+            Object path = or(current.getFileTruename(), current.getFilename(), filename);
             ELispString name = asStr(or(filename, path, current.getName()));
             @Nullable Source source = null;
             if (!isNil(path)) {
                 TruffleFile file = context.truffleEnv().getPublicTruffleFile(path.toString());
                 if (file.exists()) {
-                    source = Source.newBuilder("elisp", file).content(Source.CONTENT_NONE).build();
+                    Source.SourceBuilder builder = Source.newBuilder("elisp", file);
+                    if (context.options().debug()) {
+                        try {
+                            source = builder.build();
+                        } catch (IOException ignored) {
+                        }
+                    }
+                    if (source == null) {
+                        source = builder.content(Source.CONTENT_NONE).build();
+                    }
                 }
             }
             if (source == null) {

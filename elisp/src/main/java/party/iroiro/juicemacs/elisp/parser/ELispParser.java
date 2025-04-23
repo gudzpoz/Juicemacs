@@ -9,6 +9,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -224,7 +225,11 @@ public class ELispParser {
     }
 
     private ELispCons quote(ELispSymbol quote) throws IOException {
-        return ELispCons.listOf(quote, nextObject());
+        int line = lexer.getLine();
+        int column = Math.max(lexer.getColumn() - 1, 1);
+        ELispCons cons = ELispCons.listOf(quote, nextObject());
+        cons.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
+        return cons;
     }
 
     private List<Object> readVector() throws IOException {
@@ -276,24 +281,29 @@ public class ELispParser {
     @CompilerDirectives.TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source) throws IOException {
         ELispParser parser = new ELispParser(context, source);
-        return parse(language, parser, source);
+        boolean debug = context instanceof ELispContext c && c.options().debug();
+        return parse(language, parser, source, debug);
     }
 
     @CompilerDirectives.TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source, ELispBuffer buffer)
             throws IOException {
         ELispParser parser = new ELispParser(context, new ELispLexer(CodePointReader.from(buffer)));
-        return parse(language, parser, source);
+        boolean debug = context instanceof ELispContext c && c.options().debug();
+        return parse(language, parser, source, debug);
     }
 
-    private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source) throws IOException {
+    private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source, boolean debug)
+            throws IOException {
         List<Object> expressions = new ArrayList<>();
         while (parser.hasNext()) {
             expressions.add(parser.nextLisp());
         }
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
         ELispExpressionNode expr = valueToExpression(expressions.toArray(), parser.isLexicallyBound());
-        source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
+        if (!debug) {
+            source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
+        }
         return new ELispRootNode(language, expr, source.createSection(
                 1, 1,
                 parser.lexer.getLine(), parser.lexer.getColumn()

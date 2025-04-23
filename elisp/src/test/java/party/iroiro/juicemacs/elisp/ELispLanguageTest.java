@@ -16,16 +16,19 @@ public class ELispLanguageTest {
     @Test
     public void test() throws IOException {
         Path file = Files.createTempFile("juicemacs-ert", ".txt");
+        String loadPath = Path.of("emacs", "lisp").toAbsolutePath().toString();
         try (PrintStream out = createOut(file.toFile());
              Context context = Context.newBuilder("elisp")
-//                .allowExperimentalOptions(true)
-//                .option("engine.Compilation", "false")
-//                .option("engine.CompilationFailureAction", "Diagnose")
-                .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
-                .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
-                .allowIO(IOAccess.ALL)
-                .out(out)
-                .build()
+                     .allowExperimentalOptions(true)
+//                     .option("elisp.truffleDebug", "true")
+//                     .option("inspect", "4242")
+//                     .option("engine.Compilation", "false")
+//                     .option("engine.CompilationFailureAction", "Diagnose")
+                     .environment("EMACSLOADPATH", loadPath)
+                     .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
+                     .allowIO(IOAccess.ALL)
+                     .out(out)
+                     .build()
         ) {
             System.out.println("Output: " + file);
             // Loads until an error

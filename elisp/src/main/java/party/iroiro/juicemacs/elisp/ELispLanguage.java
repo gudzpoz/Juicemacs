@@ -2,6 +2,8 @@ package party.iroiro.juicemacs.elisp;
 
 import com.oracle.truffle.api.*;
 
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -17,6 +19,7 @@ import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -33,9 +36,14 @@ import java.util.ArrayList;
     defaultMimeType = ELispLanguage.MIME_TYPE,
     characterMimeTypes = ELispLanguage.MIME_TYPE,
     fileTypeDetectors = ELispFileDetector.class,
-    contextPolicy = TruffleLanguage.ContextPolicy.SHARED,
+    contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE,
     website = "https://www.gnu.org/software/emacs/"
 )
+@ProvidedTags({
+        StandardTags.StatementTag.class,
+        StandardTags.ExpressionTag.class,
+        StandardTags.CallTag.class,
+})
 public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final String ID = "elisp";
     public static final String MIME_TYPE = "text/x-elisp";
@@ -53,6 +61,14 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             stability = OptionStability.STABLE
     )
     public static final OptionKey<Integer> GLOBAL_MAX_INVALIDATIONS = new OptionKey<>(3); // NOPMD
+
+    @Option(
+            name = "truffleDebug",
+            help = "Maintain extra attributes and metadata for Truffle debugging.",
+            category = OptionCategory.EXPERT,
+            stability = OptionStability.STABLE
+    )
+    public static final OptionKey<Boolean> TRUFFLE_DEBUG = new OptionKey<>(false); // NOPMD
 
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
 
@@ -157,20 +173,27 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
         }
         @ExportMessage
         boolean isMemberReadable(String member) {
-            return context.obarray().symbols().containsKey(MuleString.fromString(member));
+            @Nullable ELispSymbol symbol = context.obarray().internSoft(MuleString.fromString(member));
+            if (symbol == null) {
+                return false;
+            }
+            return globalVariablesMap.tryLookup(symbol) != -1;
         }
         @ExportMessage
         Object readMember(String member) throws UnknownIdentifierException {
             MuleString name = MuleString.fromString(member);
-            if (context.obarray().symbols().containsKey(name)) {
+            @Nullable ELispSymbol symbol = context.obarray().internSoft(name);
+            if (symbol != null) {
                 try {
-                    return context.getValue(context.intern(name));
-                } catch (ELispSignals.ELispSignalException e) {
-                    throw UnknownIdentifierException.create(member, e);
+                    Object v = context.getValue(symbol);
+                    if (InteropLibrary.isValidValue(v)) {
+                        return v;
+                    }
+                    return ELispGlobals.NIL;
+                } catch (ELispSignals.ELispSignalException ignored) {
                 }
-            } else {
-                throw UnknownIdentifierException.create(member);
             }
+            throw UnknownIdentifierException.create(member);
         }
     }
 }
