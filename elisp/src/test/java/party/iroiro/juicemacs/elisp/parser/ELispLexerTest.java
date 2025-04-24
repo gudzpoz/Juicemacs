@@ -56,7 +56,7 @@ public class ELispLexerTest {
         ELispLexer lexer = lexer(s);
         List<Token> tokens = new ArrayList<>();
         while (lexer.hasNext()) {
-            tokens.add(lexer.next());
+            tokens.add(lexer.next().token());
         }
         return tokens;
     }
@@ -98,12 +98,12 @@ public class ELispLexerTest {
                 }
                 assertEquals(
                         expectedNum,
-                        lexer.next(),
+                        lexer.next().token(),
                         INTEGER_TESTS[i] + suffix
                 );
                 assertTrue(lexer.hasNext());
                 if (suffix.isEmpty() || suffix.equals(" ")) {
-                    assertEquals(new EOF(), lexer.next());
+                    assertEquals(new EOF(), lexer.next().token());
                     assertFalse(lexer.hasNext());
                 }
             }
@@ -135,7 +135,7 @@ public class ELispLexerTest {
         for (int i = 0; i < FLOAT_TESTS.length; i += 2) {
             ELispLexer lexer = lexer((String) FLOAT_TESTS[i]);
             double expected = (Double) FLOAT_TESTS[i + 1];
-            Token actual = lexer.next();
+            Token actual = lexer.next().token();
             if (Double.isNaN(expected)) {
                 assertTrue(
                         Double.isNaN(((Token.FloatNum) actual).value()),
@@ -216,13 +216,13 @@ public class ELispLexerTest {
             String s = (String) CHAR_TESTS[i];
             int c = (int) CHAR_TESTS[i + 1];
             ELispLexer lexer = lexer(s);
-            Char actual = (Char) lexer.next();
+            Char actual = (Char) lexer.next().token();
             assertEquals(s.length(), lexer.getCodePointOffset(), s);
             assertEquals(c, actual.value(), s);
         }
         "\n \"';()[]#?`,.".chars().forEach((c) -> assertDoesNotThrow(() -> {
             ELispLexer lexer = lexer("?a" + Character.toString(c));
-            Char actual = (Char) lexer.next();
+            Char actual = (Char) lexer.next().token();
             assertEquals('a', actual.value());
         }));
     }
@@ -279,7 +279,7 @@ public class ELispLexerTest {
     public void testEOF() throws IOException {
         ELispLexer lexer = lexer("");
         assertTrue(lexer.hasNext());
-        assertEquals(new EOF(), lexer.next());
+        assertEquals(new EOF(), lexer.next().token());
         assertFalse(lexer.hasNext());
         assertThrows(IOException.class, lexer::next);
     }
@@ -493,7 +493,7 @@ public class ELispLexerTest {
                         "<input>"
                 ).build()
         );
-        Token data = lexer.next();
+        Token data = lexer.next().token();
         assertEquals(42L, ((Token.FixNum) data).value());
     }
 

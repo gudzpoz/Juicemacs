@@ -28,7 +28,8 @@ dependencies {
 
     testImplementation 'org.openjdk.jmh:jmh-core:1.37'
     testImplementation 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
-    testRuntimeOnly "org.graalvm.tools:profiler-tool:${truffleVersion}"
+    testImplementation "org.graalvm.truffle:truffle-tck:${truffleVersion}"
+//    testRuntimeOnly "org.graalvm.tools:profiler-tool:${truffleVersion}" // TODO: incompatible?
     testRuntimeOnly 'org.graalvm.tools:chromeinspector:23.0.8'
 }
 

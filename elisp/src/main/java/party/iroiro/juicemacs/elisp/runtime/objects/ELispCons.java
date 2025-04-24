@@ -103,20 +103,17 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
     }
 
-    public void fillDebugInfo(@Nullable SourceSection source) {
-        if (source == null) {
-            return;
-        }
-        setSourceLocation(
-                source.getStartLine(),
-                source.getStartColumn(),
-                source.getEndLine(),
-                source.getEndColumn()
-        );
-    }
-
     public SourceSection getSourceSection(Source source) {
-        return startLine == 0 ? source.createUnavailableSection() : source.createSection(startLine, startColumn, endLine, endColumn);
+        try {
+            return startLine == 0 ? source.createUnavailableSection() : source.createSection(startLine, startColumn, endLine, endColumn);
+        } catch (IllegalArgumentException ignored) {
+            // Truffle reads and checks the section range.
+            // However, they seem to be based on UTF-16 surrogate pair counts,
+            // instead of Unicode code points.
+            // Also, we might differ from Truffle in how we handle LF and CR.
+            // So we just return an unavailable section in case of false positives.
+            return source.createUnavailableSection();
+        }
     }
 
     @Override
@@ -390,10 +387,11 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
 
         public ListBuilder add(Object obj) {
-            return addWithLocation(obj, 0, 0, 0, 0);
+            addTail(obj);
+            return this;
         }
 
-        public ListBuilder addWithLocation(Object obj, int startLine, int startCol, int endLine, int endCol) {
+        public ELispCons addTail(Object obj) {
             if (tail == null) {
                 cons = new ELispCons(obj);
                 tail = cons;
@@ -402,8 +400,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 tail.setCdr(next);
                 tail = next;
             }
-            tail.setSourceLocation(startLine, startCol, endLine, endCol);
-            return this;
+            return tail;
         }
 
         public Object build() {

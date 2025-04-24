@@ -2,11 +2,13 @@ package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.LocatedToken;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -62,19 +64,25 @@ public class ELispParser {
     }
 
     @Nullable
-    private Token peekedToken = null;
+    private LocatedToken peekedToken = null;
+    @Nullable
+    private LocatedToken lastRead = null;
 
     private Token peek() throws IOException {
         if (peekedToken == null) {
             peekedToken = lexer.next();
         }
-        return peekedToken;
+        return peekedToken.token();
     }
 
-    private Token read() throws IOException {
-        Token token = peek();
-        peekedToken = null;
-        return token;
+    private LocatedToken read() throws IOException {
+        if (peekedToken == null) {
+            lastRead = lexer.next();
+        } else {
+            lastRead = peekedToken;
+            peekedToken = null;
+        }
+        return lastRead;
     }
 
     public boolean isLexicallyBound() {
@@ -86,8 +94,8 @@ public class ELispParser {
 
     @CompilerDirectives.TruffleBoundary
     private Object nextObject() throws IOException {
-        Token token = read();
-        return switch (token) {
+        LocatedToken token = read();
+        return switch (token.token()) {
             case EOF() -> throw new EOFException();
             case SkipToEnd() -> false; // TODO: Skip to EOF
             case SetLexicalBindingMode _ -> throw ELispSignals.invalidReadSyntax("Unexpected lexical binding mode");
@@ -131,51 +139,42 @@ public class ELispParser {
                 }
                 yield new ELispBoolVector(BitSet.valueOf(bytes), (int) length);
             }
-            case Quote() -> quote(QUOTE); // 'a -> (quote a)
-            case Function() -> quote(FUNCTION); // #'a -> (function a)
-            case BackQuote() -> quote(BACKQUOTE); // `a -> (` a)
-            case Unquote() -> quote(COMMA); // ,a -> (, a)
-            case UnquoteSplicing() -> quote(COMMA_AT); // ,@a -> (,@ a)
+            case Quote() -> quote(QUOTE, token); // 'a -> (quote a)
+            case Function() -> quote(FUNCTION, token); // #'a -> (function a)
+            case BackQuote() -> quote(BACKQUOTE, token); // `a -> (` a)
+            case Unquote() -> quote(COMMA, token); // ,a -> (, a)
+            case UnquoteSplicing() -> quote(COMMA_AT, token); // ,@a -> (,@ a)
             case Dot() -> context.intern("."); // [.] -> vec[ <symbol "."> ], (a . b) handled by ParenOpen
             case ParenOpen() -> {
-                int line = lexer.getLine();
-                int column = Math.max(lexer.getColumn() - 1, 1); // get to the position before the '('
                 if (peek() instanceof ParenClose) {
                     read();
                     yield false;
                 }
                 ELispCons object = new ELispCons(nextObject());
-                object.setSourceLocation(line, column, 0, 0);
+                token.attachLocation(object);
                 ELispCons.ListBuilder builder = new ELispCons.ListBuilder(object);
                 while (!(peek() instanceof ParenClose)) {
-                    int startLine = lexer.getLine();
-                    int startColumn = lexer.getColumn();
                     if (peek() instanceof Dot) {
                         // (a b . ???
-                        read();
+                        LocatedToken location = read();
                         if (peek() instanceof ParenClose) {
                             // (a b .) -> (a b \.)
-                            builder.addWithLocation(
-                                    context.intern("."),
-                                    startLine, startColumn, 0, 0
-                            );
+                            location.attachLocation(builder.addTail(context.intern(".")));
                             break;
                         }
                         // (a b . c)
                         builder.buildWithCdr(nextObject());
-                        if (!(read() instanceof ParenClose)) {
+                        location = read();
+                        if (!(location.token() instanceof ParenClose)) {
                             throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
-                        yield fixSourceLocation(object, lexer.getLine(), lexer.getColumn());
+                        yield fixSourceLocation(object, location);
                     }
-                    builder.addWithLocation(
-                            nextObject(),
-                            startLine, startColumn, lexer.getLine(), lexer.getColumn()
-                    );
+                    LocatedToken nextLocation = Objects.requireNonNull(peekedToken);
+                    nextLocation.attachLocation(builder.addTail(nextObject()));
                 }
-                read();
-                yield fixSourceLocation(object, lexer.getLine(), lexer.getColumn());
+                yield fixSourceLocation(object, read());
             }
             case RecordOpen() -> {
                 List<Object> list = readList();
@@ -224,11 +223,10 @@ public class ELispParser {
         };
     }
 
-    private ELispCons quote(ELispSymbol quote) throws IOException {
-        int line = lexer.getLine();
-        int column = Math.max(lexer.getColumn() - 1, 1);
+    private ELispCons quote(ELispSymbol quote, LocatedToken start) throws IOException {
         ELispCons cons = ELispCons.listOf(quote, nextObject());
-        cons.setSourceLocation(line, column, lexer.getLine(), lexer.getColumn());
+        LocatedToken end = Objects.requireNonNull(lastRead);
+        cons.setSourceLocation(start.startLine(), start.startColumn(), end.endLine(), end.endColumn());
         return cons;
     }
 
@@ -250,12 +248,12 @@ public class ELispParser {
         return vector;
     }
 
-    private ELispCons fixSourceLocation(ELispCons cons, int endLine, int endColumn) {
+    private ELispCons fixSourceLocation(ELispCons cons, LocatedToken location) {
         ELispCons.ConsIterator i = cons.consIterator(0);
         try {
             while (i.hasNextCons()) {
                 ELispCons next = i.nextCons();
-                next.setSourceLocation(next.getStartLine(), next.getStartColumn(), endLine, endColumn);
+                next.setSourceLocation(next.getStartLine(), next.getStartColumn(), location.endLine(), location.endColumn());
             }
         } catch (ELispSignals.ELispSignalException ignored) {
             // Ignore circular lists
@@ -263,7 +261,16 @@ public class ELispParser {
         return cons;
     }
 
-    public int getCodepointOffset() {
+    private SourceSection getWholeSection(Source source) {
+        LocatedToken end = Objects.requireNonNull(lastRead);
+        try {
+            return source.createSection(1, 1, end.endLine(), end.endColumn());
+        } catch (IllegalArgumentException ignored) {
+            return source.createSection(0, source.getLength());
+        }
+    }
+
+    public long getCodepointOffset() {
         return lexer.getCodePointOffset();
     }
 
@@ -304,10 +311,7 @@ public class ELispParser {
         if (!debug) {
             source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
         }
-        return new ELispRootNode(language, expr, source.createSection(
-                1, 1,
-                parser.lexer.getLine(), parser.lexer.getColumn()
-        ));
+        return new ELispRootNode(language, expr, parser.getWholeSection(source));
     }
 
     @CompilerDirectives.TruffleBoundary

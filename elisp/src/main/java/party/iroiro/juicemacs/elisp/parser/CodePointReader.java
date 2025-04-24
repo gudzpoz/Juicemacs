@@ -11,22 +11,42 @@ import java.util.PrimitiveIterator;
 public sealed abstract class CodePointReader implements AutoCloseable {
     private int line = 1;
     private int column = 1;
-    private int codePointOffset = 0;
+    private long codePointOffset = 0;
     private boolean eof = false;
     private int peekedCodepoint = -1;
+
+    public boolean hadCr = false;
 
     public final int read() throws IOException {
         int c = peek();
         peekedCodepoint = -1;
-        if (c == -1) {
-            eof = true;
-            return -1;
+        switch (c) {
+            case -1 -> {
+                eof = true;
+                return -1;
+            }
+            case '\n' -> {
+                if (hadCr) {
+                    hadCr = false;
+                    column--;
+                } else {
+                    line++;
+                    column = 0;
+                }
+            }
+            case '\r' -> {
+                hadCr = true;
+                line++;
+                column = 0;
+            }
+            default -> hadCr = false;
         }
-        if (c == '\n') {
-            line++;
-            column = 1;
+        if (line < 0) {
+            line = Integer.MAX_VALUE;
         }
-        column++;
+        if (column != Integer.MAX_VALUE) {
+            column++;
+        }
         codePointOffset++;
         return c;
     }
@@ -48,15 +68,18 @@ public sealed abstract class CodePointReader implements AutoCloseable {
         this.eof = eof;
     }
 
+    /// Returns the 1-based line number of the current position (to be read)
     public final int getLine() {
         return line;
     }
 
+    /// Returns the 1-based column number of the current position (to be read)
     public final int getColumn() {
         return column;
     }
 
-    public final int getCodePointOffset() {
+    /// Returns the 0-based code point offset of the current position (to be read)
+    public final long getCodePointOffset() {
         return codePointOffset;
     }
 

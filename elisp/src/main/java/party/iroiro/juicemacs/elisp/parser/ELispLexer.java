@@ -11,6 +11,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -96,6 +97,12 @@ import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
 public class ELispLexer {
 
     public static final int LINE_CONTINUATION = Integer.MIN_VALUE;
+
+    public record LocatedToken(Token token, int startLine, int startColumn, int endLine, int endColumn) {
+        public void attachLocation(ELispCons cons) {
+            cons.setSourceLocation(startLine, startColumn, endLine, endColumn);
+        }
+    }
 
     sealed interface Token {
 
@@ -312,21 +319,7 @@ public class ELispLexer {
 
     private boolean shebang = false;
 
-    /**
-     * @return 1-based line count
-     */
-    public int getLine() {
-        return reader.getLine();
-    }
-
-    /**
-     * @return 1-based column count
-     */
-    public int getColumn() {
-        return reader.getColumn();
-    }
-
-    public int getCodePointOffset() {
+    public long getCodePointOffset() {
         return reader.getCodePointOffset();
     }
 
@@ -809,7 +802,7 @@ public class ELispLexer {
                     }
                     case '!' -> {
                         skipLine();
-                        if (getLine() == 1) {
+                        if (reader.getLine() == 1) {
                             shebang = true;
                         }
                         yield null;
@@ -827,7 +820,7 @@ public class ELispLexer {
                                 yield SKIP_TO_END;
                             }
                         }
-                        long skip = readInteger(10, -1, true);
+                        /* long skip = */ readInteger(10, -1, true);
                         // TODO: More efficient way to skip?
                         //noinspection StatementWithEmptyBody
                         while (reader.read() != '\037') {
@@ -862,7 +855,7 @@ public class ELispLexer {
                 yield UNQUOTE;
             }
             case ';' -> {
-                if (getLine() == 1 || (shebang && getLine() == 2)) {
+                if (reader.getLine() == 1 || (shebang && reader.getLine() == 2)) {
                     String comment = readLine();
                     Matcher matcher = LEXICAL_BINDING_PATTERN.matcher(comment);
                     if (matcher.find()) {
@@ -880,7 +873,7 @@ public class ELispLexer {
     }
 
     @CompilerDirectives.TruffleBoundary
-    Token next() throws IOException {
+    LocatedToken next() throws IOException {
         if (!hasNext()) {
             throw new EOFException();
         }
@@ -892,9 +885,21 @@ public class ELispLexer {
                 }
                 reader.read();
             }
+            int statLine = reader.getLine();
+            int startColumn = reader.getColumn();
             Token data = lexNext();
             if (data != null) {
-                return data;
+                int endLine = reader.getLine();
+                int endColumn = reader.getColumn();
+                if (endColumn == 1) {
+                    endLine--;
+                    if (endLine == statLine) {
+                        endColumn = startColumn;
+                    }
+                } else {
+                    endColumn--;
+                }
+                return new LocatedToken(data, statLine, startColumn, endLine, endColumn);
             }
         }
     }
