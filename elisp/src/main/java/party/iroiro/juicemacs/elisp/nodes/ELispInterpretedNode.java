@@ -722,7 +722,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 if (function instanceof ELispCons fCons && fCons.car() == AUTOLOAD) {
                     return;
                 }
-                consCallNode = updateInnerNode();
+                consCallNode = updateInnerNode(); // NOPMD
             } catch (Throwable ignored) {
                 return;
             }

@@ -142,6 +142,8 @@
             compilation as code in finally blocks is duplicated
             by the Java bytecode compiler. This can lead to
             exponential code growth in worst cases.
+
+            <!-- See https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isException(java.lang.Object) -->
         </description>
         <priority>3</priority>
         <properties>

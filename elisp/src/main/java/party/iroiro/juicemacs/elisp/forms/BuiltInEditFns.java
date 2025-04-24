@@ -6,6 +6,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -462,6 +463,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             public void executeVoid(VirtualFrame frame) {
                 ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
                 Object prevBuffer = forwarded.getValue();
+                @Nullable
                 ELispMarker point = prevBuffer instanceof ELispBuffer buffer
                         ? new ELispMarker(buffer, buffer.getPoint())
                         : null;
@@ -480,6 +482,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             public Object executeGeneric(VirtualFrame frame) {
                 ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
                 Object prevBuffer = forwarded.getValue();
+                @Nullable
                 ELispMarker point = prevBuffer instanceof ELispBuffer buffer
                         ? new ELispMarker(buffer, buffer.getPoint())
                         : null;
@@ -802,7 +805,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             ELispBuffer buffer = getContext().currentBuffer();
             long point = pos instanceof Long l ? l : buffer.getPoint();
             if (point < buffer.pointMax()) {
-                return buffer.getChar(point);
+                return (long) buffer.getChar(point);
             }
             return false;
         }
@@ -823,7 +826,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             ELispBuffer buffer = getContext().currentBuffer();
             long point = pos instanceof Long l ? l : buffer.getPoint();
             if (point > buffer.pointMin()) {
-                return buffer.getChar(point - 1);
+                return (long) buffer.getChar(point - 1);
             }
             return false;
         }

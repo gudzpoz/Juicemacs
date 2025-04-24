@@ -388,7 +388,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
 
         public ListBuilder add(Object obj) {
             addTail(obj);
-            return this;
+            return this; // NOPMD
         }
 
         public ELispCons addTail(Object obj) {

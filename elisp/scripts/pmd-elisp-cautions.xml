@@ -146,6 +146,24 @@
         </properties>
     </rule>
 
+    <rule name="ELispLeakedListBuilder"
+          language="java"
+          message="Please remember to call builder.build()."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Do not leak list builders to lisp code. Always call builder.build().
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //ReturnStatement[not(./NullLiteral)]/*[1]
+                [pmd-java:typeIs("party.iroiro.juicemacs.elisp.runtime.objects.ELispCons.ListBuilder")]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <rule name="TruffleNodeMissingExecuteVoid"
           language="java"
           message="Please implement executeVoid()."

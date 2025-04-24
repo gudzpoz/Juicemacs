@@ -171,7 +171,7 @@ public final class ELispPrint {
 
     private boolean printExisting(Object o) {
         if (stack.contains(o)) {
-            Integer index = visited.computeIfAbsent(o, _ -> visited.size() + 1);
+            Integer index = visited.computeIfAbsent(o, _ -> visited.size() + 1); // NOPMD
             print('#').printInt(index);
             return true;
         }
@@ -236,6 +236,8 @@ public final class ELispPrint {
     private interface PrintFunc {
         void print(int c);
         void flush();
+
+        @CompilerDirectives.TruffleBoundary
         default void print(MuleString s) {
             PrimitiveIterator.OfInt iterator = s.iterator(0);
             while (iterator.hasNext()) {

@@ -46,6 +46,67 @@ macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
 
 To support this, we will need to rethink how we handle our materialized frames.
 
+* TODO [#A] Buffer & string redesign
+
+- Rationale #1: Personally I would like the renderer to be in Rust (because of
+  the vast number of UI libraries there). However, there is a fundamental
+  problem here: most Rust libraries (including std ones) assume UTF-8 coding,
+  while we currently use a compressed UTF-32-like coding, not to mention our
+  code points can go up to =#x3FFFFF=.
+  - Edit: I don't think most of the Rust libraries are that good though. We want
+    out of box support for:
+    - Platform-native font fallback
+    - [[https://www.w3.org/International/articles/inline-bidi-markup/uba-basics][BIDI]] display
+    - [[https://en.wikipedia.org/wiki/Input_method][IME]] support
+    - Glyph level manipulation
+    - Good accessibility
+    I don't think these requirements are nitpicking, but, I mean, not even GTK
+    supports them all (see [[https://www.boringcactus.com/2025/04/13/2025-survey-of-rust-gui-libraries.html][A 2025 Survey of Rust GUI Libraries (13 Apr 2025)]]).
+    Just WTF.
+  - Another problem is that we need to pass strings to Rust via UTF-8 (or Java
+    via UTF-16), and there will be a huge performance penalty if we are to
+    encode strings every single time we redisplay things.
+- Rationale #2: Both Emacs buffers and strings have text properties attached to
+  them, and when a string gets inserted into a buffer, so does its properties.
+  So we definitely do not want two separate interval tree implementation for
+  buffers and strings.
+- Rationale #3: We have a tree for our ropes, and we want another tree for
+  intervals and maybe one more for our marks. What if we merge them?
+
+** Problems
+
+1. Since redisplay relies on text properties, I want to make the fields that it
+   relies on "special", like:
+
+   #+begin_src java
+     record Interval(@Nullable boolean fontified,
+                     @Nullable Object font,
+                     /* ... */
+                     ELispCons otherProperties
+                     ) {
+     }
+   #+end_src
+
+   However, this can add quite some cost to intervals in strings.
+
+2. Text properties are mutable, and we hope to get an immutable tree for
+   concurrent redisplay.
+
+** Thoughts
+
+- Maybe use UTF-8 after all.
+  - We need to support =string-bytes= and =position-bytes=.
+  - Truffle UTF-8 encoding have specialization for ASCII text so it is not that
+    bad?
+- You don't need an actually-immutable tree. Instead you can have a mostly
+  immutable tree where things used in redisplay are immutable (or volatile).
+- Besides redisplay, we also want to ensure we can have concurrent thread (that
+  are guaranteed to never be parallel) editing the same buffer, with the
+  redisplay engine rendering their merged results.
+  - Now thinking of it, no, it is straight out impossible to do this. Consider
+    =buffer-undo-list=: nothing can save you if you are fully exposing your undo
+    data.
+
 * TODO [#A] Use =ert.el=
 
 I have stopped writing tests for newly implemented subroutines. We should
@@ -324,6 +385,11 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#A] Buffer & string redesign (part 1): marks and intervals
+
+Re-implement buffer markers and string/buffer properties to make =insert/delete=
+operations more efficient and correct.
 
 ** DONE [#B] Support =load-source-file-function=
 

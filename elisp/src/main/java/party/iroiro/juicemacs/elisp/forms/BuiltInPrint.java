@@ -14,8 +14,7 @@ import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInPrint extends ELispBuiltIns {
     @Override
@@ -176,7 +175,7 @@ public class BuiltInPrint extends ELispBuiltIns {
         @Specialization
         public static Object princ(Object object, Object printcharfun) {
             // TODO
-            switch (object) {
+            switch (toSym(object)) {
                 case ELispString s -> FPrin1.getPrint(printcharfun).print(s.value()).flush();
                 case ELispSymbol s -> FPrin1.getPrint(printcharfun).print(s.name()).flush();
                 default -> FPrin1.prin1(object, printcharfun, false);

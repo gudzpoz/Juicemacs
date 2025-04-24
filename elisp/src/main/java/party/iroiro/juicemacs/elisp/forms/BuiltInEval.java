@@ -5,6 +5,7 @@ import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -1553,21 +1554,27 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
+                RuntimeException rethrow;
                 try {
                     body.executeVoid(frame);
-                } finally {
-                    unwind.executeVoid(frame);
+                    return;
+                } catch (AbstractTruffleException e) {
+                    rethrow = e;
                 }
+                unwind.executeVoid(frame);
+                throw rethrow;
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                // TODO: Add test once we have signal support
+                RuntimeException rethrow;
                 try {
                     return body.executeGeneric(frame);
-                } finally {
-                    unwind.executeVoid(frame);
+                } catch (AbstractTruffleException e) {
+                    rethrow = e;
                 }
+                unwind.executeVoid(frame);
+                throw rethrow;
             }
         }
     }
