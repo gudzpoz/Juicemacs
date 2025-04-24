@@ -81,6 +81,11 @@ public abstract class ELispSignals {
         public ELispSignalException(Object tag, Object data) {
             this(tag, data, null);
         }
+
+        @Override
+        public ExceptionType getExceptionType() {
+            return this.getTag() == FATAL ? ExceptionType.EXIT : super.getExceptionType();
+        }
     }
 
     public static final class ELispCatchException extends ELispNonLocalExitException {
@@ -188,15 +193,11 @@ public abstract class ELispSignals {
     //#endregion Math
 
     //#region emacs_abort
-    public static ELispSignalException fatal() {
-        return signal(FATAL);
-    }
-    public static ELispSignalException kill() {
-        // TODO
-        return signal(FATAL);
+    public static ELispSignalException kill(Object data) {
+        return signal(FATAL, data);
     }
     public static ELispSignalException fatal(String message) {
-        return signal(FATAL, message);
+        return kill(message);
     }
     //#endregion emacs_abort
 

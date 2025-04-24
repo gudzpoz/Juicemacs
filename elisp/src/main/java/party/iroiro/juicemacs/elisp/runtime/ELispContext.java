@@ -200,15 +200,17 @@ public final class ELispContext implements ELispParser.InternContext {
     public record Options(
             int globalVariableMaxInvalidations,
             boolean postInit,
+            boolean hardExit,
             boolean debug
     ) {
         public static Options load(TruffleLanguage.Env env) {
             OptionValues options = env.getOptions();
             int invalidations = options.get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS);
             boolean postInit = !options.get(ELispLanguage.BARE);
+            boolean hardExit = options.get(ELispLanguage.HARD_EXIT);
             boolean debug = options.get(ELispLanguage.TRUFFLE_DEBUG);
 
-            return new Options(invalidations, postInit, debug);
+            return new Options(invalidations, postInit, hardExit, debug);
         }
     }
 }

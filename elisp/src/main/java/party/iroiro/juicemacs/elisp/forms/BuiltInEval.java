@@ -10,6 +10,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.*;
 
 import com.oracle.truffle.api.source.Source;
@@ -36,6 +37,15 @@ public class BuiltInEval extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEvalFactory.getFactories();
+    }
+
+    static void checkSoftExit(ELispContext context, RuntimeException e) {
+        boolean hardExit = context.options().hardExit();
+        CompilerAsserts.partialEvaluationConstant(hardExit);
+        if (!hardExit && e instanceof ELispSignals.ELispSignalException ex
+                && ex.getExceptionType() == ExceptionType.EXIT) {
+            throw e;
+        }
     }
 
     abstract static class InlinedFuncall extends ELispExpressionNode {
@@ -1561,6 +1571,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 } catch (AbstractTruffleException e) {
                     rethrow = e;
                 }
+                checkSoftExit(getContext(), rethrow);
                 unwind.executeVoid(frame);
                 throw rethrow;
             }
@@ -1573,6 +1584,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 } catch (AbstractTruffleException e) {
                     rethrow = e;
                 }
+                checkSoftExit(getContext(), rethrow);
                 unwind.executeVoid(frame);
                 throw rethrow;
             }
@@ -1715,6 +1727,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
                     return o;
                 } catch (ELispSignals.ELispSignalException e) {
+                    checkSoftExit(getContext(), e);
                     int i;
                     for (i = 0; i < length; i++) {
                         Object conditionName = conditionNames[i];
@@ -1770,6 +1783,7 @@ public class BuiltInEval extends ELispBuiltIns {
             try {
                 return FFuncall.funcall(this, bodyfun);
             } catch (ELispSignals.ELispSignalException signal) {
+                checkSoftExit(getContext(), signal);
                 for (int i = 0; i < args.length; i += 2) {
                     if (FConditionCase.shouldHandle(signal, args[i])) {
                         return FFuncall.funcall(this, args[i + 1], new ELispCons(signal.getTag(), signal.getData()));

@@ -55,6 +55,14 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final OptionKey<Boolean> BARE = new OptionKey<>(false);
 
     @Option(
+            name = "hardExit",
+            help = "True to use Truffle hard exits for kill-emacs, false for an exception-based soft exit.",
+            category = OptionCategory.EXPERT,
+            stability = OptionStability.STABLE
+    )
+    public static final OptionKey<Boolean> HARD_EXIT = new OptionKey<>(false); // NOPMD
+
+    @Option(
             name = "globalVariableMaxInvalidations",
             help = "Number of assignments to a global variable to disable auto-constant folding.",
             category = OptionCategory.EXPERT,

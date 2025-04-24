@@ -139,7 +139,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         ELispString path = FExpandFileName.expandFileName(new ELispString("charsets"), dataDirectory.getValue());
         File dir = Paths.get(path.toString()).toFile();
         if (!(dir.isDirectory() && dir.canRead())) {
-            throw ELispSignals.fatal();
+            throw ELispSignals.fatal("cannot read charsets directory " + dir);
         }
         charsetMapPath.setValue(new ELispCons(path));
     }

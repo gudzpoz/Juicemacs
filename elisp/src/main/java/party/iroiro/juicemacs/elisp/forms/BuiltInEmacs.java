@@ -109,9 +109,16 @@ public class BuiltInEmacs extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillEmacs extends ELispBuiltInBaseNode {
         @Specialization
-        public Void killEmacs(Object arg, Object restart) {
-            // TODO
-            throw ELispSignals.kill();
+        public Void killEmacs(Object arg, boolean restart) {
+            if (restart) {
+                throw new UnsupportedOperationException();
+            }
+            ELispContext context = getContext();
+            // TODO: hook
+            if (context.options().hardExit()) {
+                context.truffleEnv().getContext().closeExited(this, arg instanceof Long l ? l.intValue() : -1);
+            }
+            throw ELispSignals.kill(arg);
         }
     }
 

@@ -2,7 +2,10 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+
+import java.io.ByteArrayOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispBindingScopeTest.LEXICAL_BINDING_TEST;
@@ -120,6 +123,61 @@ public class BuiltInEvalTest extends BaseFormTest {
             assertErrorMessage(context, "(garbage-collect 1)", "(wrong-number-of-arguments garbage-collect 1)");
             assertErrorMessage(context, "(lognot nil)", "(wrong-type-argument integerp nil)");
         }
+    }
+
+    @Test
+    public void testSoftExitExceptions() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (Context context = getTestingContextBuilder().out(out).build()) {
+            context.eval("elisp", "(setq result 0)");
+            Value bindings = context.getBindings("elisp");
+            assertEquals(0L, bindings.getMember("result").asLong());
+            assertErrorMessage(
+                    context,
+                    """
+                            (unwind-protect
+                                (signal 'error '(1))
+                              (setq result 1)
+                              (message "normal error"))
+                            """,
+                    "(error 1)"
+            );
+            assertEquals(1L, bindings.getMember("result").asLong());
+            assertErrorMessage(
+                    context,
+                    """
+                            (unwind-protect
+                                (kill-emacs -1)
+                              (setq result 2)
+                              (message "soft exit"))
+                            """,
+                    "(fatal -1)"
+            );
+            assertEquals(1L, bindings.getMember("result").asLong());
+        }
+        assertEquals("normal error\n", out.toString());
+        out.reset();
+        try (Context context = getTestingContextBuilder().out(out)
+                .option("elisp.hardExit", "true")
+                .build()) {
+            context.eval("elisp", "(setq result 0)");
+            Value bindings = context.getBindings("elisp");
+            assertEquals(0L, bindings.getMember("result").asLong());
+            assertErrorMessage(
+                    context,
+                    """
+                            (unwind-protect
+                                (kill-emacs -1)
+                              (setq result 2)
+                              (message "hard exit"))
+                            """,
+                    "Exit was called with exit code -1."
+            );
+            assertThrows(PolyglotException.class, () -> bindings.getMember("result"));
+        } catch (PolyglotException e) {
+            assertEquals("Exit was called with exit code -1.", e.getMessage());
+        }
+        assertEquals("", out.toString());
     }
 
     @Test
