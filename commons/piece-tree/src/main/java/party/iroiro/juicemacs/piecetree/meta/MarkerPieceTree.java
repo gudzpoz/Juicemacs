@@ -31,6 +31,9 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
     }
 
     public void insertString(long offset, long cnt) {
+        if (cnt == 0) {
+            return;
+        }
         insert(offset, new Piece<>(cnt, null));
     }
 
@@ -319,6 +322,11 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
                 tree = null;
                 node = null;
             }
+        }
+
+        @Nullable
+        public MarkerPieceTree<?> tree() {
+            return tree;
         }
 
         @Override

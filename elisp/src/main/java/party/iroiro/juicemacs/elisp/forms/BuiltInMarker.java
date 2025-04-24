@@ -79,8 +79,7 @@ public class BuiltInMarker extends ELispBuiltIns {
                 // TODO
                 return marker;
             }
-            marker.setPosition(asLong(position));
-            marker.setBuffer(isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer));
+            marker.setBuffer(isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer), asLong(position));
             return marker;
         }
     }
@@ -108,7 +107,7 @@ public class BuiltInMarker extends ELispBuiltIns {
                 return new ELispMarker(buffer, l);
             }
             ELispMarker m = asMarker(marker);
-            return new ELispMarker(m.getBuffer(), m.getPosition());
+            return new ELispMarker(m.getBuffer(), m.point());
         }
     }
 

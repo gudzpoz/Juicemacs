@@ -304,7 +304,7 @@ public final class ELispPrint {
         public void flush() {
             ELispBuffer b = getBuffer();
             // TODO: Restore?
-            b.setPoint(marker.getPosition());
+            b.setPoint(marker.point());
             b.insert(super.buffer.build());
         }
     }

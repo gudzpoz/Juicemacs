@@ -81,6 +81,11 @@ public abstract class ELispTypeSystem {
         return ELispBigNum.forceWrap(value);
     }
 
+    @ImplicitCast
+    public static long castMarkerToLong(ELispMarker marker) {
+        return marker.longValue();
+    }
+
     public static boolean isNil(Object nil) {
         return nil == NIL || nil == Boolean.FALSE;
     }

@@ -462,15 +462,16 @@ public class BuiltInEditFns extends ELispBuiltIns {
             public void executeVoid(VirtualFrame frame) {
                 ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
                 Object prevBuffer = forwarded.getValue();
-                long point = prevBuffer instanceof ELispBuffer buffer
-                        ? buffer.getPoint()
-                        : -1;
+                ELispMarker point = prevBuffer instanceof ELispBuffer buffer
+                        ? new ELispMarker(buffer, buffer.getPoint())
+                        : null;
                 try {
                     bodyNode.executeVoid(frame);
                 } finally {
                     forwarded.setValue(prevBuffer);
-                    if (point >= 0) {
-                        asBuffer(prevBuffer).setPoint(point);
+                    if (point != null) {
+                        asBuffer(prevBuffer).setPoint(point.point());
+                        point.setBuffer(null, -1);
                     }
                 }
             }
@@ -479,15 +480,16 @@ public class BuiltInEditFns extends ELispBuiltIns {
             public Object executeGeneric(VirtualFrame frame) {
                 ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
                 Object prevBuffer = forwarded.getValue();
-                long point = prevBuffer instanceof ELispBuffer buffer
-                        ? buffer.getPoint()
-                        : -1;
+                ELispMarker point = prevBuffer instanceof ELispBuffer buffer
+                        ? new ELispMarker(buffer, buffer.getPoint())
+                        : null;
                 try {
                     return bodyNode.executeGeneric(frame);
                 } finally {
                     forwarded.setValue(prevBuffer);
-                    if (point >= 0) {
-                        asBuffer(prevBuffer).setPoint(point);
+                    if (point != null) {
+                        asBuffer(prevBuffer).setPoint(point.point());
+                        point.setBuffer(null, -1);
                     }
                 }
             }
@@ -761,10 +763,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBolp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean bolp() {
-            ELispBuffer buffer = currentBuffer();
+        public boolean bolp() {
+            ELispBuffer buffer = getContext().currentBuffer();
             long point = buffer.getPoint();
-            return point == 1 || (point != buffer.pointMax() && buffer.getChar(point - 1) == '\n');
+            return point == buffer.pointMin() || buffer.getChar(point - 1) == '\n';
         }
     }
 
@@ -778,8 +780,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEolp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void eolp() {
-            throw new UnsupportedOperationException();
+        public boolean eolp() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            long point = buffer.getPoint();
+            return point == buffer.pointMax() || buffer.getChar(point) == '\n';
         }
     }
 

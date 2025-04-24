@@ -19,6 +19,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
+import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
@@ -29,13 +30,19 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     private final HashMap<ELispSymbol, Forwarded> localVariables;
     private final boolean inhibitBufferHooks;
     private final PieceTreeBase content;
-    private long point;
+    private final MarkerPieceTree<ELispBuffer> markers;
+    private MarkerPieceTree.Marker point;
 
     private ELispBuffer(Object[] bufferLocalFields, PieceTreeBase content, boolean inhibitBufferHooks) {
         this.bufferLocalFields = bufferLocalFields;
         this.content = content;
+        this.markers = new MarkerPieceTree<>((_, _) -> {
+            // TODO: support undo-list
+        }, this);
+        markers.insertString(0, content.getLength());
+        point = new MarkerPieceTree.Marker(MarkerPieceTree.Affinity.RIGHT);
+        markers.insertMarker(0, point);
         this.inhibitBufferHooks = inhibitBufferHooks;
-        this.point = 1;
         this.localVariables = new HashMap<>();
     }
 
@@ -58,7 +65,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     /// @return 1-based index of the current editing point
     public long getPoint() {
-        return point;
+        return point.position() + 1;
     }
 
     public long getPoint(PieceTreeBase.Position position) {
@@ -77,11 +84,15 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     /// @param point 1-based index of the new editing point
     public void setPoint(long point) {
-        this.point = Math.clamp(point, pointMin(), pointMax());
+        setMarkerPoint(this.point, point);
+    }
+
+    public void setMarkerPoint(MarkerPieceTree.Marker marker, long point) {
+        markers.insertMarker(Math.clamp(point, pointMin(), pointMax()) - 1, marker);
     }
 
     public PieceTreeBase.Position getPosition() {
-        return content.getPositionAt(point - 1);
+        return content.getPositionAt(point.position());
     }
 
     public PieceTreeBase.Position getPosition(long point) {
@@ -127,8 +138,9 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             }
             text = buffer;
         }
-        content.insert(point - 1, text, true);
-        point += text.length();
+        long position = point.position();
+        content.insert(position, text, true);
+        markers.insertString(position, text.length());
     }
 
     public void delete(long start, long length) {
@@ -136,17 +148,13 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             return;
         }
         content.delete(start - 1, length);
-        if (start < point && point < start + length) {
-            point = start;
-        } else if (point >= start + length) {
-            point -= length;
-        }
+        markers.delete(start - 1, length);
     }
 
     public void erase() {
         content.delete(0, content.getLength());
         content.setEOL(content.getEOL()); // reset internal tree
-        point = 1;
+        markers.delete(0, content.getLength());
     }
 
     public void setMultibyte(Object flag) {
