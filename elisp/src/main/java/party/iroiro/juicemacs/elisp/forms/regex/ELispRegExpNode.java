@@ -43,6 +43,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     private static final int TRUFFLE_SLOT_BUFFER = 2;
     private static final int TRUFFLE_SLOT_START = 3;
     private static final int TRUFFLE_SLOT_END = 4;
+    private static final int TRUFFLE_SLOT_SEARCH_END = 5;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     private final int[] code;
@@ -62,11 +63,16 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @Child
     private ELispRegExpInputNodes.InputGetCharNode getCharNode;
 
+    @SuppressWarnings("FieldMayBeFinal")
+    @Child
+    private ELispRegExpInputNodes.InputStartIndexNode startIndexNode;
+
     protected ELispRegExpNode(ELispRegExpCompiler.Compiled compiled, boolean caseFold) {
         this.code = compiled.opcodes();
         this.stackSize = compiled.stackSize();
         this.groupSlotMap = compiled.groupSlotMap();
         this.caseFold = caseFold;
+        startIndexNode = ELispRegExpInputNodesFactory.InputStartIndexNodeGen.create();
         lengthNode = ELispRegExpInputNodesFactory.InputLengthNodeGen.create();
         getCharNode = ELispRegExpInputNodesFactory.InputGetCharNodeGen.create();
     }
@@ -76,8 +82,10 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         Object input = args[ARG_OBJ_INPUT];
         long start = (long) args[ARG_INT_START];
         long end = (long) args[ARG_INT_END];
+        long minIndex = startIndexNode.execute(frame, input);
+        long length = lengthNode.execute(frame, input);
         if (end == -1) {
-            end = lengthNode.execute(frame, input);
+            end = length;
         }
         boolean search = (boolean) args[ARG_BOOL_SEARCH];
 
@@ -85,8 +93,9 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         frame.setObject(TRUFFLE_SLOT_INPUT, input);
         frame.setObject(TRUFFLE_SLOT_STACK_POOL, pool);
         frame.setObject(TRUFFLE_SLOT_BUFFER, args[ARG_OBJ_BUFFER]);
-        frame.setLong(TRUFFLE_SLOT_START, start);
-        frame.setLong(TRUFFLE_SLOT_END, end);
+        frame.setLong(TRUFFLE_SLOT_START, minIndex);
+        frame.setLong(TRUFFLE_SLOT_END, length);
+        frame.setLong(TRUFFLE_SLOT_SEARCH_END, end);
         return dispatcher(frame, 0);
     }
 
@@ -124,10 +133,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         Object input = frame.getObject(TRUFFLE_SLOT_INPUT);
         LongArrayStackPool stacks = (LongArrayStackPool) frame.getObject(TRUFFLE_SLOT_STACK_POOL);
         Object buffer = frame.getObject(TRUFFLE_SLOT_BUFFER);
-        long start = frame.getLong(TRUFFLE_SLOT_START);
-        long end = frame.getLong(TRUFFLE_SLOT_END);
+        long end = frame.getLong(TRUFFLE_SLOT_SEARCH_END);
+        long minIndex = frame.getLong(TRUFFLE_SLOT_START);
+        long length = frame.getLong(TRUFFLE_SLOT_END);
 
-        Object lastRun = dispatchFromBCI(frame, bci, input, start, end, stacks, buffer);
+        Object lastRun = dispatchFromBCI(frame, bci, input, end, minIndex, length, stacks, buffer);
         if (lastRun != Boolean.FALSE) {
             return lastRun;
         }
@@ -141,7 +151,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 }
             }
 
-            lastRun = dispatchFromBCI(frame, 0, input, start, end, stacks, buffer);
+            lastRun = dispatchFromBCI(frame, 0, input, end, minIndex, length, stacks, buffer);
             if (lastRun != Boolean.FALSE) {
                 return lastRun;
             }
@@ -152,7 +162,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @HostCompilerDirectives.BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     private Object dispatchFromBCI(VirtualFrame frame, int bci,
-                                   Object input, long start, long end,
+                                   Object input, long searchEnd,
+                                   long pointMin, long pointMax,
                                    LongArrayStackPool stacks,
                                    Object buffer) {
         CompilerAsserts.partialEvaluationConstant(bci);
@@ -231,19 +242,19 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     throw CompilerDirectives.shouldNotReachHere();
                 }
                 case OP_SPLIT -> stacks.addStackCopy(stack)[PC_SLOT] = arg;
-                case OP_LOOKAHEAD_CMP -> cmpFlags = sp < end
+                case OP_LOOKAHEAD_CMP -> cmpFlags = sp < searchEnd
                         ? Integer.compare(getChar(frame, input, sp), arg)
                         : -1;
-                case OP$STR_START -> success = sp == start;
-                case OP$STR_END -> success = sp == end;
-                case OP$LINE_START -> success = sp == start
-                        || (sp > start && getChar(frame, input, sp - 1) == '\n');
-                case OP$LINE_END -> success = sp == end
-                        || (sp < end && getChar(frame, input, sp) == '\n');
+                case OP$STR_START -> success = sp == pointMin;
+                case OP$STR_END -> success = sp == pointMax;
+                case OP$LINE_START -> success = sp == pointMin
+                        || getChar(frame, input, sp - 1) == '\n';
+                case OP$LINE_END -> success = sp == pointMax
+                        || getChar(frame, input, sp) == '\n';
                 case OP$BUFFER_POINT -> success = input instanceof ELispBuffer in && in.getPoint() - 1 == sp;
                 case OP$WORD_START, OP$WORD_END, OP$WORD_BOUND -> {
-                    boolean hasWordBefore = sp != start && isWord(buffer, getChar(frame, input, sp - 1));
-                    boolean hasWordAfter = sp != end && isWord(buffer, getChar(frame, input, sp));
+                    boolean hasWordBefore = sp != pointMin && isWord(buffer, getChar(frame, input, sp - 1));
+                    boolean hasWordAfter = sp != pointMax && isWord(buffer, getChar(frame, input, sp));
                     success = switch (opcode) {
                         case OP$WORD_START -> !hasWordBefore && hasWordAfter;
                         case OP$WORD_END -> hasWordBefore && !hasWordAfter;
@@ -251,8 +262,8 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     };
                 }
                 case OP$SYMBOL_START, OP$SYMBOL_END -> {
-                    boolean hasSymbolBefore = sp != start && isSymbol(buffer, getChar(frame, input, sp - 1));
-                    boolean hasSymbolAfter = sp != end && isSymbol(buffer, getChar(frame, input, sp));
+                    boolean hasSymbolBefore = sp != pointMin && isSymbol(buffer, getChar(frame, input, sp - 1));
+                    boolean hasSymbolAfter = sp != pointMax && isSymbol(buffer, getChar(frame, input, sp));
                     success = opcode == OP$SYMBOL_START
                             ? !hasSymbolBefore && hasSymbolAfter
                             : hasSymbolBefore && !hasSymbolAfter;
@@ -260,7 +271,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 case OP$CATEGORY_CHAR, OP$SYNTAX_CHAR -> {
                     final boolean invert = (arg & ARG_BIT_FLAG) != 0;
                     final int kind = arg & ARG_BIT_MASK;
-                    if (sp < end) {
+                    if (sp < searchEnd) {
                         int c = getChar(frame, input, sp);
                         success = (opcode == OP$SYNTAX_CHAR
                                 ? getSyntaxClass(buffer, c) == kind
@@ -277,7 +288,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     long groupEnd = stack[groupEndSlot];
                     long groupLength = groupEnd - groupStart;
                     if (groupLength > 0) {
-                        if (sp + groupLength > end) {
+                        if (sp + groupLength > searchEnd) {
                             success = false;
                         } else {
                             success = substringEquals(frame, input, sp, groupStart, groupLength, canon);
@@ -286,7 +297,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     }
                 }
                 case OP$CHAR_CLASS, OP$CHAR_CLASS_32 -> {
-                    if (sp < end) {
+                    if (sp < searchEnd) {
                         int c = getCharCanon(frame, input, sp, canon);
                         stack[SP_SLOT] = sp + 1;
                         boolean invert = code[bci] < 0;
@@ -317,11 +328,11 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(bci);
                 }
                 case OP$CHAR -> {
-                    success = sp < end && getCharCanon(frame, input, sp, canon) == (arg & 0xFF_FF_FF);
+                    success = sp < searchEnd && getCharCanon(frame, input, sp, canon) == (arg & 0xFF_FF_FF);
                     stack[SP_SLOT] = sp + 1;
                 }
                 case OP$ANY -> {
-                    success = sp < end;
+                    success = sp < searchEnd && getChar(frame, input, sp) != '\n';
                     stack[SP_SLOT] = sp + 1;
                 }
                 default -> throw CompilerDirectives.shouldNotReachHere();
@@ -440,7 +451,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     static FrameDescriptor getFrameDescriptor() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
         builder.addSlots(3, FrameSlotKind.Object); // input, buffer, stackPool
-        builder.addSlots(2, FrameSlotKind.Long); // start, end
+        builder.addSlots(3, FrameSlotKind.Long); // start, end, searchEnd
         return builder.build();
     }
 

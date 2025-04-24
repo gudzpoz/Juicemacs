@@ -24,6 +24,21 @@ abstract class ELispRegExpInputNodes {
     }
 
     @GenerateInline(value = false)
+    abstract static class InputStartIndexNode extends Node {
+        public abstract long execute(VirtualFrame frame, Object input);
+
+        @Specialization
+        public long inputGetStrStart(MuleString input) {
+            return 0;
+        }
+
+        @Specialization
+        public long inputGetBufferStart(ELispBuffer input) {
+            return input.pointMin();
+        }
+    }
+
+    @GenerateInline(value = false)
     abstract static class InputGetCharNode extends Node {
         public abstract int execute(VirtualFrame frame, Object input, long index);
 
