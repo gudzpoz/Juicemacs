@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.*;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
@@ -75,7 +76,7 @@ public final class ELispLexical {
         lexical.addSlots(MAX_SLOTS - 1, FrameSlotKind.Object);
         LEXICAL_DESCRIPTOR = lexical.build();
         FrameDescriptor.Builder dynamic = FrameDescriptor.newBuilder(1);
-        dynamic.addSlots(1, FrameSlotKind.Object);
+        dynamic.addSlots(1, FrameSlotKind.Int);
         DYNAMIC_DESCRIPTOR = dynamic.build();
     }
 
@@ -85,6 +86,25 @@ public final class ELispLexical {
 
     public static void initFrame(VirtualFrame frame) {
         frame.setInt(MATERIALIZED_TOP_SLOT, -1);
+    }
+
+    /// Detects on-stack evaluation of the Truffle debugger
+    ///
+    /// Truffle debugger evaluates the code in the debugger frame, allowing access
+    /// to local variables. Currently, we initialize the frame in [party.iroiro.juicemacs.elisp.nodes.ELispRootNode],
+    /// but we should not re-initialize the frame for an on-stack evaluation.
+    /// This method serves as a workaround to skip the initialization when the frame is already initialized.
+    public static boolean isDebuggerEval(VirtualFrame frame) {
+        if (CompilerDirectives.inInterpreter()) {
+            if (frame.getFrameDescriptor().getNumberOfSlots() == MAX_SLOTS) { // LEXICAL_DESCRIPTOR
+                try {
+                    return getMaterializedTop(frame) != -1;
+                } catch (FrameSlotTypeException ignored) {
+                }
+            }
+        }
+
+        return false;
     }
 
     private final List<ELispSymbol> args;

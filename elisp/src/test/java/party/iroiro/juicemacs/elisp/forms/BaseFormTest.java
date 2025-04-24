@@ -20,6 +20,13 @@ public abstract class BaseFormTest {
     private final static boolean WARM_UP = true;
     private final static int WARM_UP_COUNT = 10000;
 
+    public static Context.Builder getTestingContextBuilder() {
+        return Context.newBuilder("elisp")
+                .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
+                .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
+                .allowIO(IOAccess.ALL);
+    }
+
     public static Context getTestingContext() {
         return Context.newBuilder("elisp")
                 .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())

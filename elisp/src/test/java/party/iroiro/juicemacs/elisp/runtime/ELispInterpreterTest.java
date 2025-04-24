@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.debug.*;
+import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.*;
 import org.junit.jupiter.api.Test;
 import org.openjdk.jmh.annotations.*;
@@ -11,6 +13,7 @@ import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
+import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContextBuilder;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -440,6 +443,70 @@ public class ELispInterpreterTest {
                 assertEquals("Unnamed", list.getFirst().getRootName());
                 assertEquals(4, list.getFirst().getSourceLocation().getEndLine());
             }
+        }
+    }
+
+    @Test
+    public void testDebuggerBreakpoint() throws IOException {
+        Source source = Source.newBuilder("elisp", """
+                ;;; -*- lexical-binding: t -*-
+                (defvar b)
+                (defalias 'test #'(lambda (c)
+                  (let ((a 1)
+                        (b 2))
+                    (+ a b
+                       (1+ c)))))
+                (test 3)
+                """, "test-func").build();
+        try (
+                DebuggerTester tester = new DebuggerTester(getTestingContextBuilder().option("elisp.truffleDebug", "true"));
+                DebuggerSession session = tester.startSession()
+        ) {
+            // Pre-evaluation is needed to expand the AST
+            tester.startEval(source);
+            tester.expectDone();
+
+            session.suspendNextExecution();
+            session.install(Breakpoint.newBuilder(source.getURI()).lineIs(6).build());
+            tester.startEval(Source.create("elisp", "(test 3)"));
+
+            // Top level root node
+            tester.expectSuspended(event -> {
+                assertEquals("Unnamed", event.getTopStackFrame().getName());
+                event.prepareContinue();
+            });
+            // Multiple frames
+            tester.expectSuspended(event -> {
+                assertEquals(6, event.getSourceSection().getStartLine());
+                List<DebugStackFrame> list = StreamSupport.stream(event.getStackFrames().spliterator(), false).toList();
+                assertEquals(2, list.size());
+                assertEquals(64, event.getTopStackFrame().eval("(expt 2 (+ a b c))").asLong());
+                event.prepareStepOver(1);
+            });
+            // Scope access
+            tester.expectSuspended(event -> {
+                assertEquals(7, event.getSourceSection().getStartLine());
+
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals("test", frame.getName());
+                DebugScope scope = frame.getScope();
+                assertNotNull(scope);
+                DebugValue a = scope.getDeclaredValue("a");
+                DebugValue b = scope.getDeclaredValue("b");
+                DebugValue c = scope.getDeclaredValue("c");
+                assertNull(scope.getDeclaredValue("d"));
+                assertNotNull(a);
+                assertNull(b);
+                b = session.getTopScope("elisp").getDeclaredValue("b");
+                assertNotNull(b);
+                assertNotNull(c);
+                assertEquals(1, a.asInt());
+                assertEquals(2, b.asInt());
+                assertEquals(3, c.asInt());
+                assertEquals(64, frame.eval("(expt 2 (+ a b c))").asLong());
+                event.prepareContinue();
+            });
+            tester.expectDone();
         }
     }
 }
