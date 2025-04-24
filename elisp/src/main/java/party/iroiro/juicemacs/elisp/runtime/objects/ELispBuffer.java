@@ -19,6 +19,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
+import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
@@ -30,12 +31,16 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     private final HashMap<ELispSymbol, Forwarded> localVariables;
     private final boolean inhibitBufferHooks;
     private final PieceTreeBase content;
+    private final IntervalPieceTree<Object> intervals;
     private final MarkerPieceTree<ELispBuffer> markers;
+    // TODO: Emacs has a point for each window
     private MarkerPieceTree.Marker point;
 
     private ELispBuffer(Object[] bufferLocalFields, PieceTreeBase content, boolean inhibitBufferHooks) {
         this.bufferLocalFields = bufferLocalFields;
         this.content = content;
+        this.intervals = new IntervalPieceTree<>();
+        intervals.insert(0, content.getLength(), null);
         this.markers = new MarkerPieceTree<>((_, _) -> {
             // TODO: support undo-list
         }, this);
@@ -69,7 +74,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     public long getPoint(PieceTreeBase.Position position) {
-        int line = Math.clamp(position.line(), 1, content.getLineCount() + 1);
+        int line = Math.clamp(position.line(), 1, content.getLineCount());
         long length = content.getLineLength(line);
         return content.getOffsetAt(line, Math.clamp(position.column(), 1, length + 1)) + 1;
     }
@@ -100,9 +105,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     public void setPosition(PieceTreeBase.Position position) {
-        int line = Math.clamp(position.line(), 1, content.getLineCount());
-        long lineLength = content.getLineLength(line);
-        setPoint(content.getOffsetAt(position.line(), Math.clamp(position.column(), 1, lineLength + 1)) + 1);
+        setPoint(getPoint(position));
     }
 
     public int getLineCount() {
@@ -140,6 +143,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         }
         long position = point.position();
         content.insert(position, text, true);
+        intervals.insert(position, text.length(), null);
         markers.insertString(position, text.length());
     }
 
@@ -148,12 +152,14 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             return;
         }
         content.delete(start - 1, length);
+        intervals.delete(start - 1, length);
         markers.delete(start - 1, length);
     }
 
     public void erase() {
         content.delete(0, content.getLength());
         content.setEOL(content.getEOL()); // reset internal tree
+        intervals.delete(0, content.getLength());
         markers.delete(0, content.getLength());
     }
 
@@ -166,6 +172,10 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public ELispString bufferString() {
         return new ELispString(content.getLinesRawContent());
+    }
+
+    public IntervalPieceTree<Object> getIntervals() {
+        return intervals;
     }
 
     @Nullable

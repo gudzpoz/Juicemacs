@@ -92,13 +92,18 @@ public class BuiltInCmds extends ELispBuiltIns {
             return forwardLineCtx(getContext().currentBuffer(), n);
         }
 
+        /// See [BuiltInEditFns.FLineBeginningPosition#lineEdgePosition(Object, ELispBuffer, long, long)]
         public static long forwardLineCtx(ELispBuffer buffer, Object n) {
             long line = notNilOr(n, 1);
             PieceTreeBase.Position position = buffer.getPosition();
-            int maxLine = buffer.getLineCount() + 1;
+            int maxLine = buffer.getLineCount();
 
-            int nextLine = Math.clamp(position.line() + line, 1, maxLine);
-            buffer.setPosition(new PieceTreeBase.Position(nextLine, 1));
+            long target = position.line() + line;
+            int nextLine = Math.clamp(target, 1, maxLine);
+            buffer.setPosition(new PieceTreeBase.Position(
+                    nextLine,
+                    nextLine == target || line < 0 ? 1 : Long.MAX_VALUE
+            ));
             return (long) maxLine - nextLine;
         }
     }
@@ -124,7 +129,7 @@ public class BuiltInCmds extends ELispBuiltIns {
         @Specialization
         public boolean beginningOfLine(Object n) {
             ELispBuffer buffer = getContext().currentBuffer();
-            FForwardLine.forwardLineCtx(buffer, notNilOr(n, 1) - 1);
+            buffer.setPoint(BuiltInEditFns.FLineBeginningPosition.lineEdgePosition(n, buffer, true));
             return false;
         }
     }
@@ -149,9 +154,7 @@ public class BuiltInCmds extends ELispBuiltIns {
         @Specialization
         public boolean endOfLine(Object n) {
             ELispBuffer buffer = getContext().currentBuffer();
-            FForwardLine.forwardLineCtx(buffer, notNilOr(n, 1) - 1);
-            PieceTreeBase.Position position = buffer.getPosition();
-            buffer.setPosition(new PieceTreeBase.Position(position.line(), Long.MAX_VALUE));
+            buffer.setPoint(BuiltInEditFns.FLineBeginningPosition.lineEdgePosition(n, buffer, false));
             return false;
         }
     }

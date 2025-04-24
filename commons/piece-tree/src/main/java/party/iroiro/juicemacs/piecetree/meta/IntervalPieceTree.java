@@ -51,18 +51,22 @@ public final class IntervalPieceTree<T> extends MarkPieceTreeBase<T> {
         insert(offset, new Piece<>(cnt, properties));
     }
 
-    public void forPropertiesIn(long offset, long cnt, IntervalConsumer<T> consumer) {
-        forEachMarkIn(offset, cnt, (piece, currentOffset) -> {
-            if (piece.mark() != null) {
-                consumer.accept(piece.mark(), currentOffset, piece.length());
+    @Nullable
+    public <R> R forPropertiesIn(long offset, long cnt, boolean includeNull, IntervalConsumer<T, R> consumer) {
+        return forEachMarkIn(offset, cnt, (piece, currentOffset) -> {
+            if (includeNull || piece.mark() != null) {
+                return consumer.accept(piece.mark(), currentOffset, piece.length());
             }
+            return null;
         });
     }
 
     public IntervalPieceTree<T> subTree(long offset, long cnt) {
         IntervalPieceTree<T> subTree = new IntervalPieceTree<>();
-        forEachMarkIn(offset, cnt, (piece, currentOffset) ->
-                subTree.insert(currentOffset - offset, piece));
+        forEachMarkIn(offset, cnt, (piece, currentOffset) -> {
+            subTree.insert(currentOffset - offset, piece);
+            return null;
+        });
         return subTree;
     }
 
@@ -70,8 +74,10 @@ public final class IntervalPieceTree<T> extends MarkPieceTreeBase<T> {
         if (other.root == SENTINEL) {
             return;
         }
-        other.forEachMarkIn(0, Long.MAX_VALUE, (piece, currentOffset) ->
-                insert(offset + currentOffset, piece));
+        other.forEachMarkIn(0, Long.MAX_VALUE, (piece, currentOffset) -> {
+            insert(offset + currentOffset, piece);
+            return null;
+        });
     }
 
     public void insert(long offset, long cnt, @Nullable T properties) {
@@ -82,7 +88,7 @@ public final class IntervalPieceTree<T> extends MarkPieceTreeBase<T> {
     }
     //#endregion Properties
 
-    public interface IntervalConsumer<T> {
-        void accept(T properties, long offset, long cnt);
+    public interface IntervalConsumer<T, R> {
+        @Nullable R accept(@Nullable T properties, long offset, long cnt);
     }
 }

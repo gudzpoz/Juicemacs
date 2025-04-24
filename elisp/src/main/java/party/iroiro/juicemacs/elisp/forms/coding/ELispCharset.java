@@ -279,7 +279,7 @@ public final class ELispCharset {
             map = attributes.get(CHARSET_MAP);
         } else {
             if (!unifiedP) {
-                throw ELispSignals.fatal();
+                throw ELispSignals.fatal("expecting unifiedP");
             }
             map = attributes.get(CHARSET_UNIFY_MAP);
         }
@@ -293,7 +293,7 @@ public final class ELispCharset {
 
     private CharsetMap loadMapFromVector(ELispVector vector) {
         if (vector.size() % 2 == 1) {
-            throw ELispSignals.fatal();
+            throw ELispSignals.fatal("invalid charset map vector " + vector);
         }
         int capacity = vector.size() / 2;
         LongArrayList fromEntries = new LongArrayList(capacity);
@@ -325,7 +325,7 @@ public final class ELispCharset {
         }
         String next = scanner.next();
         if (!next.startsWith("0x")) {
-            throw ELispSignals.fatal();
+            throw ELispSignals.fatal("wrong charset hex format " + next);
         }
         return Long.parseLong(next, 2, next.length(), 16);
     }
@@ -340,7 +340,7 @@ public final class ELispCharset {
                 false
         );
         if (path == null) {
-            throw ELispSignals.fatal();
+            throw ELispSignals.fatal("unable to locate map file " + file);
         }
         try (Scanner scanner = new Scanner(new FileInputStream(path.toString()))) {
             scanner.useDelimiter("\\s+|\\b");
@@ -353,7 +353,7 @@ public final class ELispCharset {
                 if (!scanner.hasNext(hexNumber)) {
                     String comment = scanner.nextLine().stripLeading();
                     if (!comment.isBlank() && !comment.startsWith("#")) {
-                        throw ELispSignals.fatal();
+                        throw ELispSignals.fatal("wrong charset file format at " + path);
                     }
                     continue;
                 }

@@ -78,18 +78,23 @@ public final class ELispString implements TruffleObject, ELispValue {
         return intervals != null;
     }
 
-    public void forRangeProperties(long i, IntervalPieceTree.IntervalConsumer<Object> propertiesConsumer) {
+    public void forRangeProperties(long i, IntervalPieceTree.IntervalConsumer<Object, ?> propertiesConsumer) {
         if (intervals == null) {
             return;
         }
-        intervals.forPropertiesIn(i, 1, propertiesConsumer);
+        intervals.forPropertiesIn(i, 1, false, propertiesConsumer);
     }
 
-    public void forProperties(IntervalPieceTree.IntervalConsumer<Object> propertiesConsumer) {
+    public void forProperties(IntervalPieceTree.IntervalConsumer<Object, ?> propertiesConsumer) {
         if (intervals == null) {
             return;
         }
-        intervals.forPropertiesIn(0, Long.MAX_VALUE, propertiesConsumer);
+        intervals.forPropertiesIn(0, Long.MAX_VALUE, false, propertiesConsumer);
+    }
+
+    @Nullable
+    public IntervalPieceTree<Object> getIntervals() {
+        return intervals;
     }
 
     public void syncFromPlist(List<Object> list) {

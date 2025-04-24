@@ -163,7 +163,10 @@ class MarkerPieceTreeTest {
         tree.insertMarker(8, new Marker(MarkerPieceTree.Affinity.RIGHT));
         tree.insertMarker(8, new Marker(MarkerPieceTree.Affinity.LEFT));
         ArrayList<MarkPieceTreeBase.Piece<Marker>> pieces = new ArrayList<>();
-        tree.forEachMarkIn(0, 8, (piece, _) -> pieces.add(piece));
+        tree.forEachMarkIn(0, 8, (piece, _) -> {
+            pieces.add(piece);
+            return null;
+        });
         assertEquals(3, pieces.size());
         assertNull(pieces.getFirst().mark());
         assertEquals(MarkerPieceTree.Affinity.LEFT, Objects.requireNonNull(pieces.get(1).mark()).affinity());
@@ -185,7 +188,10 @@ class MarkerPieceTreeTest {
         l.setAffinity(MarkerPieceTree.Affinity.RIGHT);
         r.setAffinity(MarkerPieceTree.Affinity.LEFT);
         ArrayList<Marker> markers = new ArrayList<>();
-        tree.forEachMarkIn(0, 1, (piece, _) -> markers.add(Objects.requireNonNull(piece.mark())));
+        tree.forEachMarkIn(0, 1, (piece, _) -> {
+            markers.add(Objects.requireNonNull(piece.mark()));
+            return null;
+        });
         assertArrayEquals(new Marker[]{r, l}, markers.toArray());
     }
 

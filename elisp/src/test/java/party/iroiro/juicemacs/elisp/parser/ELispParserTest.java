@@ -200,6 +200,7 @@ public class ELispParserTest {
             ELispCons properties = assertInstanceOf(ELispCons.class, props);
             assertSame(KEY, properties.getFirst());
             assertSame(str, properties.get(1));
+            return null;
         });
         assertEquals(1, propCount.get());
 

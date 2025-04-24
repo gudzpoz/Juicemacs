@@ -73,8 +73,9 @@ public class BuiltInIndent extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCurrentIndentation extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void currentIndentation() {
-            throw new UnsupportedOperationException();
+        public static long currentIndentation() {
+            // TODO: placeholder
+            return 0L;
         }
     }
 

@@ -119,8 +119,8 @@ probably return to them some time:
 
 - [ ] =decode-coding-string=
 
-- [ ] =kill-emacs=: This actually will not run code in =unwind-protect=, so a
-  special exception probably will not do.
+- [X] =kill-emacs=: This actually will not run code in =unwind-protect=, so a
+  special exception probably will not do. See [[https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md][graal/truffle/docs/Exit.md]].
 
 - [ ] =framep=, =processp=, =windowp=, etc.
 

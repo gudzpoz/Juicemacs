@@ -3,8 +3,10 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 
 import java.util.List;
 
@@ -490,8 +492,38 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTextPropertyNotAll extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void textPropertyNotAll(Object start, Object end, Object property, Object value, Object object) {
-            throw new UnsupportedOperationException();
+        public Object textPropertyNotAll(long start, long end, Object property, Object value, Object object) {
+            if (isNil(object)) {
+                object = getContext().currentBuffer();
+            }
+            long offset = start;
+            long len = end - start;
+            @Nullable IntervalPieceTree<Object> tree;
+            if (object instanceof ELispString s) {
+                tree = s.getIntervals();
+            } else {
+                tree = asBuffer(object).getIntervals();
+                offset--;
+            }
+            if (tree == null) {
+                return isNil(value) ? false : start;
+            }
+            @Nullable Long diffStart = tree.forPropertiesIn(
+                    offset, len, true,
+                    (properties, propsStart, _) -> {
+                        Object actual = BuiltInData.FCdrSafe.cdrSafe(
+                                BuiltInFns.FAssq.assq(property, properties == null ? false : properties)
+                        );
+                        if (!BuiltInData.FEq.eq(actual, value)) {
+                            return propsStart;
+                        }
+                        return null;
+                    }
+            );
+            if (diffStart == null) {
+                return false;
+            }
+            return diffStart + (start - offset);
         }
     }
 }

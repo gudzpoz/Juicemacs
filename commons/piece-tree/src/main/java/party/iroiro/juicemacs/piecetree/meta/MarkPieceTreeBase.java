@@ -282,7 +282,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
     }
     //#endregion
 
-    protected void forEachMarkIn(long offset, long cnt, PieceConsumer<T> consumer) {
+    protected <R> R forEachMarkIn(long offset, long cnt, PieceConsumer<T, R> consumer) {
         NodePosition<T> startPosition = nodeAt(offset);
         MarkTreeNode<T> currentNode = startPosition.node();
         long currentOffset = offset;
@@ -302,29 +302,32 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         }
         while (currentOffset < targetOffset && currentNode != SENTINEL) {
             Piece<T> piece = currentNode.piece;
-            long length = piece.length();
-            long newOffset = currentOffset + piece.length();
-            if (newOffset >= targetOffset) {
+            long length = piece.length() - remainder;
+            long newOffset = currentOffset + length;
+            remainder = 0;
+            if (newOffset > targetOffset) {
                 length -= newOffset - targetOffset;
-            }
-            if (remainder != 0) {
-                currentOffset += remainder;
-                length -= remainder;
-                remainder = 0;
             }
             if (length != piece.length()) {
                 piece = new Piece<>(length, piece.mark());
             }
-            consumer.accept(piece, currentOffset);
+            @Nullable R accept = consumer.accept(piece, currentOffset);
+            if (accept != null) {
+                return accept;
+            }
             currentOffset = newOffset;
             currentNode = currentNode.next();
         }
         if (currentOffset == targetOffset) {
             while (currentNode != SENTINEL && currentNode.piece.length == 0) {
-                consumer.accept(currentNode.piece, currentOffset);
+                @Nullable R accept = consumer.accept(currentNode.piece, currentOffset);
+                if (accept != null) {
+                    return accept;
+                }
                 currentNode = currentNode.next();
             }
         }
+        return null;
     }
 
     @Override
@@ -340,12 +343,13 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
                     .append(": ")
                     .append(piece.mark)
                     .append('\n');
+            return null;
         });
         return builder.toString();
     }
 
-    protected interface PieceConsumer<T> {
-        void accept(Piece<T> piece, long offset);
+    protected interface PieceConsumer<T, R> {
+        @Nullable R accept(Piece<T> piece, long offset);
     }
 
     /**

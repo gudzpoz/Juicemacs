@@ -366,8 +366,23 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLineBeginningPosition extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void lineBeginningPosition(Object n) {
-            throw new UnsupportedOperationException();
+        public long lineBeginningPosition(Object n) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            return lineEdgePosition(n, buffer, true);
+        }
+
+        public static long lineEdgePosition(Object n, ELispBuffer buffer, boolean beginning) {
+            long line = notNilOr(n, 1) - 1;
+            PieceTreeBase.Position position = buffer.getPosition();
+            int maxLine = buffer.getLineCount();
+
+            long target = position.line() + line;
+            int nextLine = Math.clamp(target, 1, maxLine);
+            return buffer.getPoint(new PieceTreeBase.Position(
+                    nextLine,
+                    nextLine == target ? (beginning ? 1 : Long.MAX_VALUE)
+                            : (line < 0 ? 1 : Long.MAX_VALUE)
+            ));
         }
     }
 
@@ -416,11 +431,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public long lineEndPosition(Object n) {
             ELispBuffer buffer = getContext().currentBuffer();
-            PieceTreeBase.Position position = buffer.getPosition();
-            return buffer.getPoint(new PieceTreeBase.Position(
-                    position.line() + (int) notNilOr(n, 1) - 1,
-                    Long.MAX_VALUE
-            ));
+            return FLineBeginningPosition.lineEdgePosition(n, buffer, false);
         }
     }
 
@@ -705,8 +716,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFollowingChar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void followingChar() {
-            throw new UnsupportedOperationException();
+        public long followingChar() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            return buffer.getChar(buffer.getPoint());
         }
     }
 

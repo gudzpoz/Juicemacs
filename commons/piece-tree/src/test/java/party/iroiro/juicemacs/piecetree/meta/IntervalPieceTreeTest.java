@@ -120,7 +120,10 @@ class IntervalPieceTreeTest {
 
     private void assertIndices(IntervalPieceTree<Integer> tree, long... expected) {
         ArrayList<Long> indices = new ArrayList<>();
-        tree.forEachMarkIn(0, Long.MAX_VALUE, (_, offset) -> indices.add(offset));
+        tree.forEachMarkIn(0, Long.MAX_VALUE, (_, offset) -> {
+            indices.add(offset);
+            return null;
+        });
         assertArrayEquals(expected, indices.stream().mapToLong((l) -> l).toArray());
     }
 
