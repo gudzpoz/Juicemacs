@@ -124,7 +124,7 @@ public class BuiltInCmds extends ELispBuiltIns {
         @Specialization
         public boolean beginningOfLine(Object n) {
             ELispBuffer buffer = getContext().currentBuffer();
-            FForwardLine.forwardLineCtx(buffer, n);
+            FForwardLine.forwardLineCtx(buffer, notNilOr(n, 1) - 1);
             return false;
         }
     }
@@ -149,7 +149,7 @@ public class BuiltInCmds extends ELispBuiltIns {
         @Specialization
         public boolean endOfLine(Object n) {
             ELispBuffer buffer = getContext().currentBuffer();
-            FForwardLine.forwardLineCtx(buffer, n);
+            FForwardLine.forwardLineCtx(buffer, notNilOr(n, 1) - 1);
             PieceTreeBase.Position position = buffer.getPosition();
             buffer.setPosition(new PieceTreeBase.Position(position.line(), Long.MAX_VALUE));
             return false;

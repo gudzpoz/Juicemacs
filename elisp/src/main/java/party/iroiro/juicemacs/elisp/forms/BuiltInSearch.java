@@ -114,6 +114,143 @@ public class BuiltInSearch extends ELispBuiltIns {
         return pattern;
     }
 
+    /// Skeleton interface with Emacs search convention util functions
+    private sealed abstract static class SearchConvention<T> {
+        protected final T pattern;
+
+        private SearchConvention(T pattern) {
+            this.pattern = pattern;
+        }
+
+        Object search(ELispBuffer buffer, Object bound, Object noError, Object count) {
+            long repeat = notNilOr(count, 1);
+            boolean forward = repeat >= 0;
+            repeat = Math.abs(repeat);
+
+            long at = buffer.getPoint();
+            if (!forward) {
+                at--;
+                if (at < buffer.pointMin()) {
+                    return false;
+                }
+            }
+
+            long startEnd, end;
+            if (forward) {
+                startEnd = end = notNilOr(bound, buffer.pointMax());
+            } else {
+                startEnd = notNilOr(bound, buffer.pointMin());
+                end = buffer.pointMax();
+            }
+
+            for (long i = 0; i < repeat; i++) {
+                at = searchOnce(buffer, forward, at, startEnd, end);
+                if (at == -1) {
+                    if (isNil(noError)) {
+                        throw ELispSignals.searchFailed();
+                    }
+                    if (!isT(noError)) {
+                        buffer.setPoint(startEnd);
+                    }
+                    return false;
+                }
+            }
+            buffer.setPoint(at);
+            return buffer.getPoint();
+        }
+
+        /// Searches according to [#pattern]
+        ///
+        /// @return `-1` if not found; the end of the match if `forward`; `start - 1` if `!forward`
+        abstract long searchOnce(ELispBuffer buffer, boolean forward, long start, long startEnd, long searchEnd);
+
+        static final class StringSearch extends SearchConvention<MuleString> {
+            private final boolean caseFold;
+
+            private StringSearch(MuleString pattern, boolean caseFold) {
+                super(pattern);
+                this.caseFold = caseFold;
+            }
+
+            @Override
+            long searchOnce(ELispBuffer buffer, boolean forward, long start, long startEnd, long searchEnd) {
+                while (start != startEnd) {
+                    if (currentMatch(buffer, start, searchEnd)) {
+                        return forward ? start + pattern.length() : start - 1;
+                    }
+                    start += forward ? 1 : -1;
+                }
+                return -1;
+            }
+
+            private boolean currentMatch(ELispBuffer buffer, long start, long end) {
+                PrimitiveIterator.OfInt iterator = pattern.iterator(0);
+                PrimitiveIterator.OfInt bufferI = buffer.iterator(start, end);
+                @Nullable ELispCharTable canon = caseFold ? asCharTable(buffer.getCaseCanonTable()) : null;
+                long remaining = end - start;
+                while (iterator.hasNext()) {
+                    if (remaining <= 0) {
+                        return false;
+                    }
+                    remaining--;
+
+                    int c1 = iterator.nextInt();
+                    int c2 = bufferI.nextInt();
+                    if (caseFold) {
+                        c1 = (int) notNilOr(canon.getChar(c1), c1);
+                        c2 = (int) notNilOr(canon.getChar(c2), c2);
+                    }
+                    if (c1 != c2) {
+                        return false;
+                    }
+                    start++;
+                }
+                return true;
+            }
+        }
+
+        static final class RegexpSearch extends SearchConvention<ELispRegExp.CompiledRegExp> {
+            @Nullable
+            Object matchData = null;
+
+            private RegexpSearch(ELispRegExp.CompiledRegExp pattern) {
+                super(pattern);
+            }
+
+            @Override
+            long searchOnce(ELispBuffer buffer, boolean forward, long start, long startEnd, long searchEnd) {
+                if (forward) {
+                    return searchForwardOnce(buffer, start, startEnd);
+                }
+                while (start != startEnd) {
+                    if (currentMatch(buffer, start, searchEnd)) {
+                        return start - 1;
+                    }
+                    start--;
+                }
+                return -1;
+            }
+
+            private boolean currentMatch(ELispBuffer buffer, long from, long limit) {
+                Object result = pattern.call(buffer, false, from, limit);
+                if (result instanceof ELispCons cons) {
+                    matchData = cons;
+                    return true;
+                }
+                return false;
+            }
+
+            private long searchForwardOnce(ELispBuffer buffer, long from, long limit) {
+                Object result = pattern.call(buffer, true, from, limit);
+                if (result instanceof ELispCons cons) {
+                    matchData = cons;
+                    return asLong(cons.get(1));
+                }
+                return -1;
+            }
+        }
+    }
+
     /**
      * <pre>
      * Return t if text after point matches regular expression REGEXP.
@@ -277,48 +414,10 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FSearchForward extends ELispBuiltInBaseNode {
         @Specialization
         public static Object searchForward(ELispString string, Object bound, Object noerror, Object count) {
-            long repeat = notNilOr(count, 1);
-            boolean forward = repeat >= 0;
-            repeat = Math.abs(repeat);
-            boolean caseFold = !isNil(CASE_FOLD_SEARCH.getValue());
-
+            SearchConvention.StringSearch s =
+                    new SearchConvention.StringSearch(string.value(), !isNil(CASE_FOLD_SEARCH.getValue()));
             ELispBuffer buffer = currentBuffer();
-            long start = buffer.getPoint();
-            long limit = FReSearchForward.getBound(bound, forward);
-            for (int i = 0; i < repeat; i++) {
-                if (currentMatch(buffer, string.value(), start, caseFold)) {
-                    if (forward) {
-                        start++;
-                    } else {
-                        start--;
-                    }
-                    continue;
-                }
-                if (isNil(noerror)) {
-                    throw ELispSignals.searchFailed();
-                }
-                return false;
-            }
-            buffer.setPoint(start + string.length() + 1);
-            return buffer.getPoint();
-        }
-
-        private static boolean currentMatch(ELispBuffer buffer, MuleString string, long start, boolean caseFold) {
-            PrimitiveIterator.OfInt iterator = string.iterator(0);
-            @Nullable ELispCharTable canon = caseFold ? asCharTable(buffer.getCaseCanonTable()) : null;
-            while (iterator.hasNext()) {
-                int c1 = iterator.nextInt();
-                long c2 = buffer.getChar(start);
-                if (caseFold) {
-                    c1 = (int) notNilOr(canon.getChar(c1), c1);
-                    c2 = (int) notNilOr(canon.getChar((int) c2), c2);
-                }
-                if (c1 != c2) {
-                    return false;
-                }
-                start++;
-            }
-            return true;
+            return s.search(buffer, bound, noerror, count);
         }
     }
 
@@ -384,68 +483,14 @@ public class BuiltInSearch extends ELispBuiltIns {
         public static Object reSearchForward(
                 Node node, ELispString regexp, Object bound, Object noerror, Object count
         ) {
-            long repeat = notNilOr(count, 1);
-            boolean forward = repeat >= 0;
-            repeat = Math.abs(repeat);
-
             ELispBuffer buffer = currentBuffer();
             ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(null), regexp, null);
-            long limit = getBound(bound, forward);
-
-            long at = buffer.getPoint();
-            for (long i = 0; i < repeat; i++) {
-                if (buffer.pointMin() <= at && at < buffer.pointMax()) {
-                    at = forward
-                            ? searchForwardOnce(node, pattern, buffer, at, limit)
-                            : searchBackwardOnce(node, pattern, buffer, at, limit);
-                } else {
-                    at = -1;
-                }
-                if (at == -1) {
-                    if (isNil(noerror)) {
-                        throw ELispSignals.searchFailed();
-                    }
-                    return false;
-                }
-                at += forward ? 1 : -1;
+            SearchConvention.RegexpSearch s = new SearchConvention.RegexpSearch(pattern);
+            Object result = s.search(buffer, bound, noerror, count);
+            if (s.matchData != null) {
+                setMatch(node, s.matchData, false);
             }
-            buffer.setPoint(at);
-            return buffer.getPoint();
-        }
-
-        public static long getBound(Object bound, boolean forward) {
-            return forward
-                    ? (isNil(bound) ? -1 : asLong(bound))
-                    : notNilOr(bound, 1);
-        }
-
-        private static long searchBackwardOnce(
-                Node node,
-                ELispRegExp.CompiledRegExp pattern, ELispBuffer buffer,
-                long from, long limit
-        ) {
-            while (from >= limit) {
-                Object result = pattern.call(buffer, false, from, -1);
-                if (result instanceof ELispCons cons) {
-                    setMatch(node, cons, false);
-                    return asLong(cons.get(1));
-                }
-                from--;
-            }
-            return -1;
-        }
-
-        private static long searchForwardOnce(
-                Node node,
-                ELispRegExp.CompiledRegExp pattern, ELispBuffer buffer,
-                long from, long limit
-        ) {
-            Object result = pattern.call(buffer, true, from, limit);
-            if (result instanceof ELispCons cons) {
-                setMatch(node, cons, false);
-                return asLong(cons.get(1));
-            }
-            return -1;
+            return result;
         }
     }
 
