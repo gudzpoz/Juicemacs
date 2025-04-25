@@ -1571,29 +1571,34 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                RuntimeException rethrow;
+                RuntimeException rethrow = null;
                 try {
                     body.executeVoid(frame);
-                    return;
                 } catch (AbstractTruffleException e) {
                     rethrow = e;
+                    checkSoftExit(getContext(), rethrow);
                 }
-                checkSoftExit(getContext(), rethrow);
                 unwind.executeVoid(frame);
-                throw rethrow;
+                if (rethrow != null) {
+                    throw rethrow;
+                }
             }
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                RuntimeException rethrow;
+                RuntimeException rethrow = null;
+                Object result = null;
                 try {
-                    return body.executeGeneric(frame);
+                    result = body.executeGeneric(frame);
                 } catch (AbstractTruffleException e) {
                     rethrow = e;
+                    checkSoftExit(getContext(), rethrow);
                 }
-                checkSoftExit(getContext(), rethrow);
                 unwind.executeVoid(frame);
-                throw rethrow;
+                if (rethrow != null) {
+                    throw rethrow;
+                }
+                return result;
             }
         }
     }

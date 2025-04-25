@@ -196,10 +196,10 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     public void erase() {
-        content.delete(0, content.getLength());
-        content.setEOL(content.getEOL()); // reset the internal tree
         intervals.delete(0, content.getLength());
         markers.delete(0, content.getLength());
+        content.delete(0, content.getLength());
+        content.setEOL(content.getEOL()); // reset the internal tree
     }
 
     public void setMultibyte(Object flag) {

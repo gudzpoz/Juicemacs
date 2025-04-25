@@ -414,7 +414,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
     public abstract static class FSkipCharsForward extends ELispBuiltInBaseNode {
         @Specialization
         public long skipCharsForward(ELispString string, Object lim) {
-            return skipChars(getLanguage(), getContext().currentBuffer(), string, notNilOr(lim, Long.MAX_VALUE));
+            ELispBuffer buffer = getContext().currentBuffer();
+            return skipChars(getLanguage(), buffer, string, notNilOr(lim, buffer.pointMax()));
         }
 
         public static long skipChars(ELispLanguage language, ELispBuffer buffer,
@@ -430,7 +431,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
                     null
             );
             long oldPoint = buffer.getPoint();
-            Object result = regExp.call(buffer, false, oldPoint, -1);
+            Object result = regExp.call(buffer, false, oldPoint, lim);
             if (result instanceof ELispCons cons) {
                 long newPoint = Math.min(asLong(cons.get(1)), lim);
                 buffer.setPoint(newPoint);
@@ -452,7 +453,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
     public abstract static class FSkipCharsBackward extends ELispBuiltInBaseNode {
         @Specialization
         public long skipCharsBackward(ELispString string, Object lim) {
-            return skipChars(getLanguage(), getContext().currentBuffer(), string, notNilOr(lim, 1));
+            ELispBuffer buffer = getContext().currentBuffer();
+            return skipChars(getLanguage(), buffer, string, notNilOr(lim, buffer.pointMin()));
         }
 
         public static long skipChars(ELispLanguage language, ELispBuffer buffer,
@@ -475,6 +477,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
                 }
                 point--;
             }
+            buffer.setPoint(Math.max(point, buffer.pointMin()));
             return point - oldPoint;
         }
     }
@@ -525,7 +528,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
                 }
                 break;
             }
-            buffer.setPoint(Math.min(point, notNilOr(lim, Long.MAX_VALUE)));
+            buffer.setPoint(Math.min(point, notNilOr(lim, buffer.pointMax())));
             return point - oldPoint;
         }
     }
@@ -648,7 +651,8 @@ public class BuiltInSyntax extends ELispBuiltIns {
             } catch (IOException e) {
                 throw ELispSignals.endOfFile();
             }
-            int codepointOffset = parser.getCodepointOffset();
+            long codepointOffset = parser.getCodepointOffset();
+            // TODO: another parser
             return invert ? from - codepointOffset : from + codepointOffset;
         }
     }

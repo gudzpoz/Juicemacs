@@ -274,17 +274,22 @@ public final class ELispLexical {
             if (variable == DYNAMIC) {
                 continue;
             }
-            lb.add(new ELispCons(symbol, variable));
+            lb.add(new ELispCons(symbol, unwrapContainer(variable)));
         }
         for (ELispSymbol symbol : args) {
             Object variable = getVariable(frame, getIndex(symbol));
             if (variable == DYNAMIC) {
                 continue;
             }
-            lb.add(new ELispCons(symbol, variable));
+            lb.add(new ELispCons(symbol, unwrapContainer(variable)));
         }
         return lb.buildWithCdr(parent == null ? false : parent.toAssocList(
                 materializedParent == null ? frame : materializedParent));
+    }
+
+    private Object unwrapContainer(Object variable) {
+        return variable instanceof ELispFrameSlotNode.SlotPrimitiveContainer container
+                ? container.asObject() : variable;
     }
 
     @Nullable

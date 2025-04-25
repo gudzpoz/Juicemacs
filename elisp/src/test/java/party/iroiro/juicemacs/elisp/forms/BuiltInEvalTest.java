@@ -97,6 +97,11 @@ public class BuiltInEvalTest extends BaseFormTest {
               (condition-case s (signal 'e 1)
                 (a (= (cdr s) 1))))
             """, true,
+            """
+            (let ((x 0))
+              (unwind-protect nil (setq x 1))
+              x)
+            """, 1L,
     };
 
     @Override

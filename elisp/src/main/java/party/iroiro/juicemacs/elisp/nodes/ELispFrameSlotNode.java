@@ -58,7 +58,7 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
         return value;
     }
 
-    protected static final class SlotPrimitiveContainer {
+    public static final class SlotPrimitiveContainer {
         boolean isDouble;
         private long value;
 
