@@ -312,11 +312,11 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispExpressionNode[] conditions;
             @SuppressWarnings("FieldMayBeFinal")
             @Children
-            ELispExpressionNode[] thenCases;
+            @Nullable ELispExpressionNode[] thenCases;
 
             public CondNode(Object[] clauses) {
                 List<ELispExpressionNode> conditionNodes = new ArrayList<>(clauses.length);
-                List<ELispExpressionNode> cases = new ArrayList<>(clauses.length);
+                List<@Nullable ELispExpressionNode> cases = new ArrayList<>(clauses.length);
                 for (Object clause : clauses) {
                     ELispCons cons = asCons(clause);
                     conditionNodes.add(ELispInterpretedNode.create(cons.car()));
@@ -325,7 +325,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     while (iterator.hasNext()) {
                         body.add(iterator.next());
                     }
-                    cases.add(FProgn.progn(body.toArray(new Object[0])));
+                    cases.add(body.isEmpty() ? null : FProgn.progn(body.toArray(new Object[0])));
                 }
                 conditions = conditionNodes.toArray(new ELispExpressionNode[0]);
                 thenCases = cases.toArray(new ELispExpressionNode[0]);
@@ -335,8 +335,12 @@ public class BuiltInEval extends ELispBuiltIns {
             public void executeVoid(VirtualFrame frame) {
                 int length = conditions.length;
                 for (int i = 0; i < length; i++) {
-                    if (!isNil(conditions[i].executeGeneric(frame))) {
-                        thenCases[i].executeVoid(frame);
+                    Object condition = conditions[i].executeGeneric(frame);
+                    if (!isNil(condition)) {
+                        @Nullable ELispExpressionNode then = thenCases[i];
+                        if (then != null) {
+                            then.executeVoid(frame);
+                        }
                         return;
                     }
                 }
@@ -347,8 +351,10 @@ public class BuiltInEval extends ELispBuiltIns {
             public Object executeGeneric(VirtualFrame frame) {
                 int length = conditions.length;
                 for (int i = 0; i < length; i++) {
-                    if (!isNil(conditions[i].executeGeneric(frame))) {
-                        return thenCases[i].executeGeneric(frame);
+                    Object condition = conditions[i].executeGeneric(frame);
+                    if (!isNil(condition)) {
+                        @Nullable ELispExpressionNode then = thenCases[i];
+                        return then == null ? condition : then.executeGeneric(frame);
                     }
                 }
                 return false;

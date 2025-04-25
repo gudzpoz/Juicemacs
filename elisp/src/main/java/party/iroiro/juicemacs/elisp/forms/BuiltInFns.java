@@ -920,6 +920,9 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static Object nthcdr(long n, Object list) {
             for (; n > 0; n--) {
+                if (isNil(list)) {
+                    return false;
+                }
                 list = asCons(list).cdr();
             }
             return list;
@@ -1813,10 +1816,16 @@ public class BuiltInFns extends ELispBuiltIns {
             MuleStringBuffer builder = new MuleStringBuffer();
             while (i.hasNext()) {
                 Object result = BuiltInEval.FFuncall.funcall(this, function, i.next());
-                builder.append(
-                        BuiltInPrint.FPrin1ToString.prin1ToString(result, false, false)
-                                .value()
-                );
+                if (!isNil(result)) {
+                    if (result instanceof ELispString s) {
+                        builder.append(s.value());
+                    } else {
+                        Iterator<?> chars = iterateSequence(result);
+                        while (chars.hasNext()) {
+                            builder.append(asInt(chars.next()));
+                        }
+                    }
+                }
                 if (!isNil(separator) && i.hasNext()) {
                     builder.append(asStr(separator).value());
                 }
