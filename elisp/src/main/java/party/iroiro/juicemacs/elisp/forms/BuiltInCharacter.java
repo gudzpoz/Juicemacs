@@ -5,12 +5,13 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asInt;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCharacter extends ELispBuiltIns {
     @Override
@@ -174,8 +175,12 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnibyteString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void unibyteString(Object[] bytes) {
-            throw new UnsupportedOperationException();
+        public static ELispString unibyteString(Object[] bytes) {
+            byte[] b = new byte[bytes.length];
+            for (int i = 0; i < bytes.length; i++) {
+                b[i] = (byte) asRanged(bytes[i], 0L, 255L);
+            }
+            return new ELispString(MuleString.fromRaw(b));
         }
     }
 

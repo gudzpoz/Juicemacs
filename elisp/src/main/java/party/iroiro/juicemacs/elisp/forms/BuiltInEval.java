@@ -23,6 +23,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_ARGLIST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -2281,8 +2282,40 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFuncArity extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void funcArity(Object function) {
-            throw new UnsupportedOperationException();
+        public static ELispCons funcArity(Object function) {
+            Object object = ELispInterpretedNode.getIndirectFunction(function);
+            if (object instanceof ELispCons cons && cons.car() == AUTOLOAD) {
+                FAutoloadDoLoad.autoloadDoLoad(object, NIL, false);
+                object = ELispInterpretedNode.getIndirectFunction(function);
+            }
+            if (object instanceof ELispCons cons && cons.car() == MACRO) {
+                object = cons.cdr();
+            }
+            Object argList;
+            switch (object) {
+                case ELispSubroutine s -> {
+                    if (s.specialForm()) {
+                        return new ELispCons((long) s.info().minArgs(), UNEVALLED);
+                    }
+                    int max = s.info().maxArgs();
+                    if (max == -1) {
+                        return new ELispCons((long) s.info().minArgs(), MANY);
+                    }
+                    return new ELispCons((long) s.info().minArgs(), (long) s.info().maxArgs());
+                }
+                case ELispCons cons when cons.car() == LAMBDA ->
+                        argList = cons.get(1); // fallthrough
+                case ELispInterpretedClosure closure -> //noinspection SequencedCollectionMethodCanBeUsed
+                        argList = closure.get(CLOSURE_ARGLIST); // fallthrough
+                case ELispByteCode byteCode -> //noinspection SequencedCollectionMethodCanBeUsed
+                        argList = byteCode.get(CLOSURE_ARGLIST);
+                default -> throw ELispSignals.invalidFunction(function);
+            }
+            ELispInterpretedClosure.ClosureArgs args = ELispInterpretedClosure.ClosureArgs.parse(argList);
+            return new ELispCons(
+                    (long) args.requiredArgCount(),
+                    args.rest() == null ? (long) args.maxArgCount() : MANY
+            );
         }
     }
 

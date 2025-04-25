@@ -810,7 +810,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSymbolWithPosP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean symbolWithPosP(Object object) {
-            return true;
+            return false;
         }
     }
 

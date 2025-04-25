@@ -444,8 +444,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCopyKeymap extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void copyKeymap(Object keymap) {
-            throw new UnsupportedOperationException();
+        public static ELispCons copyKeymap(ELispCons keymap) {
+            // TODO
+            return BuiltInFns.FCopySequence.copySequenceList(keymap);
         }
     }
 

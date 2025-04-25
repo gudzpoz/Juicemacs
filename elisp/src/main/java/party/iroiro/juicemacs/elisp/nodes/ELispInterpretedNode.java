@@ -75,7 +75,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return new ELispRootExpressions(expressions, lexical);
     }
 
-    private static Object getIndirectFunction(Object function) {
+    public static Object getIndirectFunction(Object function) {
         if (toSym(function) instanceof ELispSymbol symbol) {
             function = symbol.getIndirectFunction();
         }

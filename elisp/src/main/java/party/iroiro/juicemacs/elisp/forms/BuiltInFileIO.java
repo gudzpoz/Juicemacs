@@ -103,8 +103,14 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileNameNondirectory extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileNameNondirectory(Object filename) {
-            throw new UnsupportedOperationException();
+        public ELispString fileNameNondirectory(ELispString filename) {
+            TruffleLanguage.Env env = getContext().truffleEnv();
+            String sep = env.getFileNameSeparator();
+            String name = filename.toString();
+            if (name.endsWith(sep) || name.endsWith("/") || name.endsWith("\\")) {
+                return new ELispString("");
+            }
+            return new ELispString(Objects.requireNonNullElse(env.getPublicTruffleFile(name).getName(), ""));
         }
     }
 
@@ -546,8 +552,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileNameAbsoluteP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileNameAbsoluteP(Object filename) {
-            throw new UnsupportedOperationException();
+        public boolean fileNameAbsoluteP(ELispString filename) {
+            return getContext().truffleEnv().getPublicTruffleFile(filename.toString()).isAbsolute();
         }
     }
 

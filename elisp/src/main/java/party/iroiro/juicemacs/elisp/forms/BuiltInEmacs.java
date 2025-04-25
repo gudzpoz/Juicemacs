@@ -150,8 +150,9 @@ public class BuiltInEmacs extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDaemonp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void daemonp() {
-            throw new UnsupportedOperationException();
+        public static boolean daemonp() {
+            // TODO
+            return false;
         }
     }
 

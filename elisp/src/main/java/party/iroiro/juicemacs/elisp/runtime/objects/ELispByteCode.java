@@ -41,6 +41,6 @@ public final class ELispByteCode extends AbstractELispVector {
 
     @Override
     public void display(ELispPrint print) {
-        displayHelper(print, "#<compiled-function ", ">");
+        displayHelper(print, "#[", "]");
     }
 }

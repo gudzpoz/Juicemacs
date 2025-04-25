@@ -122,8 +122,9 @@ public class BuiltInDoc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTextQuotingStyle extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void textQuotingStyle() {
-            throw new UnsupportedOperationException();
+        public static boolean textQuotingStyle() {
+            // TODO
+            return false;
         }
     }
 }

@@ -18,7 +18,6 @@ import java.util.Objects;
 /// @see InlineInfo
 public record ELispSubroutine(
         ELispFunctionObject body,
-        boolean specialForm,
         @Nullable InlineInfo inline,
         ELispBuiltIn info
 ) implements ELispValue {
@@ -39,6 +38,10 @@ public record ELispSubroutine(
     @Override
     public String toString() {
         return "#<subr " + body.callTarget() +  ">";
+    }
+
+    public boolean specialForm() {
+        return info.rawArg();
     }
 
     /// Information about an inline-able built-in function

@@ -70,7 +70,10 @@ public final class ELispString implements TruffleObject, ELispValue {
     @Override
     public void display(ELispPrint print) {
         print.startString();
-        print.print(toString().replace("\"", "\\\""));
+        PrimitiveIterator.OfInt i = value.iterator(0);
+        while (i.hasNext()) {
+            print.print(i.nextInt());
+        }
         print.endString();
     }
 

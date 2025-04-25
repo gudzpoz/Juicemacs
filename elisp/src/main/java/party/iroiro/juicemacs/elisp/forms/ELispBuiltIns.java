@@ -90,7 +90,6 @@ public abstract class ELispBuiltIns {
                         symbol,
                         new ELispSubroutine(
                                 new ELispFunctionObject(rootNode.getCallTarget()),
-                                builtIn.rawArg(),
                                 inlineInfo,
                                 builtIn
                         )

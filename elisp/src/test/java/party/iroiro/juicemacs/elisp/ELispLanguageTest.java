@@ -59,11 +59,20 @@ public class ELispLanguageTest {
             // Tries to run ERT
             try {
                 context.eval("elisp", """
-                        ;; easy-mmode--mode-docstring and pp use lots of buffer operations,
-                        ;; which are not supported yet.
+                        ;; TODO: Byte compiler requires a working byte-code interpreter
+                        (require 'bytecomp)
+                        (setq byte-compile-debug t)
+                        (byte-compile (lambda ()))
+                        """);
+            } catch (PolyglotException e) {
+                e.printStackTrace(out);
+            }
+            try {
+                context.eval("elisp", """
+                        ;; TODO: pp requires a bunch of sexp paring functions
                         (require 'pp)
-                        (defun easy-mmode--mode-docstring (&rest _) "")
                         (defalias 'pp 'princ)
+                        ;; ert asserts about newlines produced by pp
                         (defun cl-assert (&rest _) t)
                         
                         (require 'ert)

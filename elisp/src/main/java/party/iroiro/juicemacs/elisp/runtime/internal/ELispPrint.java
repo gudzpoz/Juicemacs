@@ -52,9 +52,39 @@ public final class ELispPrint {
         func.print(b >= 0 ? b : ((b & 0x7F) + MAX_5_BYTE_CHAR + 1));
     }
 
+    public boolean isPrintableChar(int c) {
+        if (c > Character.MAX_CODE_POINT || Character.isISOControl(c)) {
+            return false;
+        }
+        Character.UnicodeBlock block = Character.UnicodeBlock.of(c);
+        return block != null && block != Character.UnicodeBlock.SPECIALS;
+    }
+
     public ELispPrint print(int c) {
-        if (inString && c == '"') {
-            func.print('\\');
+        if (inString) {
+            if (c == '"' || c == '\\') {
+                func.print('\\');
+                // fallthrough
+            } else if (!isPrintableChar(c)) {
+                if (c < 128 || c > MAX_5_BYTE_CHAR) {
+                    if (c > MAX_5_BYTE_CHAR) {
+                        c = c - MAX_5_BYTE_CHAR + 127;
+                    }
+                    func.print('\\');
+                    print(Integer.toString(c, 8));
+                } else if (c <= 0xFFFF) {
+                    String s = Integer.toString(c, 16);
+                    func.print('\\');
+                    func.print('u');
+                    print("0".repeat(4 - s.length()) + s);
+                } else {
+                    String s = Integer.toString(c, 16);
+                    func.print('\\');
+                    func.print('U');
+                    print("0".repeat(8 - s.length()) + s);
+                }
+                return this;
+            }
         }
         func.print(c);
         return this;

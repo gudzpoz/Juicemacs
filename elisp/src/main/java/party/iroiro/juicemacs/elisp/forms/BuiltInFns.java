@@ -781,8 +781,19 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCopyAlist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void copyAlist(Object alist) {
-            throw new UnsupportedOperationException();
+        public static Object copyAlist(Object alist) {
+            if (isNil(alist)) {
+                return false;
+            }
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            for (Object element : asCons(alist)) {
+                if (element instanceof ELispCons cons) {
+                    builder.add(new ELispCons(cons.car(), cons.cdr()));
+                } else {
+                    builder.add(element);
+                }
+            }
+            return builder.build();
         }
     }
 
@@ -1702,8 +1713,9 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEqualIncludingProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void equalIncludingProperties(Object o1, Object o2) {
-            throw new UnsupportedOperationException();
+        public static boolean equalIncludingProperties(Object o1, Object o2) {
+            // TODO
+            return FEqual.equal(o1, o2);
         }
     }
 

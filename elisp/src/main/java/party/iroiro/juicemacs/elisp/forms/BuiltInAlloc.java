@@ -8,10 +8,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asChar;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
@@ -240,8 +237,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeByteCode extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeByteCode(Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
-            throw new UnsupportedOperationException();
+        public static ELispByteCode makeByteCode(Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
+            ArrayList<Object> list = new ArrayList<>();
+            list.addAll(List.of(arglist, byteCode, constants, depth));
+            list.addAll(Arrays.asList(args));
+            return ELispByteCode.create(list);
         }
     }
 
