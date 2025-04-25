@@ -6,6 +6,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.NON_VAR_SLOT0;
 import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.getVariable;
@@ -125,6 +126,16 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
         }
     }
 
+    /// Write node
+    ///
+    /// ## Type System
+    ///
+    /// The [ELispTypeSystem] implements marker-to-integer conversion.
+    /// However, we do not want it when running `setq`. (Otherwise,
+    /// after `(setq marker marker)`, you might find `marker` turned
+    /// into an integer.) We use [ELispTypeSystem.None] here to prevent
+    /// this happening.
+    @TypeSystemReference(ELispTypeSystem.None.class)
     @NodeChild(value = "value", type = ELispExpressionNode.class)
     public abstract static class ELispFrameSlotWriteNode extends ELispFrameSlotNode {
         protected ELispFrameSlotWriteNode(int slot, @Nullable MaterializedFrame frame) {

@@ -229,8 +229,9 @@ public class BuiltInCategory extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharCategorySet extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charCategorySet(Object char_) {
-            throw new UnsupportedOperationException();
+        public Object charCategorySet(long char_) {
+            ELispCharTable table = asCharTable(getContext().currentBuffer().getCategoryTable());
+            return table.getChar((int) char_);
         }
     }
 

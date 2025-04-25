@@ -81,6 +81,9 @@ public abstract class ELispTypeSystem {
         return ELispBigNum.forceWrap(value);
     }
 
+    /// Converts from markers to longs by default
+    ///
+    /// If you don't want this conversion, use [None] or a dedicated type system.
     @ImplicitCast
     public static long castMarkerToLong(ELispMarker marker) {
         return marker.longValue();
@@ -98,7 +101,7 @@ public abstract class ELispTypeSystem {
         if (isNil(maybeNil)) {
             return defaultValue;
         }
-        return (long) maybeNil;
+        return asLong(maybeNil);
     }
 
     @SuppressWarnings("PMD.ShortMethodName")
@@ -358,5 +361,9 @@ public abstract class ELispTypeSystem {
             return f;
         }
         throw ELispSignals.wrongTypeArgument(FRAMEP, frame);
+    }
+
+    @TypeSystem({boolean.class, long.class, double.class, ELispValue.class})
+    public static class None {
     }
 }

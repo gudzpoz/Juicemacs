@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
@@ -46,21 +45,6 @@ public class BuiltInData extends ELispBuiltIns {
             return state == MuleByteArrayString.STATE_LATIN_1;
         }
         return true;
-    }
-
-    @TypeSystem({
-            long.class,
-            ELispMarker.class
-    })
-    public static class MarkerFnsTypeSystem extends ELispTypeSystem {
-        @ImplicitCast
-        public static long markerToLong(ELispMarker arg) {
-            return arg.longValue();
-        }
-    }
-
-    @TypeSystemReference(MarkerFnsTypeSystem.class)
-    abstract static class ELispDataFnsNode extends ELispExpressionNode {
     }
 
     @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
@@ -110,7 +94,7 @@ public class BuiltInData extends ELispBuiltIns {
     }
 
     @NodeChild(value = "value", type = ELispExpressionNode.class)
-    public abstract static class FMinusUnary extends ELispDataFnsNode {
+    public abstract static class FMinusUnary extends ELispExpressionNode {
         @Specialization(rewriteOn = ArithmeticException.class)
         public long negLong(long value) {
             return Math.negateExact(value);
@@ -130,7 +114,7 @@ public class BuiltInData extends ELispBuiltIns {
     }
 
     @NodeChild(value = "value", type = ELispExpressionNode.class)
-    public abstract static class FQuoUnary extends ELispDataFnsNode {
+    public abstract static class FQuoUnary extends ELispExpressionNode {
         @Specialization
         public long quoLong(long value) {
             return 1 / value;
@@ -150,7 +134,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    public abstract static class BinaryArithmeticNode extends ELispDataFnsNode {
+    public abstract static class BinaryArithmeticNode extends ELispExpressionNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
 
@@ -339,7 +323,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    public abstract static class BinaryBitwiseNode extends ELispDataFnsNode {
+    public abstract static class BinaryBitwiseNode extends ELispExpressionNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
 
@@ -434,7 +418,7 @@ public class BuiltInData extends ELispBuiltIns {
         return Long.compare(asLong(a), asLong(b));
     }
 
-    public abstract static class BinaryCompareNode extends ELispDataFnsNode {
+    public abstract static class BinaryCompareNode extends ELispExpressionNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
 

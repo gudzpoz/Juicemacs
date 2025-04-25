@@ -5,13 +5,14 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 
+import java.util.Iterator;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInTextProp extends ELispBuiltIns {
     @Override
@@ -341,9 +342,15 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAddTextProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean addTextProperties(Object start, Object end, Object properties, Object object) {
-            // TODO
-            return false;
+        public Object addTextProperties(long start, long end, Object properties, Object object) {
+            ELispBuffer buffer = isNil(object) ? getContext().currentBuffer() : asBuffer(object);
+            Iterator<?> i = ELispCons.iterate(properties).iterator();
+            while (i.hasNext()) {
+                Object property = i.next();
+                Object value = i.next();
+                buffer.putProperty(start, end, property, value);
+            }
+            return properties;
         }
     }
 
@@ -361,9 +368,10 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPutTextProperty extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean putTextProperty(Object start, Object end, Object property, Object value, Object object) {
-            // TODO
-            return false;
+        public Object putTextProperty(long start, long end, Object property, Object value, Object object) {
+            ELispBuffer buffer = isNil(object) ? getContext().currentBuffer() : asBuffer(object);
+            buffer.putProperty(start, end, property, value);
+            return value;
         }
     }
 
@@ -382,8 +390,10 @@ public class BuiltInTextProp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetTextProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setTextProperties(Object start, Object end, Object properties, Object object) {
-            throw new UnsupportedOperationException();
+        public Object setTextProperties(long start, long end, Object properties, Object object) {
+            ELispBuffer buffer = isNil(object) ? getContext().currentBuffer() : asBuffer(object);
+            buffer.setProperties(start, end, properties);
+            return properties;
         }
     }
 
@@ -512,7 +522,7 @@ public class BuiltInTextProp extends ELispBuiltIns {
                     offset, len, true,
                     (properties, propsStart, _) -> {
                         Object actual = BuiltInData.FCdrSafe.cdrSafe(
-                                BuiltInFns.FAssq.assq(property, properties == null ? false : properties)
+                                BuiltInFns.FPlistMember.plistMemberEq(properties == null ? false : properties, property)
                         );
                         if (!BuiltInData.FEq.eq(actual, value)) {
                             return propsStart;

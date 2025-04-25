@@ -217,6 +217,8 @@ public abstract class ELispSignals {
                 STRINGP,
                 "party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum",
                 INTEGERP,
+                "party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker",
+                MARKERP,
                 "java.lang.Long",
                 INTEGERP,
                 "long",

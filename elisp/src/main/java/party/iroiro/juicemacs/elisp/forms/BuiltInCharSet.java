@@ -767,8 +767,14 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharsetAfter extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charsetAfter(Object pos) {
-            throw new UnsupportedOperationException();
+        public Object charsetAfter(Object pos) {
+            ELispBuffer buffer = getContext().currentBuffer();
+            long point = isNil(pos) ? buffer.getPoint() : asLong(pos);
+            if (point < buffer.pointMin() || point >= buffer.pointMax()) {
+                return false;
+            }
+            // TODO
+            return ASCII;
         }
     }
 

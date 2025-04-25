@@ -3,8 +3,10 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
+import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
 import java.util.List;
 
@@ -76,10 +78,10 @@ public class BuiltInMarker extends ELispBuiltIns {
         @Specialization
         public ELispMarker setMarker(ELispMarker marker, Object position, Object buffer) {
             if (isNil(position)) {
-                // TODO
-                return marker;
+                marker.setBuffer(null, -1);
+            } else {
+                marker.setBuffer(isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer), asLong(position));
             }
-            marker.setBuffer(isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer), asLong(position));
             return marker;
         }
     }
@@ -99,15 +101,24 @@ public class BuiltInMarker extends ELispBuiltIns {
     public abstract static class FCopyMarker extends ELispBuiltInBaseNode {
         @Specialization
         public ELispMarker copyMarker(Object marker, Object type) {
+            ELispMarker newMarker = new ELispMarker();
+            if (!isNil(type)) {
+                newMarker.setAffinity(MarkerPieceTree.Affinity.RIGHT);
+            }
             if (isNil(marker)) {
-                return new ELispMarker();
+                return newMarker;
             }
             if (marker instanceof Long l) {
                 ELispBuffer buffer = getContext().currentBuffer();
-                return new ELispMarker(buffer, l);
+                newMarker.setBuffer(buffer, l);
+            } else {
+                ELispMarker m = asMarker(marker);
+                @Nullable ELispBuffer buffer = m.getBuffer();
+                if (buffer != null) {
+                    newMarker.setBuffer(buffer, m.point());
+                }
             }
-            ELispMarker m = asMarker(marker);
-            return new ELispMarker(m.getBuffer(), m.point());
+            return newMarker;
         }
     }
 

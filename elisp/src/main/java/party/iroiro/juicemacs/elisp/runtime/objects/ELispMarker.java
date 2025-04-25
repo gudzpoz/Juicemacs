@@ -1,13 +1,22 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
+@ExportLibrary(InteropLibrary.class)
 public final class ELispMarker extends Number implements ELispValue {
     private final MarkerPieceTree.Marker inner;
 
@@ -39,6 +48,10 @@ public final class ELispMarker extends Number implements ELispValue {
 
     public long point() {
         return inner.position() + 1;
+    }
+
+    public void setAffinity(MarkerPieceTree.Affinity affinity) {
+        inner.setAffinity(affinity);
     }
 
     @Override
@@ -85,4 +98,63 @@ public final class ELispMarker extends Number implements ELispValue {
         return point();
     }
     //#endregion Number
+
+    //#region InteropLibrary exports
+    @ExportMessage
+    public boolean isNumber() {
+        return true;
+    }
+
+    @ExportMessage
+    public boolean fitsInBigInteger() {
+        return true;
+    }
+
+    @ExportMessage
+    public BigInteger asBigInteger() {
+        return BigInteger.valueOf(point());
+    }
+
+    @ExportMessage
+    public boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    public Class<? extends TruffleLanguage<?>> getLanguage() {
+        return ELispLanguage.class;
+    }
+
+    @ExportMessage
+    public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return toString();
+    }
+
+    @ExportMessage boolean fitsInByte() { return point() <= Byte.MAX_VALUE; }
+    @ExportMessage boolean fitsInShort() { return point() <= Short.MAX_VALUE; }
+    @ExportMessage boolean fitsInInt() { return point() <= Integer.MAX_VALUE; }
+    @ExportMessage boolean fitsInLong() { return true; }
+    @ExportMessage boolean fitsInFloat() {
+        long point = point();
+        if (Long.highestOneBit(point) <= 24) {
+            return true;
+        }
+        //noinspection UnpredictableBigDecimalConstructorCall
+        return new BigDecimal((float) point).toBigIntegerExact().longValue() == point;
+    }
+    @ExportMessage boolean fitsInDouble() {
+        long point = point();
+        if (Long.highestOneBit(point) <= 53) {
+            return true;
+        }
+        //noinspection UnpredictableBigDecimalConstructorCall
+        return new BigDecimal((float) point).toBigIntegerExact().longValue() == point;
+    }
+    @ExportMessage byte asByte() throws UnsupportedMessageException { return (byte) point(); }
+    @ExportMessage short asShort() throws UnsupportedMessageException { return (short) point(); }
+    @ExportMessage int asInt() throws UnsupportedMessageException { return (int) point(); }
+    @ExportMessage long asLong() throws UnsupportedMessageException { return point(); }
+    @ExportMessage float asFloat() throws UnsupportedMessageException { return (float) point(); }
+    @ExportMessage double asDouble() throws UnsupportedMessageException { return (double) point(); }
+    //#endregion InteropLibrary exports
 }

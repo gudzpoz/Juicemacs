@@ -4,14 +4,9 @@ import org.eclipse.jdt.annotation.Nullable;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.PrimitiveIterator;
+import java.util.*;
 
-import party.iroiro.juicemacs.elisp.forms.BuiltInCaseTab;
-import party.iroiro.juicemacs.elisp.forms.BuiltInData;
-import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO;
+import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -25,6 +20,7 @@ import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public final class ELispBuffer extends AbstractELispIdentityObject {
@@ -128,7 +124,44 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return content.iterator(start - 1, end - 1);
     }
 
+    public void putProperty(long start, long end, Object property, Object value) {
+        ArrayList<Long> offsets = new ArrayList<>();
+        ArrayList<Object> values = new ArrayList<>();
+        intervals.forPropertiesIn(
+                start - 1, end - start, true,
+                (properties, offset, _) -> {
+                    offsets.add(offset);
+                    values.add(properties == null ? false : properties);
+                    return null;
+                }
+        );
+        for (int i = 0; i < offsets.size(); i++) {
+            long offset = offsets.get(i);
+            long intervalEnd = i == offsets.size() - 1 ? end - 1 : offsets.get(i + 1);
+            Object props = values.get(i);
+            if (isNil(props) && isNil(value)) {
+                continue;
+            }
+            Object newPlist = BuiltInFns.FPlistPut.plistPutEq(
+                    isNil(props) ? false : BuiltInFns.FCopySequence.copySequenceList(asCons(props)),
+                    property,
+                    value
+            );
+            intervals.delete(offset, intervalEnd - offset);
+            intervals.insert(offset, intervalEnd, newPlist);
+        }
+    }
+
+    public void setProperties(long start, long end, Object properties) {
+        intervals.delete(start - 1, end - start);
+        intervals.insert(start - 1, end - start, isNil(properties) ? null : properties);
+    }
+
     public void insert(MuleString text) {
+        insert(getPoint(), text);
+    }
+
+    public void insert(long point, MuleString text) {
         if (text.length() == 0) {
             return;
         }
@@ -141,7 +174,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             }
             text = buffer;
         }
-        long position = point.position();
+        long position = point - 1;
         content.insert(position, text, true);
         intervals.insert(position, text.length(), null);
         markers.insertString(position, text.length());
@@ -156,9 +189,15 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         markers.delete(start - 1, length);
     }
 
+    /// Replaces text without messing up intervals and markers
+    public void replace(long start, MuleString text) {
+        content.delete(start - 1, text.length());
+        content.insert(start - 1, text, true);
+    }
+
     public void erase() {
         content.delete(0, content.getLength());
-        content.setEOL(content.getEOL()); // reset internal tree
+        content.setEOL(content.getEOL()); // reset the internal tree
         intervals.delete(0, content.getLength());
         markers.delete(0, content.getLength());
     }

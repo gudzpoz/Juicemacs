@@ -25,6 +25,7 @@
 
 package party.iroiro.juicemacs.piecetree;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -77,8 +78,8 @@ public final class PieceTreeBase {
 
     /**
      * @param node            Piece Index
-     * @param remainder       remainder in current piece.
      * @param nodeStartOffset node start offset in document.
+     * @param remainder       remainder in current piece.
      */
     public record NodePosition(
             TreeNode node,
@@ -1280,6 +1281,7 @@ public final class PieceTreeBase {
     //#endregion
 
     //#region Tree operations
+    @CompilerDirectives.TruffleBoundary
     private boolean iterate(TreeNode node, Predicate<TreeNode> callback) {
         if (node == SENTINEL) {
             return callback.test(SENTINEL);
@@ -1410,7 +1412,7 @@ public final class PieceTreeBase {
         public CharIterator(long start, long end) {
             NodePosition startPosition = nodeAt(start);
             currentNode = startPosition.node;
-            cachedStartOffset = startPosition.nodeStartOffset;
+            cachedStartOffset = 0;
             current = startPosition.remainder;
             remainder = end - start;
         }

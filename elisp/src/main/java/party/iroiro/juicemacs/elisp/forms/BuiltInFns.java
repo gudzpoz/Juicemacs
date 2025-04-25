@@ -1547,7 +1547,7 @@ public class BuiltInFns extends ELispBuiltIns {
             throw new UnsupportedOperationException();
         }
 
-        private static ELispCons plistPutEq(Object plist, Object prop, Object val) {
+        public static ELispCons plistPutEq(Object plist, Object prop, Object val) {
             if (isNil(plist)) {
                 return ELispCons.listOf(prop, val);
             }
@@ -1620,8 +1620,11 @@ public class BuiltInFns extends ELispBuiltIns {
             return false;
         }
 
-        private static Object plistMemberEq(ELispCons plist, Object prop) {
-            ELispCons.ConsIterator iterator = plist.consIterator(0);
+        public static Object plistMemberEq(Object plist, Object prop) {
+            if (isNil(plist)) {
+                return false;
+            }
+            ELispCons.ConsIterator iterator = asCons(plist).consIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons current = iterator.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), prop)) {
