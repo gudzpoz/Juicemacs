@@ -46,6 +46,17 @@ macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
 
 To support this, we will need to rethink how we handle our materialized frames.
 
+* TODO [#A] Frames, Windows, etc.
+
+So we just have a few lines to go before fully bootstrapping =loadup.el=.
+However, these lines calls =top-level= and runs =startup.el=, which seems to
+require a fully functioning Emacs to work: it expects Emacs frames.
+
+Since Emacs supports batch mode, I guess we can go with a dummy frame. But, hey,
+we will need a UI eventually and it /will/ heavily influence our designs. Let's
+build a GUI client and a C/S protocol (like neovim) before we go down the wrong
+way.
+
 * TODO [#A] Buffer & string redesign
 
 - Rationale #1: Personally I would like the renderer to be in Rust (because of
@@ -126,9 +137,9 @@ probably return to them some time:
 
 - [ ] Buffer keymaps
 
-- [ ] Syntax-related functions
+- [-] Syntax-related functions
 
-  - [ ] =skip-chars-backward=, =skip-chars-forward=
+  - [X] =skip-chars-backward=, =skip-chars-forward=
 
   - [ ] =skip-syntax-forward=
 
@@ -198,9 +209,16 @@ can run) in Emacs actually /requires/ a working bytecode interpreter. Since our
 interpreter is more or less on par with nativecomp /when fully warmed up/, we
 can continue with our AST interpreter until we run into some real bottlenecks.
 
+Edit: I was benchmarking using floats, which Emacs is known to be bad at. In
+integer-based tests our interpreter is significantly slower than nativecomp.
+
+Edit: No, =bytecomp.el= requires a working bytecode interpreter.
+
 * TODO [#B] Understanding Non-Bare Symbols
 
-I hope we can make all symbols bare.
+According to [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Symbols-with-Position.html][Symbols with Position (GNU Emacs Lisp Reference Manual)]], it seems
+only used in bytecode functions for debugging info. But I still hope we can make
+all symbols bare.
 
 * TODO [#B] Autoload
 
@@ -210,6 +228,8 @@ So basically one can have autoload functions as well as autoload strings
 - [ ] So we now handles autoload functions. However, the generated =loaddefs.el=
   seems to invoke =rx= before its autoload definition. How does Emacs even
   support this?
+  - Answer: Emacs bootstraps itself and have =rx= in its heap dump. So after the
+    bootstrap, Emacs "remembers" =rx=.
 - [ ] Emacs autoload reads and sets several variables and supports undoing the
   loaded changes... How? (It seems related to feature unloading.)
 
@@ -257,31 +277,6 @@ Edit: See comments in =BuiltInKeymap.java= for what keymap is about.
 - [-] =map-keymap=
   - [X] =map-char-table=
 
-* TODO [#C] =module-info.java=
-
-IntelliJ always complains about =org.graalvm.truffle= not being read by
-=module-info.java=, despite the fact that the =require= line the line is there.
-([[https://youtrack.jetbrains.com/issue/IDEA-362046/Multi-release-module-info.class-causes-false-positive-errors][IDEA-362046]])
-
-* TODO [#B] Buffers
-
-It is still a long long way to go... But at least we have a piece table now. I
-might still need to look into CRDTs and the new Eg-walker if we want to merge
-buffers from different (virtual) threads.
-
-Edit: I think OT is better here to handle all the edge cases. Or maybe something
-like offsets organized into a tree?
-
-** TODO [#B] Buffer interval properties & markers & overlays
-
-Also, currently our markers does not move when texts get inserted/deleted.
-
-Sidenote: I think we do not need those fany CRDTs or OTs. It seems that we cal
-simply keep some special thread-local marks/properties to make edits in a
-threaded context invisible to other threads. So each thread enjoys their own
-buffer, while the UI can "redisplay" changes by all threads (or changes done
-prior to redisplay).
-
 * Trackers
 
 ** Language [4/6]
@@ -308,7 +303,6 @@ prior to redisplay).
 - [X] A fallback, feature-complete regex engine -> no
 
 - [ ] Emacs Lisp byte-code interpreter in Truffle
-
 
 ** Types [5/6]
 
@@ -386,7 +380,37 @@ interop, but otherwise simply using some classes with public member should do.
 
 * Considered Done (For Now)
 
-** DONE [#A] Buffer & string redesign (part 1): marks and intervals
+** DONE [#C] =module-info.java=
+
+IntelliJ always complains about =org.graalvm.truffle= not being read by
+=module-info.java=, despite the fact that the =require= line the line is there.
+([[https://youtrack.jetbrains.com/issue/IDEA-362046/Multi-release-module-info.class-causes-false-positive-errors][IDEA-362046]])
+
+** CANCELLED [#B] Buffers
+
+It is still a long long way to go... But at least we have a piece table now. I
+might still need to look into CRDTs and the new Eg-walker if we want to merge
+buffers from different (virtual) threads.
+
+Edit: I think OT is better here to handle all the edge cases. Or maybe something
+like offsets organized into a tree?
+
+Oh, I forgot about =buffer-undo-list=. So this will not do. We cannot make
+concurrent edits transparent while sharing the same undo data. I will share
+buffers between the threads and hope they don't mess things up. (At least in
+this case the undo list is always correct, allowing the user to undo.)
+
+** DONE [#B] Buffer interval properties & markers & overlays
+
+Also, currently our markers does not move when texts get inserted/deleted.
+
+Sidenote: I think we do not need those fany CRDTs or OTs. It seems that we cal
+simply keep some special thread-local marks/properties to make edits in a
+threaded context invisible to other threads. So each thread enjoys their own
+buffer, while the UI can "redisplay" changes by all threads (or changes done
+prior to redisplay).
+
+*** DONE [#A] Buffer & string redesign (part 1): marks and intervals
 
 Re-implement buffer markers and string/buffer properties to make =insert/delete=
 operations more efficient and correct.

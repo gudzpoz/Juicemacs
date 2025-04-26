@@ -67,6 +67,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 new BuiltInComp(),
                 new BuiltInComposite(),
                 new BuiltInData(),
+                new BuiltInDispNew(),
                 new BuiltInDoc(),
                 new BuiltInEditFns(),
                 new BuiltInEmacs(),

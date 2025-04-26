@@ -7,6 +7,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -47,7 +48,9 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public ELispContext(ELispLanguage language, TruffleLanguage.Env env) {
         this.language = language;
-        this.env = new HashMap<>(env.getEnvironment());
+        this.env = env.getSandboxPolicy() == SandboxPolicy.TRUSTED
+                ? new HashMap<>(env.getEnvironment())
+                : new HashMap<>();
         this.options = Options.load(env);
         this.globals = new ELispGlobals(this);
         this.truffleEnv = env;

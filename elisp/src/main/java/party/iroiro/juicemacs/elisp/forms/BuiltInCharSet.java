@@ -809,8 +809,9 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FClearCharsetMaps extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void clearCharsetMaps() {
-            throw new UnsupportedOperationException();
+        public static boolean clearCharsetMaps() {
+            // TODO
+            return false;
         }
     }
 

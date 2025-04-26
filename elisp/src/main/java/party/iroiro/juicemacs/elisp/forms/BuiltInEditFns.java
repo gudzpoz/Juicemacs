@@ -1,11 +1,13 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.eclipse.jdt.annotation.Nullable;
+import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -858,8 +860,31 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUserLoginName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void userLoginName(Object uid) {
-            throw new UnsupportedOperationException();
+        public Object userLoginName(Object uid) {
+            if (!isNil(uid)) {
+                return false;
+            }
+            ELispContext context = getContext();
+            @Nullable String name = context.getEnv("LOGNAME");
+            if (name == null) {
+                name = context.getEnv("USER");
+            }
+            if (name != null) {
+                return new ELispString(name);
+            }
+            return getLoginName(context);
+        }
+
+        public static Object getLoginName(ELispContext context) {
+            TruffleLanguage.Env env = context.truffleEnv();
+            SandboxPolicy policy = env.getSandboxPolicy();
+            if (policy == SandboxPolicy.TRUSTED) {
+                String name = context.getEnv("user.name");
+                if (name != null) {
+                    return new ELispString(name);
+                }
+            }
+            return new ELispString("jvm");
         }
     }
 
@@ -874,8 +899,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUserRealLoginName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void userRealLoginName() {
-            throw new UnsupportedOperationException();
+        public Object userRealLoginName() {
+            return FUserLoginName.getLoginName(getContext());
         }
     }
 
@@ -1011,8 +1036,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEmacsPid extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void emacsPid() {
-            throw new UnsupportedOperationException();
+        public static long emacsPid() {
+            return ProcessHandle.current().pid();
         }
     }
 
@@ -1595,6 +1620,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
             ELispString formatted = FFormat.format(asStr(formatString), args);
             getContext().out().println(formatted);
             return formatted;
+        }
+
+        public static void message(ELispContext context, String s) {
+            context.out().println(s);
         }
     }
 

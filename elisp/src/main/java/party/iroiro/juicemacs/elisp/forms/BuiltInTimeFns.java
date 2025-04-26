@@ -48,6 +48,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             return Instant.ofEpochSecond(second);
         }
         @ImplicitCast
+        public static Instant doubleToInstant(double second) {
+            return Instant.ofEpochSecond(0, (long) (second * 1_000_000_000));
+        }
+        @ImplicitCast
         public static Instant consToInstant(ELispCons timestamp) {
             if (timestamp.cdr() instanceof ELispCons tail) {
                 long high = asLong(timestamp.car());

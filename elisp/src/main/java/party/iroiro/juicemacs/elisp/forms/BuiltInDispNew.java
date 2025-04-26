@@ -200,8 +200,9 @@ public class BuiltInDispNew extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternalShowCursor extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void internalShowCursor(Object window, Object show) {
-            throw new UnsupportedOperationException();
+        public static boolean internalShowCursor(Object window, Object show) {
+            // TODO: C/S
+            return false;
         }
     }
 

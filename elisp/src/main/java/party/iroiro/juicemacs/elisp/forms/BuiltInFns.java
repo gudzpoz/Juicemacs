@@ -2134,8 +2134,9 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FLocaleInfo extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void localeInfo(Object item) {
-            throw new UnsupportedOperationException();
+        public static boolean localeInfo(Object item) {
+            // TODO: locale
+            return false;
         }
     }
 

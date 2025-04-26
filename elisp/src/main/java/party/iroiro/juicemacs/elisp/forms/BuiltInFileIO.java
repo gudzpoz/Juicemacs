@@ -86,8 +86,15 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileNameDirectory extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileNameDirectory(Object filename) {
-            throw new UnsupportedOperationException();
+        public Object fileNameDirectory(ELispString filename) {
+            TruffleLanguage.Env env = getContext().truffleEnv();
+            String sep = env.getFileNameSeparator();
+            String name = filename.toString();
+            if (name.endsWith(sep) || name.endsWith("/") || name.endsWith("\\")) {
+                return filename;
+            }
+            TruffleFile parent = env.getPublicTruffleFile(name).getParent();
+            return parent == null ? false : new ELispString(parent.toString());
         }
     }
 
@@ -571,8 +578,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileExistsP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileExistsP(Object filename) {
-            throw new UnsupportedOperationException();
+        public boolean fileExistsP(ELispString filename) {
+            // TODO: TRAMP and other hooks
+            Path path = FExpandFileName.expandFileNamePath(filename, false);
+            return getContext().truffleEnv().getPublicTruffleFile(path.toString()).exists();
         }
     }
 
@@ -866,8 +875,9 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetDefaultFileModes extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setDefaultFileModes(Object mode) {
-            throw new UnsupportedOperationException();
+        public static boolean setDefaultFileModes(Object mode) {
+            // TODO
+            return false;
         }
     }
 
@@ -881,8 +891,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultFileModes extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defaultFileModes() {
-            throw new UnsupportedOperationException();
+        public static long defaultFileModes() {
+            // TODO: platform-wise?
+            //noinspection OctalInteger
+            return 0755L;
         }
     }
 

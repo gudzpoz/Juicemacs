@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -56,10 +57,40 @@ public class BuiltInLRead extends ELispBuiltIns {
         return Path.of(filename.toString()).isAbsolute();
     }
 
+    private static final long ACCESS_R_OK = 4;
+    private static final long ACCESS_W_OK = 2;
+    private static final long ACCESS_X_OK = 1;
+
+    private static Predicate<ELispString> getLocateOpenPredicate(TruffleLanguage.Env env, Object predicate) {
+        if (predicate instanceof Long l) {
+            return (f) -> {
+                TruffleFile file = env.getPublicTruffleFile(f.toString());
+                if (!file.exists()) {
+                    return false;
+                }
+                if ((l & ACCESS_X_OK) != 0 && !file.isExecutable()) {
+                    return false;
+                }
+                if ((l & ACCESS_W_OK) != 0 && !file.isWritable()) {
+                    return false;
+                }
+                return (l & ACCESS_R_OK) == 0 || file.isReadable();
+            };
+        }
+        if (isNil(predicate) || isT(predicate)) {
+            return BuiltInFileIO.FFileReadableP::fileReadableP;
+        }
+        return f -> {
+            Object ret = BuiltInEval.FFuncall.funcall(null, predicate, f);
+            return !isNil(ret) && (ret == DIR_OK || !BuiltInFileIO.FFileDirectoryP.fileDirectoryP(f));
+        };
+    }
+
     @Nullable
     public static ELispString locateOpenP(Object paths, ELispString name, Object suffixes,
                                           Object predicate, boolean newer, boolean noNative) {
         TruffleLanguage.Env env = ELispContext.get(null).truffleEnv();
+        Predicate<ELispString> filePredicate = getLocateOpenPredicate(env, predicate);
 
         Instant saveMtime = Instant.MIN;
         boolean absolute = completeFilenameP(name);
@@ -94,16 +125,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
                     exists = env.getPublicTruffleFile(test.toString()).isReadable();
                 } else {
-                    if (isNil(predicate) || isT(predicate)) {
-                        exists = BuiltInFileIO.FFileReadableP.fileReadableP(test);
-                    } else {
-                        Object ret = BuiltInEval.FFuncall.funcall(null, predicate, test);
-                        if (isNil(ret)) {
-                            exists = false;
-                        } else {
-                            exists = ret == DIR_OK || !BuiltInFileIO.FFileDirectoryP.fileDirectoryP(test);
-                        }
-                    }
+                    exists = filePredicate.test(test);
                 }
                 if (exists) {
                     if (!newer) {

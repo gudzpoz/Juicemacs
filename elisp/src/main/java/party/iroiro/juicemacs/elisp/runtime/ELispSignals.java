@@ -14,6 +14,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Value;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEditFns;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -241,6 +242,7 @@ public abstract class ELispSignals {
                     ELispSymbol predicate = CLASS_CAST_MAP.getOrDefault(expected, UNSPECIFIED);
                     yield ELispSignals.wrongTypeArgument(predicate, actual);
                 }
+                BuiltInEditFns.FMessage.message(ELispContext.get(null), "unrecognized class cast: " + e.getMessage());
                 yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
             }
             case UnsupportedSpecializationException dsl -> {

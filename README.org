@@ -10,16 +10,16 @@ that over-ambitiously aims to achieve the following:
 - Polyglot programming with Python, JavaScript, etc.
 - GNU Emacs 30 compatibility
 
-To make all these possible, I have chosen to build Juicemacs on Java, which runs
-on JVM, which happens to be a nice platform with:
+Java helps to make all these possible, for it runs on JVM, which happens to be a
+platform with several nice things:
 
 - A decent GC: HotSpot has a number of state-of-the-art GCs.
 - Green threads & OS threads: One without the hassle of function coloring.
 - An incredible JIT framework: [[https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/][Truffle]] lets you build an interpreter and a JIT
   compiler all at once.
 
-Of course using Java brings in its own problems, which I (and, probably, this
-project) will need to live with:
+Of course using Java brings in its own problems, which this project will need to
+live with:
 
 - Sloooow startup (and with Truffle, it actually needs two warm-ups)
 - It bloats (and we can only hope Project Valhalla somehow tackles that)
@@ -27,14 +27,17 @@ project) will need to live with:
 * Running
 
 It is still a long long way to go before Juicemacs can load all of =loadup.el=.
-Currently it stops halfway due to unimplemented subroutines, but can already use
-a lot of functions/macros loaded in the "upper half" of =loadup.el=.
+Currently it stops at the last few lines trying to run =top-level= due to
+missing UI subroutines. But it can already use a lot of functions/macros loaded
+in the "upper half" of =loadup.el=.
 
-To run it
+To run it:
+0. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
 1. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
    data/elisp files ready.
 2. Delete/rename the generated =lisp/loaddefs.el= file.
-3. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"=.
+3. Go back to the project root and run =sh -c "cd app && $(./gradlew -q
+   :app:jvmCmd)"=.
 
 ** ERT Testing
 
@@ -43,16 +46,15 @@ and has a bunch of ELisp tests in its source repository (=./test/src/=).
 Juicemacs currently can run some of these tests [[file:elisp/src/test/java/party/iroiro/juicemacs/elisp/ELispLanguageTest.java][with a bit of workaround]]:
 
 #+begin_src elisp
-  ;; easy-mmode--mode-docstring and pp use lots of buffer operations,
-  ;; which are not supported yet.
+  ;; TODO: pp requires a bunch of sexp parsing functions
   (require 'pp)
-  (defun easy-mmode--mode-docstring (&rest _) "")
   (defalias 'pp 'princ)
-  ;; the cl-assert clause in ert depends on pp.
+  ;; ert asserts about newlines produced by pp
   (defun cl-assert (&rest _) t)
 
   (require 'ert)
   (load "../test/src/data-tests")
+  (ert-run-tests-batch)
   (null (ert-run-tests-batch)) ; don't print the huge info object
 #+end_src
 
@@ -60,10 +62,12 @@ You're welcome to try the tests and report any failing cases! (I think many of
 them might simply throw an =UnsupportedOperationException= since they are yet to
 be implemented.)
 
-* Notes
+* Documentation
 
-- [[file:docs/Notes.org]]
-- [[file:docs/TODO.org]]
+- [[file:elisp/README.org]]: Documenting the structure of the ELisp interpreter
+- [[file:commons/piece-tree/README.org]]: Introduction to a [[https://code.visualstudio.com/blogs/2018/03/23/text-buffer-reimplementation][piece tree]]
+- [[file:docs/Notes.org]]: Reading list and notes for implementing this Emacs clone
+- [[file:docs/TODO.org]]: TODO list & DONE list, tracking current/solved challenges
 
 * Similar projects
 

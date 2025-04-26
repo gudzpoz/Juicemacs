@@ -856,7 +856,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @Specialization
         public static Object makeOverlay(Object beg, Object end, Object buffer, Object frontAdvance, Object rearAdvance) {
             // TODO
-            return new Object();
+            return new ELispString("");
         }
     }
 

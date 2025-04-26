@@ -1578,7 +1578,22 @@ public class BuiltInEval extends ELispBuiltIns {
                     rethrow = e;
                     checkSoftExit(getContext(), rethrow);
                 }
-                unwind.executeVoid(frame);
+                runUnwind(frame, rethrow);
+            }
+
+            private void runUnwind(VirtualFrame frame, @Nullable RuntimeException rethrow) {
+                // TODO: decide whether to keep compatibility
+                // Emacs throws unwindEx instead of rethrow...
+                // But personally, esp. when debugging, I would prefer having the original exception.
+                try {
+                    unwind.executeVoid(frame);
+                } catch (AbstractTruffleException unwindEx) {
+                    if (rethrow == null) {
+                        rethrow = unwindEx;
+                    } else {
+                        rethrow.addSuppressed(unwindEx);
+                    }
+                }
                 if (rethrow != null) {
                     throw rethrow;
                 }
@@ -1594,10 +1609,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     rethrow = e;
                     checkSoftExit(getContext(), rethrow);
                 }
-                unwind.executeVoid(frame);
-                if (rethrow != null) {
-                    throw rethrow;
-                }
+                runUnwind(frame, rethrow);
                 return result;
             }
         }

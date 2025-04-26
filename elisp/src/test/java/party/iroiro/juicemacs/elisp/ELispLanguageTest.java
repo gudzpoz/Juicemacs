@@ -52,6 +52,7 @@ public class ELispLanguageTest {
             System.out.println("Output: " + file);
             // Loads until an error
             try {
+                context.eval("elisp", "(setq noninteractive t)");
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
                 e.printStackTrace(out);
@@ -69,16 +70,15 @@ public class ELispLanguageTest {
             }
             try {
                 context.eval("elisp", """
-                        ;; TODO: pp requires a bunch of sexp paring functions
+                        ;; TODO: pp requires a bunch of sexp parsing functions
                         (require 'pp)
                         (defalias 'pp 'princ)
                         ;; ert asserts about newlines produced by pp
                         (defun cl-assert (&rest _) t)
-                        
+
                         (require 'ert)
                         (load "../test/src/data-tests")
-                        (ert-run-tests-batch)
-                        nil
+                        (null (ert-run-tests-batch)) ; don't print the huge info object
                         """);
             } catch (PolyglotException e) {
                 e.printStackTrace(out);

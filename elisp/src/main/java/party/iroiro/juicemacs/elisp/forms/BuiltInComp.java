@@ -250,8 +250,8 @@ public class BuiltInComp extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNativeCompAvailableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void nativeCompAvailableP() {
-            throw new UnsupportedOperationException();
+        public static boolean nativeCompAvailableP() {
+            return false;
         }
     }
 }

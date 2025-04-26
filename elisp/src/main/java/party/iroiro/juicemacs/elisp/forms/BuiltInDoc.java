@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.util.List;
@@ -100,8 +101,8 @@ public class BuiltInDoc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSnarfDocumentation extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void snarfDocumentation(Object filename) {
-            throw new UnsupportedOperationException();
+        public Void snarfDocumentation(Object filename) {
+            throw ELispSignals.error("not implemented");
         }
     }
 
