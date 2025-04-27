@@ -1,14 +1,20 @@
 #+title: A Piece Tree Implementation in Java
 
-#+begin_quote
-Actually, this implementation is a direct transliteration of the TypeScript
-implementation from VS Code [[https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeBase.ts][pieceTreeBase.ts]]. For more information on piece
-trees, see [[https://code.visualstudio.com/blogs/2018/03/23/text-buffer-reimplementation][the blog post from a VS Code developer]].
-#+end_quote
+This sub module hosts three (or maybe two) data structures for Emacs texts:
 
-Well, it was a transliteration. But we have now migrated from =java.lang.String=
-to =TruffleString= to use code point offsets instead of UTF-16 char offsets.
-Also, the performance degraded significantly after the switch.
+- Red-black trees for Emacs text properties and buffer markers
+
+- A piece tree for buffer texts
+
+  #+begin_quote
+  Actually, this implementation is a direct transliteration of the TypeScript
+  implementation from VS Code [[https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeBase.ts][pieceTreeBase.ts]]. For more information on piece
+  trees, see [[https://code.visualstudio.com/blogs/2018/03/23/text-buffer-reimplementation][the blog post from a VS Code developer]].
+  #+end_quote
+
+  Well, it was a transliteration. But we have now migrated from =java.lang.String=
+  to =TruffleString= to use code point offsets instead of UTF-16 char offsets.
+  Also, the performance degraded significantly after the switch.
 
 * Some (Probably Badly Designed) Benchmarks
 
@@ -36,6 +42,28 @@ rope-like sum tree]]. As for me, writing a tree implementation from scratch /and
 making sure it works is simply too overwhelming, so I guess I will stick with
 this piece of transliteration anyway.
 
+* On Text Properties and Markers
+
+As for text properties (like =#("red blue" 1 3 (color red) 5 8 (color blue))=)
+and buffer markers (like =(point)=) in Emacs, it should be noted that they are
+in sync with the text:
+
+#+begin_src elisp
+  (with-temp-buffer
+    (insert #("aa" 1 2 (color red)))   ; <red>aa</red>
+    (insert #("cc" 1 2 (color blue)))  ; <red>aa</red><blue>cc</blue>
+    (goto-char 3)
+    (insert "bb")
+    (prin1-to-string (buffer-string))) ; <red>aa</red>bb<blue>cc</blue>
+#+end_src
+
+#+RESULTS:
+: #("aabbcc" 1 2 (color red) 5 6 (color blue))
+
+Our implementation ([[file:src/main/java/party/iroiro/juicemacs/piecetree/meta/MarkPieceTreeBase.java][MarkPieceTreeBase.java]]) is simply modified from the piece
+tree code, treating each interval as a "piece". (And marks are special
+zero-length pieces with left/right affinity.)
+
 * License
 
 Both the original TypeScript implementation and this implementation are licensed
@@ -46,23 +74,22 @@ MIT License
 
 Copyright (c) 2015 - present Microsoft Corporation
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #+end_quote
 
 #+begin_quote

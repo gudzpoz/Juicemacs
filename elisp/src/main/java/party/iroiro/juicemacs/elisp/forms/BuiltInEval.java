@@ -24,6 +24,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_ARGLIST;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_CONSTANTS;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -386,7 +387,11 @@ public class BuiltInEval extends ELispBuiltIns {
                 return ELispInterpretedNode.create(body[0]);
             }
             ELispInterpretedNode[] nodes = ELispInterpretedNode.create(body);
-            if (body.length <= 8) {
+            return prognNode(nodes);
+        }
+
+        public static ELispExpressionNode prognNode(ELispExpressionNode[] nodes) {
+            if (nodes.length <= 8) {
                 return new PrognSmallNode(nodes);
             }
             return new PrognBlockNode(nodes);
@@ -760,6 +765,9 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Child
                 ELispExpressionNode doc = finalDocString;
 
+                @Child
+                ELispExpressionNode cconv = ELispInterpretedNode.create(INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION);
+
                 @Override
                 public void executeVoid(VirtualFrame frame) {
                     executeGeneric(frame);
@@ -768,12 +776,35 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Override
                 public Object executeGeneric(@Nullable VirtualFrame frame) {
                     body.fillDebugInfo(getParent());
+                    Object doc = this.doc.executeGeneric(frame);
                     @Nullable ELispLexical lexicalFrame = frame == null ? null : ELispLexical.getLexicalFrame(frame);
+                    Object env = lexicalFrame == null ? false : lexicalFrame.getEnv(frame);
+
+                    Object cconvFunction = frame == null ? false : cconv.executeGeneric(frame);
+                    if (!isNil(cconvFunction)) {
+                        Object closure = FFuncall.funcall(
+                                this,
+                                cconvFunction,
+                                args,
+                                body,
+                                false,
+                                doc,
+                                finalInteractive
+                        );
+                        if (CompilerDirectives.injectBranchProbability(
+                                CompilerDirectives.FASTPATH_PROBABILITY, closure instanceof ELispInterpretedClosure
+                        )) {
+                            ((ELispInterpretedClosure) closure).set(CLOSURE_CONSTANTS, env);
+                            return closure;
+                        } else {
+                            throw ELispSignals.invalidFunction(closure);
+                        }
+                    }
                     return new ELispInterpretedClosure(
                             args,
                             body,
-                            lexicalFrame == null ? false : lexicalFrame.getEnv(frame),
-                            doc.executeGeneric(frame),
+                            env,
+                            doc,
                             finalInteractive,
                             getRootNode()
                     );
@@ -1438,7 +1469,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
                 Object function = cons.car();
                 if (toSym(function) instanceof ELispSymbol symbol) {
-                    while (toSym(function) instanceof ELispSymbol sym) {
+                    while (toSym(function) instanceof ELispSymbol sym && sym != NIL) {
                         symbol = sym;
                         Object envLookup = BuiltInFns.FAssq.assq(sym, environment);
                         if (!isNil(envLookup)) {

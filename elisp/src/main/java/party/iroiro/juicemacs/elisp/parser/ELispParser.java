@@ -5,6 +5,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -21,7 +22,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispContext.valueToExpression;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 
 /**
@@ -307,7 +307,7 @@ public class ELispParser {
             expressions.add(parser.nextLisp());
         }
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
-        ELispExpressionNode expr = valueToExpression(expressions.toArray(), parser.isLexicallyBound());
+        ELispExpressionNode expr = ELispInterpretedNode.createMacroexpand(expressions.toArray(), parser.isLexicallyBound());
         if (!debug) {
             source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
         }

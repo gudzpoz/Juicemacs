@@ -10,8 +10,6 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray;
@@ -191,10 +189,6 @@ public final class ELispContext implements ELispParser.InternContext {
         // TODO
     }
     //#endregion Symbol lookup
-
-    public static ELispExpressionNode valueToExpression(Object[] expressions, boolean lexicalBinding) {
-        return ELispInterpretedNode.create(expressions, lexicalBinding);
-    }
 
     public static ELispContext get(@Nullable Node node) {
         return CONTEXT_REFERENCE.get(node);

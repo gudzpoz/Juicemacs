@@ -16,6 +16,7 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.*;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -23,10 +24,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.DebuggerScopeObject;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -71,6 +69,21 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return nodes;
     }
 
+    public static ELispInterpretedNode createMacroexpand(Object[] expressions, boolean lexical) {
+        @Nullable ELispContext context = ELispContext.get(null);
+        //noinspection ConstantValue
+        if (context != null) {
+            Object macroexpand = context.getFunctionStorage(INTERNAL_MACROEXPAND_FOR_LOAD).get();
+            if (!isNil(macroexpand)) {
+                return new ELispRootExpressions(
+                        new ELispMacroexpandExpressions(expressions, macroexpand),
+                        lexical
+                );
+            }
+        }
+        return new ELispRootExpressions(expressions, lexical);
+    }
+
     public static ELispInterpretedNode create(Object[] expressions, boolean lexical) {
         return new ELispRootExpressions(expressions, lexical);
     }
@@ -89,9 +102,13 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         private final ELispLexical.@Nullable MaterializedAssumption lexical;
 
-        public ELispRootExpressions(Object[] expressions, boolean lexical) {
-            this.node = BuiltInEval.FProgn.progn(expressions);
+        public ELispRootExpressions(ELispExpressionNode node, boolean lexical) {
+            this.node = node;
             this.lexical = lexical ? new ELispLexical.MaterializedAssumption() : null;
+        }
+
+        public ELispRootExpressions(Object[] expressions, boolean lexical) {
+            this(BuiltInEval.FProgn.progn(expressions), lexical);
         }
 
         @Override
@@ -112,6 +129,120 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
                 return node.executeGeneric(frame);
             }
+        }
+    }
+
+    private final static class ELispMacroexpandExpressions extends ELispInterpretedNode {
+        @Children
+        private ELispExpressionNode[] nodes;
+
+        @CompilerDirectives.CompilationFinal
+        private int nodeCount = 0;
+
+        @CompilerDirectives.CompilationFinal
+        private int currentExpression = 0;
+
+        @CompilerDirectives.CompilationFinal(dimensions = 1)
+        private final Object[] expressions;
+        private final Object macroexpand;
+
+        @CompilerDirectives.CompilationFinal
+        private boolean macroExpanded = false;
+
+        private ELispMacroexpandExpressions(Object[] expressions, Object macroexpand) {
+            this.nodes = new ELispExpressionNode[expressions.length];
+            this.expressions = expressions;
+            this.macroexpand = macroexpand;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            if (macroExpanded) {
+                return nodes[0].executeGeneric(frame);
+            }
+            return evalAndExpand(frame);
+        }
+
+        private Object evalAndExpand(VirtualFrame frame) {
+            int nodeCount;
+            int currentExpression;
+            ELispExpressionNode[] nodes = this.nodes;
+            synchronized (this) {
+                nodeCount = this.nodeCount;
+                currentExpression = this.currentExpression;
+            }
+            @Nullable Object result = null;
+            for (int i = 0; i < nodeCount; i++) {
+                ELispExpressionNode node = nodes[i];
+                if (i == nodeCount - 1) {
+                    result = node.executeGeneric(frame);
+                } else {
+                    node.executeVoid(frame);
+                }
+            }
+            if (currentExpression != expressions.length) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                for (int i = currentExpression; i < expressions.length; i++) {
+                    Object expression = expressions[i];
+                    Object expanded = BuiltInEval.FFuncall.funcall(this, macroexpand, expression, false);
+                    Object[] newNodes = expandNodes(expanded);
+                    nodes = addChildren(nodes, newNodes);
+                    for (int j = 0; j < newNodes.length; j++) {
+                        ELispExpressionNode node = nodes[nodeCount + j];
+                        if (i == expressions.length - 1 && j == newNodes.length - 1) {
+                            result = node.executeGeneric(frame);
+                        } else {
+                            node.executeVoid(frame);
+                        }
+                    }
+                    nodeCount += newNodes.length;
+                }
+            }
+
+            final ELispExpressionNode[] finalNodes = nodes;
+            final int finalNodeCount = nodeCount;
+            atomic (() -> {
+                synchronized (this) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.macroExpanded = true;
+                    ELispExpressionNode newChild = BuiltInEval.FProgn.prognNode(Arrays.copyOf(finalNodes, finalNodeCount));
+                    this.nodes = new ELispExpressionNode[]{insert(newChild)};
+                    newChild.adoptChildren();
+                }
+            });
+            return result == null ? false : result;
+        }
+
+        private static Object[] expandNodes(Object expanded) {
+            Object @Nullable [] newNodes = null;
+            if (expanded instanceof ELispCons cons && cons.car() == PROGN) {
+                if (isNil(cons.cdr())) {
+                    newNodes = new Object[0];
+                } else if (cons.cdr() instanceof ELispCons body) {
+                    newNodes = body.toArray();
+                }
+            }
+            if (newNodes == null) {
+                newNodes = new Object[]{expanded};
+            }
+            return newNodes;
+        }
+
+        private synchronized ELispExpressionNode[] addChildren(ELispExpressionNode[] original, Object... array) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            int added = array.length;
+            int start = nodeCount;
+            ELispExpressionNode[] nodes = original;
+            if (added + start > nodes.length) {
+                nodes = Arrays.copyOf(nodes, (int) ((added + start) * 1.5));
+                this.nodes = nodes;
+            }
+            for (int i = 0; i < added; i++) {
+                nodes[start + i] = insert(create(array[i]));
+            }
+            nodeCount = start + added;
+            currentExpression++;
+            return nodes;
         }
     }
 
