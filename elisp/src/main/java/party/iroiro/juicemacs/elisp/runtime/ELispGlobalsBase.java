@@ -53,6 +53,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
         ELispBuiltIns[] builtIns = {
                 new BuiltInAlloc(),
                 builtInBuffer,
+                new BuiltInBytecode(),
                 new BuiltInCallInt(),
                 new BuiltInCallProc(),
                 new BuiltInCaseFiddle(),

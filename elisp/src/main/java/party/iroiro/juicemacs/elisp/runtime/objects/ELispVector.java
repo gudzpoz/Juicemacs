@@ -31,4 +31,8 @@ public final class ELispVector extends AbstractELispVector {
     public void display(ELispPrint print) {
         displayHelper(print, "[", "]");
     }
+
+    public void fillFrom(Object[] contents) {
+        System.arraycopy(contents, 0, inner, 0, Math.min(contents.length, inner.length));
+    }
 }

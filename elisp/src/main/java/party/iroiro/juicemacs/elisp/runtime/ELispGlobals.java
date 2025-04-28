@@ -153,6 +153,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
     public void initGlobalVariables() {
         allocVars();
         bufferVars();
+        bytecodeVars();
         callintVars();
         callprocVars();
         casefiddleVars();
@@ -266,6 +267,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(LONG_LINE_OPTIMIZATIONS_REGION_SIZE, longLineOptimizationsRegionSize);
         initForwardTo(LONG_LINE_OPTIMIZATIONS_BOL_SEARCH_LIMIT, longLineOptimizationsBolSearchLimit);
         initForwardTo(LARGE_HSCROLL_THRESHOLD, largeHscrollThreshold);
+    }
+    private final ValueStorage.Forwarded byteCodeMeter = new ValueStorage.Forwarded();
+    private final ValueStorage.ForwardedBool byteMeteringOn = new ValueStorage.ForwardedBool();
+    private void bytecodeVars() {
+        initForwardTo(BYTE_CODE_METER, byteCodeMeter);
+        initForwardTo(BYTE_METERING_ON, byteMeteringOn);
     }
     private final ValueStorage.Forwarded currentPrefixArg = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded commandHistory = new ValueStorage.Forwarded(false);
@@ -5418,6 +5425,7 @@ character."""),
     public static final ELispSymbol BUILD_FILES = new ELispSymbol("build-files");
     public static final ELispSymbol BYTECOMP_VERSION_REGEXP = new ELispSymbol("bytecomp-version-regexp");
     public static final ELispSymbol BYTE_BOOLEAN_VARS = new ELispSymbol("byte-boolean-vars");
+    public static final ELispSymbol BYTE_METERING_ON = new ELispSymbol("byte-metering-on");
     public static final ELispSymbol CANNOT_SUSPEND = new ELispSymbol("cannot-suspend");
     public static final ELispSymbol CHARSET_LIST = new ELispSymbol("charset-list");
     public static final ELispSymbol CHARSET_MAP_PATH = new ELispSymbol("charset-map-path");
@@ -5881,6 +5889,7 @@ character."""),
             BUILD_FILES,
             BYTECOMP_VERSION_REGEXP,
             BYTE_BOOLEAN_VARS,
+            BYTE_METERING_ON,
             CANNOT_SUSPEND,
             CHARSET_LIST,
             CHARSET_MAP_PATH,

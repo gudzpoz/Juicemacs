@@ -64,3 +64,6 @@ and loosely follows how language implementations structure their code.
   Truffle. One may start from
   [[file:src/main/java/party/iroiro/juicemacs/elisp/nodes/ELispInterpretedNode.java][=party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode=]] to see how we
   transform a Lisp object into a dynamic AST.
+
+- [[file:src/main/java/party/iroiro/juicemacs/elisp/nodes/bytecode/][=party.iroiro.juicemacs.elisp.nodes.bytecode=]] (and the [[file:src/main/java/party/iroiro/juicemacs/elisp/runtime/objects/ELispBytecode.java][=ELispBytecode=]] class)
+  hosts classes implementing a Emacs Lisp bytecode interpreter.

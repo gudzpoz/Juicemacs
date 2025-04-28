@@ -4,14 +4,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.*;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asChar;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_CONSTANTS;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.BYTE_CODE_FUNCTION_P;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInAlloc extends ELispBuiltIns {
     @Override
@@ -257,8 +259,20 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeClosure extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void makeClosure(Object prototype, Object[] closureVars) {
-            throw new UnsupportedOperationException();
+        public static ELispBytecode makeClosure(Object prototype, Object[] closureVars) {
+            if (!BuiltInData.FClosurep.closurep(prototype)) {
+                throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, prototype);
+            }
+            ELispVectorLike<?> protofun = (ELispVectorLike<?>) prototype;
+            ELispVector constants = asVector(protofun.get(CLOSURE_CONSTANTS));
+            if (closureVars.length > constants.size()) {
+                throw ELispSignals.error("closure vars do not fit into constvec");
+            }
+            ELispVector copyConstants = BuiltInFns.FCopySequence.copySequenceVector(constants);
+            copyConstants.fillFrom(closureVars);
+            ELispBytecode copy = ELispBytecode.create(protofun);
+            copy.set(CLOSURE_CONSTANTS, copyConstants);
+            return copy;
         }
     }
 

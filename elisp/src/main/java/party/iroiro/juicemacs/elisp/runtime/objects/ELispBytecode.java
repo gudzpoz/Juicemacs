@@ -33,11 +33,11 @@ public final class ELispBytecode extends AbstractELispVector {
     @Nullable
     private Object name = null;
 
-    private ELispBytecode(List<Object> inner) {
-        super(inner.toArray());
+    private ELispBytecode(Object[] inner) {
+        super(inner);
     }
 
-    public static ELispBytecode create(List<Object> inner) {
+    public static ELispBytecode create(List<?> inner) {
         Object argList = inner.get(CLOSURE_ARGLIST);
         Object byteCode = inner.get(CLOSURE_CODE);
         Object constants = inner.get(CLOSURE_CONSTANTS);
@@ -52,7 +52,7 @@ public final class ELispBytecode extends AbstractELispVector {
         }
         if (inner.size() >= 5) {
             Object doc = inner.get(4);
-            if (!(doc instanceof ELispString || doc instanceof ELispCons)) {
+            if (!(isNil(doc) || doc instanceof ELispString || doc instanceof ELispCons)) {
                 // Not string or autoload string
                 throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
             }
@@ -60,7 +60,7 @@ public final class ELispBytecode extends AbstractELispVector {
         if (inner.size() >= 7) {
             throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
         }
-        return new ELispBytecode(inner);
+        return new ELispBytecode(inner.toArray());
     }
 
     public Object getArgs() {
