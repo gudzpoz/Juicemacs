@@ -956,11 +956,14 @@ public class BuiltInEval extends ELispBuiltIns {
             @Override
             public Object executeGeneric(VirtualFrame frame) {
                 ELispSymbol sym = asSym(symbol);
-                if (initValueMissing) {
+                @Nullable ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
+                if (initValueMissing && lexical != null && !lexical.isRootScope()) {
                     ELispLexical.markDynamic(frame, sym);
                 } else {
                     sym.setSpecial(true);
-                    sym.setDefaultValue(init.executeGeneric(frame));
+                    if (!initValueMissing) {
+                        sym.setDefaultValue(init.executeGeneric(frame));
+                    }
                 }
                 return symbol;
             }

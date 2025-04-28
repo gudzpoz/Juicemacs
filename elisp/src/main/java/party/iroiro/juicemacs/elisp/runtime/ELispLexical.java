@@ -179,6 +179,10 @@ public final class ELispLexical {
         setMaterializedTop(frame, topIndex);
     }
 
+    public boolean isRootScope() {
+        return parent == null && materializedParent == null;
+    }
+
     /// Forks the current frame
     ///
     /// ## Usage

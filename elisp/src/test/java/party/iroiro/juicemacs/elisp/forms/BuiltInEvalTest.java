@@ -58,6 +58,12 @@ public class BuiltInEvalTest extends BaseFormTest {
                 start))""", 0L,
             """
             ;;; -*- lexical-binding: t -*-
+            (eval '(defvar top-level-test-v))
+            (defalias 'top-level-test-func #'(lambda (x) (+ x top-level-test-v)))
+            (let ((top-level-test-v 1)) (top-level-test-func 2))
+            """, 3L,
+            """
+            ;;; -*- lexical-binding: t -*-
             (+
              (let ((_ 1))
                (defvar y) ;; dynamic only in this let block
