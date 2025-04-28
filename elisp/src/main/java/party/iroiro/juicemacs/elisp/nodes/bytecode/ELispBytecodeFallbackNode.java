@@ -78,6 +78,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         Arrays.fill(stackTops, -1);
 
         int stackTop = startStackTop;
+        int lastConstantI = -1;
         for (int i = 0; i < bytes.length; ) {
             int otherBranchTop = stackTops[i];
             if (otherBranchTop == -1) {
@@ -96,6 +97,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             if (stackDelta == 0x7F) {
                 stackDelta = Integer.MAX_VALUE;
             }
+            int newConstantI = -1;
             bytecodeNodes[i] = switch (op) {
                 case VARREF:                       // 010
                 case VARREF1:                      // 011
@@ -138,8 +140,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 case CALL6:                        // 046
                 case CALL7:                        // 047
                     ref = op == CALL6 ? Byte.toUnsignedInt(bytes[i + 1]) :
-                            Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 1]) << 8);
-                    stackDelta = -ref + 1;
+                            Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
+                    stackDelta = -ref;
                     yield ELispBytecodeFallbackNodeFactory.CallNNodeGen.create();
                 case PUSHCONDITIONCASE:            // 061
                 case PUSHCATCH:                    // 062
@@ -147,6 +149,10 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     jumps.add(ref);
                     jumpTarget = ref;
                     jumpTargetTop = stackTop;
+                    yield null;
+                case CONSTANT2:                    // 0201
+                    ref = Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
+                    newConstantI = ref;
                     yield null;
                 case GOTO:                         // 0202
                 case GOTOIFNIL:                    // 0203
@@ -174,8 +180,34 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     ref = Byte.toUnsignedInt(bytes[i + 1]);
                     stackDelta = -(ref & 0x7F);
                     yield null;
-                default:
+                case SWITCH:                       // 0267
+                {
+                    if (lastConstantI == -1) {
+                        throw ELispSignals.invalidFunction(object);
+                    }
+                    int targetStackTop = stackTop == -1 ? -1 : stackTop - 2;
+                    ELispHashtable jumpTable = asHashtable(constants[lastConstantI]);
+                    jumpTable.forEach((_, v) -> {
+                        int target = asInt(v);
+                        jumps.add(target);
+                        int targetTrackedTop = stackTops[target];
+                        if (targetStackTop != -1) {
+                            if (targetTrackedTop == -1) {
+                                stackTops[target] = targetStackTop;
+                            } else if (targetTrackedTop != targetStackTop) {
+                                throw ELispSignals.invalidFunction(object);
+                            }
+                        }
+                    });
                     yield null;
+                }
+                default: {
+                    if ((op & CONSTANT) == CONSTANT) {
+                        ref = op & (~CONSTANT);
+                        newConstantI = ref;
+                    }
+                    yield null;
+                }
             };
             byte length = BYTECODE_LENGTHS[Byte.toUnsignedInt(op)];
             i += length;
@@ -188,12 +220,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 int tracked = stackTops[jumpTarget];
                 if (tracked == -1) {
                     stackTops[jumpTarget] = jumpTargetTop;
-                } else {
-                    if (tracked != jumpTargetTop) {
-                        throw ELispSignals.invalidFunction(object);
-                    }
+                } else if (tracked != jumpTargetTop) {
+                    throw ELispSignals.invalidFunction(object);
                 }
             }
+            lastConstantI = newConstantI;
         }
         this.jumps = jumps.toArray();
 
@@ -380,8 +411,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                                 Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 1]) << 8);
                         stackTop -= count;
                         Object[] args = new Object[count];
-                        for (int i = 1; i <= count; i++) {
-                            args[i] = frame.getObject(stackTop + count);
+                        for (int i = 0; i < count; i++) {
+                            args[i] = frame.getObject(stackTop + i + 1);
                         }
                         frame.setObject(
                                 stackTop,
@@ -1000,8 +1031,23 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         break;
                     }
                     case SWITCH:                       // 0267
-                        // TODO
-                        throw new UnsupportedOperationException();
+                        stackTop -= 2;
+                        value = frame.getObject(stackTop + 1);
+                        ref = asInt(asHashtable(frame.getObject(stackTop + 2)).get(value, -1L));
+                        if (ref != -1) {
+                            if (CompilerDirectives.inInterpreter()) {
+                                nextBci = ref;
+                            } else {
+                                //noinspection ForLoopReplaceableByForEach
+                                for (int i = 0; i < jumps.length; i++) {
+                                    int target = jumps[i];
+                                    if (target == ref) {
+                                        nextBci = target;
+                                    }
+                                }
+                            }
+                        }
+                        break;
                     case CONSTANT:                     // 0300
                     default:
                         ref = op & (~CONSTANT);
