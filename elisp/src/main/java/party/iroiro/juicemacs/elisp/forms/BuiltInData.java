@@ -2122,7 +2122,7 @@ public class BuiltInData extends ELispBuiltIns {
             return array.get((int) idx);
         }
         @Specialization
-        public static Object arefBytecode(ELispByteCode array, long idx) {
+        public static Object arefBytecode(ELispBytecode array, long idx) {
             return array.get((int) idx);
         }
         @Specialization
@@ -2133,7 +2133,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispCharTable charTable -> charTable.getChar((int) idx);
                 case ELispBoolVector boolVec -> boolVec.get((int) idx);
                 case ELispRecord record -> record.get((int) idx);
-                case ELispByteCode bytecode -> bytecode.get((int) idx);
+                case ELispBytecode bytecode -> bytecode.get((int) idx);
                 case ELispInterpretedClosure closure -> closure.get((int) idx);
                 default -> throw ELispSignals.wrongTypeArgument(ARRAYP, array);
             };

@@ -60,6 +60,7 @@ public final class ELispPrint {
         return block != null && block != Character.UnicodeBlock.SPECIALS;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public ELispPrint print(int c) {
         if (inString) {
             if (c == '"' || c == '\\') {

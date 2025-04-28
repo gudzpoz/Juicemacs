@@ -103,6 +103,22 @@ The following utilizes the internals of =disassemble= to extract bytecode info
 
 #+RESULTS:
 
+#+begin_src elisp :tangle no
+  ;; Generates bytecode length array for Java
+  (let (lengths)
+    (dolist (bytecode extracted-bytecodes
+                      (apply #'concat (nreverse lengths)))
+      (push (format "%d, // #o%03o (%s)\n"
+                    (oref bytecode length)
+                    (oref bytecode byte)
+                    (oref bytecode name))
+            lengths)))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+#+end_example
+
 * Section 2: Stack Effects
 
 Tracking stack effects is harder. Luckily, Emacs =bytecomp.el= provides
@@ -517,26 +533,76 @@ those subroutines.
       (cl-assert (string= (oref bytecode name) (symbol-name name)))
       (oset bytecode stack-popped (abs popped))
       (oset bytecode stack-pushed pushed)))
+
+  (setq special-arities
+        '(("varref" -0 +1)
+          ("varset" -1 +0)
+          ("varbind" -1 +0)
+          ("unbind" -0 +0)
+          ("pophandler" -0 +0)
+          ("goto" -0 +0)
+          ("goto-if-nil" -1 +0)
+          ("goto-if-not-nil" -1 +0)
+          ("unwind-protect" -1 +0)
+          ("save-excursion" -0 +0)
+          ("save-current-buffer" -0 +0)
+          ("stack-set" -1 +0)
+          ("stack-set2" -1 +0)
+          ("switch" -2 +0)
+          ("constant" -0 +1)))
+  (dolist (bytecode extracted-bytecodes)
+    (let ((arity (assoc (oref bytecode name) special-arities)))
+      (when arity
+        (pcase-let ((`(,_ ,popped ,pushed) arity))
+          (unless (slot-boundp bytecode 'stack-popped)
+            (oset bytecode stack-popped (abs popped))
+            (oset bytecode stack-pushed (abs pushed)))))))
 #+end_src
 
 #+RESULTS:
 
 * Finally
 
+#+begin_src elisp
+  ;; (setq output 'for-check)
+  ;; (setq output 'print-all)
+  (setq output 'for-java)
+#+end_src
+
+** Manually check against code/documentation
+
 Manually check against [[https://github.com/rocky/elisp-bytecode]]:
 
 #+begin_src elisp
-  (dolist (bytecode extracted-bytecodes)
-    (let ((popped (and (slot-boundp bytecode 'stack-popped) (oref bytecode stack-popped)))
-          (pushed (and (slot-boundp bytecode 'stack-pushed) (oref bytecode stack-pushed))))
-      (message "#o%03o\t%s\t-%s+%s"
-               (oref bytecode byte)
-               (oref bytecode name)
-               popped pushed)))
+  (when (eq output 'for-check)
+    (dolist (bytecode extracted-bytecodes)
+      (let ((popped (and (slot-boundp bytecode 'stack-popped) (oref bytecode stack-popped)))
+            (pushed (and (slot-boundp bytecode 'stack-pushed) (oref bytecode stack-pushed))))
+        (message "#o%03o\t%s\t-%s+%s"
+                 (oref bytecode byte)
+                 (oref bytecode name)
+                 popped pushed))))
 #+end_src
 
-#+RESULTS:
+** Print all
 
 #+begin_src elisp
-  (pp extracted-bytecodes)
+  (when (eq output 'print-all)
+    (pp extracted-bytecodes))
+#+end_src
+
+** Print as a Java array
+
+#+begin_src elisp
+  (when (eq output 'for-java)
+    (message "byte[] BYTECODE_STACK_EFFECTS = new byte[]{")
+    (dolist (bytecode extracted-bytecodes)
+      (let ((byte (oref bytecode byte))
+            (name (oref bytecode name))
+            (popped (and (slot-boundp bytecode 'stack-popped) (oref bytecode stack-popped)))
+            (pushed (and (slot-boundp bytecode 'stack-pushed) (oref bytecode stack-pushed))))
+        (if (and popped pushed)
+            (message "%d, // #o%03o (%s)" (- pushed popped) byte name)
+          (message "0x7F, // #o%03o (%s)" byte name))))
+    (message "};"))
 #+end_src

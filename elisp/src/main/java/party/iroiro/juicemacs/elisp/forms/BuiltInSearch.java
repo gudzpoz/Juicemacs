@@ -31,7 +31,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     private final ThreadLocalStorage matchData = new ThreadLocalStorage(false);
     private final ThreadLocalStorage matchedStr = new ThreadLocalStorage(false);
 
-    private static Object matchData(Node node) {
+    public static Object matchData(Node node) {
         return ELispContext.get(node).globals().builtInSearch.matchData.getValue();
     }
 

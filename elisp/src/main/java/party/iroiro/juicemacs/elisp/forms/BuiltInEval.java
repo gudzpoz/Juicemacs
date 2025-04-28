@@ -765,8 +765,9 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Child
                 ELispExpressionNode doc = finalDocString;
 
+                @SuppressWarnings("FieldMayBeFinal")
                 @Child
-                ELispExpressionNode cconv = ELispInterpretedNode.create(INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION);
+                ELispExpressionNode cconv = GlobalVariableReadNodeGen.create(INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION);
 
                 @Override
                 public void executeVoid(VirtualFrame frame) {
@@ -780,22 +781,22 @@ public class BuiltInEval extends ELispBuiltIns {
                     @Nullable ELispLexical lexicalFrame = frame == null ? null : ELispLexical.getLexicalFrame(frame);
                     Object env = lexicalFrame == null ? false : lexicalFrame.getEnv(frame);
 
-                    Object cconvFunction = frame == null ? false : cconv.executeGeneric(frame);
-                    if (!isNil(cconvFunction)) {
+                    Object cconvFunction = cconv.executeGeneric(null);
+                    if (!isNil(cconvFunction) && lexicalFrame != null) {
                         Object closure = FFuncall.funcall(
                                 this,
                                 cconvFunction,
                                 args,
                                 body,
-                                false,
+                                new ELispCons(true),
                                 doc,
                                 finalInteractive
                         );
-                        if (CompilerDirectives.injectBranchProbability(
-                                CompilerDirectives.FASTPATH_PROBABILITY, closure instanceof ELispInterpretedClosure
-                        )) {
-                            ((ELispInterpretedClosure) closure).set(CLOSURE_CONSTANTS, env);
+                        if (closure instanceof ELispInterpretedClosure c) {
+                            c.set(CLOSURE_CONSTANTS, env);
                             return closure;
+                        } else if (closure instanceof ELispBytecode b) {
+                            return b;
                         } else {
                             throw ELispSignals.invalidFunction(closure);
                         }
@@ -1725,20 +1726,20 @@ public class BuiltInEval extends ELispBuiltIns {
             return false;
         }
 
-        static boolean shouldHandle(ELispSignals.ELispSignalException e, Object conditionName) {
+        public static boolean shouldHandle(Object tag, Object conditionName) {
             boolean shouldHandle = false;
             if (isT(conditionName)) {
                 shouldHandle = true;
             } else if (conditionName instanceof ELispCons list) {
                 for (Object sym : list) {
                     if (toSym(sym) instanceof ELispSymbol symbol) {
-                        if (matches(symbol, e.getTag())) {
+                        if (matches(symbol, tag)) {
                             shouldHandle = true;
                         }
                     }
                 }
             } else {
-                if (matches(asSym(conditionName), e.getTag())) {
+                if (matches(asSym(conditionName), tag)) {
                     shouldHandle = true;
                 }
             }
@@ -1784,15 +1785,16 @@ public class BuiltInEval extends ELispBuiltIns {
                 } catch (ELispSignals.ELispSignalException e) {
                     checkSoftExit(getContext(), e);
                     int i;
+                    Object tag = e.getTag();
                     for (i = 0; i < length; i++) {
                         Object conditionName = conditionNames[i];
-                        boolean shouldHandle = shouldHandle(e, conditionName);
+                        boolean shouldHandle = shouldHandle(tag, conditionName);
                         if (shouldHandle) {
                             Object handler = bodies[i];
                             if (handler == null) {
                                 return false;
                             }
-                            ELispCons error = new ELispCons(e.getTag(), e.getData());
+                            ELispCons error = new ELispCons(tag, e.getData());
                             return handle(frame, error, handler);
                         }
                     }
@@ -1839,9 +1841,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 return FFuncall.funcall(this, bodyfun);
             } catch (ELispSignals.ELispSignalException signal) {
                 checkSoftExit(getContext(), signal);
+                Object tag = signal.getTag();
                 for (int i = 0; i < args.length; i += 2) {
-                    if (FConditionCase.shouldHandle(signal, args[i])) {
-                        return FFuncall.funcall(this, args[i + 1], new ELispCons(signal.getTag(), signal.getData()));
+                    if (FConditionCase.shouldHandle(tag, args[i])) {
+                        return FFuncall.funcall(this, args[i + 1], new ELispCons(tag, signal.getData()));
                     }
                 }
                 throw signal;
@@ -2287,6 +2290,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 case ELispSubroutine subroutine when !subroutine.specialForm() ->
                     subroutine.body();
                 case ELispInterpretedClosure closure -> closure.getFunction();
+                case ELispBytecode bytecode -> bytecode.getFunction();
                 case ELispCons cons when cons.car() == LAMBDA -> getLambda(cons);
                 case ELispCons cons when cons.car() == AUTOLOAD && symbol != null -> getAutoload(symbol, cons);
                 default -> throw new UnsupportedOperationException();
@@ -2355,7 +2359,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         argList = cons.get(1); // fallthrough
                 case ELispInterpretedClosure closure -> //noinspection SequencedCollectionMethodCanBeUsed
                         argList = closure.get(CLOSURE_ARGLIST); // fallthrough
-                case ELispByteCode byteCode -> //noinspection SequencedCollectionMethodCanBeUsed
+                case ELispBytecode byteCode -> //noinspection SequencedCollectionMethodCanBeUsed
                         argList = byteCode.get(CLOSURE_ARGLIST);
                 default -> throw ELispSignals.invalidFunction(function);
             }

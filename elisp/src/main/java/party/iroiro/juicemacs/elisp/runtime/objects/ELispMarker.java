@@ -154,7 +154,7 @@ public final class ELispMarker extends Number implements ELispValue {
     @ExportMessage short asShort() throws UnsupportedMessageException { return (short) point(); }
     @ExportMessage int asInt() throws UnsupportedMessageException { return (int) point(); }
     @ExportMessage long asLong() throws UnsupportedMessageException { return point(); }
-    @ExportMessage float asFloat() throws UnsupportedMessageException { return (float) point(); }
-    @ExportMessage double asDouble() throws UnsupportedMessageException { return (double) point(); }
+    @ExportMessage float asFloat() throws UnsupportedMessageException { return point(); }
+    @ExportMessage double asDouble() throws UnsupportedMessageException { return point(); }
     //#endregion InteropLibrary exports
 }

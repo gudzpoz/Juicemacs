@@ -136,7 +136,7 @@ public class ELispParserTest {
 
     @Test
     public void testByteCode() throws IOException {
-        ELispByteCode bc = assertInstanceOf(ELispByteCode.class, read("#[() \"\" [] 0]"));
+        ELispBytecode bc = assertInstanceOf(ELispBytecode.class, read("#[() \"\" [] 0]"));
         assertSame(false, bc.getFirst());
     }
 

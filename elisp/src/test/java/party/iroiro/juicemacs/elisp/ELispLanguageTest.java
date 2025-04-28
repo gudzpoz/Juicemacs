@@ -52,7 +52,6 @@ public class ELispLanguageTest {
             System.out.println("Output: " + file);
             // Loads until an error
             try {
-                context.eval("elisp", "(setq noninteractive t)");
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
                 e.printStackTrace(out);
@@ -60,10 +59,12 @@ public class ELispLanguageTest {
             // Tries to run ERT
             try {
                 context.eval("elisp", """
-                        ;; TODO: Byte compiler requires a working byte-code interpreter
+                        ;; -*- lexical-binding: t -*-
                         (require 'bytecomp)
                         (setq byte-compile-debug t)
-                        (byte-compile (lambda ()))
+                        (message "%s" (byte-compile (lambda ())))
+                        (message "%s" (byte-compile (lambda (x) (1+ x))))
+                        (message "%s" (byte-compile (lambda (x) (+ x 2))))
                         """);
             } catch (PolyglotException e) {
                 e.printStackTrace(out);

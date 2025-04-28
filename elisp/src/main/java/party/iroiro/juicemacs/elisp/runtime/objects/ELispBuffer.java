@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.io.File;
@@ -157,6 +158,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         intervals.insert(start - 1, end - start, isNil(properties) ? null : properties);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void insert(MuleString text) {
         insert(getPoint(), text);
     }

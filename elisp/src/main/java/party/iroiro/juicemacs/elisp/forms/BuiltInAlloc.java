@@ -237,11 +237,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeByteCode extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispByteCode makeByteCode(Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
+        public static ELispBytecode makeByteCode(Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
             ArrayList<Object> list = new ArrayList<>();
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
-            return ELispByteCode.create(list);
+            return ELispBytecode.create(list);
         }
     }
 

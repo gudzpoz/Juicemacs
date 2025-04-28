@@ -28,8 +28,9 @@ public class BuiltInMarker extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMarkerBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void markerBuffer(Object marker) {
-            throw new UnsupportedOperationException();
+        public static Object markerBuffer(ELispMarker marker) {
+            @Nullable ELispBuffer buffer = marker.getBuffer();
+            return buffer == null ? false : buffer;
         }
     }
 

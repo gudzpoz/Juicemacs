@@ -10,6 +10,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -716,6 +717,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public long followingChar() {
             ELispBuffer buffer = getContext().currentBuffer();
+            return followingCharBuffer(buffer);
+        }
+
+        public static long followingCharBuffer(ELispBuffer buffer) {
             long point = buffer.getPoint();
             return point == buffer.pointMax() ? 0 : buffer.getChar(point);
         }
@@ -733,6 +738,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public long previousChar() {
             ELispBuffer buffer = getContext().currentBuffer();
+            return previousCharBuffer(buffer);
+        }
+
+        public static long previousCharBuffer(ELispBuffer buffer) {
             long point = buffer.getPoint();
             return point == buffer.pointMin() ? 0 : buffer.getChar(point);
         }
@@ -750,6 +759,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public boolean bobp() {
             ELispBuffer buffer = getContext().currentBuffer();
+            return bobpBuffer(buffer);
+        }
+
+        public static boolean bobpBuffer(ELispBuffer buffer) {
             return buffer.getPoint() == buffer.pointMin();
         }
     }
@@ -766,6 +779,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public boolean eobp() {
             ELispBuffer buffer = getContext().currentBuffer();
+            return eobpBuffer(buffer);
+        }
+
+        public static boolean eobpBuffer(ELispBuffer buffer) {
             return buffer.getPoint() == buffer.pointMax();
         }
     }
@@ -781,6 +798,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public boolean bolp() {
             ELispBuffer buffer = getContext().currentBuffer();
+            return eolpBuffer(buffer);
+        }
+
+        private static boolean eolpBuffer(ELispBuffer buffer) {
             long point = buffer.getPoint();
             return point == buffer.pointMin() || buffer.getChar(point - 1) == '\n';
         }
@@ -798,6 +819,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public boolean eolp() {
             ELispBuffer buffer = getContext().currentBuffer();
+            return eolpBuffer(buffer);
+        }
+
+        public static boolean eolpBuffer(ELispBuffer buffer) {
             long point = buffer.getPoint();
             return point == buffer.pointMax() || buffer.getChar(point) == '\n';
         }
@@ -816,6 +841,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public Object charAfter(Object pos) {
             ELispBuffer buffer = getContext().currentBuffer();
+            return charAfterBuffer(pos, buffer);
+        }
+
+        public static Object charAfterBuffer(Object pos, ELispBuffer buffer) {
             long point = pos instanceof Long l ? l : buffer.getPoint();
             if (point < buffer.pointMax()) {
                 return (long) buffer.getChar(point);
@@ -1232,6 +1261,10 @@ public class BuiltInEditFns extends ELispBuiltIns {
             // TODO
             return new ELispString(getContext().currentBuffer().subString(start, end));
         }
+
+        public static ELispString bufferSubstringBuffer(long start, long end, ELispBuffer buffer) {
+            return new ELispString(buffer.subString(start, end));
+        }
     }
 
     /**
@@ -1432,7 +1465,11 @@ public class BuiltInEditFns extends ELispBuiltIns {
         public static boolean deleteRegion(long start, long end) {
             long length = Math.abs(end - start);
             start = Math.min(start, end);
-            currentBuffer().delete(start, length);
+            ELispBuffer buffer = currentBuffer();
+            if (start < buffer.pointMin() || start + length > buffer.pointMax()) {
+                throw ELispSignals.argsOutOfRange(start, end);
+            }
+            buffer.delete(start, length);
             return false;
         }
     }

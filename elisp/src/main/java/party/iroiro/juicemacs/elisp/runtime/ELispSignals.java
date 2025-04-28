@@ -239,8 +239,10 @@ public abstract class ELispSignals {
                 if (matcher.find()) {
                     String actual = matcher.group(1);
                     String expected = matcher.group(2);
-                    ELispSymbol predicate = CLASS_CAST_MAP.getOrDefault(expected, UNSPECIFIED);
-                    yield ELispSignals.wrongTypeArgument(predicate, actual);
+                    ELispSymbol predicate = CLASS_CAST_MAP.get(expected);
+                    if (predicate != null) {
+                        yield ELispSignals.wrongTypeArgument(predicate, actual);
+                    }
                 }
                 BuiltInEditFns.FMessage.message(ELispContext.get(null), "unrecognized class cast: " + e.getMessage());
                 yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());

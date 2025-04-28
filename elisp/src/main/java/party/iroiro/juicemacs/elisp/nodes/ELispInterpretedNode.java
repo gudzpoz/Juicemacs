@@ -156,6 +156,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         @Override
+        public void executeVoid(VirtualFrame frame) {
+            executeGeneric(frame);
+        }
+
+        @Override
         public Object executeGeneric(VirtualFrame frame) {
             if (macroExpanded) {
                 return nodes[0].executeGeneric(frame);
@@ -207,7 +212,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     this.macroExpanded = true;
                     ELispExpressionNode newChild = BuiltInEval.FProgn.prognNode(Arrays.copyOf(finalNodes, finalNodeCount));
                     this.nodes = new ELispExpressionNode[]{insert(newChild)};
-                    newChild.adoptChildren();
+                    newChild.adoptChildren(); // NOPMD
                 }
             });
             return result == null ? false : result;
@@ -441,6 +446,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             return switch (function) {
                 case ELispSubroutine sub -> sub.body();
                 case ELispInterpretedClosure closure -> closure.getFunction();
+                case ELispBytecode bytecode -> bytecode.getFunction();
                 default -> throw new UnsupportedOperationException();
             };
         }
@@ -687,7 +693,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(true)) {
+            @Nullable ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
                 Object function = this.function;
                 if (inlineLambdaNode != null) {
                     function = inlineLambdaNode.executeGeneric(frame);
@@ -795,7 +802,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                             new ConsMacroCallNode(c, cons);
                     case ELispCons c when c.car() == LAMBDA ->
                             ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
-                    case ELispSubroutine _, ELispInterpretedClosure _, ELispExpressionNode _ ->
+                    case ELispSubroutine _, ELispInterpretedClosure _, ELispBytecode _, ELispExpressionNode _ ->
                             ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
                     default -> throw ELispSignals.invalidFunction(cons.car());
                 };

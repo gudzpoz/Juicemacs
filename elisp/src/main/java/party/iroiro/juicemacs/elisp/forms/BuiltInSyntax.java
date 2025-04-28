@@ -415,11 +415,12 @@ public class BuiltInSyntax extends ELispBuiltIns {
         @Specialization
         public long skipCharsForward(ELispString string, Object lim) {
             ELispBuffer buffer = getContext().currentBuffer();
-            return skipChars(getLanguage(), buffer, string, notNilOr(lim, buffer.pointMax()));
+            return skipChars(getLanguage(), buffer, string, lim);
         }
 
         public static long skipChars(ELispLanguage language, ELispBuffer buffer,
-                                     ELispString string, long lim) {
+                                     ELispString string, Object lim) {
+            long limit = notNilOr(lim, buffer.pointMax());
             // TODO: Better escape
             ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
                     language,
@@ -431,9 +432,9 @@ public class BuiltInSyntax extends ELispBuiltIns {
                     null
             );
             long oldPoint = buffer.getPoint();
-            Object result = regExp.call(buffer, false, oldPoint, lim);
+            Object result = regExp.call(buffer, false, oldPoint, limit);
             if (result instanceof ELispCons cons) {
-                long newPoint = Math.min(asLong(cons.get(1)), lim);
+                long newPoint = Math.min(asLong(cons.get(1)), limit);
                 buffer.setPoint(newPoint);
                 return newPoint - oldPoint;
             }
@@ -454,11 +455,12 @@ public class BuiltInSyntax extends ELispBuiltIns {
         @Specialization
         public long skipCharsBackward(ELispString string, Object lim) {
             ELispBuffer buffer = getContext().currentBuffer();
-            return skipChars(getLanguage(), buffer, string, notNilOr(lim, buffer.pointMin()));
+            return skipChars(getLanguage(), buffer, string, lim);
         }
 
         public static long skipChars(ELispLanguage language, ELispBuffer buffer,
-                                     ELispString string, long lim) {
+                                     ELispString string, Object lim) {
+            long limit = notNilOr(lim, buffer.pointMin());
             // TODO: Better escape
             ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
                     language,
@@ -470,7 +472,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
             );
             long oldPoint = buffer.getPoint();
             long point = oldPoint;
-            while (point > lim) {
+            while (point > limit) {
                 Object result = regExp.call(buffer, false, point - 1, -1);
                 if (isNil(result)) {
                     break;

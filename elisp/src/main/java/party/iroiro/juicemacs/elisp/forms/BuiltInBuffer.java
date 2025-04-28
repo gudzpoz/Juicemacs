@@ -365,8 +365,11 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferFileName extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferFileName(Object buffer) {
-            throw new UnsupportedOperationException();
+        public Object bufferFileName(Object buffer) {
+            if (isNil(buffer)) {
+                buffer = getContext().currentBuffer();
+            }
+            return asBuffer(buffer).getFilename();
         }
     }
 

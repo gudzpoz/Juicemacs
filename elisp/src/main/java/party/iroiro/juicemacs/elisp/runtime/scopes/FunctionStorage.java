@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.scopes;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBytecode;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -28,8 +29,14 @@ public final class FunctionStorage {
         switch (toSym(function)) {
             case ELispSymbol _ -> stableAssumption.getAssumption().invalidate();
             case ELispInterpretedClosure closure -> closure.setName(symbol);
-            case ELispCons cons when cons.car() == MACRO && cons.cdr() instanceof ELispInterpretedClosure closure ->
-                    closure.setName(symbol);
+            case ELispBytecode bytecode -> bytecode.setName(symbol);
+            case ELispCons cons when cons.car() == MACRO -> {
+                switch (cons.cdr()) {
+                    case ELispInterpretedClosure closure -> closure.setName(symbol);
+                    case ELispBytecode bytecode -> bytecode.setName(symbol);
+                    default -> {}
+                }
+            }
             default -> {}
         }
     }

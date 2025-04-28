@@ -48,7 +48,8 @@ public class BuiltInLRead extends ELispBuiltIns {
         try {
             return ELispParser.read(ELispContext.get(null), source);
         } catch (IOException e) {
-            throw ELispSignals.error(e.getMessage());
+            String message = e.getMessage();
+            throw ELispSignals.error(message == null ? stream.toString() : message);
         }
     }
 

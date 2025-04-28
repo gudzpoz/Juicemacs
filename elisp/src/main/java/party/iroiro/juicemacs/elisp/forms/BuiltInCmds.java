@@ -33,8 +33,12 @@ public class BuiltInCmds extends ELispBuiltIns {
     public abstract static class FForwardChar extends ELispBuiltInBaseNode {
         @Specialization
         public boolean forwardChar(Object n) {
-            long count = notNilOr(n, 1);
             ELispBuffer buffer = getContext().currentBuffer();
+            return forwardCharBuffer(n, buffer);
+        }
+
+         public static boolean forwardCharBuffer(Object n, ELispBuffer buffer) {
+            long count = notNilOr(n, 1);
             buffer.setPoint(buffer.getPoint() + count);
             return false;
         }
@@ -57,8 +61,12 @@ public class BuiltInCmds extends ELispBuiltIns {
     public abstract static class FBackwardChar extends ELispBuiltInBaseNode {
         @Specialization
         public boolean backwardChar(Object n) {
-            long count = notNilOr(n, 1);
             ELispBuffer buffer = getContext().currentBuffer();
+            return backwardCharBuffer(n, buffer);
+        }
+
+        public static boolean backwardCharBuffer(Object n, ELispBuffer buffer) {
+            long count = notNilOr(n, 1);
             buffer.setPoint(buffer.getPoint() - count);
             return false;
         }
@@ -154,6 +162,10 @@ public class BuiltInCmds extends ELispBuiltIns {
         @Specialization
         public boolean endOfLine(Object n) {
             ELispBuffer buffer = getContext().currentBuffer();
+            return endOfLineBuffer(n, buffer);
+        }
+
+        public static boolean endOfLineBuffer(Object n, ELispBuffer buffer) {
             buffer.setPoint(BuiltInEditFns.FLineBeginningPosition.lineEdgePosition(n, buffer, false));
             return false;
         }

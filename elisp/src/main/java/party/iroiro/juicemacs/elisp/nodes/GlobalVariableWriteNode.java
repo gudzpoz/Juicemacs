@@ -27,4 +27,22 @@ public abstract class GlobalVariableWriteNode extends ELispExpressionNode {
         storage.setValue(value, symbol, getContext());
         return value;
     }
+
+    public static abstract class GlobalVariableDirectWriteNode extends ELispBaseNode {
+        public final ELispSymbol symbol;
+
+        protected GlobalVariableDirectWriteNode(ELispSymbol symbol) {
+            this.symbol = symbol;
+        }
+
+        public abstract void execute(VirtualFrame frame, Object value);
+
+        @Specialization
+        void write(
+                Object value,
+                @Cached(value = "getContext().getStorage(symbol)", neverDefault = true) ValueStorage storage
+        ) {
+            storage.setValue(value, symbol, getContext());
+        }
+    }
 }
