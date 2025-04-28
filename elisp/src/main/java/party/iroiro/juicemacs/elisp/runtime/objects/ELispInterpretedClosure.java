@@ -51,7 +51,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         if (index == CLOSURE_CONSTANTS) {
             Object env = inner[CLOSURE_CONSTANTS];
             if (env instanceof LexicalEnvironment lexicalEnv) {
-                return lexicalEnv.toAssocList();
+                Object list = lexicalEnv.toAssocList();
+                if (isNil(list)) {
+                    return new ELispCons(true);
+                }
+                return list;
             }
             return env;
         }
