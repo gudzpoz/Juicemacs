@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.piecetree.meta;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
         return buffer;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void insertMarker(long offset, Marker marker) {
         marker.detach();
         insert(offset, new Piece<>(0, marker));
@@ -50,6 +52,7 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
 
     /// When there are point marks in between, this function rearranges the point marks
     /// so that all [Affinity#LEFT] marks are before all [Affinity#RIGHT] marks.
+    @CompilerDirectives.TruffleBoundary
     private static void sortPointMarksNearby(MarkTreeNode<Marker> some) {
         MarkTreeNode<Marker> left = some;
         while (true) {
@@ -315,9 +318,11 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
             }
         }
 
+        @CompilerDirectives.TruffleBoundary
         public void detach() {
             if (node != null) {
                 assert tree != null;
+                tree.markers.remove(this);
                 rbDelete(tree, node);
                 tree = null;
                 node = null;

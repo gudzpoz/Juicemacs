@@ -49,7 +49,7 @@ public final class MarkTreeNode<T> {
      */
     long size_left;
 
-    public MarkTreeNode(@Nullable Piece<T> piece, boolean color) {
+    MarkTreeNode(@Nullable Piece<T> piece, boolean color) {
         //noinspection DataFlowIssue: should always be guarded by SENTINEL check
         this.piece = piece;
         this.color = color;
