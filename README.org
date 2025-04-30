@@ -32,12 +32,17 @@ missing UI subroutines. But it can already use a lot of functions/macros loaded
 in the "upper half" of =loadup.el=.
 
 To run it:
-0. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
-1. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
+1. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
+2. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
    data/elisp files ready.
-2. Delete/rename the generated =lisp/loaddefs.el= file.
-3. Go back to the project root and run =sh -c "cd app && $(./gradlew -q
-   :app:jvmCmd)"=.
+3. Delete/rename the generated =lisp/loaddefs.el= file.
+4. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"= (in the project root) for
+   a REPL.
+
+By the way, you may also try:
+- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --help"=
+- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect 4242"= (for a [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome
+  DevTools protocol server]])
 
 ** ERT Testing
 
@@ -67,6 +72,8 @@ be implemented.)
 - [[file:elisp/README.org]]: Documenting the structure of the ELisp interpreter
 - [[file:commons/piece-tree/README.org]]: Introduction to a [[https://code.visualstudio.com/blogs/2018/03/23/text-buffer-reimplementation][piece tree]]
 - [[file:docs/Notes.org]]: Reading list and notes for implementing this Emacs clone
+- [[file:docs/Bytecode.org]]: Extracting (part of) the Emacs bytecode specs from
+  Emacs
 - [[file:docs/TODO.org]]: TODO list & DONE list, tracking current/solved challenges
 
 * Similar projects

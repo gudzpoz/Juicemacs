@@ -45,6 +45,14 @@ public class ELispRepl implements Callable<Integer> {
     @Nullable
     File emacsDataDir;
 
+    @Option(names = {"--inspect"}, description = "Truffle Chrome debugger port")
+    @Nullable
+    Integer inspectPort;
+
+    @Option(names = {"--extra-option"}, description = "Extra options to pass to Truffle")
+    @Nullable
+    String @Nullable[] extraOptions;
+
     private final static String PROMPT_STRING = new AttributedStringBuilder()
             .style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
             .append(">>> ")
@@ -68,11 +76,25 @@ public class ELispRepl implements Callable<Integer> {
         String emacsData = emacsDataDir == null
                 ? Path.of("..", "elisp", "emacs", "etc").toAbsolutePath().toString()
                 : emacsDataDir.getAbsolutePath();
-        try (Context context = Context.newBuilder("elisp")
+        Context.Builder builder = Context.newBuilder("elisp")
                 .allowExperimentalOptions(true)
                 .environment("EMACSLOADPATH", loadPaths)
                 .environment("EMACSDATA", emacsData)
-                .allowIO(IOAccess.ALL)
+                .allowIO(IOAccess.ALL);
+        if (inspectPort != null) {
+            builder
+                    .option("inspect", Integer.toString(inspectPort))
+                    .option("elisp.truffleDebug", "true");
+        }
+        if (extraOptions != null) {
+            for (String extraOption : extraOptions) {
+                String[] optionSet = extraOption.trim().split("=", 2);
+                String option = optionSet[0];
+                String value = optionSet.length > 1 ? optionSet[1] : "";
+                builder.option(option, value);
+            }
+        }
+        try (Context context = builder
                 .build()) {
             LineReader lineReader = getLineReader(context);
             try {

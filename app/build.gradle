@@ -12,6 +12,7 @@ dependencies {
 
     implementation 'org.jline:jline:3.26.3'
     implementation 'info.picocli:picocli:4.7.6'
+    runtimeOnly "org.graalvm.polyglot:inspect-community:${truffleVersion}"
 }
 
 application {

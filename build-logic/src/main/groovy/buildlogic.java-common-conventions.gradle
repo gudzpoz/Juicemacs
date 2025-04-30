@@ -12,6 +12,12 @@ repositories {
     mavenCentral()
 }
 
+ext {
+    eclipseCollectionsVersion = '11.1.0'
+    pmdVersion = '7.7.0'
+    truffleVersion = '24.2.1'
+}
+
 dependencies {
     implementation 'org.eclipse.jdt:org.eclipse.jdt.annotation:2.3.0'
 }
