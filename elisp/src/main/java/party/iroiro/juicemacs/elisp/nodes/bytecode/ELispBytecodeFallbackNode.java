@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.nodes.bytecode;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives;
@@ -17,6 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,9 +26,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall.getFunctionObject;
 import static party.iroiro.juicemacs.elisp.nodes.bytecode.ByteCode.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SEQUENCEP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 /// A fallback implementation for Emacs bytecode
@@ -88,6 +88,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     final int @Nullable[] exceptionJumpsStackTop;
 
+    @SuppressWarnings("NotNullFieldNotInitialized")
     @CompilerDirectives.CompilationFinal
     private Object osrMetadata;
 
@@ -131,6 +132,20 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             }
             int newConstantI = -1;
             indices[i] = switch (op) {
+                case STACK_REF1:                   // 1
+                case STACK_REF2:                   // 2
+                case STACK_REF3:                   // 3
+                case STACK_REF4:                   // 4
+                case STACK_REF5:                   // 5
+                case STACK_REF6:                   // 6
+                case STACK_REF7:                   // 7
+                    ref = op == STACK_REF6 ? Byte.toUnsignedInt(bytes[i + 1]) :
+                            op == STACK_REF7
+                                    ? Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8)
+                                    : op - STACK_REF;
+                    nodes.add(ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(stackTop + 1, null,
+                            ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(stackTop - ref, null)));
+                    yield nodes.size() - 1;
                 case VARREF:                       // 010
                 case VARREF1:                      // 011
                 case VARREF2:                      // 012
@@ -143,7 +158,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             op == VARREF7
                                     ? Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8)
                                     : op - VARREF;
-                    nodes.add(GlobalVariableReadNodeGen.create(asSym(constants[ref])));
+                    nodes.add(ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(stackTop + 1, null,
+                            GlobalVariableReadNodeGen.create(asSym(constants[ref]))));
                     yield nodes.size() - 1;
                 case VARSET:                       // 020
                 case VARSET1:                      // 021
@@ -160,29 +176,22 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     nodes.add(GlobalVariableWriteNodeGen.GlobalVariableDirectWriteNodeGen.create(asSym(constants[ref])));
                     yield nodes.size() - 1;
                 case CALL:                         // 040
-                    nodes.add(ELispBytecodeFallbackNodeFactory.Call0NodeGen.create());
-                    yield nodes.size() - 1;
                 case CALL1:                        // 041
-                    nodes.add(ELispBytecodeFallbackNodeFactory.Call1NodeGen.create());
-                    yield nodes.size() - 1;
                 case CALL2:                        // 042
-                    nodes.add(ELispBytecodeFallbackNodeFactory.Call2NodeGen.create());
-                    yield nodes.size() - 1;
                 case CALL3:                        // 043
-                    nodes.add(ELispBytecodeFallbackNodeFactory.Call3NodeGen.create());
-                    yield nodes.size() - 1;
                 case CALL4:                        // 044
-                    nodes.add(ELispBytecodeFallbackNodeFactory.Call4NodeGen.create());
-                    yield nodes.size() - 1;
                 case CALL5:                        // 045
-                    nodes.add(ELispBytecodeFallbackNodeFactory.Call5NodeGen.create());
-                    yield nodes.size() - 1;
                 case CALL6:                        // 046
                 case CALL7:                        // 047
                     ref = op == CALL6 ? Byte.toUnsignedInt(bytes[i + 1]) :
-                            Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
+                            op == CALL7 ? Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8)
+                                    : op - CALL;
                     stackDelta = -ref;
-                    nodes.add(ELispBytecodeFallbackNodeFactory.CallNNodeGen.create());
+                    nodes.add(ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(
+                            stackTop - ref,
+                            null,
+                            new InlinableCallNode(stackTop, ref)
+                    ));
                     yield nodes.size() - 1;
                 case PUSHCONDITIONCASE:            // 061
                 case PUSHCATCH:                    // 062
@@ -191,6 +200,18 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     jumpTarget = ref;
                     jumpTargetTop = stackTop;
                     yield 0;
+                case LENGTH:                       // 0107
+                    nodes.add(createUnaryFactoryNode(stackTop, BuiltInFnsFactory.FLengthFactory::create));
+                    yield nodes.size() - 1;
+                case AREF:                         // 0110
+                    nodes.add(createBinaryFactoryNode(stackTop, BuiltInDataFactory.FArefFactory::create));
+                    yield nodes.size() - 1;
+                case ASET:                         // 0111
+                    nodes.add(createTernaryFactoryNode(stackTop, BuiltInDataFactory.FAsetFactory::create));
+                    yield nodes.size() - 1;
+                case SUBSTRING:                    // 0117
+                    nodes.add(createTernaryFactoryNode(stackTop, BuiltInFnsFactory.FSubstringFactory::create));
+                    yield nodes.size() - 1;
                 case SUB1:                         // 0123
                     nodes.add(createUnaryFactoryNode(stackTop, BuiltInDataFactory.FSub1Factory::create));
                     yield nodes.size() - 1;
@@ -245,14 +266,36 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         stackDelta = Integer.MAX_VALUE;
                     }
                     yield 0;
+                case UPCASE:                       // 0226
+                    nodes.add(createUnaryFactoryNode(stackTop, BuiltInCaseFiddleFactory.FUpcaseFactory::create));
+                    yield nodes.size() - 1;
+                case DOWNCASE:                     // 0227
+                    nodes.add(createUnaryFactoryNode(stackTop, BuiltInCaseFiddleFactory.FDowncaseFactory::create));
+                    yield nodes.size() - 1;
+                case ELT:                          // 0234
+                    nodes.add(createBinaryFactoryNode(stackTop, BuiltInFnsFactory.FEltFactory::create));
+                    yield nodes.size() - 1;
+                case NREVERSE:                     // 0237
+                    nodes.add(createUnaryFactoryNode(stackTop, BuiltInFnsFactory.FNreverseFactory::create));
+                    yield nodes.size() - 1;
                 case QUO:                          // 0245
                     nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FQuoBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case REM:                          // 0246
+                    nodes.add(createBinaryFactoryNode(stackTop, BuiltInDataFactory.FRemFactory::create));
                     yield nodes.size() - 1;
                 case LISTN:                        // 0257
                 case CONCATN:                      // 0260
                 case INSERTN:                      // 0261
                     stackDelta = -Byte.toUnsignedInt(bytes[i + 1]) + 1;
                     yield 0;
+                case STACK_SET:                    // 0262
+                case STACK_SET2:                   // 0263
+                    ref = op == STACK_SET ? Byte.toUnsignedInt(bytes[i + 1])
+                            : Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
+                    nodes.add(ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(stackTop - ref, null,
+                            ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(stackTop, null)));
+                    yield nodes.size() - 1;
                 case DISCARDN:                     // 0266
                     ref = Byte.toUnsignedInt(bytes[i + 1]);
                     stackDelta = -(ref & 0x7F);
@@ -389,11 +432,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case STACK_REF5:                   // 5
                     case STACK_REF6:                   // 6
                     case STACK_REF7:                   // 7
-                        ref = op == STACK_REF6 ? Byte.toUnsignedInt(bytecode[bci + 1]) :
-                                op == STACK_REF7
-                                        ? Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8)
-                                        : op - STACK_REF;
-                        frame.setObject(top, get(frame, oldTop - ref));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case VARREF:                       // 010
                     case VARREF1:                      // 011
@@ -403,7 +442,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case VARREF5:                      // 015
                     case VARREF6:                      // 016
                     case VARREF7:                      // 017
-                        frame.setObject(top, ((GlobalVariableReadNode) nodes[indices[bci]]).executeGeneric(frame));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case VARSET:                       // 020
                     case VARSET1:                      // 021
@@ -536,6 +575,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case PUSHCONDITIONCASE:            // 061
                     case PUSHCATCH:                    // 062
                     {
+                        assert exceptionJumps != null;
+                        assert exceptionJumpsStackTop != null;
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         int target = -1;
                         for (int i = 0; i < exceptionJumps.length; i++) {
@@ -615,33 +656,9 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         ));
                         break;
                     case LENGTH:                       // 0107
-                        value = get(frame, top);
-                        frame.setObject(top, switch (value) {
-                            case ELispString s -> BuiltInFns.FLength.lengthString(s);
-                            case List<?> list -> (long) list.size();
-                            default -> {
-                                if (isNil(value)) {
-                                    yield 0L;
-                                }
-                                throw ELispSignals.wrongTypeArgument(SEQUENCEP, value);
-                            }
-                        });
-                        break;
                     case AREF:                         // 0110
-                        value = get(frame, top);
-                        ref = asInt(get(frame, top + 1));
-                        frame.setObject(top, BuiltInData.FAref.aref(value, ref));
-                        break;
                     case ASET:                         // 0111
-                        ref = asInt(get(frame, top + 1));
-                        value = get(frame, top + 2);
-                        switch (get(frame, top)) {
-                            case ELispVector list -> BuiltInData.FAset.aset(list, ref, value);
-                            case ELispRecord record -> BuiltInData.FAset.asetRecord(record, ref, value);
-                            case ELispCharTable table -> BuiltInData.FAset.asetCharTable(table, ref, value);
-                            default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, value);
-                        }
-                        frame.setObject(top, value);
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case SYMBOL_VALUE:                 // 0112
                         frame.setObject(top, context.getValue(asSym(get(frame, top))));
@@ -664,14 +681,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         frame.setObject(top, BuiltInFns.FGet.get(get(frame, top), get(frame, top + 1)));
                         break;
                     case SUBSTRING:                    // 0117
-                    {
-                        value = get(frame, top);
-                        Object start = get(frame, top + 1);
-                        Object end = get(frame, top + 2);
-                        frame.setObject(top, value instanceof ELispString s
-                                ? BuiltInFns.FSubstring.substring(s, start, end)
-                                : BuiltInFns.FSubstring.substringVector(asVector(value), start, end));
-                    }
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
+                        break;
                     case CONCAT2:                      // 0120
                     case CONCAT3:                      // 0121
                     case CONCAT4:                      // 0122
@@ -710,7 +721,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case POINT:                        // 0140
-                        frame.setObject(top, BuiltInEditFns.FPoint.point());
+                        set(frame, top, BuiltInEditFns.FPoint.point());
                         break;
                     case SAVE_CURRENT_BUFFER_OBSOLETE: // 0141
                         throw new UnsupportedOperationException();
@@ -722,10 +733,10 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         frame.setObject(top, BuiltInEditFns.FInsert.insert(new Object[]{get(frame, top)}));
                         break;
                     case POINT_MAX:                    // 0144
-                        frame.setObject(top, context.currentBuffer().pointMax());
+                        set(frame, top, context.currentBuffer().pointMax());
                         break;
                     case POINT_MIN:                    // 0145
-                        frame.setObject(top, context.currentBuffer().pointMin());
+                        set(frame, top, context.currentBuffer().pointMin());
                         break;
                     case CHAR_AFTER:                   // 0146
                         frame.setObject(top, BuiltInEditFns.FCharAfter.charAfterBuffer(
@@ -909,20 +920,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         frame.setObject(top, BuiltInFns.FNth.nth(2 * asLong(get(frame, top)) + 1, value));
                         break;
                     case UPCASE:                       // 0226
-                        // TODO: use node
-                        value = get(frame, top);
-                        frame.setObject(top, value instanceof Long l
-                                ? BuiltInCaseFiddle.FUpcase.upcaseChar(l)
-                                : BuiltInCaseFiddle.FUpcase.upcaseString(asStr(value))
-                        );
-                        break;
                     case DOWNCASE:                     // 0227
-                        // TODO: use node
-                        value = get(frame, top);
-                        frame.setObject(top, value instanceof Long l
-                                ? BuiltInCaseFiddle.FDowncase.downcaseChar(l)
-                                : BuiltInCaseFiddle.FDowncase.downcaseString(asStr(value))
-                        );
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case STRINGEQLSIGN:                // 0230
                         frame.setObject(top, BuiltInFns.FStringEqual.stringEqual(
@@ -949,18 +948,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         ));
                         break;
                     case ELT:                          // 0234
-                    {
-                        // TODO: use node
-                        value = get(frame, top);
-                        long n = asLong(get(frame, top + 1));
-                        frame.setObject(top, isNil(value) ? false : switch (value) {
-                            case ELispCons cons -> BuiltInFns.FElt.elt(cons, n);
-                            case ELispVector v -> BuiltInFns.FElt.eltVec(v, n);
-                            case ELispCharTable table -> BuiltInFns.FElt.eltCharTable(table, n);
-                            default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, value);
-                        });
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
-                    }
                     case MEMBER:                       // 0235
                         frame.setObject(top, BuiltInFns.FMember.member(
                                 get(frame, top),
@@ -974,15 +963,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         ));
                         break;
                     case NREVERSE:                     // 0237
-                        // TODO: use node
-                        value = get(frame, top);
-                        frame.setObject(top, isNil(value) ? false : switch (value) {
-                            case ELispCons cons -> BuiltInFns.FNreverse.nreverseList(cons);
-                            case ELispString s -> BuiltInFns.FNreverse.nreverseString(s);
-                            case ELispVector v -> BuiltInFns.FNreverse.nreverseVec(v);
-                            case ELispBoolVector boolVector -> BuiltInFns.FNreverse.nreverseBoolVec(boolVector);
-                            default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, value);
-                        });
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case SETCAR:                       // 0240
                         frame.setObject(top, BuiltInData.FSetcar.setcar(asCons(get(frame, top)), get(frame, top + 1)));
@@ -997,21 +978,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         frame.setObject(top, BuiltInData.FCdrSafe.cdrSafe(get(frame, top)));
                         break;
                     case NCONC:                        // 0244
-                        // TODO: use node
-                        frame.setObject(top, BuiltInFns.FNconc.nconc(new Object[]{
-                                get(frame, top),
-                                get(frame, top + 1),
-                        }));
+                        frame.setObject(top, BuiltInFns.FNconc.nconc2(get(frame, top), get(frame, top + 1)));
                         break;
                     case QUO:                          // 0245
-                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
-                        break;
                     case REM:                          // 0246
-                        // TODO: use node, also bigint
-                        frame.setObject(top, BuiltInData.FRem.remLong(
-                                asLong(get(frame, top)),
-                                asLong(get(frame, top + 1))
-                        ));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case NUMBERP:                      // 0247
                         frame.setObject(top, BuiltInData.FNumberp.numberp(get(frame, top)));
@@ -1048,9 +1019,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     }
                     case STACK_SET:                    // 0262
                     case STACK_SET2:                   // 0263
-                        ref = op == STACK_SET ? Byte.toUnsignedInt(bytecode[bci + 1])
-                                : Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        frame.setObject(oldTop - ref, get(frame, oldTop));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case DISCARDN:                     // 0266
                     {
@@ -1088,7 +1057,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     default:
                         if ((op & CONSTANT) == CONSTANT) {
                             ref = op & (~CONSTANT);
-                            frame.setObject(top, constants[ref]);
+                            set(frame, top, constants[ref]);
                         } else {
                             throw ELispSignals.invalidFunction(object);
                         }
@@ -1100,7 +1069,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 CompilerAsserts.partialEvaluationConstant(nextBci);
                 bci = nextBci;
             } catch (AbstractTruffleException e) {
-                if (exceptionJumps == null) {
+                if (exceptionJumps == null || exceptionJumpsStackTop == null) {
                     throw e;
                 }
                 int target = getHandlingTarget(e, bindings);
@@ -1166,6 +1135,21 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
         return o;
     }
+    private static void set(VirtualFrame frame, int top, Object value) {
+        if (value instanceof Long || value instanceof Double) {
+            Object o = frame.getObject(top);
+            if (o instanceof ELispFrameSlotNode.SlotPrimitiveContainer container) {
+                if (value instanceof Long l) {
+                    container.setLong(l);
+                } else {
+                    Double d = (Double) value;
+                    container.setDouble(d);
+                }
+                return;
+            }
+        }
+        frame.setObject(top, value);
+    }
 
     private static Node createUnaryNode(int top, Function<ELispExpressionNode, ELispExpressionNode> function) {
         return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(top, null,
@@ -1192,6 +1176,15 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top - 1, null),
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top, null)
                 )
+        );
+    }
+    private static Node createTernaryFactoryNode(int top, Function<ELispExpressionNode[], ELispExpressionNode> function) {
+        return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(top - 2, null,
+                function.apply(new ELispExpressionNode[]{
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top - 2, null),
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top - 1, null),
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top, null)
+                })
         );
     }
 

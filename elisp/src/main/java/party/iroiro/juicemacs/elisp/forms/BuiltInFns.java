@@ -1786,6 +1786,9 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FNconc extends ELispBuiltInBaseNode {
         @Specialization
         public static Object nconc(Object[] lists) {
+            if (lists.length == 2) {
+                return nconc2(lists[0], lists[1]);
+            }
             Object result = false;
             @Nullable Object prev = null;
             for (Object arg : lists) {
@@ -1800,6 +1803,17 @@ public class BuiltInFns extends ELispBuiltIns {
                 prev = arg;
             }
             return result;
+        }
+
+        public static Object nconc2(Object list1, Object list2) {
+            if (isNil(list2)) {
+                return list1;
+            }
+            if (isNil(list1)) {
+                return list2;
+            }
+            asCons(list1).tail().setCdr(list2);
+            return list1;
         }
     }
 
