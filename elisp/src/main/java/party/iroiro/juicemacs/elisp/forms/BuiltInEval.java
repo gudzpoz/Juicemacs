@@ -2296,7 +2296,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 case ELispBytecode bytecode -> bytecode.getFunction();
                 case ELispCons cons when cons.car() == LAMBDA -> getLambda(cons);
                 case ELispCons cons when cons.car() == AUTOLOAD && symbol != null -> getAutoload(symbol, cons);
-                default -> throw new UnsupportedOperationException();
+                default -> throw ELispSignals.invalidFunction(original);
             };
         }
 

@@ -470,91 +470,15 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         bindings.bind(asSym(constants[ref]), get(frame, oldTop));
                         break;
                     case CALL:                         // 040
-                        frame.setObject(
-                                top,
-                                ((Call0Node) nodes[indices[bci]])
-                                        .execute(getFunctionObject(get(frame, top)))
-                        );
-                        break;
                     case CALL1:                        // 041
-                        frame.setObject(
-                                top,
-                                ((Call1Node) nodes[indices[bci]])
-                                        .execute(
-                                                getFunctionObject(get(frame, top)),
-                                                get(frame, top + 1)
-                                        )
-                        );
-                        break;
                     case CALL2:                        // 042
-                        frame.setObject(
-                                top,
-                                ((Call2Node) nodes[indices[bci]])
-                                        .execute(
-                                                getFunctionObject(get(frame, top)),
-                                                get(frame, top + 1),
-                                                get(frame, top + 2)
-                                        )
-                        );
-                        break;
                     case CALL3:                        // 043
-                        frame.setObject(
-                                top,
-                                ((Call3Node) nodes[indices[bci]])
-                                        .execute(
-                                                getFunctionObject(get(frame, top)),
-                                                get(frame, top + 1),
-                                                get(frame, top + 2),
-                                                get(frame, top + 3)
-                                        )
-                        );
-                        break;
                     case CALL4:                        // 044
-                        frame.setObject(
-                                top,
-                                ((Call4Node) nodes[indices[bci]])
-                                        .execute(
-                                                getFunctionObject(get(frame, top)),
-                                                get(frame, top + 1),
-                                                get(frame, top + 2),
-                                                get(frame, top + 3),
-                                                get(frame, top + 4)
-                                        )
-                        );
-                        break;
                     case CALL5:                        // 045
-                        frame.setObject(
-                                top,
-                                ((Call5Node) nodes[indices[bci]])
-                                        .execute(
-                                                getFunctionObject(get(frame, top)),
-                                                get(frame, top + 1),
-                                                get(frame, top + 2),
-                                                get(frame, top + 3),
-                                                get(frame, top + 4),
-                                                get(frame, top + 5)
-                                        )
-                        );
-                        break;
                     case CALL6:                        // 046
                     case CALL7:                        // 047
-                    {
-                        int count = op == CALL6 ? Byte.toUnsignedInt(bytecode[bci + 1]) :
-                                Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 1]) << 8);
-                        top -= count;
-                        CompilerAsserts.partialEvaluationConstant(count);
-
-                        Object[] args = new Object[count];
-                        for (int i = 0; i < count; i++) {
-                            args[i] = get(frame, top + i + 1);
-                        }
-                        frame.setObject(
-                                top,
-                                ((CallNNode) nodes[indices[bci]])
-                                        .execute(getFunctionObject(get(frame, top)), args)
-                        );
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
-                    }
                     case UNBIND:                       // 050
                     case UNBIND1:                      // 051
                     case UNBIND2:                      // 052
@@ -1188,8 +1112,180 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         );
     }
 
+
+    private static final class InlinableCallNode extends ELispExpressionNode {
+        private final int base;
+        private final int n;
+
+        @CompilerDirectives.CompilationFinal
+        @Nullable
+        private ELispSymbol symbol = null;
+        @CompilerDirectives.CompilationFinal
+        private Assumption stable = Assumption.ALWAYS_VALID;
+
+        @Child
+        @Nullable
+        private ELispExpressionNode callNode = null;
+
+        public InlinableCallNode(int top, int n) {
+            this.base = top - n;
+            this.n = n;
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            try {
+                updateInnerNode(frame).executeVoid(frame);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            try {
+                return updateInnerNode(frame).executeLong(frame);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+            try {
+                return updateInnerNode(frame).executeDouble(frame);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            try {
+                return updateInnerNode(frame).executeGeneric(frame);
+            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        private ELispExpressionNode updateInnerNode(VirtualFrame frame) {
+            Object function = frame.getObject(base);
+            ELispExpressionNode node = callNode;
+            if (node != null) {
+                if (stable == Assumption.NEVER_VALID // given up, use CallSomeNode
+                        || (symbol == function && stable.isValid())) {
+                    return node;
+                }
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (symbol == null && function instanceof ELispSymbol s) {
+                symbol = s;
+                FunctionStorage storage = getContext().getFunctionStorage(s);
+                Object inner = storage.get();
+                if (inner instanceof ELispSubroutine(_, ELispSubroutine.InlineInfo inline, _) && inline != null) {
+                    stable = storage.getStableAssumption();
+                    node = insertOrReplace(generateInlineNode(function, inline), node);
+                    callNode = node;
+                    return node;
+                }
+            }
+
+            stable = Assumption.NEVER_VALID;
+            node = insertOrReplace(createCallSomeNode(base, n), node);
+            callNode = node;
+
+            return node;
+        }
+
+        private ELispExpressionNode[] getReadSlotNodes(int from, int to) {
+            ELispExpressionNode[] nodes = new ELispExpressionNode[to - from + 1];
+            for (int i = from; i <= to; i++) {
+                nodes[i - from] = ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(i, null);
+            }
+            return nodes;
+        }
+
+        private ELispExpressionNode generateInlineNode(Object f, ELispSubroutine.InlineInfo inline) {
+            ELispBuiltIn info = inline.info();
+            if (n < info.minArgs() || (!info.varArgs() && info.maxArgs() < n)) {
+                throw ELispSignals.wrongNumberOfArguments(f, n);
+            }
+            if (inline.isTailored()) {
+                return inline.createNode(getReadSlotNodes(base + 1, base + n));
+            }
+            List<ELispExpressionNode> nodes = new ArrayList<>();
+            List<ELispExpressionNode> restNodes = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                ELispExpressionNode node = ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(base + 1 + i, null);
+                if (nodes.size() < info.maxArgs()) {
+                    nodes.add(node);
+                } else {
+                    restNodes.add(node);
+                }
+            }
+            while (nodes.size() < info.maxArgs()) {
+                nodes.add(ELispInterpretedNode.literal(false));
+            }
+            if (info.varArgs()) {
+                nodes.add(new ELispInterpretedNode.VarargToArrayNode(restNodes));
+            }
+            ELispExpressionNode[] arguments = nodes.toArray(ELispExpressionNode[]::new);
+            return inline.createNode(arguments);
+        }
+
+    }
+
+    static ELispExpressionNode createCallSomeNode(int base, int n) {
+        int argBase = base + 1;
+        ELispExpressionNode[] args = new ELispExpressionNode[n + 1];
+        args[0] = ELispBytecodeFallbackNodeFactory.ToFunctionObjectNodeGen.create(
+                ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(argBase, null)
+        );
+        for (int i = 0; i < n; i++) {
+            args[i + 1] = ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(argBase + i, null);
+        }
+        return switch (n) {
+            case 0 -> ELispBytecodeFallbackNodeFactory.Call0NodeGen.create(args);
+            case 1 -> ELispBytecodeFallbackNodeFactory.Call1NodeGen.create(args);
+            case 2 -> ELispBytecodeFallbackNodeFactory.Call2NodeGen.create(args);
+            case 3 -> ELispBytecodeFallbackNodeFactory.Call3NodeGen.create(args);
+            case 4 -> ELispBytecodeFallbackNodeFactory.Call4NodeGen.create(args);
+            case 5 -> ELispBytecodeFallbackNodeFactory.Call5NodeGen.create(args);
+            default -> ELispBytecodeFallbackNodeFactory.CallNNodeGen.create(args);
+        };
+    }
+
+    @NodeChild(value = "function", type = ELispExpressionNode.class)
+    abstract static class ToFunctionObjectNode extends ELispExpressionNode {
+        public ELispFunctionObject toFunction(Object o) {
+            return getFunctionObject(o);
+        }
+
+        @Specialization(assumptions = "storage.getStableAssumption()", guards = "symbol == lastSymbol", limit = "2")
+        public ELispFunctionObject symbolToObject(
+                ELispSymbol symbol,
+                @Cached("symbol") ELispSymbol lastSymbol,
+                @Cached("getContext().getFunctionStorage(lastSymbol)") FunctionStorage storage,
+                @Cached("toFunction(storage.get())") ELispFunctionObject o
+        ) {
+            return o;
+        }
+
+        @Specialization
+        public ELispFunctionObject symbolToObject(ELispSymbol symbol) {
+            return toFunction(getContext().getFunctionStorage(symbol).get());
+        }
+
+        @Fallback
+        public ELispFunctionObject getFunctionObject(Object o) {
+            return toFunction(o);
+        }
+    }
+
     @GenerateInline(value = false)
-    abstract static class Call0Node extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class Call0Node extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1204,12 +1300,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(function.callTarget());
         }
-
-        abstract Object execute(Object function);
     }
 
     @GenerateInline(value = false)
-    abstract static class Call1Node extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class Call1Node extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1226,12 +1321,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(function.callTarget(), arg);
         }
-
-        abstract Object execute(Object function, Object arg);
     }
 
     @GenerateInline(value = false)
-    abstract static class Call2Node extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class Call2Node extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1250,12 +1344,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(function.callTarget(), arg1, arg2);
         }
-
-        abstract Object execute(Object function, Object arg1, Object arg2);
     }
 
     @GenerateInline(value = false)
-    abstract static class Call3Node extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class Call3Node extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1276,12 +1369,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(function.callTarget(), arg1, arg2, arg3);
         }
-
-        abstract Object execute(Object function, Object arg1, Object arg2, Object arg3);
     }
 
     @GenerateInline(value = false)
-    abstract static class Call4Node extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class Call4Node extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1304,12 +1396,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(function.callTarget(), arg1, arg2, arg3, arg4);
         }
-
-        abstract Object execute(Object function, Object arg1, Object arg2, Object arg3, Object arg4);
     }
 
     @GenerateInline(value = false)
-    abstract static class Call5Node extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class Call5Node extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1334,12 +1425,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 @Cached IndirectCallNode indirectCallNode) {
             return indirectCallNode.call(function.callTarget(), arg1, arg2, arg3, arg4, arg5);
         }
-
-        abstract Object execute(Object function, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5);
     }
 
     @GenerateInline(value = false)
-    abstract static class CallNNode extends Node {
+    @NodeChild(value = "args", type = ELispExpressionNode[].class)
+    abstract static class CallNNode extends ELispExpressionNode {
         @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
         protected static Object dispatchDirectly(
                 ELispFunctionObject function,
@@ -1349,7 +1439,13 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             return directCallNode.call(args);
         }
 
-        abstract Object execute(Object function, Object[] args);
+        @Specialization(replaces = "dispatchDirectly")
+        protected static Object dispatchIndirectly(
+                ELispFunctionObject function,
+                Object[] args,
+                @Cached IndirectCallNode indirectCallNode) {
+            return indirectCallNode.call(function.callTarget(), args);
+        }
     }
 
     private static final class InterpreterState {

@@ -81,9 +81,11 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             return value;
         }
         public void setDouble(double v) {
+            isDouble = true;
             value = Double.doubleToRawLongBits(v);
         }
         public void setLong(long v) {
+            isDouble = false;
             value = v;
         }
     }

@@ -547,26 +547,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 nodes.add(literal(false));
             }
             if (info.varArgs()) {
-                nodes.add(new ELispExpressionNode() {
-                    @SuppressWarnings("FieldMayBeFinal")
-                    @Children
-                    private ELispExpressionNode[] restArgs = restNodes.toArray(ELispExpressionNode[]::new);
-
-                    @Override
-                    public void executeVoid(VirtualFrame frame) {
-                        super.executeVoid(frame);
-                    }
-
-                    @ExplodeLoop
-                    @Override
-                    public Object executeGeneric(VirtualFrame frame) {
-                        Object[] args = new Object[restArgs.length];
-                        for (int i = 0; i < restArgs.length; i++) {
-                            args[i] = restArgs[i].executeGeneric(frame);
-                        }
-                        return args;
-                    }
-                });
+                nodes.add(new VarargToArrayNode(restNodes));
             }
             ELispExpressionNode[] arguments = nodes.toArray(ELispExpressionNode[]::new);
             return inline.createNode(arguments);
@@ -611,6 +592,32 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @CompilerDirectives.TruffleBoundary
         public RuntimeException rewriteException(RuntimeException e) {
             return ELispSignals.remapException(e, getParent() == null ? this : getParent());
+        }
+
+    }
+
+    public static class VarargToArrayNode extends ELispExpressionNode {
+        @SuppressWarnings("FieldMayBeFinal")
+        @Children
+        private ELispExpressionNode[] restArgs;
+
+        public VarargToArrayNode(List<ELispExpressionNode> restNodes) {
+            restArgs = restNodes.toArray(ELispExpressionNode[]::new);
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            super.executeVoid(frame);
+        }
+
+        @ExplodeLoop
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            Object[] args = new Object[restArgs.length];
+            for (int i = 0; i < restArgs.length; i++) {
+                args[i] = restArgs[i].executeGeneric(frame);
+            }
+            return args;
         }
     }
 
