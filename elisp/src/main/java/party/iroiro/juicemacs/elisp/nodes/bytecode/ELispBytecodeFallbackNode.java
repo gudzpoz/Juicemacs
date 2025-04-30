@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.nodes.bytecode;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -20,6 +21,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall.getFunctionObject;
 import static party.iroiro.juicemacs.elisp.nodes.bytecode.ByteCode.*;
@@ -29,7 +32,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 /// A fallback implementation for Emacs bytecode
 ///
 /// We hope to eventually implement a bytecode interpreter with Truffle DSL
-/// ([com.oracle.truffle.api.bytecode.GenerateBytecode]). However, this DSL
+/// ([GenerateBytecode]). However, this DSL
 /// seems to have quite strict requirements, so we might want to fall back
 /// to a simpler implementation like this when the bytecode is really messy
 /// (possibly user generated?).
@@ -50,32 +53,61 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     private final int startStackTop;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    byte[] bytecode;
-
+    final byte[] bytecode;
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    Object[] constants;
+    final Object[] constants;
 
+    /// Metadata index for each bytecode instruction
+    ///
+    /// Different bytecodes might require different specializations, and we store
+    /// the corresponding data in this array.
+    ///
+    /// ## Examples
+    ///
+    /// For example, for each [ByteCode#ADD1]/[ByteCode#CALL] instruction, we want one
+    /// specialized node for it. And we store the index to [#nodes] in this
+    /// indices array.
+    ///
+    /// For another, each [ByteCode#SWITCH] instruction wants separate jump tables,
+    /// so for them, the array stores jump table indices to [#jumpTables].
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    int[] jumps;
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    int[] jumpsStackTop;
-
+    final int[] indices;
+    /// Specialized nodes for some instructions
     @Children
-    Node[] bytecodeNodes;
+    final Node[] nodes;
+    /// Jump tables for [ByteCode#SWITCH] instruction
+    @CompilerDirectives.CompilationFinal(dimensions = 2)
+    final int[][] switchJumpTables;
+
+    /// Jump table for exception (catch/condition-case) handlers
+    ///
+    /// If `null`, the function has no handlers.
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    final int @Nullable[] exceptionJumps;
+    /// Stack top positions for each exception handler
+    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    final int @Nullable[] exceptionJumpsStackTop;
+
     @CompilerDirectives.CompilationFinal
     private Object osrMetadata;
 
     public ELispBytecodeFallbackNode(ELispBytecode bytecode, int startStackTop) {
+        CompilerAsserts.neverPartOfCompilation();
         this.object = bytecode;
         this.startStackTop = startStackTop;
         byte[] bytes = bytecode.getBytecode();
         this.bytecode = bytes;
         this.constants = bytecode.getConstants();
-        this.bytecodeNodes = new Node[bytes.length];
 
-        IntArrayList jumps = new IntArrayList();
+        indices = new int[bytes.length];
+        // stackTops is used to check if each PC in the function
+        // has deterministic stack top positions.
         int[] stackTops = new int[bytes.length];
         Arrays.fill(stackTops, -1);
+
+        IntArrayList exceptionJumps = new IntArrayList();
+        ArrayList<int[]> switchJumpTables = new ArrayList<>();
+        ArrayList<Node> nodes = new ArrayList<>();
 
         int stackTop = startStackTop;
         int lastConstantI = -1;
@@ -98,7 +130,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 stackDelta = Integer.MAX_VALUE;
             }
             int newConstantI = -1;
-            bytecodeNodes[i] = switch (op) {
+            indices[i] = switch (op) {
                 case VARREF:                       // 010
                 case VARREF1:                      // 011
                 case VARREF2:                      // 012
@@ -111,7 +143,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             op == VARREF7
                                     ? Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8)
                                     : op - VARREF;
-                    yield GlobalVariableReadNodeGen.create(asSym(constants[ref]));
+                    nodes.add(GlobalVariableReadNodeGen.create(asSym(constants[ref])));
+                    yield nodes.size() - 1;
                 case VARSET:                       // 020
                 case VARSET1:                      // 021
                 case VARSET2:                      // 022
@@ -124,36 +157,77 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             op == VARSET7
                                     ? Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8)
                                     : op - VARSET;
-                    yield GlobalVariableWriteNodeGen.GlobalVariableDirectWriteNodeGen.create(asSym(constants[ref]));
+                    nodes.add(GlobalVariableWriteNodeGen.GlobalVariableDirectWriteNodeGen.create(asSym(constants[ref])));
+                    yield nodes.size() - 1;
                 case CALL:                         // 040
-                    yield ELispBytecodeFallbackNodeFactory.Call0NodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.Call0NodeGen.create());
+                    yield nodes.size() - 1;
                 case CALL1:                        // 041
-                    yield ELispBytecodeFallbackNodeFactory.Call1NodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.Call1NodeGen.create());
+                    yield nodes.size() - 1;
                 case CALL2:                        // 042
-                    yield ELispBytecodeFallbackNodeFactory.Call2NodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.Call2NodeGen.create());
+                    yield nodes.size() - 1;
                 case CALL3:                        // 043
-                    yield ELispBytecodeFallbackNodeFactory.Call3NodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.Call3NodeGen.create());
+                    yield nodes.size() - 1;
                 case CALL4:                        // 044
-                    yield ELispBytecodeFallbackNodeFactory.Call4NodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.Call4NodeGen.create());
+                    yield nodes.size() - 1;
                 case CALL5:                        // 045
-                    yield ELispBytecodeFallbackNodeFactory.Call5NodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.Call5NodeGen.create());
+                    yield nodes.size() - 1;
                 case CALL6:                        // 046
                 case CALL7:                        // 047
                     ref = op == CALL6 ? Byte.toUnsignedInt(bytes[i + 1]) :
                             Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
                     stackDelta = -ref;
-                    yield ELispBytecodeFallbackNodeFactory.CallNNodeGen.create();
+                    nodes.add(ELispBytecodeFallbackNodeFactory.CallNNodeGen.create());
+                    yield nodes.size() - 1;
                 case PUSHCONDITIONCASE:            // 061
                 case PUSHCATCH:                    // 062
                     ref = Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
-                    jumps.add(ref);
+                    exceptionJumps.add(ref);
                     jumpTarget = ref;
                     jumpTargetTop = stackTop;
-                    yield null;
+                    yield 0;
+                case SUB1:                         // 0123
+                    nodes.add(createUnaryFactoryNode(stackTop, BuiltInDataFactory.FSub1Factory::create));
+                    yield nodes.size() - 1;
+                case ADD1:                         // 0124
+                    nodes.add(createUnaryFactoryNode(stackTop, BuiltInDataFactory.FAdd1Factory::create));
+                    yield nodes.size() - 1;
+                case EQLSIGN:                      // 0125
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FEqlsignBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case GTR:                          // 0126
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FGtrBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case LSS:                          // 0127
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FLssBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case LEQ:                          // 0130
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FLeqBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case GEQ:                          // 0131
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FGeqBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case DIFF:                         // 0132
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FMinusBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case NEGATE:                       // 0133
+                    nodes.add(createUnaryNode(stackTop, BuiltInDataFactory.FMinusUnaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case PLUS:                         // 0134
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FPlusBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case MULT:                         // 0137
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FTimesBinaryNodeGen::create));
+                    yield nodes.size() - 1;
                 case CONSTANT2:                    // 0201
                     ref = Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
                     newConstantI = ref;
-                    yield null;
+                    yield 0;
                 case GOTO:                         // 0202
                 case GOTOIFNIL:                    // 0203
                 case GOTOIFNONNIL:                 // 0204
@@ -170,16 +244,19 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     } else if (op == GOTO) {
                         stackDelta = Integer.MAX_VALUE;
                     }
-                    yield null;
+                    yield 0;
+                case QUO:                          // 0245
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FQuoBinaryNodeGen::create));
+                    yield nodes.size() - 1;
                 case LISTN:                        // 0257
                 case CONCATN:                      // 0260
                 case INSERTN:                      // 0261
                     stackDelta = -Byte.toUnsignedInt(bytes[i + 1]) + 1;
-                    yield null;
+                    yield 0;
                 case DISCARDN:                     // 0266
                     ref = Byte.toUnsignedInt(bytes[i + 1]);
                     stackDelta = -(ref & 0x7F);
-                    yield null;
+                    yield 0;
                 case SWITCH:                       // 0267
                 {
                     if (lastConstantI == -1) {
@@ -187,6 +264,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     }
                     int targetStackTop = stackTop == -1 ? -1 : stackTop - 2;
                     ELispHashtable jumpTable = asHashtable(constants[lastConstantI]);
+                    IntArrayList jumps = new IntArrayList(jumpTable.size());
                     jumpTable.forEach((_, v) -> {
                         int target = asInt(v);
                         jumps.add(target);
@@ -199,14 +277,15 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             }
                         }
                     });
-                    yield null;
+                    switchJumpTables.add(jumps.toArray());
+                    yield switchJumpTables.size() - 1;
                 }
                 default: {
                     if ((op & CONSTANT) == CONSTANT) {
                         ref = op & (~CONSTANT);
                         newConstantI = ref;
                     }
-                    yield null;
+                    yield 0;
                 }
             };
             byte length = BYTECODE_LENGTHS[Byte.toUnsignedInt(op)];
@@ -226,15 +305,23 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             }
             lastConstantI = newConstantI;
         }
-        this.jumps = jumps.toArray();
 
-        this.jumpsStackTop = new int[this.jumps.length];
-        for (int i = 0; i < jumpsStackTop.length; i++) {
-            stackTop = stackTops[this.jumps[i]];
-            if (stackTop == -1) {
-                throw ELispSignals.invalidFunction(object);
+        this.nodes = nodes.toArray(new Node[0]);
+        this.switchJumpTables = switchJumpTables.toArray(new int[0][]);
+
+        if (exceptionJumps.isEmpty()) {
+            this.exceptionJumps = null;
+            this.exceptionJumpsStackTop = null;
+        } else {
+            this.exceptionJumps = exceptionJumps.toArray();
+            this.exceptionJumpsStackTop = new int[this.exceptionJumps.length];
+            for (int i = 0; i < this.exceptionJumps.length; i++) {
+                stackTop = stackTops[this.exceptionJumps[i]];
+                if (stackTop == -1) {
+                    throw ELispSignals.invalidFunction(object);
+                }
+                this.exceptionJumpsStackTop[i] = stackTop;
             }
-            this.jumpsStackTop[i] = stackTop;
         }
     }
 
@@ -257,27 +344,38 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     public Object executeGeneric(VirtualFrame frame) {
         try (Bindings bindings = new Bindings()) {
             frame.setObject(0, bindings);
-            return executeOSR(frame, 0, startStackTop); // NOPMD
+            return executeBodyFromBci(frame, 0, startStackTop, bindings); // NOPMD
+        } catch (OsrResultException result) {
+            return result.result;
         }
+    }
+
+    @Override
+    public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+        InterpreterState state = (InterpreterState) interpreterState;
+        Bindings bindings = (Bindings) osrFrame.getObject(0);
+        return executeBodyFromBci(osrFrame, target, state.stackTop, bindings);
     }
 
     @HostCompilerDirectives.BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    @Override
-    public Object executeOSR(VirtualFrame frame, int bci, Object interpreterState) {
-        int stackTop = (Integer) interpreterState;
+    private Object executeBodyFromBci(VirtualFrame frame, int startBci, int startTop, Bindings bindings) {
+        CompilerAsserts.partialEvaluationConstant(startBci);
+        CompilerAsserts.partialEvaluationConstant(startTop);
+        int bci = startBci;
+        int top = startTop;
         ELispContext context = getContext();
-        Bindings bindings = (Bindings) frame.getObject(0);
         loop:
-        while (true) {
+        while (bci < bytecode.length) {
             try {
-                byte op = bytecode[bci];
-                int nextBci = bci + BYTECODE_LENGTHS[Byte.toUnsignedInt(op)];
                 CompilerAsserts.partialEvaluationConstant(bci);
-                CompilerAsserts.partialEvaluationConstant(op);
-                CompilerAsserts.partialEvaluationConstant(stackTop);
+                CompilerAsserts.partialEvaluationConstant(top);
+                byte op = bytecode[bci];
+                int oldTop = top;
+                byte stackEffect = BYTECODE_STACK_EFFECTS[Byte.toUnsignedInt(op)];
+                CompilerAsserts.partialEvaluationConstant(stackEffect);
+                top += stackEffect == 0x7F ? 0 : stackEffect;
 
-                int oldStackTop = stackTop;
                 int ref;
                 ELispSymbol sym;
                 Object value;
@@ -295,7 +393,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                                 op == STACK_REF7
                                         ? Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8)
                                         : op - STACK_REF;
-                        frame.setObject(++stackTop, frame.getObject(oldStackTop - ref));
+                        frame.setObject(top, get(frame, oldTop - ref));
                         break;
                     case VARREF:                       // 010
                     case VARREF1:                      // 011
@@ -305,7 +403,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case VARREF5:                      // 015
                     case VARREF6:                      // 016
                     case VARREF7:                      // 017
-                        frame.setObject(++stackTop, ((GlobalVariableReadNode) bytecodeNodes[bci]).executeGeneric(frame));
+                        frame.setObject(top, ((GlobalVariableReadNode) nodes[indices[bci]]).executeGeneric(frame));
                         break;
                     case VARSET:                       // 020
                     case VARSET1:                      // 021
@@ -315,8 +413,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case VARSET5:                      // 025
                     case VARSET6:                      // 026
                     case VARSET7:                      // 027
-                        value = frame.getObject(stackTop--);
-                        ((GlobalVariableWriteNode.GlobalVariableDirectWriteNode) bytecodeNodes[bci]).execute(frame, value);
+                        value = get(frame, oldTop);
+                        ((GlobalVariableWriteNode.GlobalVariableDirectWriteNode) nodes[indices[bci]]).execute(frame, value);
                         break;
                     case VARBIND:                      // 030
                     case VARBIND1:                     // 031
@@ -330,77 +428,72 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                                 op == VARBIND7
                                         ? Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8)
                                         : op - VARBIND;
-                        bindings.bind(asSym(constants[ref]), frame.getObject(stackTop--));
+                        bindings.bind(asSym(constants[ref]), get(frame, oldTop));
                         break;
                     case CALL:                         // 040
                         frame.setObject(
-                                stackTop,
-                                ((Call0Node) bytecodeNodes[bci])
-                                        .execute(getFunctionObject(frame.getObject(stackTop)))
+                                top,
+                                ((Call0Node) nodes[indices[bci]])
+                                        .execute(getFunctionObject(get(frame, top)))
                         );
                         break;
                     case CALL1:                        // 041
-                        stackTop -= 1;
                         frame.setObject(
-                                stackTop,
-                                ((Call1Node) bytecodeNodes[bci])
+                                top,
+                                ((Call1Node) nodes[indices[bci]])
                                         .execute(
-                                                getFunctionObject(frame.getObject(stackTop)),
-                                                frame.getObject(stackTop + 1)
+                                                getFunctionObject(get(frame, top)),
+                                                get(frame, top + 1)
                                         )
                         );
                         break;
                     case CALL2:                        // 042
-                        stackTop -= 2;
                         frame.setObject(
-                                stackTop,
-                                ((Call2Node) bytecodeNodes[bci])
+                                top,
+                                ((Call2Node) nodes[indices[bci]])
                                         .execute(
-                                                getFunctionObject(frame.getObject(stackTop)),
-                                                frame.getObject(stackTop + 1),
-                                                frame.getObject(stackTop + 2)
+                                                getFunctionObject(get(frame, top)),
+                                                get(frame, top + 1),
+                                                get(frame, top + 2)
                                         )
                         );
                         break;
                     case CALL3:                        // 043
-                        stackTop -= 3;
                         frame.setObject(
-                                stackTop,
-                                ((Call3Node) bytecodeNodes[bci])
+                                top,
+                                ((Call3Node) nodes[indices[bci]])
                                         .execute(
-                                                getFunctionObject(frame.getObject(stackTop)),
-                                                frame.getObject(stackTop + 1),
-                                                frame.getObject(stackTop + 2),
-                                                frame.getObject(stackTop + 3)
+                                                getFunctionObject(get(frame, top)),
+                                                get(frame, top + 1),
+                                                get(frame, top + 2),
+                                                get(frame, top + 3)
                                         )
                         );
                         break;
                     case CALL4:                        // 044
-                        stackTop -= 4;
                         frame.setObject(
-                                stackTop,
-                                ((Call4Node) bytecodeNodes[bci])
+                                top,
+                                ((Call4Node) nodes[indices[bci]])
                                         .execute(
-                                                getFunctionObject(frame.getObject(stackTop)),
-                                                frame.getObject(stackTop + 1),
-                                                frame.getObject(stackTop + 2),
-                                                frame.getObject(stackTop + 3),
-                                                frame.getObject(stackTop + 4)
+                                                getFunctionObject(get(frame, top)),
+                                                get(frame, top + 1),
+                                                get(frame, top + 2),
+                                                get(frame, top + 3),
+                                                get(frame, top + 4)
                                         )
                         );
                         break;
                     case CALL5:                        // 045
-                        stackTop -= 5;
                         frame.setObject(
-                                stackTop,
-                                ((Call5Node) bytecodeNodes[bci])
+                                top,
+                                ((Call5Node) nodes[indices[bci]])
                                         .execute(
-                                                getFunctionObject(frame.getObject(stackTop)),
-                                                frame.getObject(stackTop + 1),
-                                                frame.getObject(stackTop + 2),
-                                                frame.getObject(stackTop + 3),
-                                                frame.getObject(stackTop + 4),
-                                                frame.getObject(stackTop + 5)
+                                                getFunctionObject(get(frame, top)),
+                                                get(frame, top + 1),
+                                                get(frame, top + 2),
+                                                get(frame, top + 3),
+                                                get(frame, top + 4),
+                                                get(frame, top + 5)
                                         )
                         );
                         break;
@@ -409,15 +502,17 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     {
                         int count = op == CALL6 ? Byte.toUnsignedInt(bytecode[bci + 1]) :
                                 Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 1]) << 8);
-                        stackTop -= count;
+                        top -= count;
+                        CompilerAsserts.partialEvaluationConstant(count);
+
                         Object[] args = new Object[count];
                         for (int i = 0; i < count; i++) {
-                            args[i] = frame.getObject(stackTop + i + 1);
+                            args[i] = get(frame, top + i + 1);
                         }
                         frame.setObject(
-                                stackTop,
-                                ((CallNNode) bytecodeNodes[bci])
-                                        .execute(getFunctionObject(frame.getObject(stackTop)), args)
+                                top,
+                                ((CallNNode) nodes[indices[bci]])
+                                        .execute(getFunctionObject(get(frame, top)), args)
                         );
                         break;
                     }
@@ -443,8 +538,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     {
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         int target = -1;
-                        for (int i = 0; i < jumps.length; i++) {
-                            if (jumps[i] == ref) {
+                        for (int i = 0; i < exceptionJumps.length; i++) {
+                            if (exceptionJumps[i] == ref) {
                                 target = i;
                             }
                         }
@@ -452,83 +547,76 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             throw CompilerDirectives.shouldNotReachHere();
                         }
                         CompilerAsserts.partialEvaluationConstant(target);
-                        bindings.pushHandler(frame.getObject(stackTop--), op == PUSHCATCH, target);
-                        assert jumpsStackTop[target] == stackTop + 1;
+                        bindings.pushHandler(get(frame, oldTop), op == PUSHCATCH, target);
+                        assert exceptionJumpsStackTop[target] == top + 1;
                         break;
                     }
                     case NTH:                          // 070
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FNth.nth(
-                                asLong(frame.getObject(stackTop)),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FNth.nth(
+                                asLong(get(frame, top)),
+                                get(frame, top + 1)
                         ));
                         break;
                     case SYMBOLP:                      // 071
-                        frame.setObject(stackTop, BuiltInData.FSymbolp.symbolp(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FSymbolp.symbolp(get(frame, top)));
                         break;
                     case CONSP:                        // 072
-                        frame.setObject(stackTop, BuiltInData.FConsp.consp(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FConsp.consp(get(frame, top)));
                         break;
                     case STRINGP:                      // 073
-                        frame.setObject(stackTop, BuiltInData.FStringp.stringp(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FStringp.stringp(get(frame, top)));
                         break;
                     case LISTP:                        // 074
-                        frame.setObject(stackTop, BuiltInData.FListp.listp(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FListp.listp(get(frame, top)));
                         break;
                     case EQ:                           // 075
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FEq.eq(frame.getObject(stackTop), frame.getObject(stackTop + 1)));
+                        frame.setObject(top, BuiltInData.FEq.eq(get(frame, top), get(frame, top + 1)));
                         break;
                     case MEMQ:                         // 076
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FMemq.memq(frame.getObject(stackTop), frame.getObject(stackTop + 1)));
+                        frame.setObject(top, BuiltInFns.FMemq.memq(get(frame, top), get(frame, top + 1)));
                         break;
                     case NOT:                          // 077
-                        frame.setObject(stackTop, BuiltInData.FNull.null_(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FNull.null_(get(frame, top)));
                         break;
                     case CAR:                          // 0100
-                        frame.setObject(stackTop, BuiltInData.FCar.car(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FCar.car(get(frame, top)));
                         break;
                     case CDR:                          // 0101
-                        frame.setObject(stackTop, BuiltInData.FCdr.cdr(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FCdr.cdr(get(frame, top)));
                         break;
                     case CONS:                         // 0102
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInAlloc.FCons.cons(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInAlloc.FCons.cons(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case LIST1:                        // 0103
-                        frame.setObject(stackTop, new ELispCons(frame.getObject(stackTop), false));
+                        frame.setObject(top, new ELispCons(get(frame, top), false));
                         break;
                     case LIST2:                        // 0104
-                        stackTop -= 1;
-                        frame.setObject(stackTop, ELispCons.listOf(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, ELispCons.listOf(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case LIST3:                        // 0105
-                        stackTop -= 2;
-                        frame.setObject(stackTop, ELispCons.listOf(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1),
-                                frame.getObject(stackTop + 2)
+                        frame.setObject(top, ELispCons.listOf(
+                                get(frame, top),
+                                get(frame, top + 1),
+                                get(frame, top + 2)
                         ));
                         break;
                     case LIST4:                        // 0106
-                        stackTop -= 3;
-                        frame.setObject(stackTop, ELispCons.listOf(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1),
-                                frame.getObject(stackTop + 2),
-                                frame.getObject(stackTop + 3)
+                        frame.setObject(top, ELispCons.listOf(
+                                get(frame, top),
+                                get(frame, top + 1),
+                                get(frame, top + 2),
+                                get(frame, top + 3)
                         ));
                         break;
                     case LENGTH:                       // 0107
-                        value = frame.getObject(stackTop);
-                        frame.setObject(stackTop, switch (value) {
+                        value = get(frame, top);
+                        frame.setObject(top, switch (value) {
                             case ELispString s -> BuiltInFns.FLength.lengthString(s);
                             case List<?> list -> (long) list.size();
                             default -> {
@@ -540,53 +628,47 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         });
                         break;
                     case AREF:                         // 0110
-                        stackTop -= 1;
-                        value = frame.getObject(stackTop);
-                        ref = asInt(frame.getObject(stackTop + 1));
-                        frame.setObject(stackTop, BuiltInData.FAref.aref(value, ref));
+                        value = get(frame, top);
+                        ref = asInt(get(frame, top + 1));
+                        frame.setObject(top, BuiltInData.FAref.aref(value, ref));
                         break;
                     case ASET:                         // 0111
-                        stackTop -= 2;
-                        ref = asInt(frame.getObject(stackTop + 1));
-                        value = frame.getObject(stackTop + 2);
-                        switch (frame.getObject(stackTop)) {
+                        ref = asInt(get(frame, top + 1));
+                        value = get(frame, top + 2);
+                        switch (get(frame, top)) {
                             case ELispVector list -> BuiltInData.FAset.aset(list, ref, value);
                             case ELispRecord record -> BuiltInData.FAset.asetRecord(record, ref, value);
                             case ELispCharTable table -> BuiltInData.FAset.asetCharTable(table, ref, value);
                             default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, value);
                         }
-                        frame.setObject(stackTop, value);
+                        frame.setObject(top, value);
                         break;
                     case SYMBOL_VALUE:                 // 0112
-                        frame.setObject(stackTop, context.getValue(asSym(frame.getObject(stackTop))));
+                        frame.setObject(top, context.getValue(asSym(get(frame, top))));
                         break;
                     case SYMBOL_FUNCTION:              // 0113
-                        frame.setObject(stackTop, context.getFunctionStorage(asSym(frame.getObject(stackTop))).get());
+                        frame.setObject(top, context.getFunctionStorage(asSym(get(frame, top))).get());
                         break;
                     case SET:                          // 0114
-                        stackTop -= 1;
-                        value = frame.getObject(stackTop + 1);
-                        context.setValue(asSym(frame.getObject(stackTop)), value);
-                        frame.setObject(stackTop, value);
+                        value = get(frame, top + 1);
+                        context.setValue(asSym(get(frame, top)), value);
+                        frame.setObject(top, value);
                         break;
                     case FSET:                         // 0115
-                        stackTop -= 1;
-                        value = frame.getObject(stackTop + 1);
-                        sym = asSym(frame.getObject(stackTop));
+                        value = get(frame, top + 1);
+                        sym = asSym(get(frame, top));
                         context.getFunctionStorage(sym).set(value, sym);
-                        frame.setObject(stackTop, value);
+                        frame.setObject(top, value);
                         break;
                     case GET:                          // 0116
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FGet.get(frame.getObject(stackTop), frame.getObject(stackTop + 1)));
+                        frame.setObject(top, BuiltInFns.FGet.get(get(frame, top), get(frame, top + 1)));
                         break;
                     case SUBSTRING:                    // 0117
                     {
-                        stackTop -= 2;
-                        value = frame.getObject(stackTop);
-                        Object start = frame.getObject(stackTop + 1);
-                        Object end = frame.getObject(stackTop + 2);
-                        frame.setObject(stackTop, value instanceof ELispString s
+                        value = get(frame, top);
+                        Object start = get(frame, top + 1);
+                        Object end = get(frame, top + 2);
+                        frame.setObject(top, value instanceof ELispString s
                                 ? BuiltInFns.FSubstring.substring(s, start, end)
                                 : BuiltInFns.FSubstring.substringVector(asVector(value), start, end));
                     }
@@ -595,129 +677,91 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case CONCAT4:                      // 0122
                     {
                         ref = op - CONCAT2 + 2;
-                        stackTop -= ref - 1;
                         Object[] args = new Object[ref];
                         for (int i = 0; i < ref; i++) {
-                            args[i] = frame.getObject(stackTop + i);
+                            args[i] = get(frame, top + i);
                         }
-                        frame.setObject(stackTop, BuiltInFns.FConcat.concat(args));
+                        frame.setObject(top, BuiltInFns.FConcat.concat(args));
                         break;
                     }
                     case SUB1:                         // 0123
-                        frame.setObject(stackTop, BuiltInData.FSub1.sub1(frame.getObject(stackTop)));
-                        break;
                     case ADD1:                         // 0124
-                        frame.setObject(stackTop, BuiltInData.FAdd1.add1(frame.getObject(stackTop)));
-                        break;
                     case EQLSIGN:                      // 0125
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.compareTo(frame.getObject(stackTop), frame.getObject(stackTop + 1)) == 0);
-                        break;
                     case GTR:                          // 0126
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.compareTo(frame.getObject(stackTop), frame.getObject(stackTop + 1)) > 0);
-                        break;
                     case LSS:                          // 0127
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.compareTo(frame.getObject(stackTop), frame.getObject(stackTop + 1)) < 0);
-                        break;
                     case LEQ:                          // 0130
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.compareTo(frame.getObject(stackTop), frame.getObject(stackTop + 1)) <= 0);
-                        break;
                     case GEQ:                          // 0131
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.compareTo(frame.getObject(stackTop), frame.getObject(stackTop + 1)) >= 0);
-                        break;
                     case DIFF:                         // 0132
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FMinus.minusAny(new Object[]{
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1),
-                        }));
-                        break;
                     case NEGATE:                       // 0133
-                        frame.setObject(stackTop, BuiltInData.FMinus.minusAny(new Object[]{frame.getObject(stackTop)}));
-                        break;
                     case PLUS:                         // 0134
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FPlus.plusAny(new Object[]{
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1),
-                        }));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case MAX:                          // 0135
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FMax.max(frame.getObject(stackTop), new Object[]{
-                                frame.getObject(stackTop + 1),
+                        frame.setObject(top, BuiltInData.FMax.max(get(frame, top), new Object[]{
+                                get(frame, top + 1),
                         }));
                         break;
                     case MIN:                          // 0136
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FMin.min(frame.getObject(stackTop), new Object[]{
-                                frame.getObject(stackTop + 1),
+                        frame.setObject(top, BuiltInData.FMin.min(get(frame, top), new Object[]{
+                                get(frame, top + 1),
                         }));
                         break;
                     case MULT:                         // 0137
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FTimes.timesAny(new Object[]{
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1),
-                        }));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case POINT:                        // 0140
-                        frame.setObject(++stackTop, BuiltInEditFns.FPoint.point());
+                        frame.setObject(top, BuiltInEditFns.FPoint.point());
                         break;
                     case SAVE_CURRENT_BUFFER_OBSOLETE: // 0141
                         throw new UnsupportedOperationException();
                     case GOTO_CHAR:                    // 0142
-                        context.currentBuffer().setPoint(asLong(frame.getObject(stackTop)));
-                        frame.setObject(stackTop, true);
+                        context.currentBuffer().setPoint(asLong(get(frame, top)));
+                        frame.setObject(top, true);
                         break;
                     case INSERT:                       // 0143
-                        frame.setObject(stackTop, BuiltInEditFns.FInsert.insert(new Object[]{frame.getObject(stackTop)}));
+                        frame.setObject(top, BuiltInEditFns.FInsert.insert(new Object[]{get(frame, top)}));
                         break;
                     case POINT_MAX:                    // 0144
-                        frame.setObject(++stackTop, context.currentBuffer().pointMax());
+                        frame.setObject(top, context.currentBuffer().pointMax());
                         break;
                     case POINT_MIN:                    // 0145
-                        frame.setObject(++stackTop, context.currentBuffer().pointMin());
+                        frame.setObject(top, context.currentBuffer().pointMin());
                         break;
                     case CHAR_AFTER:                   // 0146
-                        frame.setObject(stackTop, BuiltInEditFns.FCharAfter.charAfterBuffer(
-                                frame.getObject(stackTop),
+                        frame.setObject(top, BuiltInEditFns.FCharAfter.charAfterBuffer(
+                                get(frame, top),
                                 context.currentBuffer()
                         ));
                         break;
                     case FOLLOWING_CHAR:               // 0147
-                        frame.setObject(++stackTop, BuiltInEditFns.FFollowingChar.followingCharBuffer(context.currentBuffer()));
+                        frame.setObject(top, BuiltInEditFns.FFollowingChar.followingCharBuffer(context.currentBuffer()));
                         break;
                     case PRECEDING_CHAR:               // 0150
-                        frame.setObject(++stackTop, BuiltInEditFns.FPreviousChar.previousCharBuffer(context.currentBuffer()));
+                        frame.setObject(top, BuiltInEditFns.FPreviousChar.previousCharBuffer(context.currentBuffer()));
                         break;
                     case CURRENT_COLUMN:               // 0151
-                        frame.setObject(++stackTop, getContext().currentBuffer().getPosition().column() - 1);
+                        frame.setObject(top, getContext().currentBuffer().getPosition().column() - 1);
                         break;
                     case INDENT_TO:                    // 0152
-                        frame.setObject(stackTop, BuiltInIndent.FIndentTo.indentTo(frame.getObject(stackTop), false));
+                        frame.setObject(top, BuiltInIndent.FIndentTo.indentTo(get(frame, top), false));
                         break;
                     case EOLP:                         // 0154
-                        frame.setObject(++stackTop, BuiltInEditFns.FEolp.eolpBuffer(context.currentBuffer()));
+                        frame.setObject(top, BuiltInEditFns.FEolp.eolpBuffer(context.currentBuffer()));
                         break;
                     case EOBP:                         // 0155
-                        frame.setObject(++stackTop, BuiltInEditFns.FEobp.eobpBuffer(context.currentBuffer()));
+                        frame.setObject(top, BuiltInEditFns.FEobp.eobpBuffer(context.currentBuffer()));
                         break;
                     case BOLP:                         // 0156
-                        frame.setObject(++stackTop, BuiltInEditFns.FEolp.eolpBuffer(context.currentBuffer()));
+                        frame.setObject(top, BuiltInEditFns.FEolp.eolpBuffer(context.currentBuffer()));
                         break;
                     case BOBP:                         // 0157
-                        frame.setObject(++stackTop, BuiltInEditFns.FBobp.bobpBuffer(context.currentBuffer()));
+                        frame.setObject(top, BuiltInEditFns.FBobp.bobpBuffer(context.currentBuffer()));
                         break;
                     case CURRENT_BUFFER:               // 0160
-                        frame.setObject(++stackTop, context.currentBuffer());
+                        frame.setObject(top, context.currentBuffer());
                         break;
                     case SET_BUFFER:                   // 0161
-                        BuiltInBuffer.FSetBuffer.setBuffer(frame.getObject(stackTop));
+                        BuiltInBuffer.FSetBuffer.setBuffer(get(frame, top));
                         break;
                     case SAVE_CURRENT_BUFFER:          // 0162
                         bindings.saveCurrentBuffer(context.currentBuffer());
@@ -726,101 +770,104 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         // obsolete?
                         throw new UnsupportedOperationException();
                     case FORWARD_CHAR:                 // 0165
-                        frame.setObject(stackTop, BuiltInCmds.FForwardChar.forwardCharBuffer(
-                                frame.getObject(stackTop),
+                        frame.setObject(top, BuiltInCmds.FForwardChar.forwardCharBuffer(
+                                get(frame, top),
                                 context.currentBuffer()
                         ));
                         break;
                     case FORWARD_WORD:                 // 0166
-                        frame.setObject(stackTop, BuiltInSyntax.FForwardWord.forwardWord(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInSyntax.FForwardWord.forwardWord(get(frame, top)));
                         break;
                     case SKIP_CHARS_FORWARD:           // 0167
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInSyntax.FSkipCharsForward.skipChars(
+                        frame.setObject(top, BuiltInSyntax.FSkipCharsForward.skipChars(
                                 getLanguage(),
                                 context.currentBuffer(),
-                                asStr(frame.getObject(stackTop)),
-                                frame.getObject(stackTop + 1)
+                                asStr(get(frame, top)),
+                                get(frame, top + 1)
                         ));
                         break;
                     case SKIP_CHARS_BACKWARD:          // 0170
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInSyntax.FSkipCharsBackward.skipChars(
+                        frame.setObject(top, BuiltInSyntax.FSkipCharsBackward.skipChars(
                                 getLanguage(),
                                 context.currentBuffer(),
-                                asStr(frame.getObject(stackTop)),
-                                frame.getObject(stackTop + 1)
+                                asStr(get(frame, top)),
+                                get(frame, top + 1)
                         ));
                         break;
                     case FORWARD_LINE:                 // 0171
-                        frame.setObject(stackTop, BuiltInCmds.FForwardLine.forwardLineCtx(context.currentBuffer(), frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInCmds.FForwardLine.forwardLineCtx(context.currentBuffer(), get(frame, top)));
                         break;
                     case CHAR_SYNTAX:                  // 0172
-                        frame.setObject(stackTop, BuiltInSyntax.FCharSyntax.charSyntax(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInSyntax.FCharSyntax.charSyntax(get(frame, top)));
                         break;
                     case BUFFER_SUBSTRING:             // 0173
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInEditFns.FBufferSubstring.bufferSubstringBuffer(
-                                asLong(frame.getObject(stackTop)),
-                                asLong(frame.getObject(stackTop + 1)),
+                        frame.setObject(top, BuiltInEditFns.FBufferSubstring.bufferSubstringBuffer(
+                                asLong(get(frame, top)),
+                                asLong(get(frame, top + 1)),
                                 context.currentBuffer()
                         ));
                     case DELETE_REGION:                // 0174
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInEditFns.FDeleteRegion.deleteRegion(
-                                asLong(frame.getObject(stackTop)),
-                                asLong(frame.getObject(stackTop + 1))
+                        frame.setObject(top, BuiltInEditFns.FDeleteRegion.deleteRegion(
+                                asLong(get(frame, top)),
+                                asLong(get(frame, top + 1))
                         ));
                         break;
                     case NARROW_TO_REGION:             // 0175
                     case WIDEN:                        // 0176
                         throw new UnsupportedOperationException();
                     case END_OF_LINE:                  // 0177
-                        frame.setObject(stackTop, BuiltInCmds.FEndOfLine.endOfLineBuffer(frame.getObject(stackTop), context.currentBuffer()));
+                        frame.setObject(top, BuiltInCmds.FEndOfLine.endOfLineBuffer(get(frame, top), context.currentBuffer()));
                         break;
                     case CONSTANT2:                    // 0201
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        frame.setObject(++stackTop, constants[ref]);
+                        frame.setObject(top, constants[ref]);
                         break;
                     case GOTO:                         // 0202
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        nextBci = ref;
-                        break;
+                        bci = backEdgePoll(frame, bci, ref, top);
+                        continue;
                     case GOTOIFNIL:                    // 0203
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        if (isNil(frame.getObject(stackTop--))) {
-                            nextBci = ref;
+                        // It is fine to use getObject directly.
+                        // getObject: (1) object: ok; (2) primitive container (long/double): ok (never nil).
+                        if (isNil(frame.getObject(oldTop))) {
+                            bci = backEdgePoll(frame, bci, ref, top);
+                            continue;
                         }
                         break;
                     case GOTOIFNONNIL:                 // 0204
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        if (!isNil(frame.getObject(stackTop--))) {
-                            nextBci = ref;
+                        if (!isNil(frame.getObject(oldTop))) {
+                            bci = backEdgePoll(frame, bci, ref, top);
+                            continue;
                         }
                         break;
                     case GOTOIFNILELSEPOP:             // 0205
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        if (isNil(frame.getObject(stackTop))) {
-                            nextBci = ref;
+                        if (isNil(frame.getObject(oldTop))) {
+                            bci = backEdgePoll(frame, bci, ref, top);
+                            continue;
                         } else {
-                            stackTop--;
+                            top--;
+                            CompilerAsserts.partialEvaluationConstant(top);
                         }
                         break;
                     case GOTOIFNONNILELSEPOP:          // 0206
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        if (isNil(frame.getObject(stackTop))) {
-                            stackTop--;
+                        if (!isNil(frame.getObject(oldTop))) {
+                            top--;
+                            CompilerAsserts.partialEvaluationConstant(top);
                         } else {
-                            nextBci = ref;
+                            bci = backEdgePoll(frame, bci, ref, top);
+                            continue;
                         }
                         break;
                     case RETURN:                       // 0207
-                        return stackTop == 0 ? false : frame.getObject(stackTop);
+                        return top < 0 ? false : get(frame, top);
                     case DISCARD:                      // 0210
-                        stackTop--;
                         break;
                     case DUP:                          // 0211
-                        frame.setObject(++stackTop, frame.getObject(oldStackTop));
+                        frame.setObject(top, get(frame, oldTop));
                         break;
                     case SAVE_EXCURSION:               // 0212
                         bindings.saveExcursion(context.currentBuffer());
@@ -834,7 +881,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case CATCH:                        // 0215
                         throw new UnsupportedOperationException();
                     case UNWIND_PROTECT:               // 0216
-                        value = frame.getObject(stackTop--);
+                        value = get(frame, oldTop);
                         bindings.unwindProtect(value);
                         break;
                     case CONDITION_CASE:               // 0217
@@ -843,76 +890,70 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         throw new UnsupportedOperationException();
                     case SET_MARKER:                   // 0223
                     {
-                        stackTop -= 2;
-                        ELispMarker marker = asMarker(frame.getObject(stackTop));
-                        value = frame.getObject(stackTop + 1);
+                        ELispMarker marker = asMarker(get(frame, top));
+                        value = get(frame, top + 1);
                         if (isNil(value)) {
                             marker.setBuffer(null, -1);
                         } else {
-                            Object buffer = frame.getObject(stackTop + 2);
+                            Object buffer = get(frame, top + 2);
                             marker.setBuffer(isNil(buffer) ? getContext().currentBuffer() : asBuffer(buffer), asLong(value));
                         }
                         break;
                     }
                     case MATCH_BEGINNING:              // 0224
                         value = BuiltInSearch.matchData(this);
-                        frame.setObject(stackTop, BuiltInFns.FNth.nth(2 * asLong(frame.getObject(stackTop)), value));
+                        frame.setObject(top, BuiltInFns.FNth.nth(2 * asLong(get(frame, top)), value));
                         break;
                     case MATCH_END:                    // 0225
                         value = BuiltInSearch.matchData(this);
-                        frame.setObject(stackTop, BuiltInFns.FNth.nth(2 * asLong(frame.getObject(stackTop)) + 1, value));
+                        frame.setObject(top, BuiltInFns.FNth.nth(2 * asLong(get(frame, top)) + 1, value));
                         break;
                     case UPCASE:                       // 0226
                         // TODO: use node
-                        value = frame.getObject(stackTop);
-                        frame.setObject(stackTop, value instanceof Long l
+                        value = get(frame, top);
+                        frame.setObject(top, value instanceof Long l
                                 ? BuiltInCaseFiddle.FUpcase.upcaseChar(l)
                                 : BuiltInCaseFiddle.FUpcase.upcaseString(asStr(value))
                         );
                         break;
                     case DOWNCASE:                     // 0227
                         // TODO: use node
-                        value = frame.getObject(stackTop);
-                        frame.setObject(stackTop, value instanceof Long l
+                        value = get(frame, top);
+                        frame.setObject(top, value instanceof Long l
                                 ? BuiltInCaseFiddle.FDowncase.downcaseChar(l)
                                 : BuiltInCaseFiddle.FDowncase.downcaseString(asStr(value))
                         );
                         break;
                     case STRINGEQLSIGN:                // 0230
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FStringEqual.stringEqual(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FStringEqual.stringEqual(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case STRINGLSS:                    // 0231
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FStringLessp.stringLessp(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FStringLessp.stringLessp(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case EQUAL:                        // 0232
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FEqual.equal(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FEqual.equal(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case NTHCDR:                       // 0233
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FNthcdr.nthcdr(
-                                asLong(frame.getObject(stackTop)),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FNthcdr.nthcdr(
+                                asLong(get(frame, top)),
+                                get(frame, top + 1)
                         ));
                         break;
                     case ELT:                          // 0234
                     {
                         // TODO: use node
-                        stackTop -= 1;
-                        value = frame.getObject(stackTop);
-                        long n = asLong(frame.getObject(stackTop + 1));
-                        frame.setObject(stackTop, isNil(value) ? false : switch (value) {
+                        value = get(frame, top);
+                        long n = asLong(get(frame, top + 1));
+                        frame.setObject(top, isNil(value) ? false : switch (value) {
                             case ELispCons cons -> BuiltInFns.FElt.elt(cons, n);
                             case ELispVector v -> BuiltInFns.FElt.eltVec(v, n);
                             case ELispCharTable table -> BuiltInFns.FElt.eltCharTable(table, n);
@@ -921,23 +962,21 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         break;
                     }
                     case MEMBER:                       // 0235
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FMember.member(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FMember.member(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case ASSQ:                         // 0236
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FAssq.assq(
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1)
+                        frame.setObject(top, BuiltInFns.FAssq.assq(
+                                get(frame, top),
+                                get(frame, top + 1)
                         ));
                         break;
                     case NREVERSE:                     // 0237
                         // TODO: use node
-                        value = frame.getObject(stackTop);
-                        frame.setObject(stackTop, isNil(value) ? false : switch (value) {
+                        value = get(frame, top);
+                        frame.setObject(top, isNil(value) ? false : switch (value) {
                             case ELispCons cons -> BuiltInFns.FNreverse.nreverseList(cons);
                             case ELispString s -> BuiltInFns.FNreverse.nreverseString(s);
                             case ELispVector v -> BuiltInFns.FNreverse.nreverseVec(v);
@@ -946,70 +985,63 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         });
                         break;
                     case SETCAR:                       // 0240
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FSetcar.setcar(asCons(frame.getObject(stackTop)), frame.getObject(stackTop + 1)));
+                        frame.setObject(top, BuiltInData.FSetcar.setcar(asCons(get(frame, top)), get(frame, top + 1)));
                         break;
                     case SETCDR:                       // 0241
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FSetcdr.setcdr(asCons(frame.getObject(stackTop)), frame.getObject(stackTop + 1)));
+                        frame.setObject(top, BuiltInData.FSetcdr.setcdr(asCons(get(frame, top)), get(frame, top + 1)));
                         break;
                     case CAR_SAFE:                     // 0242
-                        frame.setObject(stackTop, BuiltInData.FCarSafe.carSafe(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FCarSafe.carSafe(get(frame, top)));
                         break;
                     case CDR_SAFE:                     // 0243
-                        frame.setObject(stackTop, BuiltInData.FCdrSafe.cdrSafe(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FCdrSafe.cdrSafe(get(frame, top)));
                         break;
                     case NCONC:                        // 0244
                         // TODO: use node
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInFns.FNconc.nconc(new Object[]{
-                                frame.getObject(stackTop),
-                                frame.getObject(stackTop + 1),
+                        frame.setObject(top, BuiltInFns.FNconc.nconc(new Object[]{
+                                get(frame, top),
+                                get(frame, top + 1),
                         }));
                         break;
                     case QUO:                          // 0245
-                        // TODO: use node
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FQuo.quoAny(
-                                frame.getObject(stackTop),
-                                new Object[]{frame.getObject(stackTop + 1)}
-                        ));
+                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case REM:                          // 0246
                         // TODO: use node, also bigint
-                        stackTop -= 1;
-                        frame.setObject(stackTop, BuiltInData.FRem.remLong(
-                                asLong(frame.getObject(stackTop)),
-                                asLong(frame.getObject(stackTop + 1))
+                        frame.setObject(top, BuiltInData.FRem.remLong(
+                                asLong(get(frame, top)),
+                                asLong(get(frame, top + 1))
                         ));
                         break;
                     case NUMBERP:                      // 0247
-                        frame.setObject(stackTop, BuiltInData.FNumberp.numberp(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FNumberp.numberp(get(frame, top)));
                         break;
                     case INTEGERP:                     // 0250
-                        frame.setObject(stackTop, BuiltInData.FIntegerp.integerp(frame.getObject(stackTop)));
+                        frame.setObject(top, BuiltInData.FIntegerp.integerp(get(frame, top)));
                         break;
                     case LISTN:                        // 0257
                     {
                         int count = Byte.toUnsignedInt(bytecode[bci + 1]);
-                        stackTop -= count - 1;
+                        top -= count - 1;
+                        CompilerAsserts.partialEvaluationConstant(top);
                         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
                         for (int i = 0; i < count; i++) {
-                            builder.add(frame.getObject(stackTop + 1));
+                            builder.add(get(frame, top + 1));
                         }
-                        frame.setObject(stackTop, builder.build());
+                        frame.setObject(top, builder.build());
                         break;
                     }
                     case CONCATN:                      // 0260
                     case INSERTN:                      // 0261
                     {
                         int count = Byte.toUnsignedInt(bytecode[bci + 1]);
-                        stackTop -= count - 1;
+                        top -= count - 1;
+                        CompilerAsserts.partialEvaluationConstant(top);
                         Object[] args = new Object[count];
                         for (int i = 0; i < count; i++) {
-                            args[i] = frame.getObject(stackTop);
+                            args[i] = get(frame, top);
                         }
-                        frame.setObject(stackTop, op == CONCATN
+                        frame.setObject(top, op == CONCATN
                                 ? BuiltInFns.FConcat.concat(args)
                                 : BuiltInEditFns.FInsert.insert(args));
                         break;
@@ -1018,31 +1050,35 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case STACK_SET2:                   // 0263
                         ref = op == STACK_SET ? Byte.toUnsignedInt(bytecode[bci + 1])
                                 : Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        frame.setObject((stackTop--) - ref, frame.getObject(oldStackTop));
+                        frame.setObject(oldTop - ref, get(frame, oldTop));
                         break;
                     case DISCARDN:                     // 0266
                     {
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]);
                         if ((ref & 0x80) != 0) {
                             ref &= 0x7F;
-                            frame.setObject(stackTop - ref, frame.getObject(stackTop));
+                            frame.setObject(top - ref, get(frame, top));
                         }
-                        stackTop -= ref;
+                        top -= ref;
+                        CompilerAsserts.partialEvaluationConstant(top);
                         break;
                     }
                     case SWITCH:                       // 0267
-                        stackTop -= 2;
-                        value = frame.getObject(stackTop + 1);
-                        ref = asInt(asHashtable(frame.getObject(stackTop + 2)).get(value, -1L));
+                        value = get(frame, top + 1);
+                        ref = asInt(asHashtable(get(frame, top + 2)).get(value, -1L));
                         if (ref != -1) {
                             if (CompilerDirectives.inInterpreter()) {
-                                nextBci = ref;
+                                bci = ref;
+                                continue;
                             } else {
+                                int[] jumpTable = switchJumpTables[indices[bci]];
                                 //noinspection ForLoopReplaceableByForEach
-                                for (int i = 0; i < jumps.length; i++) {
-                                    int target = jumps[i];
+                                for (int i = 0; i < jumpTable.length; i++) {
+                                    int target = jumpTable[i];
                                     if (target == ref) {
-                                        nextBci = target;
+                                        CompilerAsserts.partialEvaluationConstant(target);
+                                        bci = target;
+                                        continue loop;
                                     }
                                 }
                             }
@@ -1050,43 +1086,36 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         break;
                     case CONSTANT:                     // 0300
                     default:
-                        ref = op & (~CONSTANT);
-                        frame.setObject(++stackTop, constants[ref]);
+                        if ((op & CONSTANT) == CONSTANT) {
+                            ref = op & (~CONSTANT);
+                            frame.setObject(top, constants[ref]);
+                        } else {
+                            throw ELispSignals.invalidFunction(object);
+                        }
                         break;
                 }
-                if (nextBci < bci) {
-                    if (BytecodeOSRNode.pollOSRBackEdge(this)) {
-                        Object result = BytecodeOSRNode.tryOSR(this, nextBci, stackTop, null, frame);
-                        if (result != null) {
-                            return result;
-                        }
-                    }
-                }
+                byte length = BYTECODE_LENGTHS[Byte.toUnsignedInt(op)];
+                CompilerAsserts.partialEvaluationConstant(length);
+                int nextBci = bci + length;
+                CompilerAsserts.partialEvaluationConstant(nextBci);
                 bci = nextBci;
             } catch (AbstractTruffleException e) {
-                AbstractTruffleException rethrow = e;
-                Bindings.SignalHandler handler;
-                while (true) {
-                    try {
-                        handler = bindings.popHandlerTil(rethrow);
-                        break;
-                    } catch (AbstractTruffleException inner) {
-                        rethrow = inner;
-                    }
+                if (exceptionJumps == null) {
+                    throw e;
                 }
-                if (handler == null) {
-                    throw rethrow;
-                }
-                int target = handler.target;
+                int target = getHandlingTarget(e, bindings);
                 if (CompilerDirectives.inInterpreter()) {
-                    bci = jumps[target];
-                    stackTop = jumpsStackTop[target];
+                    bci = exceptionJumps[target];
+                    top = exceptionJumpsStackTop[target];
                    continue;
                 } else {
-                    for (int i = 0; i < jumps.length; i++) {
+                    for (int i = 0; i < exceptionJumps.length; i++) {
                         if (i == target) {
-                            bci = jumps[i];
-                            stackTop = jumpsStackTop[i];
+                            CompilerAsserts.partialEvaluationConstant(i);
+                            bci = exceptionJumps[i];
+                            top = exceptionJumpsStackTop[i];
+                            CompilerAsserts.partialEvaluationConstant(bci);
+                            CompilerAsserts.partialEvaluationConstant(top);
                             continue loop;
                         }
                     }
@@ -1094,6 +1123,76 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 throw CompilerDirectives.shouldNotReachHere();
             }
         }
+        throw ELispSignals.invalidFunction(object);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static int getHandlingTarget(AbstractTruffleException e, Bindings bindings) {
+        AbstractTruffleException rethrow = e;
+        Bindings.SignalHandler handler;
+        while (true) {
+            try {
+                handler = bindings.popHandlerTil(rethrow);
+                break;
+            } catch (AbstractTruffleException inner) {
+                rethrow = inner;
+            }
+        }
+        if (handler == null) {
+            throw rethrow;
+        }
+        return handler.target;
+    }
+
+    private int backEdgePoll(VirtualFrame frame, int bci, int nextBci, int stackTop) {
+        CompilerAsserts.partialEvaluationConstant(nextBci);
+        CompilerAsserts.partialEvaluationConstant(stackTop);
+        if (nextBci < bci) {
+            if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
+                InterpreterState newState = new InterpreterState(stackTop);
+                Object result = BytecodeOSRNode.tryOSR(this, nextBci, newState, null, frame);
+                if (result != null) {
+                    throw new OsrResultException(result);
+                }
+            }
+        }
+        return nextBci;
+    }
+
+    private static Object get(VirtualFrame frame, int top) {
+        Object o = frame.getObject(top);
+        if (o instanceof ELispFrameSlotNode.SlotPrimitiveContainer container) {
+            return container.asObject();
+        }
+        return o;
+    }
+
+    private static Node createUnaryNode(int top, Function<ELispExpressionNode, ELispExpressionNode> function) {
+        return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(top, null,
+                function.apply(ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top, null)));
+    }
+    private static Node createUnaryFactoryNode(int top, Function<ELispExpressionNode[], ELispExpressionNode> function) {
+        return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(top, null,
+                function.apply(new ELispExpressionNode[]{
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top, null)
+                })
+        );
+    }
+    private static Node createBinaryFactoryNode(int top, Function<ELispExpressionNode[], ELispExpressionNode> function) {
+        return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(top - 1, null,
+                function.apply(new ELispExpressionNode[]{
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top - 1, null),
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top, null)
+                })
+        );
+    }
+    private static Node createBinaryNode(int top, BiFunction<ELispExpressionNode, ELispExpressionNode, ELispExpressionNode> function) {
+        return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(top - 1, null,
+                function.apply(
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top - 1, null),
+                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(top, null)
+                )
+        );
     }
 
     @GenerateInline(value = false)
@@ -1260,6 +1359,22 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         abstract Object execute(Object function, Object[] args);
     }
 
+    private static final class InterpreterState {
+        final int stackTop;
+
+        private InterpreterState(int stackTop) {
+            this.stackTop = stackTop;
+        }
+    }
+
+    private static final class OsrResultException extends ControlFlowException {
+        final Object result;
+
+        private OsrResultException(Object result) {
+            this.result = result;
+        }
+    }
+
     final class Bindings implements AutoCloseable {
         private final ArrayList<Object> bindings;
         private final ArrayList<SignalHandler> signalHandlers;
@@ -1357,6 +1472,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
 
         @Override
         public void close() {
+            assert signalHandlers.isEmpty();
             unbind(bindings.size());
         }
 

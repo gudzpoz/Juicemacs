@@ -36,7 +36,7 @@ public class BuiltInBytecode extends ELispBuiltIns {
         @Specialization
         public Object byteCode(
                 ELispString bytestr, ELispVector vector, long maxdepth,
-                @Cached(inline = true) FunctionDispatchNode dispatchNode
+                @Cached FunctionDispatchNode dispatchNode
         ) {
             if (isMultibyte(bytestr.value())) {
                 throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, bytestr);

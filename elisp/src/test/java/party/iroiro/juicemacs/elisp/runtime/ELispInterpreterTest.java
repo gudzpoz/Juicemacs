@@ -70,6 +70,21 @@ public class ELispInterpreterTest {
                     sum)))
             nil
             """;
+    public final static String MANDELBROT_BYTE_COMPILED = """
+            (defalias
+              'mandelbrot-byte-compiled
+              (make-byte-code
+               257
+               (unibyte-string 192 137 137 137 137 5 87 131 189 0 137 193 95 5 165 194 90 192 137 6 7 87 131 183 0 195 \
+               137 137 137 4 193 95 6 11 165 196 90 192 197 1 198 87 131 103 0 5 4 90 3 92 6 7 193 95 6 6 95 6 10 92 1 \
+               178 9 137 178 7 6 8 137 95 178 8 6 6 137 95 178 6 6 7 6 6 92 199 86 131 94 0 192 178 3 198 178 4 3 84 \
+               178 4 182 2 130 39 0 200 201 6 13 197 34 2 34 178 12 6 10 84 178 11 6 10 202 85 131 144 0 203 6 13 6 13 \
+               34 178 13 192 178 12 192 178 11 182 7 130 179 0 6 7 6 14 83 85 131 177 0 201 6 12 202 6 13 90 34 178 12 203 \
+               6 13 6 13 34 178 13 192 178 12 192 178 11 182 7 84 130 18 0 182 2 84 130 4 0 3 135)
+               [0 2.0 1.0 0.0 1.5 1 50 4.0 logior ash 8 logxor]
+               18
+               "(fn SIZE)"))
+            """;
     public final static String MANDELBROT = """
             ;;; -*- lexical-binding: t -*-
             (defalias
@@ -140,6 +155,7 @@ public class ELispInterpreterTest {
         context.eval(Source.newBuilder("elisp", FIB, "fib").build());
         context.eval(Source.newBuilder("elisp", MANDELBROT, "mandelbrot").build());
         context.eval(Source.newBuilder("elisp", MANDELBROT_NESTED_LETS, "mandelbrot-lets").build());
+        context.eval(Source.newBuilder("elisp", MANDELBROT_BYTE_COMPILED, "mandelbrot-byte-compiled").build());
     }
 
     @TearDown
@@ -163,6 +179,13 @@ public class ELispInterpreterTest {
     @Benchmark
     public long mandelbrotNestedLets() throws IOException {
         Value v = context.eval(Source.newBuilder("elisp", "(mandelbrot-lets 750)", "<750>").build());
+        assertEquals(192, v.asLong());
+        return v.asLong();
+    }
+
+    @Benchmark
+    public long mandelbrotByteCompiled() throws IOException {
+        Value v = context.eval(Source.newBuilder("elisp", "(mandelbrot-byte-compiled 750)", "<750>").build());
         assertEquals(192, v.asLong());
         return v.asLong();
     }
@@ -194,6 +217,19 @@ public class ELispInterpreterTest {
         }
         Value v = benchmark.context
                 .eval(Source.newBuilder("elisp", "(mandelbrot-lets 1000)", "<1000>").build());
+        assertEquals(5, v.asLong());
+        benchmark.tearDown();
+    }
+
+    @Test
+    public void testMandelbrotByteCompiled() throws IOException {
+        ELispInterpreterTest benchmark = new ELispInterpreterTest();
+        benchmark.setup();
+        for (int i = 0; i < 10; i++) {
+            assertEquals(192, benchmark.mandelbrotByteCompiled());
+        }
+        Value v = benchmark.context
+                .eval(Source.newBuilder("elisp", "(mandelbrot-byte-compiled 1000)", "<1000>").build());
         assertEquals(5, v.asLong());
         benchmark.tearDown();
     }
