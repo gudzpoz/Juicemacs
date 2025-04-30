@@ -160,7 +160,10 @@ public final class ELispBytecode extends AbstractELispVector {
                 ));
             }
             this.optionalRestArgs = argNodes.toArray(new ReadFunctionArgNode[0]);
-            body = new ELispBytecodeFallbackNode(ELispBytecode.this, dynamicArgs == null ? argNodes.size() : 0);
+            body = new ELispBytecodeFallbackNode(
+                    ELispBytecode.this,
+                    dynamicArgs == null ? argNodes.size() : 0
+            );
         }
 
         FrameDescriptor descriptor() {
@@ -171,7 +174,7 @@ public final class ELispBytecode extends AbstractELispVector {
                 args = optionalRestArgs.length;
             }
             FrameDescriptor.Builder descriptor = FrameDescriptor.newBuilder();
-            descriptor.addSlots((int) getStackDepth() + args + 1, FrameSlotKind.Object);
+            descriptor.addSlots((int) getStackDepth() + args, FrameSlotKind.Object);
             return descriptor.build();
         }
 
@@ -186,7 +189,7 @@ public final class ELispBytecode extends AbstractELispVector {
             ELispLexical.@Nullable Dynamic dynamic;
             if (argSymbols == null) {
                 for (int i = 0; i < optionalRestArgs.length; i++) {
-                    frame.setObject(i + 1, optionalRestArgs[i].executeGeneric(frame));
+                    frame.setObject(i, optionalRestArgs[i].executeGeneric(frame));
                 }
                 dynamic = null;
             } else {
