@@ -69,12 +69,14 @@ public class ELispRepl implements Callable<Integer> {
                 ? Path.of("..", "elisp", "emacs", "etc").toAbsolutePath().toString()
                 : emacsDataDir.getAbsolutePath();
         try (Context context = Context.newBuilder("elisp")
+                .allowExperimentalOptions(true)
                 .environment("EMACSLOADPATH", loadPaths)
                 .environment("EMACSDATA", emacsData)
                 .allowIO(IOAccess.ALL)
                 .build()) {
             LineReader lineReader = getLineReader(context);
             try {
+                context.eval("elisp", "(setq load-suffixes '(\".el\"))");
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
                 printStackTrace(e, lineReader);

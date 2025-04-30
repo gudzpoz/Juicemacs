@@ -164,8 +164,8 @@ public class BuiltInLRead extends ELispBuiltIns {
             ELispString path = locateOpenP(
                     LOAD_PATH.getValue(),
                     asStr(file),
-                    // TODO: Support bytecode before trying to load bytecode files: LOAD_SUFFIXES.getValue(),
-                    new ELispCons(new ELispString(".el")),
+                    // TODO: Emacs bytecodes assume a bootstrapped environment. So we still need dumping?
+                    LOAD_SUFFIXES.getValue(),
                     false, true, true
             );
             if (path == null) {
@@ -203,7 +203,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (stem.endsWith(".el") || stem.endsWith(".elc")) {
                 target = directory.resolve(stem);
             } else {
-                // TODO: Support bytecode before trying to load bytecode files
+                // TODO: Emacs bytecodes assume a bootstrapped environment. So we still need dumping?
                 // target = directory.resolve(stem + ".elc");
                 target = directory.resolve(stem + ".el");
                 if (!target.isRegularFile()) {
@@ -737,6 +737,12 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "intern-soft", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FInternSoft extends ELispBuiltInBaseNode {
+        @Specialization
+        public Object internSoft(ELispSymbol symbol, Object obarray) {
+            ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
+            ELispSymbol found = array.internSoft(symbol.name());
+            return symbol == found ? symbol : false;
+        }
         @Specialization
         public Object internSoft(ELispString name, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);

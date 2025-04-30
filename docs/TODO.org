@@ -214,6 +214,20 @@ integer-based tests our interpreter is significantly slower than nativecomp.
 
 Edit: No, =bytecomp.el= requires a working bytecode interpreter.
 
+** Bootstrapping
+
+So we have a bytecode interpreter now. Compiled Emacs =.elc= files seem to
+assume a bootstrapped environment, meaning that it expects at least autoload
+definitions from =loaddefs.el= even before =loaddefs.el= is loaded.
+
+Emacs achieves this by somehow dumping its heap (approximately) and always
+restarts from this heap snapshot. I don't know how we are going to deal with
+though.
+
+Also, currently Juicemacs load ~90% of =loadup.el= in around 13 seconds on my
+machine, which is not very acceptable. So we do need something similar to
+=pdump=.
+
 * TODO [#B] Understanding Non-Bare Symbols
 
 According to [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Symbols-with-Position.html][Symbols with Position (GNU Emacs Lisp Reference Manual)]], it seems

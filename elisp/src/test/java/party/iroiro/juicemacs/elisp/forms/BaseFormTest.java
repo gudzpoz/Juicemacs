@@ -29,6 +29,7 @@ public abstract class BaseFormTest {
 
     public static Context getTestingContext() {
         return Context.newBuilder("elisp")
+                .allowExperimentalOptions(true)
                 .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
                 .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
                 .allowIO(IOAccess.ALL)

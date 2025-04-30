@@ -57,7 +57,6 @@ if (!isGraalVM) {
             '-XX:+UnlockExperimentalVMOptions',
             '-XX:+EnableJVMCI',
             "--upgrade-module-path=${jars.asPath}",
-            '-Djdk.graal.Dump=:0',
     ]
 }
 

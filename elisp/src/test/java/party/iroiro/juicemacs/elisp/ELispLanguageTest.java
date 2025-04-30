@@ -52,6 +52,7 @@ public class ELispLanguageTest {
             System.out.println("Output: " + file);
             // Loads until an error
             try {
+                context.eval("elisp", "(setq load-suffixes '(\".el\"))");
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
                 e.printStackTrace(out);
