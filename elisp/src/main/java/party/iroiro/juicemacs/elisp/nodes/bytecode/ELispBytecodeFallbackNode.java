@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall.getFunctionObject;
 import static party.iroiro.juicemacs.elisp.nodes.bytecode.ByteCode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -104,20 +105,20 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         // stackTops is used to check if each PC in the function
         // has deterministic stack top positions.
         int[] stackTops = new int[bytes.length];
-        Arrays.fill(stackTops, -1);
+        Arrays.fill(stackTops, Integer.MIN_VALUE);
 
         IntArrayList exceptionJumps = new IntArrayList();
         ArrayList<int[]> switchJumpTables = new ArrayList<>();
         ArrayList<Node> nodes = new ArrayList<>();
 
         int stackTop = startStackTop;
-        int lastConstantI = -1;
+        int lastConstantI = Integer.MIN_VALUE;
         for (int i = 0; i < bytes.length; ) {
             int otherBranchTop = stackTops[i];
-            if (otherBranchTop == -1) {
+            if (otherBranchTop == Integer.MIN_VALUE) {
                 stackTops[i] = stackTop;
             } else {
-                if (stackTop == -1) {
+                if (stackTop == Integer.MIN_VALUE) {
                     stackTop = otherBranchTop;
                 } else if (otherBranchTop != stackTop) {
                     throw ELispSignals.invalidFunction(object);
@@ -125,12 +126,12 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             }
             byte op = bytes[i];
             int ref;
-            int jumpTarget = -1, jumpTargetTop = -1;
+            int jumpTarget = Integer.MIN_VALUE, jumpTargetTop = Integer.MIN_VALUE;
             int stackDelta = BYTECODE_STACK_EFFECTS[Byte.toUnsignedInt(op)];
             if (stackDelta == 0x7F) {
-                stackDelta = Integer.MAX_VALUE;
+                stackDelta = Integer.MIN_VALUE;
             }
-            int newConstantI = -1;
+            int newConstantI = Integer.MIN_VALUE;
             indices[i] = switch (op) {
                 case STACK_REF1:                   // 1
                 case STACK_REF2:                   // 2
@@ -266,7 +267,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     if (elsePop) {
                         stackDelta = -1;
                     } else if (op == GOTO) {
-                        stackDelta = Integer.MAX_VALUE;
+                        stackDelta = Integer.MIN_VALUE;
                     }
                     yield 0;
                 case UPCASE:                       // 0226
@@ -307,10 +308,10 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     yield 0;
                 case SWITCH:                       // 0267
                 {
-                    if (lastConstantI == -1) {
+                    if (lastConstantI == Integer.MIN_VALUE) {
                         throw ELispSignals.invalidFunction(object);
                     }
-                    int targetStackTop = stackTop == -1 ? -1 : stackTop - 2;
+                    int targetStackTop = stackTop == Integer.MIN_VALUE ? Integer.MIN_VALUE : stackTop - 2;
                     ELispHashtable jumpTable = asHashtable(constants[lastConstantI]);
                     IntArrayList jumps = new IntArrayList(jumpTable.size());
                     jumpTable.forEach((_, v) -> {
@@ -338,14 +339,14 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             };
             byte length = BYTECODE_LENGTHS[Byte.toUnsignedInt(op)];
             i += length;
-            if (stackDelta == Integer.MAX_VALUE) {
-                stackTop = -1;
-            } else if (stackTop != -1) {
+            if (stackDelta == Integer.MIN_VALUE) {
+                stackTop = Integer.MIN_VALUE;
+            } else if (stackTop != Integer.MIN_VALUE) {
                 stackTop += stackDelta;
             }
-            if (jumpTarget != -1) {
+            if (jumpTarget != Integer.MIN_VALUE) {
                 int tracked = stackTops[jumpTarget];
-                if (tracked == -1) {
+                if (tracked == Integer.MIN_VALUE) {
                     stackTops[jumpTarget] = jumpTargetTop;
                 } else if (tracked != jumpTargetTop) {
                     throw ELispSignals.invalidFunction(object);
@@ -365,7 +366,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             this.exceptionJumpsStackTop = new int[this.exceptionJumps.length];
             for (int i = 0; i < this.exceptionJumps.length; i++) {
                 stackTop = stackTops[this.exceptionJumps[i]];
-                if (stackTop == -1) {
+                if (stackTop == Integer.MIN_VALUE) {
                     throw ELispSignals.invalidFunction(object);
                 }
                 this.exceptionJumpsStackTop[i] = stackTop;
@@ -766,8 +767,6 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         continue;
                     case GOTOIFNIL:                    // 0203
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        // It is fine to use getObject directly.
-                        // getObject: (1) object: ok; (2) primitive container (long/double): ok (never nil).
                         if (isNil(frame.getObject(oldTop))) {
                             bci = backEdgePoll(frame, bci, ref, top, bindings);
                             continue;
@@ -785,20 +784,18 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         if (isNil(frame.getObject(oldTop))) {
                             bci = backEdgePoll(frame, bci, ref, top, bindings);
                             continue;
-                        } else {
-                            top--;
-                            CompilerAsserts.partialEvaluationConstant(top);
                         }
+                        top--;
+                        CompilerAsserts.partialEvaluationConstant(top);
                         break;
                     case GOTOIFNONNILELSEPOP:          // 0206
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         if (!isNil(frame.getObject(oldTop))) {
-                            top--;
-                            CompilerAsserts.partialEvaluationConstant(top);
-                        } else {
                             bci = backEdgePoll(frame, bci, ref, top, bindings);
                             continue;
                         }
+                        top--;
+                        CompilerAsserts.partialEvaluationConstant(top);
                         break;
                     case RETURN:                       // 0207
                         return top < 0 ? false : frame.getObject(top);
@@ -1213,9 +1210,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     static ELispExpressionNode createCallSomeNode(int base, int n) {
         int argBase = base + 1;
         ELispExpressionNode[] args = new ELispExpressionNode[n + 1];
-        args[0] = ELispBytecodeFallbackNodeFactory.ToFunctionObjectNodeGen.create(
-                new ReadStackSlotNode(argBase)
-        );
+        args[0] = ELispBytecodeFallbackNodeFactory.ToFunctionObjectNodeGen.create(new ReadStackSlotNode(base));
         for (int i = 0; i < n; i++) {
             args[i + 1] = new ReadStackSlotNode(argBase + i);
         }
@@ -1278,10 +1273,6 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
 
     @NodeChild(value = "function", type = ELispExpressionNode.class)
     abstract static class ToFunctionObjectNode extends ELispExpressionNode {
-        public ELispFunctionObject toFunction(Object o) {
-            return getFunctionObject(o);
-        }
-
         @Specialization(assumptions = "storage.getStableAssumption()", guards = "symbol == lastSymbol", limit = "2")
         public ELispFunctionObject symbolToObject(
                 ELispSymbol symbol,
@@ -1298,8 +1289,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
 
         @Fallback
-        public ELispFunctionObject getFunctionObject(Object o) {
-            return toFunction(o);
+        public ELispFunctionObject toFunction(Object o) {
+            return getFunctionObject(o);
         }
     }
 
