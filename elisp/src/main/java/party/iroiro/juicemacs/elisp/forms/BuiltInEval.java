@@ -1178,12 +1178,17 @@ public class BuiltInEval extends ELispBuiltIns {
             @Override
             public void executeVoid(VirtualFrame frame) {
                 ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
-                ELispLexical.LexicalState state = lexical == null ? null : lexical.saveState();
+                int state1 = 0;
+                ELispLexical.StableTopAssumption state2 = null;
+                if (lexical != null) {
+                    state1 = lexical.saveState1();
+                    state2 = lexical.saveState2();
+                }
                 try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
                     bodyNode.executeVoid(frame);
                 } finally {
                     if (lexical != null) {
-                        lexical.restore(frame, state);
+                        lexical.restore(frame, state1, state2);
                     }
                 }
             }
@@ -1191,12 +1196,17 @@ public class BuiltInEval extends ELispBuiltIns {
             @Override
             public Object executeGeneric(VirtualFrame frame) {
                 ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
-                ELispLexical.LexicalState state = lexical == null ? null : lexical.saveState();
+                int state1 = 0;
+                ELispLexical.StableTopAssumption state2 = null;
+                if (lexical != null) {
+                    state1 = lexical.saveState1();
+                    state2 = lexical.saveState2();
+                }
                 try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
                     return bodyNode.executeGeneric(frame);
                 } finally {
                     if (lexical!= null) {
-                        lexical.restore(frame, state);
+                        lexical.restore(frame, state1, state2);
                     }
                 }
             }
@@ -1345,12 +1355,17 @@ public class BuiltInEval extends ELispBuiltIns {
             @Override
             public void executeVoid(VirtualFrame frame) {
                 ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
-                ELispLexical.LexicalState state = lexical == null ? null : lexical.saveState();
+                int state1 = 0;
+                ELispLexical.StableTopAssumption state2 = null;
+                if (lexical != null) {
+                    state1 = lexical.saveState1();
+                    state2 = lexical.saveState2();
+                }
                 try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
                     bodyNode.executeVoid(frame);
                 } finally {
                     if (lexical!= null) {
-                        lexical.restore(frame, state);
+                        lexical.restore(frame, state1, state2);
                     }
                 }
             }
@@ -1358,12 +1373,17 @@ public class BuiltInEval extends ELispBuiltIns {
             @Override
             public Object executeGeneric(VirtualFrame frame) {
                 ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
-                ELispLexical.LexicalState state = lexical == null ? null : lexical.saveState();
+                int state1 = 0;
+                ELispLexical.StableTopAssumption state2 = null;
+                if (lexical != null) {
+                    state1 = lexical.saveState1();
+                    state2 = lexical.saveState2();
+                }
                 try (ELispLexical.Dynamic _ = scopeNode.executeGeneric(frame)) {
                     return bodyNode.executeGeneric(frame);
                 } finally {
                     if (lexical!= null) {
-                        lexical.restore(frame, state);
+                        lexical.restore(frame, state1, state2);
                     }
                 }
             }

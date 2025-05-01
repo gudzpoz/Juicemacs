@@ -254,22 +254,36 @@ public final class ELispLexical {
         topChanged = assumption;
     }
 
-    public LexicalState saveState() {
-        return new LexicalState(topIndex, topChanged);
+    /// Used to save states before [#fork(StableTopAssumption)] for [#restore(VirtualFrame, int, StableTopAssumption)]
+    ///
+    /// It is quite funny having to use two separate methods for it
+    /// ([#saveState1()], [#saveState2()]), and the final code is not
+    /// pretty. But this does reduce some allocations compared to using
+    /// a wrapper object: Java does not seem able to escape-analyze them
+    /// away.
+    ///
+    /// @see #saveState2()
+    public int saveState1() {
+        return topIndex;
+    }
+    /// @see #saveState1()
+    public StableTopAssumption saveState2() {
+        return topChanged;
     }
 
     /// Restores the current frame
     ///
     /// @param frame the current backing frame
-    /// @param state the state obtained from [#saveState()]
-    public void restore(VirtualFrame frame, LexicalState state) {
-        while (!variableIndices.isEmpty() && variableIndices.getLast() >= state.top) {
+    /// @param top from [#saveState1()]
+    /// @param assumption from [#saveState2()]
+    public void restore(VirtualFrame frame, int top, StableTopAssumption assumption) {
+        while (!variableIndices.isEmpty() && variableIndices.getLast() >= top) {
             variables.removeLast();
             variableIndices.removeAtIndex(variableIndices.size() - 1);
         }
         int materializedTop = getMaterializedTop(frame);
-        topIndex = Math.max(materializedTop, state.top);
-        topChanged = state.assumption;
+        topIndex = Math.max(materializedTop, top);
+        topChanged = assumption;
     }
 
     public void addVariable(VirtualFrame frame, ELispSymbol symbol, Object value) {
