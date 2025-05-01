@@ -149,12 +149,14 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         private final LexicalEnvironment lexical;
 
         private final ELispLexical.StableTopAssumption assumption;
+        private final ELispLexical.StackSizeProfile stackSizeProfile;
 
         public ELispClosureCallNode() {
             Object env = getEnv();
             isLexical = !isNil(env);
             lexical = isLexical ? initializeLexical(env) : null;
             assumption = new ELispLexical.StableTopAssumption();
+            stackSizeProfile = new ELispLexical.StackSizeProfile();
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
             this.args = ClosureArgs.parse(getArgs());
@@ -190,7 +192,11 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         new Object[0],
                         ELispLexical.frameDescriptor(true)
                 );
-                ELispLexical lexical = ELispLexical.create(frame, new ELispLexical.StableTopAssumption());
+                ELispLexical lexical = ELispLexical.create(
+                        frame,
+                        new ELispLexical.StableTopAssumption(),
+                        new ELispLexical.StackSizeProfile()
+                );
                 ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
                 while (i.hasNext()) {
                     ELispSymbol symbol = (ELispSymbol) i.next();
@@ -204,7 +210,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         public ELispLexical.@Nullable Dynamic pushScope(VirtualFrame frame, Object[] newValues) {
             if (isLexical && lexical != null) {
                 ELispLexical lexicalFrame = ELispLexical.create(
-                        frame, lexical.lexicalFrame, lexical.frame, List.of(lexicallyBoundSymbols), assumption
+                        frame,
+                        lexical.lexicalFrame,
+                        lexical.frame,
+                        List.of(lexicallyBoundSymbols),
+                        stackSizeProfile,
+                        assumption
                 );
                 for (int i = 0; i < variableLikeBoundSymbols.length; i++) {
                     // Always lexically bound, even for "special == true" symbols

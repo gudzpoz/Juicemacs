@@ -101,10 +101,12 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         private ELispExpressionNode node;
 
         private final ELispLexical.@Nullable StableTopAssumption lexical;
+        private final ELispLexical.@Nullable StackSizeProfile stackSizeProfile;
 
         public ELispRootExpressions(ELispExpressionNode node, boolean lexical) {
             this.node = node;
             this.lexical = lexical ? new ELispLexical.StableTopAssumption() : null;
+            this.stackSizeProfile = lexical ? new ELispLexical.StackSizeProfile() : null;
         }
 
         public ELispRootExpressions(Object[] expressions, boolean lexical) {
@@ -113,8 +115,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public void executeVoid(VirtualFrame frame) {
-            if (lexical != null) {
-                ELispLexical.create(frame, lexical);
+            if (lexical != null && stackSizeProfile != null) {
+                ELispLexical.create(frame, lexical, stackSizeProfile);
             }
             try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
                 node.executeVoid(frame);
@@ -123,8 +125,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            if (lexical != null) {
-                ELispLexical.create(frame, lexical);
+            if (lexical != null && stackSizeProfile != null) {
+                ELispLexical.create(frame, lexical, stackSizeProfile);
             }
             try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
                 return node.executeGeneric(frame);

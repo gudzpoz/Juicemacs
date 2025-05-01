@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.runtime;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.*;
-import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode;
@@ -12,6 +11,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LEXICAL_BINDING;
@@ -164,9 +164,13 @@ public final class ELispLexical {
         return false;
     }
 
+    private final StackSizeProfile stackSize;
     private final List<ELispSymbol> args;
-    private final List<ELispSymbol> variables;
-    private final IntArrayList variableIndices;
+
+    private int variableCount;
+    private ELispSymbol[] variables;
+    private int[] variableIndices;
+
     private int topIndex;
     private StableTopAssumption topChanged;
     /// The assumption from the root node
@@ -185,11 +189,14 @@ public final class ELispLexical {
             @Nullable MaterializedFrame parentFrame,
             @Nullable ELispLexical parent,
             List<ELispSymbol> requiredArgs,
+            StackSizeProfile stackSize,
             StableTopAssumption assumption
     ) {
         this.args = requiredArgs;
-        this.variables = new ArrayList<>();
-        this.variableIndices = new IntArrayList();
+        this.stackSize = stackSize;
+        this.variableCount = 0;
+        this.variables = new ELispSymbol[stackSize.stackSize()];
+        this.variableIndices = new int[stackSize.stackSize()];
         this.topIndex = START_SLOT;
         this.topChanged = this.rootAssumption = assumption;
 
@@ -205,8 +212,10 @@ public final class ELispLexical {
     /// @see #getEnv(VirtualFrame)
     private ELispLexical(ELispLexical other) {
         this.args = other.args;
-        this.variables = List.copyOf(other.variables);
-        this.variableIndices = IntArrayList.newList(other.variableIndices);
+        this.stackSize = other.stackSize;
+        this.variableCount = other.variableCount;
+        this.variables = Arrays.copyOf(other.variables, variableCount);
+        this.variableIndices = Arrays.copyOf(other.variableIndices, variableCount);
         this.topIndex = other.topIndex;
         this.topChanged = other.topChanged;
         this.parent = other.parent;
@@ -215,8 +224,8 @@ public final class ELispLexical {
     }
 
     /// Creates a lexical scope for a root node
-    public static ELispLexical create(VirtualFrame frame, StableTopAssumption assumption) {
-        return new ELispLexical(frame, null, null, List.of(), assumption);
+    public static ELispLexical create(VirtualFrame frame, StableTopAssumption assumption, StackSizeProfile stackSize) {
+        return new ELispLexical(frame, null, null, List.of(), stackSize, assumption);
     }
 
     /// Creates a lexical scope for a root node created inside a parent frame
@@ -225,10 +234,11 @@ public final class ELispLexical {
             ELispLexical parent,
             MaterializedFrame parentFrame,
             List<ELispSymbol> requiredArgs,
+            StackSizeProfile stackSize,
             StableTopAssumption assumption
     ) {
         parent.materialize(parentFrame);
-        return new ELispLexical(frame, parentFrame, parent, requiredArgs, assumption);
+        return new ELispLexical(frame, parentFrame, parent, requiredArgs, stackSize, assumption);
     }
 
     private void materialize(VirtualFrame frame) {
@@ -277,10 +287,12 @@ public final class ELispLexical {
     /// @param top from [#saveState1()]
     /// @param assumption from [#saveState2()]
     public void restore(VirtualFrame frame, int top, StableTopAssumption assumption) {
-        while (!variableIndices.isEmpty() && variableIndices.getLast() >= top) {
-            variables.removeLast();
-            variableIndices.removeAtIndex(variableIndices.size() - 1);
+        int count = variableCount;
+        while (count > 0 && variableIndices[count - 1] >= top) {
+            count--;
         }
+        variableCount = count;
+
         int materializedTop = getMaterializedTop(frame);
         topIndex = Math.max(materializedTop, top);
         topChanged = assumption;
@@ -289,8 +301,7 @@ public final class ELispLexical {
     public void addVariable(VirtualFrame frame, ELispSymbol symbol, Object value) {
         int index = topIndex;
         topIndex++;
-        variables.add(symbol);
-        variableIndices.add(index);
+        addVariable(symbol, index);
         value = ELispFrameSlotNode.wrap(value);
         if (index < MAX_SLOTS) {
             frame.setObject(index, value);
@@ -309,10 +320,31 @@ public final class ELispLexical {
         }
     }
 
+    private void addVariable(ELispSymbol symbol, int index) {
+        int count = variableCount++;
+        int length = variableIndices.length;
+        if (CompilerDirectives.injectBranchProbability(
+                CompilerDirectives.SLOWPATH_PROBABILITY,
+                count >= length
+        )) {
+            int newLength = Math.max(length, 4);
+            newLength += Math.min(newLength >> 1, 8);
+            variables = Arrays.copyOf(variables, newLength);
+            variableIndices = Arrays.copyOf(variableIndices, newLength);
+            stackSize.updateStackSize(newLength);
+        }
+        variables[count] = symbol;
+        variableIndices[count] = index;
+    }
+
     private int getIndex(ELispSymbol symbol) {
-        int i = variables.lastIndexOf(symbol);
+        int i;
+        i = variables.length - 1;
+        while (i >= 0 && variables[i] != symbol) {
+            i--;
+        }
         if (i != -1) {
-            return variableIndices.get(i);
+            return variableIndices[i];
         }
         i = args.indexOf(symbol);
         if (i != -1) {
@@ -473,10 +505,23 @@ public final class ELispLexical {
         return new ELispInterpretedClosure.LexicalEnvironment(frame.materialize(), new ELispLexical(this));
     }
 
-    public record LexicalReference(@Nullable MaterializedFrame frame, int index) {
+    public static final class StackSizeProfile {
+        @CompilerDirectives.CompilationFinal
+        private int stackSize = 0;
+
+        int stackSize() {
+            return stackSize;
+        }
+
+        void updateStackSize(int stackSize) {
+            if (stackSize > this.stackSize) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.stackSize = stackSize;
+            }
+        }
     }
 
-    public record LexicalState(int top, StableTopAssumption assumption) {
+    public record LexicalReference(@Nullable MaterializedFrame frame, int index) {
     }
 
     public record Dynamic(ELispSymbol[] symbols, Object[] prevValues) implements AutoCloseable {
