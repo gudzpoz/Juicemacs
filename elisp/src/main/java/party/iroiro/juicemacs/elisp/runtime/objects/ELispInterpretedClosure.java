@@ -148,13 +148,13 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Nullable
         private final LexicalEnvironment lexical;
 
-        private final ELispLexical.MaterializedAssumption assumption;
+        private final ELispLexical.StableTopAssumption assumption;
 
         public ELispClosureCallNode() {
             Object env = getEnv();
             isLexical = !isNil(env);
             lexical = isLexical ? initializeLexical(env) : null;
-            assumption = new ELispLexical.MaterializedAssumption();
+            assumption = new ELispLexical.StableTopAssumption();
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
             this.args = ClosureArgs.parse(getArgs());
@@ -190,7 +190,7 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         new Object[0],
                         ELispLexical.frameDescriptor(true)
                 );
-                ELispLexical lexical = ELispLexical.create(frame, new ELispLexical.MaterializedAssumption());
+                ELispLexical lexical = ELispLexical.create(frame, new ELispLexical.StableTopAssumption());
                 ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
                 while (i.hasNext()) {
                     ELispSymbol symbol = (ELispSymbol) i.next();

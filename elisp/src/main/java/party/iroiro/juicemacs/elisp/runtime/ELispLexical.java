@@ -33,17 +33,45 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LEXICAL_BINDING;
 ///     then it should be bound dynamically by `let/let*`.
 ///   - If a symbol is found "normal" in `internal-interpreter-environment`, it is
 ///     lexically bound and looked up in `internal-interpreter-environment`. Otherwise,
-///     it is still dynamically (i.e. globally) bound.
+///     it is still dynamically (i.e., globally) bound.
 ///
 /// ### Reusing Frame Slots
 ///
-/// So, if a framed is materialized, some other functions might be referencing slots in this frame,
+/// So, if a frame is materialized, some other functions might be referencing slots in this frame,
 /// and we must not reuse *those* frame slots. However, this can lead to excessive memory usage
 /// in cases like {@code let} in loops, so we do want to reuse slots as much as possible.
 ///
+/// To do this, we keep two stack top slot numbers: [#getMaterializedTop(Frame)] and [#topIndex].
+/// In the following examples, we use `||` to denote materialized top and `<` for top index.
+///
+/// - Example 1: `(let ((x 1) (y 2)) ...)`:
+///   - Before: `|| <`
+///   - Inner: `|| (1) (2) <`
+///   - After: `|| <` (reuse slots)
+/// - Example 2: `(let* ((x 1) (f (lambda () x)) (y 2)) ...)`
+///   - Before: `|| <`
+///   - Inner:
+///     - #1: `|| (1) <`
+///     - #2: `(1) || (f) <`
+///     - #3: `(1) || (f) (2) <`
+///   - After: `(1) || <` (`x` referenced by `f`)
+///
+/// ## Slot Number Caching
+///
+/// If we don't cache the slot number for variables, we will have to look a symbol up every time,
+/// which is slow. However, several operations might change the slot number for the same symbol
+/// in the AST, and we use [Assumption assumptions] to notify these changes.
+///
+/// The changes include:
+/// - Materializing the frame in a loop, that is, creating lexical lambdas with each having
+///   (slightly) different lexical scope, as is shown in the Example 2 above.
+///   - See [StableTopAssumption].
+/// - Conditional `defvar`.
+///   - See [#markDynamic(VirtualFrame, ELispSymbol)]
+///
 /// ### Primitives On The Stack
 ///
-/// In order to avoid excessive GC pressure, it is a good idea to avoid the cost of boxing and
+/// To avoid excessive GC pressure, it should be a good idea to avoid the cost of boxing and
 /// unboxing primitives when storing things into the frame. GraalJS does this by **rewriting**
 /// the frame descriptor to use a different frame slot kind for primitives when a primitive is
 /// written to the slot. However, this will invalidate the whole function compilation, causing
@@ -56,10 +84,22 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LEXICAL_BINDING;
 /// The logic is implemented in [party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode].
 /// [ELispLexical] only implements the logic for object accessing.
 ///
+/// ## Optimizations
+///
+/// The original implementation of [ELispLexical] uses an [ELispLexical] object per lexical scope.
+/// So you allocate one scope object every time you visit a `let` node. However, when you have
+/// code with `let` in a loop, [ELispLexical] soon becomes the most allocated object, leading to
+/// great GC pressure.
+///
+/// The current implementation has one [ELispLexical] per stack frame, merging upper `let` scopes.
 public final class ELispLexical {
     /// Placeholder to mark a symbol "dynamic"
     public final static LexicalReference DYNAMIC = new LexicalReference(null, 0);
 
+    /// A stack frame slot that is definite invalid, to be used as an indicator of `null`
+    ///
+    /// It should always be zero because some code is using constant 0 instead of this constant.
+    /// So changes to this API (and slot assignments) will be breaking.
     public final static int NON_VAR_SLOT0 = 0;
     private final static int MATERIALIZED_TOP_SLOT = 0;
     private final static int LEXICAL_FRAME_SLOT = 1;
@@ -67,7 +107,20 @@ public final class ELispLexical {
     private final static int START_SLOT = 3;
     public final static int MAX_SLOTS = 32;
 
+    /// Frame descriptor for a [lexical](https://www.gnu.org/software/emacs/manual/html_node/elisp/Lexical-Binding.html)
+    /// function
+    ///
+    /// - Slot #0: an integer, marking the materialized `top` of this frame
+    /// - Slot #1: reference to [ELispLexical], keeping track of local variables
+    /// - Slot #2: spills array list
+    /// - Slot #3~#31: Slots for local variables
+    /// - Spills: [ELispLexical] has an [ArrayList] for spilled variables
     private final static FrameDescriptor LEXICAL_DESCRIPTOR;
+    /// Frame descriptor for a [dynamic](https://www.gnu.org/software/emacs/manual/html_node/elisp/Dynamic-Binding.html)
+    /// function
+    ///
+    /// - Slot #0: an integer, always `-1` (initialized in [#initFrame(VirtualFrame)]) for easy identification of
+    ///   lexical/dynamic scopes
     private final static FrameDescriptor DYNAMIC_DESCRIPTOR;
 
     static {
@@ -94,12 +147,16 @@ public final class ELispLexical {
     /// to local variables. Currently, we initialize the frame in [party.iroiro.juicemacs.elisp.nodes.ELispRootNode],
     /// but we should not re-initialize the frame for an on-stack evaluation.
     /// This method serves as a workaround to skip the initialization when the frame is already initialized.
+    ///
+    /// We also have different frame descriptors for bytecode functions. But we don't support
+    /// debugging bytecode nodes (for now), so we don't need to worry about that.
     public static boolean isDebuggerEval(VirtualFrame frame) {
         if (CompilerDirectives.inInterpreter()) {
             if (frame.getFrameDescriptor().getNumberOfSlots() == MAX_SLOTS) { // LEXICAL_DESCRIPTOR
                 try {
                     return getMaterializedTop(frame) != -1;
                 } catch (FrameSlotTypeException ignored) {
+                    // This is an uninitialized frame.
                 }
             }
         }
@@ -110,113 +167,114 @@ public final class ELispLexical {
     private final List<ELispSymbol> args;
     private final List<ELispSymbol> variables;
     private final IntArrayList variableIndices;
-    private boolean materialized;
     private int topIndex;
+    private StableTopAssumption topChanged;
+    /// The assumption from the root node
+    ///
+    /// The sole purpose for it is to satisfy `defvar`: it wants to detect
+    /// whether a scope is a root scope.
+    private final StableTopAssumption rootAssumption;
+
     @Nullable
     private final MaterializedFrame materializedParent;
     @Nullable
     private final ELispLexical parent;
-    private MaterializedAssumption materializedTopUnchanged;
 
     private ELispLexical(
             VirtualFrame frame,
             @Nullable MaterializedFrame parentFrame,
             @Nullable ELispLexical parent,
             List<ELispSymbol> requiredArgs,
-            int startSlot,
-            MaterializedAssumption assumption
+            StableTopAssumption assumption
     ) {
         this.args = requiredArgs;
         this.variables = new ArrayList<>();
         this.variableIndices = new IntArrayList();
+        this.topIndex = START_SLOT;
+        this.topChanged = this.rootAssumption = assumption;
+
         this.parent = parent;
-        this.topIndex = startSlot;
-        this.materialized = false;
-        this.materializedTopUnchanged = assumption;
         this.materializedParent = parentFrame;
+
+        setMaterializedTop(frame, START_SLOT);
         frame.setObject(LEXICAL_FRAME_SLOT, this);
     }
 
-    /// Creates a lexical scope, typically created by `let`
-    public static ELispLexical create(
-            VirtualFrame frame,
-            ELispLexical parent,
-            MaterializedAssumption assumption
-    ) {
-        return new ELispLexical(
-                frame,
-                null,
-                parent,
-                List.of(),
-                parent.topIndex,
-                assumption
-        );
+    /// Copy constructor, used to create nested lexical scopes
+    ///
+    /// @see #getEnv(VirtualFrame)
+    private ELispLexical(ELispLexical other) {
+        this.args = other.args;
+        this.variables = List.copyOf(other.variables);
+        this.variableIndices = IntArrayList.newList(other.variableIndices);
+        this.topIndex = other.topIndex;
+        this.topChanged = other.topChanged;
+        this.parent = other.parent;
+        this.materializedParent = other.materializedParent;
+        this.rootAssumption = other.rootAssumption;
     }
 
     /// Creates a lexical scope for a root node
-    public static ELispLexical create(VirtualFrame frame, MaterializedAssumption assumption) {
-        ELispLexical lexical = new ELispLexical(frame, null, null, List.of(), START_SLOT, assumption);
-        setMaterializedTop(frame, START_SLOT);
-        return lexical;
+    public static ELispLexical create(VirtualFrame frame, StableTopAssumption assumption) {
+        return new ELispLexical(frame, null, null, List.of(), assumption);
     }
 
     /// Creates a lexical scope for a root node created inside a parent frame
     public static ELispLexical create(
             VirtualFrame frame,
             ELispLexical parent,
-            VirtualFrame parentFrame,
+            MaterializedFrame parentFrame,
             List<ELispSymbol> requiredArgs,
-            MaterializedAssumption assumption
+            StableTopAssumption assumption
     ) {
         parent.materialize(parentFrame);
-        ELispLexical lexical = new ELispLexical(frame, parentFrame.materialize(), parent, requiredArgs, START_SLOT, assumption);
-        setMaterializedTop(frame, START_SLOT);
-        return lexical;
+        return new ELispLexical(frame, parentFrame, parent, requiredArgs, assumption);
     }
 
     private void materialize(VirtualFrame frame) {
-        materialized = true;
-        setMaterializedTop(frame, topIndex);
+        int index = topIndex;
+        setMaterializedTop(frame, index);
     }
 
     public boolean isRootScope() {
-        return parent == null && materializedParent == null;
+        return parent == null && materializedParent == null && rootAssumption == topChanged;
     }
 
     /// Forks the current frame
     ///
     /// ## Usage
     ///
-    /// Please remember to call [#restore(VirtualFrame)].
+    /// Please remember to use [#saveState()] to get a previous state and
+    /// call [#restore(VirtualFrame, int, Object)] afterward to restore it.
     /// We cannot use [AutoCloseable] for this because a [VirtualFrame]
     /// should not be stored in a field unless it is a [MaterializedFrame]
     /// (which will add some overhead).
-    ///
-    /// @param frame the current backing frame
-    /// @return a new frame
-    public ELispLexical fork(VirtualFrame frame, MaterializedAssumption assumption) {
+    public void fork(StableTopAssumption assumption) {
         assumption.checkEntry(this);
-        return create(frame, this, assumption);
+        topChanged = assumption;
+    }
+
+    public LexicalState saveState() {
+        return new LexicalState(topIndex, topChanged);
     }
 
     /// Restores the current frame
     ///
     /// @param frame the current backing frame
-    public void restore(VirtualFrame frame) {
-        int newTop = getMaterializedTop(frame);
-        if (newTop > topIndex) {
-            materialized = true;
-            topIndex = newTop;
+    /// @param state the state obtained from [#saveState()]
+    public void restore(VirtualFrame frame, LexicalState state) {
+        while (!variableIndices.isEmpty() && variableIndices.getLast() >= state.top) {
+            variables.removeLast();
+            variableIndices.removeAtIndex(variableIndices.size() - 1);
         }
-        frame.setObject(LEXICAL_FRAME_SLOT, this);
+        int materializedTop = getMaterializedTop(frame);
+        topIndex = Math.max(materializedTop, state.top);
+        topChanged = state.assumption;
     }
 
     public void addVariable(VirtualFrame frame, ELispSymbol symbol, Object value) {
         int index = topIndex;
         topIndex++;
-        if (materialized) {
-            setMaterializedTop(frame, topIndex);
-        }
         variables.add(symbol);
         variableIndices.add(index);
         value = ELispFrameSlotNode.wrap(value);
@@ -314,26 +372,17 @@ public final class ELispLexical {
         return frame.getInt(MATERIALIZED_TOP_SLOT);
     }
 
-    public Assumption getMaterializedTopUnchanged() {
-        return materializedTopUnchanged.stableMaterializedTop;
+    public Assumption getTopUnchanged() {
+        return topChanged.stableTop;
     }
 
-    public void setMaterializedTopUnchanged(MaterializedAssumption assumption) {
+    public void setTopChanged(StableTopAssumption assumption) {
         assumption.checkEntry(this);
-        this.materializedTopUnchanged = assumption;
+        this.topChanged = assumption;
     }
 
     private static void setMaterializedTop(VirtualFrame frame, int newTop) {
-        int original = getMaterializedTop(frame);
-        if (original != newTop) {
-            if (newTop != START_SLOT) {
-                ELispLexical lexical = getLexicalFrame(frame);
-                if (lexical != null) {
-                    lexical.materializedTopUnchanged.invalidate(newTop);
-                }
-            }
-            frame.setInt(MATERIALIZED_TOP_SLOT, newTop);
-        }
+        frame.setInt(MATERIALIZED_TOP_SLOT, newTop);
     }
 
     public static Object getVariable(Frame frame, int i) {
@@ -360,10 +409,14 @@ public final class ELispLexical {
         }
     }
 
+    /// Marks a symbol as dynamically bound in the current lexical scope (`defvar`)
+    ///
+    /// We do not aim to support conditional `defvar` since it will completely break
+    /// our slot number caching.
     public static void markDynamic(VirtualFrame frame, ELispSymbol symbol) {
-        ELispLexical lexicalFrame = getLexicalFrame(frame);
-        if (lexicalFrame != null && lexicalFrame.getIndex(symbol) == 0) {
-            lexicalFrame.addVariable(frame, symbol, DYNAMIC);
+        ELispLexical lexical = getLexicalFrame(frame);
+        if (lexical != null && lexical.getIndex(symbol) == 0) {
+            lexical.addVariable(frame, symbol, DYNAMIC);
         }
     }
 
@@ -403,10 +456,13 @@ public final class ELispLexical {
 
     public ELispInterpretedClosure.LexicalEnvironment getEnv(VirtualFrame frame) {
         materialize(frame);
-        return new ELispInterpretedClosure.LexicalEnvironment(frame.materialize(), this);
+        return new ELispInterpretedClosure.LexicalEnvironment(frame.materialize(), new ELispLexical(this));
     }
 
     public record LexicalReference(@Nullable MaterializedFrame frame, int index) {
+    }
+
+    public record LexicalState(int top, StableTopAssumption assumption) {
     }
 
     public record Dynamic(ELispSymbol[] symbols, Object[] prevValues) implements AutoCloseable {
@@ -418,33 +474,36 @@ public final class ELispLexical {
         }
     }
 
-    public static final class MaterializedAssumption {
-        private final Assumption stableMaterializedTop;
+    public static final class StableTopAssumption {
+        private final Assumption stableTop;
         private int lastTop;
 
-        public MaterializedAssumption(Assumption stableMaterializedTop, int lastTop) {
-            this.stableMaterializedTop = stableMaterializedTop;
+        public StableTopAssumption(Assumption stableTop, int lastTop) {
+            this.stableTop = stableTop;
             this.lastTop = lastTop;
         }
 
-        public MaterializedAssumption() {
+        public StableTopAssumption() {
             this(NON_VAR_SLOT0);
         }
 
-        public MaterializedAssumption(int lastTop) {
+        public StableTopAssumption(int lastTop) {
             this(Assumption.create(), lastTop);
         }
 
         public void invalidate(int newTop) {
+            if (!stableTop.isValid()) {
+                return;
+            }
             if (this.lastTop == NON_VAR_SLOT0) {
                 this.lastTop = newTop;
             } else if (this.lastTop != newTop) {
-                stableMaterializedTop.invalidate();
+                stableTop.invalidate();
             }
         }
 
         public boolean isValid() {
-            return stableMaterializedTop.isValid();
+            return stableTop.isValid();
         }
 
         public void checkEntry(ELispLexical parent) {

@@ -100,11 +100,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Child
         private ELispExpressionNode node;
 
-        private final ELispLexical.@Nullable MaterializedAssumption lexical;
+        private final ELispLexical.@Nullable StableTopAssumption lexical;
 
         public ELispRootExpressions(ELispExpressionNode node, boolean lexical) {
             this.node = node;
-            this.lexical = lexical ? new ELispLexical.MaterializedAssumption() : null;
+            this.lexical = lexical ? new ELispLexical.StableTopAssumption() : null;
         }
 
         public ELispRootExpressions(Object[] expressions, boolean lexical) {
@@ -380,7 +380,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 GlobalVariableReadNode newNode = GlobalVariableReadNodeGen.create(symbol);
                 globalReadNode = insert(newNode);
                 if (lexicalFrame != null) {
-                    this.topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
+                    this.topUnchanged = lexicalFrame.getTopUnchanged();
                 }
                 return newNode;
             } else {
@@ -391,7 +391,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 ELispFrameSlotNode.ELispFrameSlotReadNode reader =
                         ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
                 this.readNode = insertOrReplace(reader, readNode);
-                this.topUnchanged = lexicalFrame.getMaterializedTopUnchanged();
+                this.topUnchanged = lexicalFrame.getTopUnchanged();
                 return reader;
             }
         }
