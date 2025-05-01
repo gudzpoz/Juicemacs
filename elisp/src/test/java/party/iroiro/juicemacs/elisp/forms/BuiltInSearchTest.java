@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -54,7 +56,7 @@ public class BuiltInSearchTest extends BaseFormTest {
     public static final String REGEXP_TEST = """
             (progn
               (string-match
-                "a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaa"
+                "^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaa"
                 "aaaaaaaaaaaaaaaaaaaaaaaa")
               (match-end 0))
             """;
@@ -123,11 +125,22 @@ public class BuiltInSearchTest extends BaseFormTest {
     @Setup
     public void setup() throws IOException {
         context = getTestingContext();
+        context.eval("elisp", "(setq case-fold-search nil)");
         context.eval(Source.newBuilder("elisp", """
-            ;;; -*- lexical-binding: t -*-
-            (defalias
-              'long-regexp
-              #'(lambda ()\s""" + REGEXP_TEST + " 1)) nil", "long-regexp").build());
+                ;;; -*- lexical-binding: t -*-
+                (defalias
+                  'long-regexp
+                  #'(lambda ()\s""" + REGEXP_TEST + " 1)) nil", "long-regexp").build());
+        context.eval(Source.newBuilder("elisp", """
+                ;;; -*- lexical-binding: t -*-
+                (defalias
+                  'version-regexp
+                  #'(lambda ()
+                      (string-match
+                       "\\\\([^.].*?\\\\)-\\\\([0-9]+\\\\(?:[.][0-9]+\\\\|\\\\(?:pre\\\\|beta\\\\|alpha\\\\)[0-9]+\\\\)*\\\\)"
+                       "some-package-0.1.0beta1")
+                      (match-end 0)))
+                """, "version-regexp").build());
     }
 
     @TearDown
@@ -139,5 +152,38 @@ public class BuiltInSearchTest extends BaseFormTest {
     public long regExp() throws IOException {
         Value v = context.eval(Source.newBuilder("elisp", "(long-regexp)", "<regexp-test>").build());
         return v.asLong();
+    }
+    @Benchmark
+    public long versionRegExp() throws IOException {
+        Value v = context.eval(Source.newBuilder("elisp", "(version-regexp)", "<version-regexp-test>").build());
+        return v.asLong();
+    }
+
+    @Test
+    public void versionRegExpTest() throws IOException {
+        BuiltInSearchTest test = new BuiltInSearchTest();
+        test.setup();
+        for (int i = 0; i < 1000; i++) {
+            assertEquals("some-package-0.1.0beta1".length(), test.versionRegExp());
+        }
+        test.tearDown();
+    }
+
+    private static final Pattern LONG_REGEXP_PATTERN = Pattern.compile(
+            "^a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaa"
+    );
+    private static final Pattern VERSION_REGEXP_PATTERN = Pattern.compile(
+            "([^.].*?)-([0-9]+(?:[.][0-9]+|(?:pre|beta|alpha)[0-9]+)*)"
+    );
+
+    @Benchmark
+    public long regExpJava() {
+        Matcher match = LONG_REGEXP_PATTERN.matcher("aaaaaaaaaaaaaaaaaaaaaaaa");
+        return match.matches() ? match.end() : 0;
+    }
+    @Benchmark
+    public long versionRegExpJava() {
+        Matcher match = LONG_REGEXP_PATTERN.matcher("some-package-0.1.0beta1");
+        return match.matches() ? match.end() : 0;
     }
 }

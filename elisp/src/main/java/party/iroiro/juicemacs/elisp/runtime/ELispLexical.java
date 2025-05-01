@@ -153,11 +153,7 @@ public final class ELispLexical {
     public static boolean isDebuggerEval(VirtualFrame frame) {
         if (CompilerDirectives.inInterpreter()) {
             if (frame.getFrameDescriptor().getNumberOfSlots() == MAX_SLOTS) { // LEXICAL_DESCRIPTOR
-                try {
-                    return getMaterializedTop(frame) != -1;
-                } catch (FrameSlotTypeException ignored) {
-                    // This is an uninitialized frame.
-                }
+                return frame.isInt(MATERIALIZED_TOP_SLOT); // uninitialized int is not an int
             }
         }
 
