@@ -2,9 +2,7 @@ package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.*;
@@ -409,7 +407,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             return function;
         }
 
-        protected ELispFunctionObject getFunctionObject(Object function) {
+        protected static ELispFunctionObject getFunctionObject(Object function) {
             return switch (function) {
                 case ELispSubroutine sub -> sub.body();
                 case ELispInterpretedClosure closure -> closure.getFunction();
@@ -471,13 +469,21 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
         }
 
-        @Specialization
-        public Object call(VirtualFrame frame, @Cached FunctionDispatchNode dispatchNode) {
+        public ELispFunctionObject getFunction(VirtualFrame frame) {
             Object function = this.function;
             if (inlineLambdaNode != null) {
                 function = inlineLambdaNode.executeGeneric(frame);
             }
-            return dispatchNode.executeDispatch(this, getFunctionObject(function), evalArgs(frame));
+            return getFunctionObject(function);
+        }
+
+        @Specialization
+        public Object call(
+                VirtualFrame frame,
+                @Cached(value = "getFunction(frame)", neverDefault = true) ELispFunctionObject function,
+                @Cached FunctionDispatchNode dispatchNode
+        ) {
+            return dispatchNode.executeDispatch(this, function, evalArgs(frame));
         }
     }
 
