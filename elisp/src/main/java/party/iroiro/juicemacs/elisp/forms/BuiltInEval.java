@@ -7,6 +7,8 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.*;
 
@@ -1117,9 +1119,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 this.letx = letx;
             }
 
-            private void updateClauses() {
+            private ELispExpressionNode updateClauses() {
+                @Nullable ELispExpressionNode bodyNode = this.bodyNode;
                 if (bodyNode != null) {
-                    return;
+                    return bodyNode;
                 }
 
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1167,11 +1170,12 @@ public class BuiltInEval extends ELispBuiltIns {
                 this.dynamicClauses = dynamicClauses;
                 this.dynamicSymbols = dynamicSymbols.toArray(new ELispSymbol[0]);
 
-                ELispExpressionNode bodyNode = new FProgn.PrognBlockNode(ELispInterpretedNode.create(body));
+                bodyNode = new FProgn.PrognBlockNode(ELispInterpretedNode.create(body));
                 if (scope != null) {
                     bodyNode = new ScopeWrapperNode(bodyNode, scope);
                 }
                 this.bodyNode = insert(bodyNode);
+                return bodyNode;
             }
 
             @ExplodeLoop
@@ -1198,7 +1202,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                updateClauses();
+                ELispExpressionNode bodyNode = updateClauses();
                 try (ELispLexical.Dynamic _ = executeClauses(frame)) {
                     bodyNode.executeVoid(frame);
                 }
@@ -1206,10 +1210,15 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public Object executeGeneric(VirtualFrame frame) {
-                updateClauses();
+                ELispExpressionNode bodyNode = updateClauses();
                 try (ELispLexical.Dynamic _ = executeClauses(frame)) {
                     return bodyNode.executeGeneric(frame);
                 }
+            }
+
+            @Override
+            public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+                return updateClauses();
             }
         }
     }
@@ -1703,7 +1712,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     for (ELispExpressionNode node : handlers) {
                         insert(node);
                     }
-                    handler = Objects.requireNonNull(handlers[handlerIndex]);
+                    handler = handlers[handlerIndex];
                 }
                 if (handler == null) {
                     return false;
@@ -1716,7 +1725,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         return handler.executeGeneric(frame);
                     }
                 }
-                frame.setObject(slot, data);
+                ELispLexical.setVariable(frame, slot, data);
                 return handler.executeGeneric(frame);
             }
         }
@@ -1932,7 +1941,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object form,
                 boolean lexical
         ) {
-            ELispExpressionNode expr = ELispInterpretedNode.create(new Object[]{form}, lexical);
+            ELispExpressionNode expr = ELispInterpretedNode.createRoot(new Object[]{form}, lexical);
             return new ELispRootNode(
                     ELispLanguage.get(node),
                     expr,

@@ -79,7 +79,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return new ELispRootExpressions(expressions, lexical);
     }
 
-    public static ELispExpressionNode create(Object[] expressions, boolean lexical) {
+    public static ELispExpressionNode createRoot(Object[] expressions, boolean lexical) {
         return new ELispRootExpressions(expressions, lexical);
     }
 
