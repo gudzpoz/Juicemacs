@@ -13,6 +13,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.*;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -71,6 +72,48 @@ public class BuiltInEval extends ELispBuiltIns {
                 args[i] = arguments[i].executeGeneric(frame);
             }
             return dispatchNode.executeDispatch(this, FFuncall.getFunctionObject(f), args);
+        }
+    }
+
+    public static final class SourceSectionWrapper extends ELispExpressionNode {
+        private final ELispCons cons;
+        @Child
+        ELispExpressionNode inner;
+
+        public SourceSectionWrapper(ELispCons cons, ELispExpressionNode inner) {
+            this.cons = cons;
+            this.inner = inner;
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            inner.executeVoid(frame);
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            return inner.executeLong(frame);
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+            return inner.executeDouble(frame);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return inner.executeGeneric(frame);
+        }
+
+        @Override
+        @Nullable
+        public SourceSection getSourceSection() {
+            RootNode rootNode = getRootNode();
+            if (rootNode == null) {
+                return null;
+            }
+            SourceSection source = rootNode.getSourceSection();
+            return cons.getSourceSection(source.getSource());
         }
     }
 
@@ -516,10 +559,12 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispExpressionNode writeNode;
 
             private final ELispExpressionNode inner;
+            private final Object value;
 
             FSetqItem(ELispSymbol symbol, Object value) {
                 this.symbol = symbol;
                 this.inner = ELispInterpretedNode.create(value);
+                this.value = value;
             }
 
             @Override
@@ -550,14 +595,13 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ELispLexical.@Nullable LexicalReference reference = ELispLexical.getLexicalReference(this, symbol);
-                if (reference == null) {
-                    GlobalVariableWriteNode dynamicWrite = GlobalVariableWriteNodeGen.create(symbol, inner);
-                    return replace(dynamicWrite);
-                } else {
-                    ELispExpressionNode lexicalWrite =
-                            ELispFrameSlotNode.createWrite(reference.index(), reference.frame(), inner);
-                    return replace(lexicalWrite);
+                ELispExpressionNode replace = reference == null
+                        ? GlobalVariableWriteNodeGen.create(symbol, inner)
+                        : ELispFrameSlotNode.createWrite(reference.index(), reference.frame(), inner);
+                if (value instanceof ELispCons cons) {
+                    replace = new SourceSectionWrapper(cons, inner);
                 }
+                return replace(replace);
             }
         }
 
@@ -1139,6 +1183,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     scope = scope.fork();
                 }
                 int length = symbols.length;
+                Iterator<?> sourceSectionProvider = ELispCons.iterate(varlist).iterator();
                 for (int i = 0; i < length; i++) {
                     ELispSymbol symbol = symbols[i];
                     ELispExpressionNode clause = clauses[i];
@@ -1163,6 +1208,9 @@ public class BuiltInEval extends ELispBuiltIns {
                             clause = new ScopeWrapperNode(clause, oldScope);
                         }
                         oldScope = scope;
+                    }
+                    if (sourceSectionProvider.hasNext() && sourceSectionProvider.next() instanceof ELispCons cons) {
+                        clause = new SourceSectionWrapper(cons, clause);
                     }
                     clauses[i] = insert(clause);
                 }
@@ -1218,7 +1266,8 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Override
             public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-                return updateClauses();
+                updateClauses();
+                return this;
             }
         }
     }

@@ -189,7 +189,7 @@ public record ELispLexical(
                 return spilled.slots[slot];
             }
         }
-        return frame.getObject(i);
+        return frame.getValue(i);
     }
 
     public static void setVariable(VirtualFrame frame, int i, Object value) {

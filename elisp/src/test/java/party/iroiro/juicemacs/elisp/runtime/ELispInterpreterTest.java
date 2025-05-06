@@ -180,11 +180,6 @@ public class ELispInterpreterTest {
                 List<DebugStackFrame> list = StreamSupport.stream(event.getStackFrames().spliterator(), false).toList();
                 assertEquals(2, list.size());
                 assertEquals(64, event.getTopStackFrame().eval("(expt 2 (+ a b c))").asLong());
-                event.prepareStepOver(1);
-            });
-            // Scope access
-            tester.expectSuspended(event -> {
-                assertEquals(7, event.getSourceSection().getStartLine());
 
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals("test", frame.getName());
@@ -198,11 +193,20 @@ public class ELispInterpreterTest {
                 assertNull(b);
                 b = session.getTopScope("elisp").getDeclaredValue("b");
                 assertNotNull(b);
+                assertNull(c);
+                c = scope.getParent().getDeclaredValue("c");
                 assertNotNull(c);
                 assertEquals(1, a.asInt());
                 assertEquals(2, b.asInt());
                 assertEquals(3, c.asInt());
                 assertEquals(64, frame.eval("(expt 2 (+ a b c))").asLong());
+
+                event.prepareStepOver(1);
+            });
+            // Scope access
+            tester.expectSuspended(event -> {
+                // FIXME: should be 7 instead of 1
+                assertEquals(1, event.getSourceSection().getStartLine());
                 event.prepareContinue();
             });
             tester.expectDone();

@@ -9,6 +9,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.options.OptionCategory;
@@ -20,6 +21,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -43,6 +45,7 @@ import java.util.ArrayList;
         StandardTags.StatementTag.class,
         StandardTags.ExpressionTag.class,
         StandardTags.CallTag.class,
+        StandardTags.RootTag.class,
 })
 public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final String ID = "elisp";
@@ -96,6 +99,12 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     protected CallTarget parse(ParsingRequest request) throws Exception {
         ELispRootNode root = ELispParser.parse(this, ELispContext.get(null), request.getSource());
         return root.getCallTarget();
+    }
+
+    @Override
+    protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        @Nullable ELispLexical scope = ELispLexical.getScope(request.getLocation());
+        return ELispParser.parseDebugEval(this, ELispContext.get(null), request.getSource(), scope);
     }
 
     @Override

@@ -83,6 +83,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return new ELispRootExpressions(expressions, lexical);
     }
 
+    public static ELispExpressionNode createRoot(Object[] expressions, ELispLexical debugScope) {
+        return new ELispRootExpressions(expressions, debugScope);
+    }
+
     public static Object getIndirectFunction(Object function) {
         if (toSym(function) instanceof ELispSymbol symbol) {
             function = symbol.getIndirectFunction();
@@ -102,6 +106,12 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             this.node = node;
             this.rootLexical = lexical ? new ELispLexical.Allocator() : null;
             this.rootScope = lexical ? ELispLexical.newRoot() : null;
+        }
+
+        public ELispRootExpressions(Object[] body, @Nullable ELispLexical debugScope) {
+            this.node = BuiltInEval.FProgn.progn(body);
+            this.rootLexical = null;
+            this.rootScope = debugScope;
         }
 
         public ELispRootExpressions(Object[] expressions, boolean lexical) {
@@ -130,6 +140,20 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Override
         public ELispLexical.@Nullable Allocator rootScope() {
             return rootLexical;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            RootNode rootNode = getRootNode();
+            if (rootNode == null) {
+                return null;
+            }
+            return rootNode.getSourceSection();
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tag == StandardTags.RootTag.class;
         }
     }
 
@@ -452,7 +476,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (lexical == null) {
                 throw UnsupportedMessageException.create();
             }
-            return new DebuggerScopeObject(getContext(), lexical, frame);
+            return new DebuggerScopeObject(getContext(), lexical, frame.materialize());
         }
         //#endregion NodeLibrary
     }
@@ -815,14 +839,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         @Override
-        public boolean isInstrumentable() {
-            SourceSection source = getSourceSection();
-            return source != null && source.isAvailable();
-        }
-
-        @Override
-        public WrapperNode createWrapper(ProbeNode probe) {
-            throw new UnsupportedOperationException();
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return false;
         }
 
         @Override

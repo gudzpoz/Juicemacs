@@ -13,6 +13,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.LocatedToken;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -285,6 +286,14 @@ public class ELispParser {
         return nextObject();
     }
 
+    private Object[] parse() throws IOException {
+        List<Object> expressions = new ArrayList<>();
+        while (hasNext()) {
+            expressions.add(nextLisp());
+        }
+        return expressions.toArray();
+    }
+
     @CompilerDirectives.TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source) throws IOException {
         ELispParser parser = new ELispParser(context, source);
@@ -300,14 +309,22 @@ public class ELispParser {
         return parse(language, parser, source, debug);
     }
 
+    @CompilerDirectives.TruffleBoundary
+    public static ELispRootNode parseDebugEval(
+            ELispLanguage language,
+            InternContext context,
+            Source source,
+            @Nullable ELispLexical debugScope
+    ) throws IOException {
+        ELispParser parser = new ELispParser(context, source);
+        ELispExpressionNode expr = ELispInterpretedNode.createRoot(parser.parse(), debugScope);
+        return new ELispRootNode(language, expr, parser.getWholeSection(source));
+    }
+
     private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source, boolean debug)
             throws IOException {
-        List<Object> expressions = new ArrayList<>();
-        while (parser.hasNext()) {
-            expressions.add(parser.nextLisp());
-        }
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
-        ELispExpressionNode expr = ELispInterpretedNode.createMacroexpand(expressions.toArray(), parser.isLexicallyBound());
+        ELispExpressionNode expr = ELispInterpretedNode.createMacroexpand(parser.parse(), parser.isLexicallyBound());
         if (!debug) {
             source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
         }
