@@ -240,7 +240,7 @@ However, as always, Emacs Lisp brings some problems:
   Truffle =FrameDescriptor= requires a constant slot count at declaration time,
   which poses yet another challenge.
 
-Solutions?
+**** Previous solution
 
 - Use a constant slot count (=~32=) for frame descriptors. And spill to a
   separate =ArrayList= if there are too many variables.
@@ -262,6 +262,26 @@ Solutions?
     - Using =8= instead of =32= as the slot count does seem to affect throughput
       though.
   - Benchmark to find more hotspots (possibly in assembly).
+
+**** Re-implementation
+
+It is too costly to maintain separate lexical contexts for every function call.
+Instead, we move the lexical context from stack frame to AST nodes with the
+following modification:
+
+- We never reuse stack slots. Since every slot has its own =long/double=
+  specialization, reusing slots will risk invalidating the specializations.
+- Every variable is allocated a constant slot number.
+
+However, when users create closures in a loop, we might need to copy the frames
+(and the lexical context) for the closures. See =ELispLexical.java= for the
+implementation and =BuiltInEvalTest.java= for an example
+(=testPerIterationScope=).
+
+This improves the performance a little bit. However, after this, we changed
+=ELispFrameSlotNode.java= to use primitive frame slots whenever possible, which
+brings a ~3x performance boost and we run =mandelbrot= almost as fast as Java
+now.
 
 *** The Graal Truffle tutorial series by Adam Ruka
 
