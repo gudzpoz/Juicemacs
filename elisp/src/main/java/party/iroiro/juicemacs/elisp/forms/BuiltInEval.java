@@ -6,10 +6,7 @@ import java.util.function.BiFunction;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.*;
 
@@ -1513,7 +1510,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     checkSoftExit(getContext(), rethrow);
                 }
                 runUnwind(frame, rethrow);
-                return result;
+                return Objects.requireNonNull(result);
             }
         }
     }
@@ -1629,11 +1626,8 @@ public class BuiltInEval extends ELispBuiltIns {
             @Children
             @Nullable ELispExpressionNode[] handlers;
 
-            @Child
-            @Nullable
-            private ELispExpressionNode writeVariable = null;
             @CompilerDirectives.CompilationFinal
-            private int auxSlot = -1;
+            private int slot = -1;
 
             public ConditionCaseNode(Object bodyform, int finalSuccessIndex, @Nullable Object[] handlerBodies, Object[] conditionNames, Object var) {
                 this.finalSuccessIndex = finalSuccessIndex;
@@ -1682,7 +1676,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             private Object handle(VirtualFrame frame, Object data, @Nullable ELispExpressionNode handler, int handlerIndex) {
                 ELispSymbol symbol = asSym(var);
-                if (auxSlot == -1) {
+                if (slot == -1) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     for (int i = 0; i < handlerBodies.length; i++) {
                         @Nullable Object body = handlerBodies[i];
@@ -1690,20 +1684,15 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
                     ELispLexical parent = ELispLexical.getScope(this);
                     if (isNil(symbol)) {
-                        auxSlot = -3;
+                        slot = -3;
                     } else if (parent == null) {
-                        auxSlot = -2;
+                        slot = -2;
                     } else {
                         @Nullable ELispLexical scope = parent.fork();
-                        int slot = scope.addVariable(this, symbol);
-                        auxSlot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(this);
-                        writeVariable = ELispFrameSlotNode.createWrite(slot, null, new ELispExpressionNode() {
-                            final int slot = auxSlot;
-                            @Override
-                            public Object executeGeneric(VirtualFrame frame) {
-                                return frame.getAuxiliarySlot(slot);
-                            }
-                        });
+                        slot = scope.addVariable(this, symbol);
+                        if (slot < ELispLexical.MAX_SLOTS) {
+                            frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Object);
+                        }
                         for (int i = 0; i < handlers.length; i++) {
                             @Nullable ELispExpressionNode inner = handlers[i];
                             if (inner != null) {
@@ -1719,16 +1708,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 if (handler == null) {
                     return false;
                 }
-                if (auxSlot == -3) {
+                if (slot == -3) {
                     return handler.executeGeneric(frame);
                 }
-                if (auxSlot == -2) {
+                if (slot == -2) {
                     try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(new ELispSymbol[]{symbol}, new Object[]{data})) {
                         return handler.executeGeneric(frame);
                     }
                 }
-                frame.setAuxiliarySlot(auxSlot, data);
-                Objects.requireNonNull(writeVariable).executeVoid(frame);
+                frame.setObject(slot, data);
                 return handler.executeGeneric(frame);
             }
         }

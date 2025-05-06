@@ -66,7 +66,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LEXICAL_BINDING;
 /// In Example 2, we have different `i`, but each pair of `reader` and `writer` should share
 /// the same `i`.
 ///
-/// We handle this with [#updateInnerClosures(VirtualFrame, Node)] and [#captureEnv(VirtualFrame, Node, ScopeHolder)]:
+/// We handle this with [#updateInnerClosures] and [#captureEnv]:
 /// - `captureEnv` is called when a closure is created, "registering" the closure as a [ScopeUpdatable].
 /// - `updateInnerClosures` is called by loop nodes. When a loop iteration ends and there are closures registered,
 ///   it copies the current frame and updates the frame references held by [ScopeHolder].
@@ -146,19 +146,31 @@ public record ELispLexical(
             ScopeUpdatable u = i.next();
             if (u.node == loopNode) {
                 i.remove();
+                ELispLexical boundary = Objects.requireNonNull(getScope(loopNode));
                 ELispLexical head = u.holder.getScope();
                 do {
                     branch.add(head);
                     head = head.parentScope;
-                } while (head != null && head != u.scope);
+                } while (head != null && head != boundary);
                 if (copy == null) {
                     copy = Truffle.getRuntime().createVirtualFrame(new Object[0], frame.getFrameDescriptor())
                             .materialize();
                     frame.copyTo(0, copy, 0, MAX_SLOTS);
                 }
-                ELispLexical updated = branch.removeLast().withParentFrame(copy);
+                ELispLexical updated = boundary.fork().withParentFrame(frame.materialize());
+                boolean atTarget = false;
                 for (int j = branch.size() - 1; j >= 0; j--) {
-                    updated = branch.get(j).withParentScope(updated);
+                    ELispLexical scope = branch.get(j);
+                    updated = scope.withParentScope(updated);
+                    if (scope == u.scope) {
+                        atTarget = true;
+                    } else if (atTarget) {
+                        atTarget = false;
+                        updated = updated.withParentFrame(copy);
+                    }
+                }
+                if (atTarget) {
+                    updated = updated.fork().withParentFrame(copy);
                 }
                 u.holder.setScope(updated);
                 branch.clear();

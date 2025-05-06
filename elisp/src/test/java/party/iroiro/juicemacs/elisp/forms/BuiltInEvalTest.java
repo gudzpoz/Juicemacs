@@ -192,6 +192,67 @@ public class BuiltInEvalTest extends BaseFormTest {
     }
 
     @Test
+    public void testPerIterationScope() {
+        String eval = """
+                ;;; -*- lexical-binding: t -*-
+                (let ((i 0)
+                      readers writers)
+                  (while (< i 5)
+                    (let ((j 0))
+                      (while (<= j i)
+                        (let ((k (+ (* 10 i) j)))
+                          (setq readers (cons #'(lambda () (list i j k)) readers)
+                                writers (cons #'(lambda () (setq i (1+ i)
+                                                                 j (1+ j)
+                                                                 k (1+ k)))
+                                              writers)))
+                        (setq j (1+ j))))
+                    (setq i (1+ i)))
+                  (vector
+                   (mapcar #'funcall readers)
+                   (mapcar #'funcall writers)
+                   (mapcar #'funcall readers)))
+                """;
+        try (Context context = getTestingContext()) {
+            Value value = context.eval("elisp", eval);
+            assertEquals(3, value.getArraySize());
+            Value read1 = value.getArrayElement(0);
+            assertEquals(
+                    // output: (i j k)
+                    // i: shared by all functions
+                    // j: shared by some functions (with same j)
+                    // k: shared by two (reader and writer)
+                    """
+                            ((5 5 44) (5 5 43) (5 5 42) (5 5 41) (5 5 40) \
+                            (5 4 33) (5 4 32) (5 4 31) (5 4 30) \
+                            (5 3 22) (5 3 21) (5 3 20) \
+                            (5 2 11) (5 2 10) \
+                            (5 1 0))""",
+                    read1.toString()
+            );
+            Value write = value.getArrayElement(1);
+            assertEquals(
+                    "(45 44 43 42 41 34 33 32 31 23 22 21 12 11 1)",
+                    write.toString()
+            );
+            Value read2 = value.getArrayElement(2);
+            assertEquals(
+                    // output: (i j k)
+                    // i: increment by 15 (shared writer count)
+                    // j: increment by j (shared writer count)
+                    // k: increment by 1 (shared writer count)
+                    """
+                            ((20 10 45) (20 10 44) (20 10 43) (20 10 42) (20 10 41) \
+                            (20 8 34) (20 8 33) (20 8 32) (20 8 31) \
+                            (20 6 23) (20 6 22) (20 6 21) \
+                            (20 4 12) (20 4 11) \
+                            (20 2 1))""",
+                    read2.toString()
+            );
+        }
+    }
+
+    @Test
     public void testEvalBufferStackTrace() {
         try (Context context = getTestingContext()) {
             PolyglotException e = assertThrows(PolyglotException.class, () -> context.eval("elisp", """
