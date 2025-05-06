@@ -23,7 +23,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AND_OPTIONAL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AND_REST;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
-public class ELispInterpretedClosure extends AbstractELispVector {
+public class ELispInterpretedClosure extends AbstractELispVector implements ELispLexical.ScopeHolder {
     @Nullable
     private final RootNode rootNode;
     @Nullable
@@ -50,8 +50,10 @@ public class ELispInterpretedClosure extends AbstractELispVector {
     public Object get(int index) {
         if (index == CLOSURE_CONSTANTS) {
             Object env = inner[CLOSURE_CONSTANTS];
-            if (env instanceof LexicalEnvironment lexicalEnv) {
-                Object list = lexicalEnv.toAssocList();
+            if (env instanceof ELispLexical lexicalEnv) {
+                @Nullable ELispLexical scope = lexicalEnv.parentScope();
+                @Nullable MaterializedFrame frame = lexicalEnv.materializedParent();
+                Object list = Objects.requireNonNull(scope).toAssocList(Objects.requireNonNull(frame));
                 if (isNil(list)) {
                     return new ELispCons(true);
                 }
@@ -109,35 +111,32 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
     @Override
     public void display(ELispPrint print) {
-        if (getEnv() instanceof LexicalEnvironment) {
+        if (getEnv() instanceof ELispLexical) {
             vectorPrintHelper(print, "#[", "]", subList(0, CLOSURE_CONSTANTS).iterator());
         } else {
             displayHelper(print, "#[", "]");
         }
     }
 
-    public record LexicalEnvironment(MaterializedFrame frame, ELispLexical lexicalFrame) {
-        @Override
-        public String toString() {
-            return "#lexical-" + Integer.toHexString(System.identityHashCode(lexicalFrame));
-        }
-
-        public Object toAssocList() {
-            return lexicalFrame.toAssocList(frame);
-        }
+    @Override
+    public ELispLexical getScope() {
+        return (ELispLexical) getEnv();
     }
 
-    public final class ELispClosureCallNode extends ELispExpressionNode {
+    @Override
+    public void setScope(ELispLexical scope) {
+        set(CLOSURE_CONSTANTS, scope);
+    }
+
+    public final class ELispClosureCallNode extends ELispExpressionNode implements ELispLexical.ScopeProvider {
 
         @SuppressWarnings("FieldMayBeFinal")
         @Children
-        private ReadFunctionArgNode[] optionalRestArgs;
+        private ELispExpressionNode[] readArgNodes;
 
         private final ClosureArgs args;
         @CompilerDirectives.CompilationFinal(dimensions = 1)
-        private final ELispSymbol[] lexicallyBoundSymbols;
-        @CompilerDirectives.CompilationFinal(dimensions = 1)
-        private final ELispSymbol[] variableLikeBoundSymbols;
+        private final ELispSymbol[] argSymbols;
 
         private final boolean isLexical;
 
@@ -145,29 +144,17 @@ public class ELispInterpretedClosure extends AbstractELispVector {
         @Child
         private ELispExpressionNode body;
 
-        @Nullable
-        private final LexicalEnvironment lexical;
-
-        private final ELispLexical.StableTopAssumption assumption;
-        private final ELispLexical.StackSizeProfile stackSizeProfile;
+        private final ELispLexical.@Nullable Allocator rootLexical;
 
         public ELispClosureCallNode() {
             Object env = getEnv();
             isLexical = !isNil(env);
-            lexical = isLexical ? initializeLexical(env) : null;
-            assumption = new ELispLexical.StableTopAssumption();
-            stackSizeProfile = new ELispLexical.StackSizeProfile();
+            args = ClosureArgs.parse(getArgs());
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
-            this.args = ClosureArgs.parse(getArgs());
-            this.lexicallyBoundSymbols = isLexical ? args.requiredArgs : new ELispSymbol[0];
-            this.variableLikeBoundSymbols = args.variableLikeSymbols(isLexical);
-
-            List<ReadFunctionArgNode> argNodes = new ArrayList<>();
-            if (!isLexical) {
-                for (int i = 0; i < args.requiredArgs.length; i++) {
-                    argNodes.add(new ReadFunctionArgNode(i));
-                }
+            List<ELispExpressionNode> argNodes = new ArrayList<>();
+            for (int i = 0; i < args.requiredArgs.length; i++) {
+                argNodes.add(new ReadFunctionArgNode(i));
             }
             for (int i = 0; i < args.optionalArgs.length; i++) {
                 argNodes.add(new ReadFunctionArgNode(i + args.requiredArgs.length));
@@ -177,54 +164,68 @@ public class ELispInterpretedClosure extends AbstractELispVector {
                         args.optionalArgs.length + args.requiredArgs.length
                 ));
             }
-            this.optionalRestArgs = argNodes.toArray(new ReadFunctionArgNode[0]);
-        }
-
-        @Nullable
-        @CompilerDirectives.TruffleBoundary
-        private static LexicalEnvironment initializeLexical(Object env) {
-            CompilerDirectives.transferToInterpreter();
-            if (env instanceof LexicalEnvironment l) {
-                return l;
-            }
-            if (env instanceof ELispCons cons) {
-                MaterializedFrame frame = Truffle.getRuntime().createMaterializedFrame(
-                        new Object[0],
-                        ELispLexical.frameDescriptor(true)
-                );
-                ELispLexical lexical = ELispLexical.create(
-                        frame,
-                        new ELispLexical.StableTopAssumption(),
-                        new ELispLexical.StackSizeProfile()
-                );
-                ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
-                while (i.hasNext()) {
-                    ELispSymbol symbol = (ELispSymbol) i.next();
-                    lexical.addVariable(frame, symbol, i.next());
+            this.readArgNodes = argNodes.toArray(new ELispExpressionNode[0]);
+            ELispSymbol[] argSymbols = args.argSymbols();
+            if (isLexical) {
+                ELispLexical.Allocator lexical = new ELispLexical.Allocator();
+                ELispLexical rootScope = initializeLexical(env, argSymbols, lexical);
+                setScope(rootScope);
+                rootLexical = lexical;
+                this.argSymbols = new ELispSymbol[0];
+                for (int i = 0; i < this.readArgNodes.length; i++) {
+                    ELispExpressionNode read = readArgNodes[i];
+                    int slot = rootScope.slots().get(i);
+                    readArgNodes[i] = ELispFrameSlotNode.createWrite(slot, null, read);
                 }
-                return new LexicalEnvironment(frame, lexical);
+            } else {
+                rootLexical = null;
+                this.argSymbols = argSymbols;
             }
-            return null;
         }
 
-        public ELispLexical.@Nullable Dynamic pushScope(VirtualFrame frame, Object[] newValues) {
-            if (isLexical && lexical != null) {
-                ELispLexical lexicalFrame = ELispLexical.create(
-                        frame,
-                        lexical.lexicalFrame,
-                        lexical.frame,
-                        List.of(lexicallyBoundSymbols),
-                        stackSizeProfile,
-                        assumption
-                );
-                for (int i = 0; i < variableLikeBoundSymbols.length; i++) {
-                    // Always lexically bound, even for "special == true" symbols
-                    // HashMaps are too complex, causing Truffle to bailout, hence @TruffleBoundary.
-                    lexicalFrame.addVariable(frame, variableLikeBoundSymbols[i], newValues[i]);
+        @CompilerDirectives.TruffleBoundary
+        private static ELispLexical initializeLexical(Object env, ELispSymbol[] argSymbols, ELispLexical.Allocator lexical) {
+            CompilerDirectives.transferToInterpreter();
+            ELispLexical rootScope;
+            rootScope = switch (env) {
+                case ELispLexical scope -> scope;
+                case ELispCons cons -> {
+                    MaterializedFrame parentFrame = Truffle.getRuntime().createMaterializedFrame(
+                            new Object[0],
+                            ELispLexical.frameDescriptor(true)
+                    );
+                    ELispLexical parentScope = ELispLexical.newRoot();
+                    ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
+                    ELispLexical.Allocator counter = new ELispLexical.Allocator();
+                    while (i.hasNext()) {
+                        ELispSymbol symbol = (ELispSymbol) i.next();
+                        int slot = parentScope.addVariable(counter, symbol);
+                        ELispLexical.setVariable(parentFrame, slot, i.next());
+                    }
+                    yield ELispLexical.newRoot(parentScope, parentFrame);
+                }
+                default -> ELispLexical.newRoot();
+            };
+            for (ELispSymbol symbol : argSymbols) {
+                rootScope.addVariable(lexical, symbol);
+            }
+            return rootScope;
+        }
+
+        @ExplodeLoop
+        public ELispLexical.@Nullable Dynamic pushScope(VirtualFrame frame) {
+            if (isLexical) {
+                for (ELispExpressionNode arg : readArgNodes) {
+                    arg.executeVoid(frame);
                 }
                 return null;
             } else {
-                return ELispLexical.pushDynamic(variableLikeBoundSymbols, newValues);
+                int length = readArgNodes.length;
+                Object[] newValues = new Object[length];
+                for (int i = 0; i < length; i++) {
+                    newValues[i] = readArgNodes[i].executeGeneric(frame);
+                }
+                return ELispLexical.pushDynamic(argSymbols, newValues);
             }
         }
 
@@ -238,14 +239,8 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             return execute(frame, false);
         }
 
-        @ExplodeLoop
         public Object execute(VirtualFrame frame, boolean isVoid) {
-            int length = variableLikeBoundSymbols.length;
-            Object[] newValues = new Object[length];
-            for (int i = 0; i < length; i++) {
-                newValues[i] = optionalRestArgs[i].executeGeneric(frame);
-            }
-            try (ELispLexical.Dynamic _ = pushScope(frame, newValues)) {
+            try (ELispLexical.Dynamic _ = pushScope(frame)) {
                 if (isVoid) {
                     body.executeVoid(frame);
                     return false;
@@ -270,6 +265,16 @@ public class ELispInterpretedClosure extends AbstractELispVector {
 
         public ELispInterpretedClosure getClosure() {
             return ELispInterpretedClosure.this;
+        }
+
+        @Override
+        public @Nullable ELispLexical lexicalScope() {
+            return isLexical ? getScope() : null;
+        }
+
+        @Override
+        public ELispLexical.@Nullable Allocator rootScope() {
+            return rootLexical;
         }
     }
 
@@ -309,17 +314,12 @@ public class ELispInterpretedClosure extends AbstractELispVector {
             return new ClosureArgs(requiredArgs.toArray(new ELispSymbol[0]), optionalArgs.toArray(new ELispSymbol[0]), rest);
         }
 
-        public ELispSymbol[] variableLikeSymbols(boolean isLexical) {
+        public ELispSymbol[] argSymbols() {
             int start;
             ELispSymbol[] symbols;
-            if (isLexical) {
-                symbols = new ELispSymbol[optionalArgs.length + (rest == null ? 0 : 1)];
-                start = 0;
-            } else {
-                symbols = new ELispSymbol[requiredArgs.length + optionalArgs.length + (rest == null ? 0 : 1)];
-                System.arraycopy(requiredArgs, 0, symbols, 0, requiredArgs.length);
-                start = requiredArgs.length;
-            }
+            symbols = new ELispSymbol[requiredArgs.length + optionalArgs.length + (rest == null ? 0 : 1)];
+            System.arraycopy(requiredArgs, 0, symbols, 0, requiredArgs.length);
+            start = requiredArgs.length;
             System.arraycopy(optionalArgs, 0, symbols, start, optionalArgs.length);
             if (rest != null) {
                 symbols[symbols.length - 1] = rest;

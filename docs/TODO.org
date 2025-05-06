@@ -123,6 +123,86 @@ way.
 I have stopped writing tests for newly implemented subroutines. We should
 definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
 
+* TODO [#B] Re-implement lexical scoping
+
+Current implementation of lexical scoping spends too much time book-keeping. For
+example, for =(while ... (let ((x (fun))) ... ))=, we want it to be compiled to
+something like:
+
+#+begin_src java
+  //while block start
+  ////let block start
+  frame.setSlot(xSlot, resultOfFun); // xSlot: CompilationConstant
+  //...
+  ////let block end
+  //while block end
+#+end_src
+
+That is, we want each =let= clause to be compiled to a single stack frame
+assignment instruction. However, our current implementation is compiled to:
+
+#+begin_src java
+  //...
+  ////let block start
+  ELispLexical lexical = ELispLexical.getLexical(frame);
+  int xSlot = lexical.addVariable(X_SYMBOL);
+  frame.setSlot(xSlot, resultOfFun);
+  ////let block end
+#+end_src
+
+This is because we need to support per iteration scope in case of closure
+creation inside a loop:
+
+#+begin_src elisp
+  (while (some-condition)
+    (let ((i (some-value)))
+      (push (lambda () i) closures)))
+#+end_src
+
+Note that for each different =(lambda () i)=, =i= is a totally different
+variable. As far as I know, there are two ways to handle this:
+
+1. Use the same stack frame, but use non-constant frame slot number for each
+   =i=. This is what we do now.
+2. Use constant frame slot for every variable, and copy the whole frame when
+   needed (i.e., when there is lambda creation in a loop). This is [[https://github.com/oracle/graaljs/blob/0eee7b016637e3a89e2d48b6195b9abaf2177a07/graal-js/src/com.oracle.truffle.js.parser/src/com/oracle/truffle/js/parser/GraalJSTranslator.java#L2097-L2105][what GraalJS
+   does]].
+
+The latter approach seems significantly more complex. (Considering GraalJS can
+know if a node =needsPerIterationScope= at parse time, while we have to do this
+at runtime, it only gets worse.) But it *is* more performance in that it should
+compile *normal* =let= clauses (without closure creation) into a single
+instruction.
+
+** Design
+
+I guess we still need a =ELispLexical= instance. But instead of one instance per
+call, we can have an instance per =RootNode=, which is only queried/updated when
+a =let= node or symbol dereferencing node is first executed.
+
+When a =function= node is evaluated (with =(lexical-binding . t)=), it should
+invalidate some =perIterationScope= assumption in all its =while= parent nodes,
+after which the =while= nodes will be responsible for replacing the current
+frame with a new copy for each loop.
+
+** GraalJS =ForNode=
+
+#+begin_src java
+  void executeVoid(VirtualFrame frame) {
+      FrameIterationScopeNode copy = this.copy;
+      VirtualFrame prevFrame = copy.execute(frame);
+      while (true) {
+          VirtualFrame prevFrameInner = copy.execute(frame);
+          if (!executeCondition(frame)) {
+              break;
+          }
+          executeBody(frame);
+          copy.executeCopy(frame, prevFrame);
+      }
+      copy.exitScope(frame, prevFrame);
+  }
+#+end_src
+
 * TODO [#B] Implement placeholder functions
 
 I've made lots of functions no-op in order to bootstrap =ert.el=. And we should

@@ -29,10 +29,6 @@ public class ELispRootNode extends RootNode implements InstrumentableNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (!ELispLexical.isDebuggerEval(frame)) {
-            ELispLexical.initFrame(frame);
-        }
-
         return this.expression.executeGeneric(frame);
     }
 

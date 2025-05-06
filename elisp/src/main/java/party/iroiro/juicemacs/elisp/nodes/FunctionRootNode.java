@@ -7,7 +7,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 
 @GenerateWrapper
 public class FunctionRootNode extends RootNode implements InstrumentableNode {
@@ -33,9 +32,6 @@ public class FunctionRootNode extends RootNode implements InstrumentableNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (frame.getFrameDescriptor().getNumberOfSlots() > 0) {
-            ELispLexical.initFrame(frame);
-        }
         return this.functionBody.executeGeneric(frame);
     }
 

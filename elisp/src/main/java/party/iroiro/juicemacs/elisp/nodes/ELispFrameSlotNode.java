@@ -1,26 +1,26 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import org.eclipse.jdt.annotation.Nullable;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.NON_VAR_SLOT0;
-import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.getVariable;
-import static party.iroiro.juicemacs.elisp.runtime.ELispLexical.setVariable;
+import java.util.Objects;
 
 /// Classes and methods for reading & writing frame slots
 ///
-/// @see party.iroiro.juicemacs.elisp.runtime.ELispLexical
+/// @see ELispLexical.Allocator
 public abstract class ELispFrameSlotNode extends ELispExpressionNode {
     /// Placeholder slot for bypassing frame slot access
     ///
     /// Used by dynamic variable access to evaluate the value child
     /// of [ELispFrameSlotWriteNode].
-    public final static int BYPASS = NON_VAR_SLOT0;
+    public final static int BYPASS = ELispLexical.NON_VAR_SLOT0;
 
     protected final int slot;
     @CompilerDirectives.CompilationFinal
@@ -41,10 +41,31 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
         return slot;
     }
 
+    public static boolean isSpilled(int slot) {
+        return slot >= ELispLexical.MAX_SLOTS;
+    }
+
+    public static ELispExpressionNode createRead(int slot, @Nullable MaterializedFrame parentFrame) {
+        if (isSpilled(slot)) {
+            return ELispFrameSlotNodeFactory.ELispFrameSpilledSlotReadNodeGen.create(slot, parentFrame);
+        }
+        return ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(slot, parentFrame);
+    }
+
+    public static ELispExpressionNode createWrite(int slot, @Nullable MaterializedFrame parentFrame, ELispExpressionNode inner) {
+        if (slot == BYPASS) {
+            return inner;
+        }
+        if (isSpilled(slot)) {
+            return ELispFrameSlotNodeFactory.ELispFrameSpilledSlotWriteNodeGen.create(slot, parentFrame, inner);
+        }
+        return ELispFrameSlotNodeFactory.ELispFrameSlotWriteNodeGen.create(slot, parentFrame, inner);
+    }
+
     @Nullable
     @NonIdempotent
     protected SlotPrimitiveContainer getContainer(VirtualFrame frame) {
-        return slot != BYPASS && getVariable(getFrame(frame), slot) instanceof SlotPrimitiveContainer container
+        return ELispLexical.getVariable(getFrame(frame), slot) instanceof SlotPrimitiveContainer container
                 ? container : null;
     }
 
@@ -95,9 +116,38 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             super(slot, frame);
         }
 
+        @Specialization(guards = "getFrame(frame).isLong(slot)")
+        protected final long getLong(VirtualFrame frame) {
+            return getFrame(frame).getLong(slot);
+        }
+
+        @Specialization(guards = "getFrame(frame).isDouble(slot)")
+        protected final double getDouble(VirtualFrame frame) {
+            return getFrame(frame).getDouble(slot);
+        }
+
+        @Specialization(replaces = {"getLong", "getDouble"})
+        protected final Object getObject(VirtualFrame frame) {
+            frame = getFrame(frame);
+            if (frame.isObject(slot)) {
+                return frame.getObject(slot);
+            }
+            CompilerDirectives.transferToInterpreter();
+            Object value = frame.getValue(slot);
+            frame.setObject(slot, value);
+            return value;
+        }
+    }
+
+    public abstract static class ELispFrameSpilledSlotReadNode extends ELispFrameSlotNode {
+        protected ELispFrameSpilledSlotReadNode(int slot, @Nullable MaterializedFrame frame) {
+            super(slot, frame);
+        }
+
         final boolean isLong(SlotPrimitiveContainer container) {
             return container != null && !container.isDouble;
         }
+
         final boolean isDouble(SlotPrimitiveContainer container) {
             return container != null && container.isDouble;
         }
@@ -118,13 +168,13 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             return container.getDouble();
         }
 
-        @Fallback
+        @Specialization
         protected final Object readObject(VirtualFrame frame) {
-            Object variable = getVariable(getFrame(frame), slot);
+            Object variable = ELispLexical.getVariable(getFrame(frame), slot);
             if (variable instanceof SlotPrimitiveContainer container) {
                 return container.asObject();
             }
-            return variable;
+            return Objects.requireNonNull(variable);
         }
     }
 
@@ -144,6 +194,50 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             super(slot, frame);
         }
 
+        protected boolean isLongOrIllegal(VirtualFrame frame) {
+            frame = getFrame(frame);
+            FrameSlotKind kind = frame.getFrameDescriptor().getSlotKind(slot);
+            return kind == FrameSlotKind.Long || kind == FrameSlotKind.Illegal;
+        }
+
+        protected boolean isDoubleOrIllegal(VirtualFrame frame) {
+            frame = getFrame(frame);
+            FrameSlotKind kind = frame.getFrameDescriptor().getSlotKind(slot);
+            return kind == FrameSlotKind.Double || kind == FrameSlotKind.Illegal;
+        }
+
+        @Specialization(guards = "isLongOrIllegal(frame)")
+        protected final long setLong(VirtualFrame frame, long value) {
+            frame = getFrame(frame);
+            frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Long);
+            frame.setLong(slot, value);
+            return value;
+        }
+
+        @Specialization(guards = "isDoubleOrIllegal(frame)")
+        protected final double setDouble(VirtualFrame frame, double value) {
+            frame = getFrame(frame);
+            frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Double);
+            frame.setDouble(slot, value);
+            return value;
+        }
+
+        @Specialization(replaces = {"setLong", "setDouble"})
+        protected final Object setObject(VirtualFrame frame, Object value) {
+            frame = getFrame(frame);
+            frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Object);
+            frame.setObject(slot, value);
+            return value;
+        }
+    }
+
+    @TypeSystemReference(ELispTypeSystem.None.class)
+    @NodeChild(value = "value", type = ELispExpressionNode.class)
+    public abstract static class ELispFrameSpilledSlotWriteNode extends ELispFrameSlotNode {
+        protected ELispFrameSpilledSlotWriteNode(int slot, @Nullable MaterializedFrame frame) {
+            super(slot, frame);
+        }
+
         private void writeContainer(VirtualFrame frame, long value, boolean isDouble) {
             if (slot == BYPASS) {
                 return;
@@ -158,7 +252,7 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
                 return;
             }
             VirtualFrame dst = getFrame(frame);
-            setVariable(dst, slot, new SlotPrimitiveContainer(isDouble, value));
+            ELispLexical.setVariable(dst, slot, new SlotPrimitiveContainer(isDouble, value));
         }
 
         @Specialization
@@ -173,11 +267,11 @@ public abstract class ELispFrameSlotNode extends ELispExpressionNode {
             return value;
         }
 
-        @Fallback
+        @Specialization
         protected final Object writeObject(VirtualFrame frame, Object value) {
             if (slot != BYPASS) {
                 VirtualFrame dst = getFrame(frame);
-                setVariable(dst, slot, value);
+                ELispLexical.setVariable(dst, slot, value);
             }
             return value;
         }

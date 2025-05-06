@@ -9,8 +9,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNodeFactory;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
@@ -71,17 +71,17 @@ public record DebuggerScopeObject(
 
     @ExportMessage
     public boolean isMemberReadable(String member) {
-        ELispLexical.@Nullable LexicalReference ref = lexical.getLexicalReference(frame, context.intern(member));
+        ELispLexical.@Nullable LexicalReference ref = lexical.getReference(context.intern(member));
         return ref != null;
     }
 
     @ExportMessage
     public Object readMember(String member) {
-        ELispLexical.@Nullable LexicalReference ref = lexical.getLexicalReference(frame, context.intern(member));
+        ELispLexical.@Nullable LexicalReference ref = lexical.getReference(context.intern(member));
         if (ref == null) {
             throw new UnsupportedOperationException();
         }
-        ELispFrameSlotNode.ELispFrameSlotReadNode read = ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(ref.index(), ref.frame());
+        ELispExpressionNode read = ELispFrameSlotNode.createRead(ref.index(), ref.frame());
         return read.executeGeneric((VirtualFrame) frame);
     }
 

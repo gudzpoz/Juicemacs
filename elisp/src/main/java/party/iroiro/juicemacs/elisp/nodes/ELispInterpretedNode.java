@@ -16,10 +16,7 @@ import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.*;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
-import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.DebuggerScopeObject;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
@@ -42,7 +39,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 /// @see ELispConsExpressionNode
 public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
-    public static ELispInterpretedNode create(Object expression) {
+    public static ELispExpressionNode create(Object expression) {
         return switch (expression) {
             case ELispSymbol symbol when symbol == NIL -> literal(false);
             case ELispSymbol symbol when symbol == T -> literal(true);
@@ -53,7 +50,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         };
     }
 
-    public static ELispInterpretedNode literal(Object expression) {
+    public static ELispExpressionNode literal(Object expression) {
         return switch (expression) {
             case Long l -> new ELispLongLiteralNode(l);
             case Double d -> new ELispDoubleLiteralNode(d);
@@ -61,15 +58,15 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         };
     }
 
-    public static ELispInterpretedNode[] create(Object[] expressions) {
-        ELispInterpretedNode[] nodes = new ELispInterpretedNode[expressions.length];
+    public static ELispExpressionNode[] create(Object[] expressions) {
+        ELispExpressionNode[] nodes = new ELispExpressionNode[expressions.length];
         for (int i = 0; i < expressions.length; i++) {
             nodes[i] = ELispInterpretedNode.create(expressions[i]);
         }
         return nodes;
     }
 
-    public static ELispInterpretedNode createMacroexpand(Object[] expressions, boolean lexical) {
+    public static ELispExpressionNode createMacroexpand(Object[] expressions, boolean lexical) {
         @Nullable ELispContext context = ELispContext.get(null);
         //noinspection ConstantValue
         if (context != null) {
@@ -84,7 +81,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return new ELispRootExpressions(expressions, lexical);
     }
 
-    public static ELispInterpretedNode create(Object[] expressions, boolean lexical) {
+    public static ELispExpressionNode create(Object[] expressions, boolean lexical) {
         return new ELispRootExpressions(expressions, lexical);
     }
 
@@ -95,18 +92,18 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         return function;
     }
 
-    private final static class ELispRootExpressions extends ELispInterpretedNode {
+    private final static class ELispRootExpressions extends ELispInterpretedNode implements ELispLexical.ScopeProvider {
         @SuppressWarnings("FieldMayBeFinal")
         @Child
         private ELispExpressionNode node;
 
-        private final ELispLexical.@Nullable StableTopAssumption lexical;
-        private final ELispLexical.@Nullable StackSizeProfile stackSizeProfile;
+        private final ELispLexical.@Nullable Allocator rootLexical;
+        private final @Nullable ELispLexical rootScope;
 
         public ELispRootExpressions(ELispExpressionNode node, boolean lexical) {
             this.node = node;
-            this.lexical = lexical ? new ELispLexical.StableTopAssumption() : null;
-            this.stackSizeProfile = lexical ? new ELispLexical.StackSizeProfile() : null;
+            this.rootLexical = lexical ? new ELispLexical.Allocator() : null;
+            this.rootScope = lexical ? ELispLexical.newRoot() : null;
         }
 
         public ELispRootExpressions(Object[] expressions, boolean lexical) {
@@ -115,22 +112,26 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public void executeVoid(VirtualFrame frame) {
-            if (lexical != null && stackSizeProfile != null) {
-                ELispLexical.create(frame, lexical, stackSizeProfile);
-            }
-            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(rootLexical != null)) {
                 node.executeVoid(frame);
             }
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            if (lexical != null && stackSizeProfile != null) {
-                ELispLexical.create(frame, lexical, stackSizeProfile);
-            }
-            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(rootLexical != null)) {
                 return node.executeGeneric(frame);
             }
+        }
+
+        @Override
+        public @Nullable ELispLexical lexicalScope() {
+            return rootScope;
+        }
+
+        @Override
+        public ELispLexical.@Nullable Allocator rootScope() {
+            return rootLexical;
         }
     }
 
@@ -337,16 +338,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     private final static class ELispSymbolDereferenceNode extends ELispInterpretedNode {
         private final ELispSymbol symbol;
 
-        @Child
-        private ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode;
-
-        @CompilerDirectives.CompilationFinal
-        private Assumption topUnchanged;
-
-        @Child
-        @Nullable
-        private GlobalVariableReadNode globalReadNode;
-
         public ELispSymbolDereferenceNode(ELispSymbol symbol) {
             this.symbol = symbol;
         }
@@ -357,44 +348,18 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            return updateSlotInfo(frame).executeGeneric(frame);
+            return updateSlotInfo().executeGeneric(frame);
         }
 
-        private ELispExpressionNode updateSlotInfo(VirtualFrame currentFrame) {
-            Assumption top = topUnchanged;
-            GlobalVariableReadNode global = globalReadNode;
-            if (global != null && (top == null || top.isValid())) {
-                return global;
-            }
-            ELispFrameSlotNode.@Nullable ELispFrameSlotReadNode readNode = this.readNode;
-            if (CompilerDirectives.injectBranchProbability(
-                    CompilerDirectives.FASTPATH_PROBABILITY,
-                    readNode != null && top.isValid()
-            )) {
-                return readNode;
-            }
+        private ELispExpressionNode updateSlotInfo() {
+            ELispLexical.LexicalReference lexical = ELispLexical.getLexicalReference(this, symbol);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
 
-            ELispLexical lexicalFrame = ELispLexical.getLexicalFrame(currentFrame);
-            ELispLexical.LexicalReference lexical = lexicalFrame == null
-                    ? null : lexicalFrame.getLexicalReference(currentFrame, symbol);
             if (lexical == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                GlobalVariableReadNode newNode = GlobalVariableReadNodeGen.create(symbol);
-                globalReadNode = insert(newNode);
-                if (lexicalFrame != null) {
-                    this.topUnchanged = lexicalFrame.getTopUnchanged();
-                }
-                return newNode;
+                return replace(GlobalVariableReadNodeGen.create(symbol));
             } else {
-                if (readNode != null && lexical.index() == readNode.getSlot()) {
-                    return readNode;
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ELispFrameSlotNode.ELispFrameSlotReadNode reader =
-                        ELispFrameSlotNodeFactory.ELispFrameSlotReadNodeGen.create(lexical.index(), lexical.frame());
-                this.readNode = insertOrReplace(reader, readNode);
-                this.topUnchanged = lexicalFrame.getTopUnchanged();
-                return reader;
+                ELispExpressionNode reader = ELispFrameSlotNode.createRead(lexical.index(), lexical.frame());
+                return replace(reader);
             }
         }
     }
@@ -479,13 +444,13 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         //#region NodeLibrary
         @ExportMessage
         public boolean hasScope(Frame frame) {
-            ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
+            @Nullable ELispLexical lexical = ELispLexical.getScope(this);
             return lexical != null;
         }
 
         @ExportMessage
         public Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
-            ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
+            @Nullable ELispLexical lexical = ELispLexical.getScope(this);
             if (lexical == null) {
                 throw UnsupportedMessageException.create();
             }
@@ -538,7 +503,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             List<ELispExpressionNode> restNodes = new ArrayList<>();
             ELispCons.BrentTortoiseHareIterator argIterator = cons.listIterator(1);
             while (argIterator.hasNext()) {
-                ELispInterpretedNode node = ELispInterpretedNode.create(argIterator.next());
+                ELispExpressionNode node = ELispInterpretedNode.create(argIterator.next());
                 if (nodes.size() < info.maxArgs()) {
                     nodes.add(node);
                 } else {
@@ -702,8 +667,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            @Nullable ELispLexical lexical = ELispLexical.getLexicalFrame(frame);
-            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(lexical != null)) {
+            try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(
+                    ELispLexical.getScope(this) != null
+            )) {
                 Object function = this.function;
                 if (inlineLambdaNode != null) {
                     function = inlineLambdaNode.executeGeneric(frame);

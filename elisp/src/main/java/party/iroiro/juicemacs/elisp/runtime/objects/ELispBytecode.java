@@ -144,7 +144,7 @@ public final class ELispBytecode extends AbstractELispVector {
                 requiredArgCount = dynamicArgs.requiredArgCount();
                 optionalArgCount = dynamicArgs.optionalArgs().length;
                 maxArgCount = dynamicArgs.maxArgCount();
-                argSymbols = dynamicArgs.variableLikeSymbols(false);
+                argSymbols = dynamicArgs.argSymbols();
             }
 
             List<ReadFunctionArgNode> argNodes = new ArrayList<>();
