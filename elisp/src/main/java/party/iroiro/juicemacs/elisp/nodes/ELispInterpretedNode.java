@@ -509,6 +509,32 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         ) {
             return dispatchNode.executeDispatch(this, function, evalArgs(frame));
         }
+
+        ConsCallNode trySpecialize() {
+            if (inlineLambdaNode != null) {
+                return this;
+            }
+            int length = Objects.requireNonNull(this.args).length;
+            if (length > 5) {
+                return this;
+            }
+            ELispExpressionNode[] args = new ELispExpressionNode[length + 1];
+            args[0] = literal(getFunctionObject(function));
+            System.arraycopy(this.args, 0, args, 1, length);
+            ELispExpressionNode callNode = FunctionDispatchNode.createSpecializedCallNode(args);
+            return new CallNNodeWrapper(function, callNode);
+        }
+    }
+
+    private static final class CallNNodeWrapper extends ConsCallNode {
+        public CallNNodeWrapper(Object function, ELispExpressionNode callNode) {
+            super(function, null, false);
+            args = new ELispExpressionNode[]{callNode};
+        }
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return Objects.requireNonNull(args)[0].executeGeneric(frame);
+        }
     }
 
     private static final class ConsInlinedAstNode extends ConsCallNode {
@@ -808,7 +834,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     case ELispCons c when c.car() == LAMBDA ->
                             ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
                     case ELispSubroutine _, ELispInterpretedClosure _, ELispBytecode _, ELispExpressionNode _ ->
-                            ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
+                            ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons).trySpecialize();
                     default -> throw ELispSignals.invalidFunction(cons.car());
                 };
                 callNode = insertOrReplace(created, node);

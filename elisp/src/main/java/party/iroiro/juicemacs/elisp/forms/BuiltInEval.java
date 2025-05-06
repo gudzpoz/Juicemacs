@@ -599,7 +599,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         ? GlobalVariableWriteNodeGen.create(symbol, inner)
                         : ELispFrameSlotNode.createWrite(reference.index(), reference.frame(), inner);
                 if (value instanceof ELispCons cons) {
-                    replace = new SourceSectionWrapper(cons, inner);
+                    replace = new SourceSectionWrapper(cons, replace);
                 }
                 return replace(replace);
             }
