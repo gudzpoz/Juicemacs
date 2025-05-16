@@ -267,8 +267,8 @@ The mappings are stored in files generated from glibc charset data files.
 
 See also:
 
-- [[file:~/Workspaces/Java/JVMacs/elisp/emacs/etc/charsets/README][../elisp/emacs/etc/charsets/README]]
-- [[file:~/Workspaces/Java/JVMacs/elisp/emacs/admin/charsets/][../elisp/emacs/admin/charsets]]
+- [[file:../elisp/emacs/etc/charsets/README]]
+- [[file:../elisp/emacs/admin/charsets/]]
 - [[https://man7.org/linux/man-pages/man5/charmap.5.html][=man 5 charmap=]]
 - [[https://man7.org/linux/man-pages/man7/charsets.7.html][=man 7 charsets=]]
 

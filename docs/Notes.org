@@ -431,6 +431,8 @@ comments and discussions.
 
 ** Others
 
+- [[https://webkit.org/blog/10308/speculation-in-javascriptcore/][Speculation in JavaScriptCore | WebKit]]
+
 - CRDT :: Conflict-free Replicated Data Type
 
   - [[https://www.inkandswitch.com/peritext/][Peritext - A CRDT for Rich-Text Collaboration]]

@@ -17,7 +17,7 @@ because it uses some autoloaded functions before their autoload definitions
 Currently, the project still cannot fully run through the Emacs =loadup.el=
 (although it's almost there), the execution of which is required for an
 Emacs-like ELisp environment. You may try out a partially initialized
-environment with [[file:~/Workspaces/Java/JVMacs/app/][../app]], which contains a simple ELisp REPL.
+environment with [[file:../app/]], which contains a simple ELisp REPL.
 
 See [[file:../README.org]] for instructions.
 
