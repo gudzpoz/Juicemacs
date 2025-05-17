@@ -121,6 +121,11 @@ public class BuiltInFns extends ELispBuiltIns {
         }
 
         @Specialization
+        public static long lengthBoolVec(ELispBoolVector sequence) {
+            return sequence.size();
+        }
+
+        @Specialization
         public static long lengthString(ELispString sequence) {
             return sequence.length();
         }

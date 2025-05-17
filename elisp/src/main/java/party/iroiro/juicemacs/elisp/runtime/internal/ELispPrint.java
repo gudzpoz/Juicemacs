@@ -49,7 +49,12 @@ public final class ELispPrint {
     }
 
     public void printRawByte(byte b) {
-        func.print(b >= 0 ? b : ((b & 0x7F) + MAX_5_BYTE_CHAR + 1));
+        int c = b >= 0 ? b : ((b & 0x7F) + MAX_5_BYTE_CHAR + 1);
+        if (inString) {
+            print(c);
+        } else {
+            func.print(c);
+        }
     }
 
     public boolean isPrintableChar(int c) {

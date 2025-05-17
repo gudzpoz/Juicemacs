@@ -6,14 +6,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.ERROR;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.ERROR_MESSAGE;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInPrint extends ELispBuiltIns {
@@ -278,8 +277,31 @@ public class BuiltInPrint extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FErrorMessageString extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void errorMessageString(Object obj) {
-            throw new UnsupportedOperationException();
+        public static ELispString errorMessageString(ELispCons obj) {
+            ELispSymbol error = asSym(obj.car());
+            Object message = BuiltInFns.FGet.get(error, ERROR_MESSAGE);
+            if (isNil(message) && error == ERROR) {
+                message = asCons(obj.cdr()).car();
+            }
+            MuleStringBuffer buffer = new MuleStringBuffer();
+            ELispPrint print = ELispPrint.fromBuilder(buffer);
+            if (isNil(message)) {
+                print.print("peculiar error");
+            } else {
+                print.print(asStr(message));
+            }
+            print.print(':').print(' ');
+            boolean start = true;
+            for (Object o : ELispCons.iterate(obj.cdr())) {
+                if (start) {
+                    start = false;
+                } else {
+                    print.print(',').print(' ');
+                }
+                print.print(o);
+            }
+            print.flush();
+            return new ELispString(buffer.build());
         }
     }
 

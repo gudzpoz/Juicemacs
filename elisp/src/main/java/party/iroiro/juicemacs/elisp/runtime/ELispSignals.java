@@ -146,6 +146,9 @@ public abstract class ELispSignals {
     public static ELispSignalException wrongTypeArgument(ELispSymbol predicate, Object actual) {
         return signal(WRONG_TYPE_ARGUMENT, predicate, actual);
     }
+    public static ELispSignalException wrongLengthArgument(long expected, long actual) {
+        return signal(WRONG_LENGTH_ARGUMENT, expected, actual);
+    }
     public static ELispSignalException invalidFunction(Object function) {
         return signal(INVALID_FUNCTION, function);
     }

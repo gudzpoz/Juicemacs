@@ -67,13 +67,9 @@ public class BuiltInAlloc extends ELispBuiltIns {
         @Specialization
         public static ELispBoolVector makeBoolVector(long length, Object init) {
             int len = Math.toIntExact(length);
-            BitSet bitSet;
-            if (isNil(init)) {
-                bitSet = new BitSet(len);
-            } else {
-                byte[] initBytes = new byte[Math.ceilDiv(len, Byte.SIZE)];
-                Arrays.fill(initBytes, (byte) 0xFF);
-                bitSet = BitSet.valueOf(initBytes);
+            BitSet bitSet = new BitSet(len);
+            if (!isNil(init)) {
+                bitSet.flip(0, len);
             }
             return new ELispBoolVector(bitSet, len);
         }

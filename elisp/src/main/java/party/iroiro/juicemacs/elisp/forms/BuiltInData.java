@@ -19,6 +19,7 @@ import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -2157,6 +2158,12 @@ public class BuiltInData extends ELispBuiltIns {
             return newelt;
         }
         @Specialization
+        public static boolean asetBool(ELispBoolVector array, long idx, Object newelt) {
+            boolean elt = !isNil(newelt);
+            array.set((int) idx, elt);
+            return elt;
+        }
+        @Specialization
         public static Object asetRecord(ELispRecord array, long idx, Object newelt) {
             array.set((int) idx, newelt);
             return newelt;
@@ -3090,8 +3097,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorExclusiveOr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorExclusiveOr(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object boolVectorExclusiveOr(ELispBoolVector a, ELispBoolVector b, Object c) {
+            if (a.size() != b.size()) {
+                throw ELispSignals.wrongLengthArgument(a.size(), b.size());
+            }
+            BitSet clone = (BitSet) a.getBits().clone();
+            clone.xor(b.getBits());
+            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
         }
     }
 
@@ -3107,8 +3119,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorUnion extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorUnion(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object boolVectorUnion(ELispBoolVector a, ELispBoolVector b, Object c) {
+            if (a.size() != b.size()) {
+                throw ELispSignals.wrongLengthArgument(a.size(), b.size());
+            }
+            BitSet clone = (BitSet) a.getBits().clone();
+            clone.or(b.getBits());
+            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
         }
     }
 
@@ -3124,8 +3141,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorIntersection extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorIntersection(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object boolVectorIntersection(ELispBoolVector a, ELispBoolVector b, Object c) {
+            if (a.size() != b.size()) {
+                throw ELispSignals.wrongLengthArgument(a.size(), b.size());
+            }
+            BitSet clone = (BitSet) a.getBits().clone();
+            clone.and(b.getBits());
+            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
         }
     }
 
@@ -3141,8 +3163,14 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorSetDifference extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorSetDifference(Object a, Object b, Object c) {
-            throw new UnsupportedOperationException();
+        public static Object boolVectorSetDifference(ELispBoolVector a, ELispBoolVector b, Object c) {
+            if (a.size() != b.size()) {
+                throw ELispSignals.wrongLengthArgument(a.size(), b.size());
+            }
+            BitSet clone = (BitSet) b.getBits().clone();
+            clone.flip(0, b.size());
+            clone.and(a.getBits());
+            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
         }
     }
 
@@ -3156,8 +3184,13 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorSubsetp extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorSubsetp(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static boolean boolVectorSubsetp(ELispBoolVector a, ELispBoolVector b) {
+            if (a.size() != b.size()) {
+                throw ELispSignals.wrongLengthArgument(a.size(), b.size());
+            }
+            BitSet clone = (BitSet) a.getBits().clone();
+            clone.and(b.getBits());
+            return clone.equals(a.getBits());
         }
     }
 
@@ -3172,9 +3205,24 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "bool-vector-not", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FBoolVectorNot extends ELispBuiltInBaseNode {
+        public static Object copyOrStore(int size, BitSet bits, Object dest) {
+            if (isNil(dest)) {
+                return new ELispBoolVector(bits, size);
+            }
+            ELispBoolVector vec = asBoolVec(dest);
+            if (vec.size() != size) {
+                throw ELispSignals.wrongLengthArgument(size, vec.size());
+            }
+            return vec.setBits(bits) ? vec : false;
+        }
+
         @Specialization
-        public static Void boolVectorNot(Object a, Object b) {
-            throw new UnsupportedOperationException();
+        public static ELispBoolVector boolVectorNot(ELispBoolVector a, Object b) {
+            BitSet clone = (BitSet) a.getBits().clone();
+            int size = a.size();
+            clone.flip(0, size);
+            Object copy = copyOrStore(size, clone, b);
+            return asBoolVec(isNil(copy) ? b : copy);
         }
     }
 
@@ -3204,8 +3252,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVectorCountConsecutive extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVectorCountConsecutive(Object a, Object b, Object i) {
-            throw new UnsupportedOperationException();
+        public static long boolVectorCountConsecutive(ELispBoolVector a, boolean b, long i) {
+            BitSet bits = a.getBits();
+            int start = (int) i;
+            int end = b ? bits.nextClearBit(start) : bits.nextSetBit(start);
+            int size = a.size();
+            return (end == -1 || end > size ? size : end) - start;
         }
     }
 }

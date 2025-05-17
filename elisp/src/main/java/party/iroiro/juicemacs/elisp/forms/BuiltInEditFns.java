@@ -607,8 +607,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPointMinMarker extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void pointMinMarker() {
-            throw new UnsupportedOperationException();
+        public ELispMarker pointMinMarker() {
+            ELispBuffer buffer = getContext().currentBuffer();
+            return new ELispMarker(buffer, buffer.pointMin());
         }
     }
 

@@ -56,26 +56,39 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         return new ELispBoolVector(bits, size);
     }
 
+    public BitSet getBits() {
+        return bits;
+    }
+
+    public boolean setBits(BitSet bits) {
+        if (bits.size() > size) {
+            bits.clear(size, bits.size());
+        }
+        this.bits.xor(bits);
+        boolean changed = this.bits.cardinality() != 0;
+        // TODO: not very efficient I guess
+        this.bits.clear();
+        this.bits.or(bits);
+        return changed;
+    }
+
     @Override
     public void display(ELispPrint print) {
         print.print('#').print('&')
                 .printInt(size)
                 .startString();
-        for (byte b : bits.toByteArray()) {
+        int bytes = Math.ceilDiv(size, 8);
+        byte[] byteArray = bits.toByteArray();
+        for (int i = 0, length = Math.min(byteArray.length, bytes); i < length; i++) {
+            byte b = byteArray[i];
             print.printRawByte(b);
+            bytes--;
+        }
+        while (bytes > 0) {
+            print.printRawByte((byte) 0);
+            bytes--;
         }
         print.endString();
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("#&").append(size).append("\"");
-        for (byte b : bits.toByteArray()) {
-            builder.appendCodePoint(b);
-        }
-        builder.append("\"");
-        return builder.toString();
     }
 
     @Override
