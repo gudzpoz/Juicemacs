@@ -1808,7 +1808,8 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object tag = signal.getTag();
                 for (int i = 0; i < args.length; i += 2) {
                     if (FConditionCase.shouldHandle(tag, args[i])) {
-                        return FFuncall.funcall(this, args[i + 1], new ELispCons(tag, signal.getData()));
+                        FFuncall.funcall(this, args[i + 1], new ELispCons(tag, signal.getData()));
+                        // search continues
                     }
                 }
                 throw signal;

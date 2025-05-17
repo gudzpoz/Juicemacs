@@ -216,6 +216,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     Object expression = expressions[i];
                     Object expanded = BuiltInEval.FFuncall.funcall(this, macroexpand, expression, false);
                     Object[] newNodes = expandNodes(expanded);
+                    copySourceLocation(newNodes, expression);
                     nodes = addChildren(nodes, newNodes);
                     for (int j = 0; j < newNodes.length; j++) {
                         ELispExpressionNode node = nodes[nodeCount + j];
@@ -241,6 +242,22 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 }
             });
             return result == null ? false : result;
+        }
+
+        private void copySourceLocation(Object[] objects, Object cons) {
+            if (!(cons instanceof ELispCons original) || original.getStartLine() == 0) {
+                return;
+            }
+            for (Object object : objects) {
+                if (object instanceof ELispCons expanded && expanded.getStartLine() == 0) {
+                    expanded.setSourceLocation(
+                            original.getStartLine(),
+                            original.getStartColumn(),
+                            original.getEndLine(),
+                            original.getEndColumn()
+                    );
+                }
+            }
         }
 
         private static Object[] expandNodes(Object expanded) {

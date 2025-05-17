@@ -157,6 +157,9 @@ public final class ValueStorage {
             throw ELispSignals.settingConstant(symbol);
         }
         noLongerAssumeConstant();
+        if (value != UNBOUND && this.delegate instanceof AbstractForwarded<?> forwarded) {
+            value = forwarded.typeCheck(value);
+        }
         if (threadLocalValue == null) {
             threadLocalValue = new ThreadLocalStorage(value);
             return UNBOUND;
@@ -179,6 +182,9 @@ public final class ValueStorage {
     }
 
     public void makeUnbound(ELispContext context) {
+        if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(UNBOUND)) {
+            return;
+        }
         this.delegate = new PlainValue(UNBOUND);
         updateAssumeConstant(context);
     }

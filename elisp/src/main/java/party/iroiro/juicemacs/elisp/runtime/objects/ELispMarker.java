@@ -7,6 +7,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
@@ -47,6 +48,9 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     public long point() {
+        if (inner.isDetached()) {
+            throw ELispSignals.error("marker does not point anywhere");
+        }
         return inner.position() + 1;
     }
 
@@ -77,7 +81,9 @@ public final class ELispMarker extends Number implements ELispValue {
 
     @Override
     public String toString() {
-        return "#<marker@" + getBuffer()+ ":" + point() + ">";
+        return inner.isDetached()
+                ? "#<marker in no buffer>"
+                : "#<marker@" + getBuffer()+ ":" + point() + ">";
     }
 
     //#region Number

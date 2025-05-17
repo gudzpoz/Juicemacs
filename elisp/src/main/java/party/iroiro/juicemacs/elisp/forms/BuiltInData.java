@@ -2745,15 +2745,27 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "max", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FMax extends ELispBuiltInBaseNode {
+        public static Object convMarker(Object numberOrMarker) {
+            return numberOrMarker instanceof ELispMarker m ? m.point() : numberOrMarker;
+        }
+
+        public static boolean isNaN(Object numberOrMarker) {
+            return numberOrMarker instanceof Double d && Double.isNaN(d);
+        }
+
         @Specialization
         public static Object max(Object numberOrMarker, Object[] numbersOrMarkers) {
-            Object result = numberOrMarker;
+            Object result = convMarker(numberOrMarker);
+            @Nullable Object hasNaN = isNaN(result) ? result : null;
             for (Object arg : numbersOrMarkers) {
+                if (hasNaN == null && isNaN(arg)) {
+                    hasNaN = arg;
+                }
                 if (compareTo(result, arg) < 0) {
-                    result = arg;
+                    result = convMarker(arg);
                 }
             }
-            return result;
+            return hasNaN == null ? result : hasNaN;
         }
     }
 
@@ -2769,13 +2781,17 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMin extends ELispBuiltInBaseNode {
         @Specialization
         public static Object min(Object numberOrMarker, Object[] numbersOrMarkers) {
-            Object result = numberOrMarker;
+            Object result = FMax.convMarker(numberOrMarker);
+            @Nullable Object hasNaN = FMax.isNaN(result) ? result : null;
             for (Object arg : numbersOrMarkers) {
+                if (hasNaN == null && FMax.isNaN(arg)) {
+                    hasNaN = arg;
+                }
                 if (compareTo(result, arg) > 0) {
-                    result = arg;
+                    result = FMax.convMarker(arg);
                 }
             }
-            return result;
+            return hasNaN == null ? result : hasNaN;
         }
     }
 

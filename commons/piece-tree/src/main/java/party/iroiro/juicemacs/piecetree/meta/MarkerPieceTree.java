@@ -329,6 +329,10 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
             }
         }
 
+        public boolean isDetached() {
+            return tree == null;
+        }
+
         @Nullable
         public MarkerPieceTree<?> tree() {
             return tree;
