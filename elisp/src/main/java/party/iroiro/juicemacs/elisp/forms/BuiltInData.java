@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
@@ -321,6 +322,76 @@ public class BuiltInData extends ELispBuiltIns {
                 return left.doubleValue() / dr;
             }
             return ELispTypeSystemGen.asImplicitELispBigNum(left).divide(ELispTypeSystemGen.asImplicitELispBigNum(right));
+        }
+    }
+
+    @NodeChild(value = "left", type = ELispExpressionNode.class)
+    @NodeChild(value = "right", type = ELispExpressionNode.class)
+    public abstract static class FMaxBinary extends ELispExpressionNode {
+        @Specialization
+        public long longs(long left, long right) {
+            return Math.max(left, right);
+        }
+        @Specialization
+        public Object longDouble(long left, double right) {
+            return Double.isNaN(right)
+                    ? right
+                    : (right > left ? right : left);
+        }
+        @Specialization
+        public Object doubleLong(double left, long right) {
+            return Double.isNaN(left)
+                    ? left
+                    : (right > left ? right : left);
+        }
+        @Specialization
+        public double doubles(double left, double right) {
+            return Math.max(left, right);
+        }
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
+        public Object generalCase(Number left, Number right) {
+            if (left instanceof Double dl && Double.isNaN(dl)) {
+                return dl;
+            }
+            if (right instanceof Double dr && Double.isNaN(dr)) {
+                return dr;
+            }
+            return FMax.convMarker(compareTo(right, left) > 0 ? right : left);
+        }
+    }
+
+    @NodeChild(value = "left", type = ELispExpressionNode.class)
+    @NodeChild(value = "right", type = ELispExpressionNode.class)
+    public abstract static class FMinBinary extends ELispExpressionNode {
+        @Specialization
+        public long longs(long left, long right) {
+            return Math.min(left, right);
+        }
+        @Specialization
+        public Object longDouble(long left, double right) {
+            return Double.isNaN(right)
+                    ? right
+                    : (right < left ? right : left);
+        }
+        @Specialization
+        public Object doubleLong(double left, long right) {
+            return Double.isNaN(left)
+                    ? left
+                    : (right < left ? right : left);
+        }
+        @Specialization
+        public double doubles(double left, double right) {
+            return Math.min(left, right);
+        }
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
+        public Object generalCase(Number left, Number right) {
+            if (left instanceof Double dl && Double.isNaN(dl)) {
+                return dl;
+            }
+            if (right instanceof Double dr && Double.isNaN(dr)) {
+                return dr;
+            }
+            return FMax.convMarker(compareTo(right, left) < 0 ? right : left);
         }
     }
 
@@ -2744,7 +2815,7 @@ public class BuiltInData extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "max", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FMax extends ELispBuiltInBaseNode {
+    public abstract static class FMax extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         public static Object convMarker(Object numberOrMarker) {
             return numberOrMarker instanceof ELispMarker m ? m.point() : numberOrMarker;
         }
@@ -2767,6 +2838,14 @@ public class BuiltInData extends ELispBuiltIns {
             }
             return hasNaN == null ? result : hasNaN;
         }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 1) {
+                return new NumberAsIsUnary(arguments[0]);
+            }
+            return varArgsToBinary(arguments, 0, BuiltInDataFactory.FMaxBinaryNodeGen::create);
+        }
     }
 
     /**
@@ -2778,7 +2857,7 @@ public class BuiltInData extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "min", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FMin extends ELispBuiltInBaseNode {
+    public abstract static class FMin extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public static Object min(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object result = FMax.convMarker(numberOrMarker);
@@ -2792,6 +2871,14 @@ public class BuiltInData extends ELispBuiltIns {
                 }
             }
             return hasNaN == null ? result : hasNaN;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 1) {
+                return new NumberAsIsUnary(arguments[0]);
+            }
+            return varArgsToBinary(arguments, 0, BuiltInDataFactory.FMinBinaryNodeGen::create);
         }
     }
 

@@ -13,6 +13,7 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
     public ELispBoolVector(BitSet bits, int size) {
         this.bits = bits;
         this.size = size;
+        bits.clear(size, bits.size());
     }
 
     public ELispBoolVector(ELispBoolVector a) {
@@ -93,10 +94,10 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
 
     @Override
     public boolean lispEquals(Object other) {
-        return other instanceof ELispBoolVector vector && bits.equals(vector.bits);
+        return other instanceof ELispBoolVector vector && size == vector.size && bits.equals(vector.bits);
     }
     @Override
     public int lispHashCode() {
-        return bits.hashCode();
+        return 31 * size + bits.hashCode();
     }
 }
