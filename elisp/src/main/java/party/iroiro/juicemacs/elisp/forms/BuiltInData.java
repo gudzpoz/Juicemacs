@@ -336,13 +336,13 @@ public class BuiltInData extends ELispBuiltIns {
         public Object longDouble(long left, double right) {
             return Double.isNaN(right)
                     ? right
-                    : (right > left ? right : left);
+                    : (right > left ? right : (Object) left);
         }
         @Specialization
         public Object doubleLong(double left, long right) {
             return Double.isNaN(left)
                     ? left
-                    : (right > left ? right : left);
+                    : (right > left ? (Object) right : left);
         }
         @Specialization
         public double doubles(double left, double right) {
@@ -371,13 +371,13 @@ public class BuiltInData extends ELispBuiltIns {
         public Object longDouble(long left, double right) {
             return Double.isNaN(right)
                     ? right
-                    : (right < left ? right : left);
+                    : (right < left ? right : (Object) left);
         }
         @Specialization
         public Object doubleLong(double left, long right) {
             return Double.isNaN(left)
                     ? left
-                    : (right < left ? right : left);
+                    : (right < left ? (Object) right : left);
         }
         @Specialization
         public double doubles(double left, double right) {

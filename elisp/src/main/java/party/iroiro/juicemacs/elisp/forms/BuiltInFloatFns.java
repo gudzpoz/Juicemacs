@@ -339,12 +339,13 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCeiling extends ELispFloatFnsNode {
         @Specialization
-        public static double ceiling(double arg, Object divisor) {
+        public static long ceiling(double arg, Object divisor) {
+            // TODO: handle bignums
             if (isNil(divisor)) {
-                return Math.ceil(arg);
+                return (long) Math.ceil(arg);
             }
             double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
-            return Math.ceil(arg / div);
+            return (long) Math.ceil(arg / div);
         }
     }
 
@@ -359,12 +360,13 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFloor extends ELispFloatFnsNode {
         @Specialization
-        public static double floor(double arg, Object divisor) {
+        public static long floor(double arg, Object divisor) {
+            // TODO: handle bignums
             if (isNil(divisor)) {
-                return Math.floor(arg);
+                return (long) Math.floor(arg);
             }
             double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
-            return Math.floor(arg / div);
+            return (long) Math.floor(arg / div);
         }
     }
 
@@ -383,7 +385,8 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRound extends ELispFloatFnsNode {
         @Specialization
-        public static double round(double arg, Object divisor) {
+        public static long round(double arg, Object divisor) {
+            // TODO: handle bignums
             if (isNil(divisor)) {
                 return Math.round(arg);
             }
@@ -403,7 +406,8 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FTruncate extends ELispFloatFnsNode {
         @Specialization
-        public static double truncate(double arg, Object divisor) {
+        public static long truncate(double arg, Object divisor) {
+            // TODO: handle bignums
             if (isNil(divisor)) {
                 return (long) arg;
             }
@@ -467,6 +471,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
     public abstract static class FFtruncate extends ELispFloatFnsNode {
         @Specialization
         public static double ftruncate(double arg) {
+            // TODO: handle bignums
             return (long) arg;
         }
     }
