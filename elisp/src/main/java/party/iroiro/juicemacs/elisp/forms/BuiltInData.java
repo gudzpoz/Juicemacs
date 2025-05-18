@@ -3204,9 +3204,19 @@ public class BuiltInData extends ELispBuiltIns {
             if (a.size() != b.size()) {
                 throw ELispSignals.wrongLengthArgument(a.size(), b.size());
             }
-            BitSet clone = (BitSet) a.getBits().clone();
-            clone.xor(b.getBits());
-            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
+            ELispBoolVector dest = FBoolVectorNot.getOrNew(c, a);
+            long[] destBits = dest.getBits();
+            long[] aBits = a.getBits();
+            long[] bBits = b.getBits();
+            boolean changed = false;
+            for (int i = 0; i < destBits.length; i++) {
+                long old = destBits[i];
+                destBits[i] = aBits[i] ^ bBits[i];
+                changed = changed || destBits[i] != old;
+            }
+            return dest == c
+                    ? (changed ? dest : false)
+                    : dest;
         }
     }
 
@@ -3226,9 +3236,19 @@ public class BuiltInData extends ELispBuiltIns {
             if (a.size() != b.size()) {
                 throw ELispSignals.wrongLengthArgument(a.size(), b.size());
             }
-            BitSet clone = (BitSet) a.getBits().clone();
-            clone.or(b.getBits());
-            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
+            ELispBoolVector dest = FBoolVectorNot.getOrNew(c, a);
+            long[] destBits = dest.getBits();
+            long[] aBits = a.getBits();
+            long[] bBits = b.getBits();
+            boolean changed = false;
+            for (int i = 0; i < destBits.length; i++) {
+                long old = destBits[i];
+                destBits[i] = aBits[i] | bBits[i];
+                changed = changed || destBits[i] != old;
+            }
+            return dest == c
+                    ? (changed ? dest : false)
+                    : dest;
         }
     }
 
@@ -3248,9 +3268,19 @@ public class BuiltInData extends ELispBuiltIns {
             if (a.size() != b.size()) {
                 throw ELispSignals.wrongLengthArgument(a.size(), b.size());
             }
-            BitSet clone = (BitSet) a.getBits().clone();
-            clone.and(b.getBits());
-            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
+            ELispBoolVector dest = FBoolVectorNot.getOrNew(c, a);
+            long[] destBits = dest.getBits();
+            long[] aBits = a.getBits();
+            long[] bBits = b.getBits();
+            boolean changed = false;
+            for (int i = 0; i < destBits.length; i++) {
+                long old = destBits[i];
+                destBits[i] = aBits[i] & bBits[i];
+                changed = changed || destBits[i] != old;
+            }
+            return dest == c
+                    ? (changed ? dest : false)
+                    : dest;
         }
     }
 
@@ -3270,10 +3300,19 @@ public class BuiltInData extends ELispBuiltIns {
             if (a.size() != b.size()) {
                 throw ELispSignals.wrongLengthArgument(a.size(), b.size());
             }
-            BitSet clone = (BitSet) b.getBits().clone();
-            clone.flip(0, b.size());
-            clone.and(a.getBits());
-            return FBoolVectorNot.copyOrStore(a.size(), clone, c);
+            ELispBoolVector dest = FBoolVectorNot.getOrNew(c, a);
+            long[] destBits = dest.getBits();
+            long[] aBits = a.getBits();
+            long[] bBits = b.getBits();
+            boolean changed = false;
+            for (int i = 0; i < destBits.length; i++) {
+                long old = destBits[i];
+                destBits[i] = aBits[i] & ~bBits[i];
+                changed = changed || destBits[i] != old;
+            }
+            return dest == c
+                    ? (changed ? dest : false)
+                    : dest;
         }
     }
 
@@ -3291,9 +3330,13 @@ public class BuiltInData extends ELispBuiltIns {
             if (a.size() != b.size()) {
                 throw ELispSignals.wrongLengthArgument(a.size(), b.size());
             }
-            BitSet clone = (BitSet) a.getBits().clone();
-            clone.and(b.getBits());
-            return clone.equals(a.getBits());
+            long[] aBits = a.getBits();
+            long[] bBits = b.getBits();
+            boolean subset = true;
+            for (int i = 0; i < aBits.length; i++) {
+                subset = subset && aBits[i] == (aBits[i] & bBits[i]);
+            }
+            return subset;
         }
     }
 
@@ -3308,24 +3351,28 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "bool-vector-not", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FBoolVectorNot extends ELispBuiltInBaseNode {
-        public static Object copyOrStore(int size, BitSet bits, Object dest) {
-            if (isNil(dest)) {
-                return new ELispBoolVector(bits, size);
+        public static ELispBoolVector getOrNew(Object c, ELispBoolVector a) {
+            if (isNil(c)) {
+                return new ELispBoolVector(new long[a.getBits().length], a.size());
             }
-            ELispBoolVector vec = asBoolVec(dest);
-            if (vec.size() != size) {
-                throw ELispSignals.wrongLengthArgument(size, vec.size());
+            ELispBoolVector vec = asBoolVec(c);
+            if (vec.size() != a.size()) {
+                throw ELispSignals.wrongLengthArgument(a.size(), vec.size());
             }
-            return vec.setBits(bits) ? vec : false;
+            return vec;
         }
+
 
         @Specialization
         public static ELispBoolVector boolVectorNot(ELispBoolVector a, Object b) {
-            BitSet clone = (BitSet) a.getBits().clone();
-            int size = a.size();
-            clone.flip(0, size);
-            Object copy = copyOrStore(size, clone, b);
-            return asBoolVec(isNil(copy) ? b : copy);
+            ELispBoolVector dest = getOrNew(b, a);
+            long[] destBits = dest.getBits();
+            long[] aBits = a.getBits();
+            for (int i = 0; i < destBits.length; i++) {
+                destBits[i] = ~aBits[i];
+            }
+            dest.trimTrailingBits();
+            return dest;
         }
     }
 
@@ -3356,7 +3403,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FBoolVectorCountConsecutive extends ELispBuiltInBaseNode {
         @Specialization
         public static long boolVectorCountConsecutive(ELispBoolVector a, boolean b, long i) {
-            BitSet bits = a.getBits();
+            BitSet bits = BitSet.valueOf(a.getBits());
             int start = (int) i;
             int end = b ? bits.nextClearBit(start) : bits.nextSetBit(start);
             int size = a.size();

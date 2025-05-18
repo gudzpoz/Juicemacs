@@ -11,6 +11,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
@@ -21,8 +22,7 @@ import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AND_OPTIONAL;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AND_REST;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class ELispInterpretedClosure extends AbstractELispVector implements ELispLexical.ScopeHolder {
@@ -59,7 +59,20 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
                 if (isNil(list)) {
                     return new ELispCons(true);
                 }
-                return list;
+                Object envTrim = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
+                if (isNil(envTrim)) {
+                    return list;
+                }
+                Object closure = BuiltInEval.FFuncall.funcall(
+                        null,
+                        envTrim,
+                        getArgs(),
+                        getBody(),
+                        list,
+                        get(CLOSURE_DOC_STRING),
+                        get(CLOSURE_INTERACTIVE)
+                );
+                return BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
             }
             return env;
         }

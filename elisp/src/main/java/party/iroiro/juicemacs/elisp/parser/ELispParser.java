@@ -138,7 +138,7 @@ public class ELispParser {
                 if (iterator.hasNext()) {
                     throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
                 }
-                yield new ELispBoolVector(BitSet.valueOf(bytes), (int) length);
+                yield ELispBoolVector.fromBytes(bytes, (int) length);
             }
             case Quote() -> quote(QUOTE, token); // 'a -> (quote a)
             case Function() -> quote(FUNCTION, token); // #'a -> (function a)

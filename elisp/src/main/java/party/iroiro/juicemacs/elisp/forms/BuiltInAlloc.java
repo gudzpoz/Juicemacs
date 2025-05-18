@@ -67,11 +67,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
         @Specialization
         public static ELispBoolVector makeBoolVector(long length, Object init) {
             int len = Math.toIntExact(length);
-            BitSet bitSet = new BitSet(len);
+            long[] bits = new long[Math.ceilDiv(len, 64)];
             if (!isNil(init)) {
-                bitSet.flip(0, len);
+                Arrays.fill(bits, -1L);
             }
-            return new ELispBoolVector(bitSet, len);
+            return new ELispBoolVector(bits, len);
         }
     }
 

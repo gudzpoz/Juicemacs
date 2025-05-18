@@ -1,28 +1,62 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
-import java.util.BitSet;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Arrays;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public final class ELispBoolVector extends ELispVectorLike<Boolean> {
-    private final BitSet bits;
+    private final long[] bits;
     private final int size;
 
-    public ELispBoolVector(BitSet bits, int size) {
+    public ELispBoolVector(long[] bits, int size) {
         this.bits = bits;
         this.size = size;
-        bits.clear(size, bits.size());
+        trimTrailingBits();
     }
 
     public ELispBoolVector(ELispBoolVector a) {
-        this((BitSet) a.bits.clone(), a.size);
+        this(a.bits.clone(), a.size);
+    }
+
+    public static ELispBoolVector fromBytes(byte[] bits, int size) {
+        int last = bits.length - 1;
+        if (size < 0 || size <= last * 8 || bits.length * 8 < size) {
+            throw ELispSignals.wrongLengthArgument(bits.length * 64L, size);
+        }
+        long[] words = new long[Math.ceilDiv(size, 64)];
+        ByteBuffer bytes = ByteBuffer.wrap(bits).slice().order(ByteOrder.LITTLE_ENDIAN);
+        int i = 0;
+        while (bytes.remaining() >= 8) {
+            words[i++] = bytes.getLong();
+        }
+        int remaining = bytes.remaining();
+        for (int j = 0; j < remaining; j++) {
+            words[i] |= (bytes.get() & 0xFFL) << (8 * j);
+        }
+        return new ELispBoolVector(words, size);
+    }
+
+    public void trimTrailingBits() {
+        int last = bits.length - 1;
+        if (size < 0 || size <= last * 64 || bits.length * 64 < size) {
+            throw ELispSignals.wrongLengthArgument(bits.length * 64L, size);
+        }
+        if (bits.length != 0) {
+            int lastBits = size - last * 64;
+            bits[last] &= (1L << lastBits) - 1;
+        }
     }
 
     @Override
     public Boolean get(int index) {
-        return index < size && bits.get(index);
+        int offset = index & 63;
+        index >>= 6;
+        return (index < size) && (bits[index] & (1L << offset)) != 0L;
     }
 
     @Override
@@ -30,13 +64,24 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         if (index >= size) {
             return false;
         }
-        boolean prev = bits.get(index);
-        bits.set(index, element);
+        int offset = index & 63;
+        index >>= 6;
+        long mask = 1L << offset;
+        boolean prev = (bits[index] & mask) != 0L;
+        if (element) {
+            bits[index] |= mask;
+        } else {
+            bits[index] &= ~mask;
+        }
         return prev;
     }
 
     public long cardinality() {
-        return bits.cardinality();
+        long cardinality = 0;
+        for (long word : bits) {
+            cardinality += Long.bitCount(word);
+        }
+        return cardinality;
     }
 
     @Override
@@ -50,27 +95,15 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
     }
 
     public ELispBoolVector reverse() {
-        BitSet bits = new BitSet(size);
+        ELispBoolVector reversed = new ELispBoolVector(this);
         for (int i = 0; i < size; i++) {
-            bits.set(size - i - 1, this.bits.get(i));
+            reversed.set(size - i - 1, this.get(i));
         }
-        return new ELispBoolVector(bits, size);
+        return reversed;
     }
 
-    public BitSet getBits() {
+    public long[] getBits() {
         return bits;
-    }
-
-    public boolean setBits(BitSet bits) {
-        if (bits.size() > size) {
-            bits.clear(size, bits.size());
-        }
-        this.bits.xor(bits);
-        boolean changed = this.bits.cardinality() != 0;
-        // TODO: not very efficient I guess
-        this.bits.clear();
-        this.bits.or(bits);
-        return changed;
     }
 
     @Override
@@ -78,26 +111,23 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         print.print('#').print('&')
                 .printInt(size)
                 .startString();
-        int bytes = Math.ceilDiv(size, 8);
-        byte[] byteArray = bits.toByteArray();
-        for (int i = 0, length = Math.min(byteArray.length, bytes); i < length; i++) {
-            byte b = byteArray[i];
-            print.printRawByte(b);
-            bytes--;
-        }
-        while (bytes > 0) {
-            print.printRawByte((byte) 0);
-            bytes--;
+        int remaining = Math.ceilDiv(size, 8);
+        for (long bit : bits) {
+            for (int i = 0; i < 8 && remaining > 0; i++, remaining--) {
+                byte b = (byte) (bit & 0xFF);
+                print.printRawByte(b);
+                bit >>= 8;
+            }
         }
         print.endString();
     }
 
     @Override
     public boolean lispEquals(Object other) {
-        return other instanceof ELispBoolVector vector && size == vector.size && bits.equals(vector.bits);
+        return other instanceof ELispBoolVector vector && size == vector.size && Arrays.equals(bits, vector.bits);
     }
     @Override
     public int lispHashCode() {
-        return 31 * size + bits.hashCode();
+        return size + 31 * Arrays.hashCode(bits);
     }
 }

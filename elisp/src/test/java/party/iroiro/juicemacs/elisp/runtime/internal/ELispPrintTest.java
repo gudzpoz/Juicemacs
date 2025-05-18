@@ -24,7 +24,6 @@ public class ELispPrintTest {
 
     @Test
     public void testBoolVecPrint() {
-        BitSet bits = new BitSet(10);
-        assertEquals("#&10\"\\0\\0\"", print(new ELispBoolVector(bits, 10)));
+        assertEquals("#&10\"\\0\\0\"", print(new ELispBoolVector(new long[1], 10)));
     }
 }
