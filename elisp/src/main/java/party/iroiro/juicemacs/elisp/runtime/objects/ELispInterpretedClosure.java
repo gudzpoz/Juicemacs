@@ -267,15 +267,10 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            RootNode root = rootNode;
-            if (root == null) {
+            if (rootNode == null) {
                 return null;
             }
-            SourceSection sourceSection = root.getSourceSection();
-            if (sourceSection == null) {
-                return null;
-            }
-            return getBody().getSourceSection(sourceSection.getSource());
+            return ELispInterpretedNode.ELispConsExpressionNode.getConsSourceSection(rootNode, getBody());
         }
 
         public ELispInterpretedClosure getClosure() {

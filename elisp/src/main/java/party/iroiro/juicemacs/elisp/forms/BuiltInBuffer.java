@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -15,9 +16,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -31,20 +30,25 @@ public class BuiltInBuffer extends ELispBuiltIns {
     private final HashMap<MuleString, ELispBuffer> buffers = new HashMap<>();
     private final ValueStorage.Forwarded minibufferList = new ValueStorage.Forwarded();
 
+    private static HashMap<MuleString, ELispBuffer> getBuffers(@Nullable Node node) {
+        return ELispContext.get(node).globals().builtInBuffer.buffers;
+    }
+
     @CompilerDirectives.TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(MuleString name) {
         // TODO: Handle name changes?
-        return ELispContext.get(null).globals().builtInBuffer.buffers.get(name);
+        return getBuffers(null).get(name);
     }
     @CompilerDirectives.TruffleBoundary
     private static void putBuffer(MuleString name, ELispBuffer buffer) {
-        ELispContext.get(null).globals().builtInBuffer.buffers.put(name, buffer);
+        getBuffers(null).put(name, buffer);
     }
+
     @CompilerDirectives.TruffleBoundary
     private static Object getBufferList() {
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-        for (ELispBuffer buffer : ELispContext.get(null).globals().builtInBuffer.buffers.values()) {
+        for (ELispBuffer buffer : getBuffers(null).values()) {
             builder.add(buffer);
         }
         return builder.build();
@@ -642,7 +646,26 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean killBuffer(Object bufferOrName) {
+        public boolean killBuffer(Object bufferOrName) {
+            HashMap<MuleString, ELispBuffer> buffers = getBuffers(this);
+            if (bufferOrName instanceof ELispString name) {
+                return buffers.remove(name.value()) != null;
+            }
+            ELispBuffer buffer = asBuffer(bufferOrName);
+            if (buffer.getName() instanceof ELispString name) {
+                ELispBuffer match = buffers.get(name.value());
+                if (match == buffer) {
+                    buffers.remove(name.value());
+                    return true;
+                }
+            }
+            Optional<Map.Entry<MuleString, ELispBuffer>> entry = buffers.entrySet().stream()
+                    .filter(e -> e.getValue() == buffer)
+                    .findFirst();
+            if (entry.isPresent()) {
+                buffers.remove(entry.get().getKey());
+                return true;
+            }
             // TODO
             return false;
         }

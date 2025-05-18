@@ -108,12 +108,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Override
         @Nullable
         public SourceSection getSourceSection() {
-            RootNode rootNode = getRootNode();
-            if (rootNode == null) {
-                return null;
-            }
-            SourceSection source = rootNode.getSourceSection();
-            return cons.getSourceSection(source.getSource());
+            return ELispInterpretedNode.ELispConsExpressionNode.getConsSourceSection(this, cons);
         }
     }
 
@@ -1392,6 +1387,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FMacroexpand extends ELispBuiltInBaseNode {
         @Specialization
         public Object macroexpand(Object form, Object environment) {
+            Object original = form;
             while (true) {
                 if (!(form instanceof ELispCons cons)) {
                     return form;
@@ -1410,7 +1406,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     function = FAutoloadDoLoad.autoloadDoLoad(function, symbol, MACRO);
                 }
                 if (!(function instanceof ELispCons macro) || macro.car() != MACRO) {
-                    return form;
+                    return copySourceLocation(form, original);
                 }
                 Object newForm = FFuncall.funcall(
                         this,
@@ -1420,10 +1416,24 @@ public class BuiltInEval extends ELispBuiltIns {
                                 : asCons(cons.cdr()).toArray()
                 );
                 if (BuiltInData.FEq.eq(newForm, form)) {
-                    return form;
+                    return copySourceLocation(form, original);
                 }
                 form = newForm;
             }
+        }
+
+        public static Object copySourceLocation(Object form, Object oldForm) {
+            if (oldForm instanceof ELispCons original && original.getStartLine() != 0) {
+                if (form instanceof ELispCons expanded && expanded.getStartLine() == 0) {
+                    expanded.setSourceLocation(
+                            original.getStartLine(),
+                            original.getStartColumn(),
+                            original.getEndLine(),
+                            original.getEndColumn()
+                    );
+                }
+            }
+            return form;
         }
     }
 
@@ -1976,7 +1986,7 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "eval", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FEval extends ELispBuiltInBaseNode {
+    public abstract static class FEval extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         private static final Source EVAL_SOURCE = Source.newBuilder(
                 "elisp",
                 "",
@@ -2003,10 +2013,61 @@ public class BuiltInEval extends ELispBuiltIns {
             return new ELispRootNode(
                     ELispLanguage.get(node),
                     expr,
-                    form instanceof ELispCons cons
-                            ? cons.getSourceSection(EVAL_SOURCE)
-                            : EVAL_SOURCE.createUnavailableSection()
+                    EVAL_SOURCE.createSection(0, 0)
             );
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            ELispExpressionNode form = arguments[0];
+            ELispExpressionNode lexical = arguments.length == 1 ? ELispInterpretedNode.create(false) : arguments[1];
+            return BuiltInEvalFactory.FEvalFactory.InlinedEvalNodeGen.create(form, lexical);
+        }
+
+        @NodeChild(value = "form", type = ELispExpressionNode.class)
+        @NodeChild(value = "lexical", type = ELispExpressionNode.class)
+        public abstract static class InlinedEval extends ELispExpressionNode {
+            boolean sameForm(Object form, Object oldForm) {
+                return BuiltInFns.FEqual.equal(form, oldForm);
+            }
+
+            @Specialization(guards = "sameForm(form, oldForm)", limit = "1")
+            public Object eval(
+                    Object form, Object lexical,
+                    @Cached("form") Object oldForm,
+                    @Cached("getRootCallTarget(oldForm, lexical)") ELispFunctionObject callTarget,
+                    @Cached @Cached.Shared FunctionDispatchNode dispatchNode
+            ) {
+                return dispatchNode.executeDispatch(this, callTarget, new Object[0]);
+            }
+
+            @Specialization(replaces = "eval")
+            public Object evalPolymorphic(Object form, Object lexical, @Cached @Cached.Shared FunctionDispatchNode dispatchNode) {
+                return dispatchNode.executeDispatch(this, getRootCallTarget(form, lexical), new Object[0]);
+            }
+
+            public ELispFunctionObject getRootCallTarget(Object form, Object lexical) {
+                ELispExpressionNode expr = ELispInterpretedNode.createRoot(new Object[]{form}, !isNil(lexical));
+                ELispRootNode root = new ELispRootNode(ELispLanguage.get(this), expr, getEvalSourceSection(form));
+                return new ELispFunctionObject(root.getCallTarget());
+            }
+
+            public SourceSection getEvalSourceSection(Object form) {
+                SourceSection evalSection = getParent().getSourceSection();
+                SourceSection formSection = null;
+                if (form instanceof ELispCons cons) {
+                    if (cons.getStartLine() == 0) {
+                        cons.fillDebugInfo(getParent());
+                    }
+                    if (cons.getStartLine() != 0 && evalSection != null) {
+                        formSection = cons.getSourceSection(evalSection.getSource());
+                    }
+                }
+                if (formSection == null) {
+                    formSection = Objects.requireNonNullElseGet(evalSection, EVAL_SOURCE::createUnavailableSection);
+                }
+                return formSection;
+            }
         }
     }
 
@@ -2454,9 +2515,8 @@ public class BuiltInEval extends ELispBuiltIns {
                         for (Object argument : frame.getArguments()) {
                             args.add(argument);
                         }
-                        ELispCons argInfo = ELispCons.listOf((long) frame.getArguments().length, args.build());
                         Object flags = false; // TODO: backtrace_debug_on_exit?
-                        return function.apply(new Object[]{evaluated, f, argInfo, flags}, frameInstance);
+                        return function.apply(new Object[]{evaluated, f, args.build(), flags}, frameInstance);
                     }
                     if (i != -1) {
                         i++;

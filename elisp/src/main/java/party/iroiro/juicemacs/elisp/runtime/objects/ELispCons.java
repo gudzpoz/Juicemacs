@@ -103,16 +103,17 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
         }
     }
 
+    @Nullable
     public SourceSection getSourceSection(Source source) {
         try {
-            return startLine == 0 ? source.createUnavailableSection() : source.createSection(startLine, startColumn, endLine, endColumn);
+            return startLine == 0 ? null : source.createSection(startLine, startColumn, endLine, endColumn);
         } catch (IllegalArgumentException ignored) {
             // Truffle reads and checks the section range.
             // However, they seem to be based on UTF-16 surrogate pair counts,
             // instead of Unicode code points.
             // Also, we might differ from Truffle in how we handle LF and CR.
             // So we just return an unavailable section in case of false positives.
-            return source.createUnavailableSection();
+            return null;
         }
     }
 

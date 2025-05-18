@@ -636,7 +636,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public RuntimeException rewriteException(RuntimeException e) {
             return ELispSignals.remapException(e, getParent() == null ? this : getParent());
         }
-
     }
 
     public static class VarargToArrayNode extends ELispExpressionNode {
@@ -706,10 +705,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @Nullable
         private ELispExpressionNode inlineLambdaNode = null;
 
-        @Child
-        @Nullable
-        private ELispExpressionNode generatedNode = null;
-
         ConsMacroCallNode(ELispCons function, ELispCons cons) {
             super(getIndirectFunction(function.cdr()), cons, true);
             this.cons = cons;
@@ -737,11 +732,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         public ELispExpressionNode updateGenerated(VirtualFrame frame) {
-            ELispExpressionNode inner = generatedNode;
-            if (inner != null) {
-                return inner;
-            }
-
             CompilerDirectives.transferToInterpreterAndInvalidate();
             try (ELispLexical.Dynamic _ = ELispLexical.withLexicalBinding(
                     ELispLexical.getScope(this) != null
@@ -751,24 +741,20 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     function = inlineLambdaNode.executeGeneric(frame);
                 }
                 Object o = getFunctionObject(function).callTarget().call(this, evalArgs(frame));
-                if (o instanceof ELispCons debuggable) {
-                    debuggable.setSourceLocation(
-                            cons.getStartLine(),
-                            cons.getStartColumn(),
-                            cons.getEndLine(),
-                            cons.getEndColumn()
-                    );
-                }
+                BuiltInEval.FMacroexpand.copySourceLocation(o, cons);
                 ELispExpressionNode newChild = ELispInterpretedNode.create(o);
-                generatedNode = insert(newChild);
-                notifyInserted(newChild);
-                return newChild;
+                return replace(newChild);
             }
         }
 
         @Override
+        public boolean isInstrumentable() {
+            return false;
+        }
+
+        @Override
         public SourceSection getSourceSection() {
-            return generatedNode == null ? null : generatedNode.getSourceSection();
+            return ELispConsExpressionNode.getConsSourceSection(this, cons);
         }
     }
 
@@ -860,10 +846,14 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                             ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons).trySpecialize();
                     default -> throw ELispSignals.invalidFunction(cons.car());
                 };
-                callNode = insertOrReplace(created, node);
                 cons.fillDebugInfo(getParent());
-                if (node == null) {
-                    notifyInserted(created);
+                if (created instanceof ConsSpecialCallNode || created instanceof ConsMacroCallNode) {
+                    this.replace(created);
+                } else {
+                    callNode = insertOrReplace(created, node);
+                    if (node == null) {
+                        notifyInserted(created);
+                    }
                 }
                 return created;
             }
@@ -877,9 +867,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             return getIndirectFunction(cons.car());
         }
 
-        @Override
-        public SourceSection getSourceSection() {
-            RootNode rootNode = getRootNode();
+        public static SourceSection getConsSourceSection(Node node, ELispCons cons) {
+            RootNode rootNode = node.getRootNode();
             if (rootNode == null) {
                 return null;
             }
@@ -888,6 +877,11 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 return null;
             }
             return cons.getSourceSection(section.getSource());
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return getConsSourceSection(this, cons);
         }
 
         @Override
