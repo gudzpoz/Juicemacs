@@ -1213,6 +1213,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         clause = new SourceSectionWrapper(cons, clause);
                     }
                     clauses[i] = insert(clause);
+                    notifyInserted(clause);
                 }
                 this.letClauses = clauses;
                 this.dynamicClauses = dynamicClauses;
@@ -1223,6 +1224,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     bodyNode = new ScopeWrapperNode(bodyNode, scope);
                 }
                 this.bodyNode = insert(bodyNode);
+                notifyInserted(bodyNode);
                 return bodyNode;
             }
 
@@ -1673,6 +1675,9 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class ConditionCaseNode extends ELispExpressionNode {
+            private static final int ERROR_SLOT_UNINITIALIZED = -1;
+            private static final int ERROR_SLOT_DYNAMIC = -2;
+            private static final int ERROR_SLOT_NIL = -3;
             private final int finalSuccessIndex;
             private final Object[] conditionNames;
             private final Object var;
@@ -1685,7 +1690,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Nullable ELispExpressionNode[] handlers;
 
             @CompilerDirectives.CompilationFinal
-            private int slot = -1;
+            private int slot = ERROR_SLOT_UNINITIALIZED;
 
             public ConditionCaseNode(Object bodyform, int finalSuccessIndex, @Nullable Object[] handlerBodies, Object[] conditionNames, Object var) {
                 this.finalSuccessIndex = finalSuccessIndex;
@@ -1734,7 +1739,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             private Object handle(VirtualFrame frame, Object data, @Nullable ELispExpressionNode handler, int handlerIndex) {
                 ELispSymbol symbol = asSym(var);
-                if (slot == -1) {
+                if (slot == ERROR_SLOT_UNINITIALIZED) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     for (int i = 0; i < handlerBodies.length; i++) {
                         @Nullable Object body = handlerBodies[i];
@@ -1742,9 +1747,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
                     ELispLexical parent = ELispLexical.getScope(this);
                     if (isNil(symbol)) {
-                        slot = -3;
+                        slot = ERROR_SLOT_NIL;
                     } else if (parent == null) {
-                        slot = -2;
+                        slot = ERROR_SLOT_DYNAMIC;
                     } else {
                         @Nullable ELispLexical scope = parent.fork();
                         slot = scope.addVariable(this, symbol);
@@ -1759,17 +1764,20 @@ public class BuiltInEval extends ELispBuiltIns {
                         }
                     }
                     for (ELispExpressionNode node : handlers) {
-                        insert(node);
+                        if (node != null) {
+                            insert(node);
+                            notifyInserted(node);
+                        }
                     }
                     handler = handlers[handlerIndex];
                 }
                 if (handler == null) {
                     return false;
                 }
-                if (slot == -3) {
+                if (slot == ERROR_SLOT_NIL) {
                     return handler.executeGeneric(frame);
                 }
-                if (slot == -2) {
+                if (slot == ERROR_SLOT_DYNAMIC) {
                     try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(new ELispSymbol[]{symbol}, new Object[]{data})) {
                         return handler.executeGeneric(frame);
                     }

@@ -239,6 +239,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     ELispExpressionNode newChild = BuiltInEval.FProgn.prognNode(Arrays.copyOf(finalNodes, finalNodeCount));
                     this.nodes = new ELispExpressionNode[]{insert(newChild)};
                     newChild.adoptChildren(); // NOPMD
+                    notifyInserted(newChild);
                 }
             });
             return result == null ? false : result;
@@ -285,7 +286,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 this.nodes = nodes;
             }
             for (int i = 0; i < added; i++) {
-                nodes[start + i] = insert(create(array[i]));
+                ELispExpressionNode newChild = create(array[i]);
+                nodes[start + i] = insert(newChild);
+                notifyInserted(newChild);
             }
             nodeCount = start + added;
             currentExpression++;
@@ -756,7 +759,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                             cons.getEndColumn()
                     );
                 }
-                return generatedNode = insert(ELispInterpretedNode.create(o));
+                ELispExpressionNode newChild = ELispInterpretedNode.create(o);
+                generatedNode = insert(newChild);
+                notifyInserted(newChild);
+                return newChild;
             }
         }
 
@@ -856,6 +862,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 };
                 callNode = insertOrReplace(created, node);
                 cons.fillDebugInfo(getParent());
+                if (node == null) {
+                    notifyInserted(created);
+                }
                 return created;
             }
             return node;
