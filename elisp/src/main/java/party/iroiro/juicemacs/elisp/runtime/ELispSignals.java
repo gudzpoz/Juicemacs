@@ -194,6 +194,9 @@ public abstract class ELispSignals {
     public static ELispSignalException arithError() {
         return signal(ARITH_ERROR);
     }
+    public static ELispSignalException overflowError() {
+        return signal(OVERFLOW_ERROR);
+    }
     //#endregion Math
 
     //#region emacs_abort

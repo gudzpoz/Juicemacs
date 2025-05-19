@@ -1,12 +1,19 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asNum;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInFloatFns extends ELispBuiltIns {
@@ -37,6 +44,201 @@ public class BuiltInFloatFns extends ELispBuiltIns {
 
     @TypeSystemReference(FloatFnsTypeSystem.class)
     abstract static class ELispFloatFnsNode extends ELispBuiltInBaseNode {
+    }
+
+    enum RoundingDriver {
+        CEILING {
+            @Override
+            double round(double value) {
+                return Math.ceil(value);
+            }
+
+            @Override
+            long divide(long x, long y) {
+                return Math.ceilDiv(x, y);
+            }
+
+            @Override
+            RoundingMode roundingMode() {
+                return RoundingMode.CEILING;
+            }
+        }, FLOOR {
+            @Override
+            double round(double value) {
+                return Math.floor(value);
+            }
+
+            @Override
+            long divide(long x, long y) {
+                return Math.floorDiv(x, y);
+            }
+
+            @Override
+            RoundingMode roundingMode() {
+                return RoundingMode.FLOOR;
+            }
+        }, ROUND {
+            @Override
+            double round(double value) {
+                return Math.round(value);
+            }
+
+            @Override
+            long divide(long x, long y) {
+                return 0;
+            }
+
+            @Override
+            RoundingMode roundingMode() {
+                return RoundingMode.HALF_UP;
+            }
+        }, TRUNCATE {
+            @Override
+            double round(double value) {
+                return value;
+            }
+
+            @Override
+            long divide(long n, long d) {
+                long quo = n / d;
+                long rem = n % d;
+                boolean negativeDivisor = d < 0;
+                boolean negativeRemainder = rem < 0;
+                long absRem = Math.abs(rem);
+                long absRemDistance = Math.abs(d) - absRem;
+                if (absRemDistance < absRem + (quo & 1)) {
+                    quo += negativeDivisor == negativeRemainder ? 1 : -1;
+                }
+                return quo;
+            }
+
+            @Override
+            RoundingMode roundingMode() {
+                return RoundingMode.DOWN;
+            }
+        };
+
+        abstract double round(double value);
+        abstract long divide(long x, long y);
+        abstract RoundingMode roundingMode();
+
+        @CompilerDirectives.TruffleBoundary
+        public Object round(Object x, Object y) {
+            Number n = asNum(x);
+            if (isNil(y)) {
+                return n instanceof Double d ? (long) round(d) : n;
+            }
+            Number d = asNum(y);
+            if (d instanceof Long divisor) {
+                if (divisor == 0) {
+                    throw ELispSignals.arithError();
+                }
+                if (n instanceof Long dividend) {
+                    return divide(dividend, divisor);
+                }
+            } else if (d instanceof Double divisor) {
+                if (divisor == 0) {
+                    throw ELispSignals.arithError();
+                }
+            }
+            BigDecimal dividend = toBigDecimal(n);
+            BigDecimal divisor = toBigDecimal(d);
+            try {
+                BigInteger quo = dividend.divide(divisor, 0, roundingMode())
+                        .toBigIntegerExact();
+                return ELispBigNum.wrap(quo);
+            } catch (ArithmeticException e) {
+                throw ELispSignals.overflowError();
+            }
+        }
+
+        private static BigDecimal toBigDecimal(Number n) {
+            return switch (n) {
+                case Long l -> BigDecimal.valueOf(l);
+                case Double d -> new BigDecimal(d);
+                case ELispBigNum bigNum -> new BigDecimal(bigNum.asBigInteger());
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+    }
+
+    @NodeChild(value = "arg", type = ELispExpressionNode.class)
+    @NodeField(name = "roundingDriver", type = RoundingDriver.class)
+    abstract static class SingleRoundingNode extends ELispExpressionNode {
+        abstract RoundingDriver getRoundingDriver();
+
+        @Idempotent
+        static boolean fitsInLong(double arg) {
+            return Long.MIN_VALUE <= arg && arg <= Long.MAX_VALUE;
+        }
+
+        @Specialization
+        public long roundLong(long arg) {
+            return arg;
+        }
+        @Specialization(guards = "fitsInLong(arg)")
+        public long roundDouble(double arg) {
+            return (long) getRoundingDriver().round(arg);
+        }
+        @Specialization(replaces = {"roundLong", "roundDouble"})
+        public Object roundAny(Object arg) {
+            return arg instanceof Double d ? (long) getRoundingDriver().round(d) : arg;
+        }
+    }
+
+    @NodeChild(value = "arg", type = ELispExpressionNode.class)
+    @NodeChild(value = "divisor", type = ELispExpressionNode.class)
+    @NodeField(name = "roundingDriver", type = RoundingDriver.class)
+    abstract static class RoundingNode extends ELispExpressionNode {
+        private static final long MAX_SAFE_LONG = (2L << Double.PRECISION) - 1;
+        private static final long MIN_SAFE_LONG = -MAX_SAFE_LONG;
+        abstract RoundingDriver getRoundingDriver();
+
+        @Idempotent
+        static boolean isNil(Object arg) {
+            return ELispTypeSystem.isNil(arg);
+        }
+        @Idempotent
+        static boolean fitsInLong(double arg) {
+            return Long.MIN_VALUE <= arg && arg <= Long.MAX_VALUE;
+        }
+        @Idempotent
+        static boolean fitsInDouble(long arg) {
+            return MIN_SAFE_LONG <= arg && arg <= MAX_SAFE_LONG;
+        }
+
+        @Specialization(guards = {"isNil(divisor)"})
+        public long roundLong(long arg, Object divisor) {
+            return arg;
+        }
+        @Specialization(guards = {"isNil(divisor)", "fitsInLong(arg)"})
+        public long roundDouble(double arg, Object divisor) {
+            return (long) getRoundingDriver().round(arg);
+        }
+        @Specialization(guards = {"fitsInDouble(arg)", "fitsInDouble(divisor)"})
+        public long roundLongDiv(long arg, long divisor) {
+            return (long) getRoundingDriver().round((double) arg / divisor);
+        }
+        @Specialization(guards = {"fitsInDouble(divisor)"})
+        public long roundDoubleLongDiv(double arg, long divisor) {
+            return (long) getRoundingDriver().round(arg / divisor);
+        }
+        @Specialization(replaces = {"roundLong", "roundDouble", "roundLongDiv", "roundDoubleLongDiv"})
+        public Object round(Object arg, Object divisor) {
+            return getRoundingDriver().round(arg, divisor);
+        }
+    }
+
+    abstract static class RoundingBaseNode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        abstract RoundingDriver getRoundingDriver();
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 1) {
+                return BuiltInFloatFnsFactory.SingleRoundingNodeGen.create(arguments[0], getRoundingDriver());
+            }
+            return BuiltInFloatFnsFactory.RoundingNodeGen.create(arguments[0], arguments[1], getRoundingDriver());
+        }
     }
 
     /**
@@ -313,18 +515,21 @@ public class BuiltInFloatFns extends ELispBuiltIns {
         }
         @Specialization(guards = "arg > 0")
         public static long logbLongPos(long arg) {
-            return Long.SIZE - 1 - Long.numberOfTrailingZeros(arg);
+            return Long.SIZE - 1 - Long.numberOfLeadingZeros(arg);
         }
-        @Specialization
+        @Specialization(replaces = "logbLongPos")
         public static Object logbLong(long arg) {
-            if (arg <= 0) {
-                return Double.NaN;
+            if (arg == 0) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            if (arg < 0) {
+                return arg == Long.MIN_VALUE ? Long.SIZE - 1 : logbLongPos(-arg);
             }
             return logbLongPos(arg);
         }
         @Specialization
         public static Object logbBigNum(ELispBigNum arg) {
-            return arg.log2();
+            return arg.logb();
         }
     }
 
@@ -337,15 +542,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "ceiling", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FCeiling extends ELispFloatFnsNode {
+    public abstract static class FCeiling extends RoundingBaseNode {
         @Specialization
-        public static long ceiling(double arg, Object divisor) {
-            // TODO: handle bignums
-            if (isNil(divisor)) {
-                return (long) Math.ceil(arg);
-            }
-            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
-            return (long) Math.ceil(arg / div);
+        public Object ceiling(Object arg, Object divisor) {
+            return this.getRoundingDriver().round(arg, divisor);
+        }
+
+        RoundingDriver getRoundingDriver() {
+            return RoundingDriver.CEILING;
         }
     }
 
@@ -358,15 +562,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "floor", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FFloor extends ELispFloatFnsNode {
+    public abstract static class FFloor extends RoundingBaseNode {
         @Specialization
-        public static long floor(double arg, Object divisor) {
-            // TODO: handle bignums
-            if (isNil(divisor)) {
-                return (long) Math.floor(arg);
-            }
-            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
-            return (long) Math.floor(arg / div);
+        public Object floor(Object arg, Object divisor) {
+            return this.getRoundingDriver().round(arg, divisor);
+        }
+        @Override
+        RoundingDriver getRoundingDriver() {
+            return RoundingDriver.FLOOR;
         }
     }
 
@@ -383,15 +586,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "round", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FRound extends ELispFloatFnsNode {
+    public abstract static class FRound extends RoundingBaseNode {
         @Specialization
-        public static long round(double arg, Object divisor) {
-            // TODO: handle bignums
-            if (isNil(divisor)) {
-                return Math.round(arg);
-            }
-            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
-            return Math.round(arg / div);
+        public Object round(Object arg, Object divisor) {
+            return this.getRoundingDriver().round(arg, divisor);
+        }
+        @Override
+        RoundingDriver getRoundingDriver() {
+            return RoundingDriver.ROUND;
         }
     }
 
@@ -404,15 +606,14 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "truncate", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTruncate extends ELispFloatFnsNode {
+    public abstract static class FTruncate extends RoundingBaseNode {
         @Specialization
-        public static long truncate(double arg, Object divisor) {
-            // TODO: handle bignums
-            if (isNil(divisor)) {
-                return (long) arg;
-            }
-            double div = FloatFnsTypeSystemGen.asImplicitDouble(divisor);
-            return (long) (arg / div);
+        public Object truncate(Object arg, Object divisor) {
+            return this.getRoundingDriver().round(arg, divisor);
+        }
+        @Override
+        RoundingDriver getRoundingDriver() {
+            return RoundingDriver.TRUNCATE;
         }
     }
 

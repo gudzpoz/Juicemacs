@@ -60,9 +60,13 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
         return wrap(value.subtract(BigInteger.ONE));
     }
     @TruffleBoundary
-    public Object log2() {
-        if (value.compareTo(BigInteger.ZERO) <= 0) {
-            return Double.NaN;
+    public Object logb() {
+        int sig = value.compareTo(BigInteger.ZERO);
+        if (sig == 0) {
+            return Double.NEGATIVE_INFINITY;
+        }
+        if (sig < 0) {
+            return (long) value.negate().bitLength() - 1;
         }
         return (long) value.bitLength() - 1;
     }

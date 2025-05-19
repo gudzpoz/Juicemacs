@@ -80,6 +80,7 @@ public class ELispLanguageTest {
 
                         (require 'ert)
                         (load "../test/src/data-tests")
+                        (load "../test/src/floatfns-tests")
                         (null (ert-run-tests-batch)) ; don't print the huge info object
                         """);
             } catch (PolyglotException e) {
