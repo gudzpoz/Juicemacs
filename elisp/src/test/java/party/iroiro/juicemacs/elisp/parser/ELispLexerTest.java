@@ -74,6 +74,7 @@ public class ELispLexerTest {
             "#o54", 44,
             "#o-54", -44,
             "#x2c", 44,
+            "#x7fffffffffffffff", Long.MAX_VALUE,
             "#x+2c", 44,
             "#x-2c", -44,
             "#24r1k", 44,
@@ -94,7 +95,7 @@ public class ELispLexerTest {
                 if (expected instanceof BigInteger big) {
                     expectedNum = new Token.BigNum(big);
                 } else {
-                    expectedNum = new Token.FixNum((Integer) expected);
+                    expectedNum = new Token.FixNum(((Number) expected).longValue());
                 }
                 assertEquals(
                         expectedNum,

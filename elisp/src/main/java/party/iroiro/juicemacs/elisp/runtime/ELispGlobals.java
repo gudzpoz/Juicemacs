@@ -488,8 +488,8 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(COMPOSITION_FUNCTION_TABLE, compositionFunctionTable);
         initForwardTo(AUTO_COMPOSITION_EMOJI_ELIGIBLE_CODEPOINTS, autoCompositionEmojiEligibleCodepoints);
     }
-    private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded(2147483647L);
-    private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded(-2147483648L);
+    private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded(Long.MAX_VALUE);
+    private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded(Long.MIN_VALUE);
     private final ValueStorage.ForwardedBool symbolsWithPosEnabled = new ValueStorage.ForwardedBool(false);
     private void dataVars() {
         initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);

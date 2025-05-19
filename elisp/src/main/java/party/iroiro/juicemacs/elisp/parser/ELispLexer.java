@@ -424,8 +424,9 @@ public class ELispLexer {
                 } catch (ArithmeticException e) {
                     return value;
                 }
+            } else {
+                value = value * base + digit;
             }
-            value = value * base + digit;
             reader.read();
         }
         return value;
