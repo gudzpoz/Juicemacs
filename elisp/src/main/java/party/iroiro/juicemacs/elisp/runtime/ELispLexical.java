@@ -14,6 +14,9 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LEXICAL_BINDING;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 
 /// Basically our implementation of GNU Emacs' `internal-interpreter-environment`
 ///
@@ -225,14 +228,22 @@ public record ELispLexical(
     }
 
     public static Dynamic withLexicalBinding(boolean value) {
-        return pushDynamic(new ELispSymbol[]{LEXICAL_BINDING}, new Object[]{value});
+        return pushDynamic(LEXICAL_BINDING, value);
+    }
+
+    public static Dynamic pushDynamic(ELispSymbol symbol, Object newValue) {
+        return new DynamicSingle(symbol, symbol.swapThreadLocalValue(newValue));
     }
 
     public static Dynamic pushDynamic(ELispSymbol[] symbols, Object[] newValues) {
         for (int i = 0; i < symbols.length; i++) {
             newValues[i] = symbols[i].swapThreadLocalValue(newValues[i]);
         }
-        return new Dynamic(symbols, newValues);
+        return new DynamicBatch(symbols, newValues);
+    }
+
+    public static Dynamic preparePopDynamic(ELispSymbol[] symbols, Object[] oldValues) {
+        return new DynamicBatch(symbols, oldValues);
     }
 
     @Nullable
@@ -250,6 +261,11 @@ public record ELispLexical(
         return NON_VAR_SLOT0;
     }
 
+    /// Convert the variables into an assoc list compatible with Emacs's closures
+    ///
+    /// Note that the insertion order of the list matters.
+    ///
+    /// @see #addVariablesFromAlist(Allocator, VirtualFrame, ELispCons)
     public synchronized Object toAssocList(Frame frame) {
         ELispCons.ListBuilder lb = new ELispCons.ListBuilder();
         for (int i = symbols.size() - 1; i >= 0; i--) {
@@ -275,11 +291,45 @@ public record ELispLexical(
         return addVariable(Objects.requireNonNull(findRootScope(currentNode)), symbol);
     }
 
-    public synchronized int addVariable(Allocator lexical, ELispSymbol symbol) {
-        int slot = lexical.nextSlot();
+    public synchronized int addVariable(Allocator counter, ELispSymbol symbol) {
+        int slot = counter.nextSlot();
         this.symbols.add(symbol);
         this.slots.add(slot);
         return slot;
+    }
+
+    /// Add variables from a list in reversed direction
+    ///
+    /// This has to be done reversedly because of Emacs environment semantics:
+    /// - When a new variable is declared in Emacs Lisp, a new `cons` is *pushed*
+    ///   onto `Vinternal_interpreter_environment` (an association list).
+    /// - Therefore, in `(lambda () (let* ((x 1) (y 2)) (debug)))`, when `(debug)`
+    ///   is executed, the environment is `((y . 2) (x . 1))`.
+    /// - Emacs captures the current environment directly into closures.
+    ///
+    /// However, we store variables in [#symbols], with new variables added at the tail.
+    /// So when we turn closures back into our internal
+    /// [party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure],
+    /// we need to store variables reversedly.
+    ///
+    /// Also, Emacs oclosures directly depend on the order of the list items.
+    ///
+    /// @see #toAssocList(Frame)
+    public synchronized void addVariablesFromAlist(Allocator counter, VirtualFrame frame, ELispCons cons) {
+        for (int i = 0, count = cons.size(); i < count; i++) {
+            this.symbols.add(NIL);
+            this.slots.add(counter.nextSlot());
+        }
+        ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
+        int index = this.slots.size() - 1;
+        while (i.hasNext()) {
+            ELispCons binding = asCons(i.next());
+            ELispSymbol symbol = asSym(binding.car());
+            Object value = binding.cdr();
+            symbols.set(index, symbol);
+            setVariable(frame, slots.get(index), value);
+            index--;
+        }
     }
 
     public synchronized void markDynamic(ELispSymbol symbol) {
@@ -447,12 +497,21 @@ public record ELispLexical(
         }
     }
 
-    public record Dynamic(ELispSymbol[] symbols, Object[] prevValues) implements AutoCloseable {
+    public interface Dynamic extends AutoCloseable {
+        void close();
+    }
+    private record DynamicBatch(ELispSymbol[] symbols, Object[] prevValues) implements Dynamic {
         @Override
         public void close() {
             for (int i = 0; i < symbols.length; i++) {
                 symbols[i].swapThreadLocalValue(prevValues[i]);
             }
+        }
+    }
+    private record DynamicSingle(ELispSymbol symbol, Object prevValue) implements Dynamic {
+        @Override
+        public void close() {
+            symbol.swapThreadLocalValue(prevValue);
         }
     }
 }

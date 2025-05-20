@@ -210,13 +210,8 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
                             ELispLexical.frameDescriptor(true)
                     );
                     ELispLexical parentScope = ELispLexical.newRoot();
-                    ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
                     ELispLexical.Allocator counter = new ELispLexical.Allocator();
-                    while (i.hasNext()) {
-                        ELispSymbol symbol = (ELispSymbol) i.next();
-                        int slot = parentScope.addVariable(counter, symbol);
-                        ELispLexical.setVariable(parentFrame, slot, i.next());
-                    }
+                    parentScope.addVariablesFromAlist(counter, parentFrame, cons);
                     yield ELispLexical.newRoot(parentScope, parentFrame);
                 }
                 default -> ELispLexical.newRoot();
@@ -298,6 +293,9 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
             if (isNil(args)) {
                 return new ClosureArgs(new ELispSymbol[0], new ELispSymbol[0], null);
             }
+            if (args instanceof Long bytecodeArgs) {
+                return parseBytecodeArgs(bytecodeArgs);
+            }
             ArrayList<ELispSymbol> requiredArgs = new ArrayList<>();
             ArrayList<ELispSymbol> optionalArgs = new ArrayList<>();
             @Nullable ELispSymbol rest = null;
@@ -327,6 +325,17 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
                 }
             }
             return new ClosureArgs(requiredArgs.toArray(new ELispSymbol[0]), optionalArgs.toArray(new ELispSymbol[0]), rest);
+        }
+
+        public static ClosureArgs parseBytecodeArgs(long encodedArgs) {
+            int requiredArgCount = (int) (encodedArgs & 0x7F);
+            int optionalArgCount = (int) (encodedArgs >> 8) - requiredArgCount;
+            int maxArgCount = (encodedArgs & 0x80) == 0 ? requiredArgCount + optionalArgCount : -1;
+            return new ClosureArgs(
+                    new ELispSymbol[requiredArgCount],
+                    new ELispSymbol[optionalArgCount],
+                    maxArgCount == -1 ? AND_REST : null
+            );
         }
 
         public ELispSymbol[] argSymbols() {

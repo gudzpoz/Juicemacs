@@ -1304,7 +1304,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
 
         void bind(ELispSymbol symbol, Object value) {
-            bindings.add(ELispLexical.pushDynamic(new ELispSymbol[]{symbol}, new Object[]{value}));
+            bindings.add(ELispLexical.pushDynamic(symbol, value));
         }
 
         void saveCurrentBuffer(Object buffer) {

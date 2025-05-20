@@ -229,7 +229,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
         }
     }
 
-    abstract static class RoundingBaseNode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+    abstract static class ELispRoundingFnsNode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         abstract RoundingDriver getRoundingDriver();
 
         @Override
@@ -542,7 +542,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "ceiling", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FCeiling extends RoundingBaseNode {
+    public abstract static class FCeiling extends ELispRoundingFnsNode {
         @Specialization
         public Object ceiling(Object arg, Object divisor) {
             return this.getRoundingDriver().round(arg, divisor);
@@ -562,7 +562,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "floor", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FFloor extends RoundingBaseNode {
+    public abstract static class FFloor extends ELispRoundingFnsNode {
         @Specialization
         public Object floor(Object arg, Object divisor) {
             return this.getRoundingDriver().round(arg, divisor);
@@ -586,7 +586,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "round", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FRound extends RoundingBaseNode {
+    public abstract static class FRound extends ELispRoundingFnsNode {
         @Specialization
         public Object round(Object arg, Object divisor) {
             return this.getRoundingDriver().round(arg, divisor);
@@ -606,7 +606,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "truncate", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FTruncate extends RoundingBaseNode {
+    public abstract static class FTruncate extends ELispRoundingFnsNode {
         @Specialization
         public Object truncate(Object arg, Object divisor) {
             return this.getRoundingDriver().round(arg, divisor);

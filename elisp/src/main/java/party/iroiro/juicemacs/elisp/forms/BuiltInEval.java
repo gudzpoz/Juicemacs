@@ -1242,7 +1242,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         dynamicValues[i] = dynamicSymbols[i].swapThreadLocalValue(dynamicValues[i]);
                     }
                 }
-                return dynamicValues == null ? null : new ELispLexical.Dynamic(dynamicSymbols, dynamicValues);
+                return dynamicValues == null ? null : ELispLexical.preparePopDynamic(dynamicSymbols, dynamicValues);
             }
 
             @Override
@@ -1726,7 +1726,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     if (finalSuccessIndex != -1) {
                         ELispExpressionNode handler = handlers[finalSuccessIndex];
                         if (handler != null) {
-                            return handle(frame, o, handler, finalSuccessIndex);
+                            return handle(frame, null, o, handler, finalSuccessIndex);
                         }
                     }
                     return o;
@@ -1740,14 +1740,18 @@ public class BuiltInEval extends ELispBuiltIns {
                         if (shouldHandle) {
                             ELispExpressionNode handler = handlers[i];
                             ELispCons error = new ELispCons(tag, e.getData());
-                            return handle(frame, error, handler, i);
+                            return handle(frame, e, error, handler, i);
                         }
                     }
                     throw e;
                 }
             }
 
-            private Object handle(VirtualFrame frame, Object data, @Nullable ELispExpressionNode handler, int handlerIndex) {
+            private Object handle(
+                    VirtualFrame frame,
+                    ELispSignals.@Nullable ELispSignalException e, Object data,
+                    @Nullable ELispExpressionNode handler, int handlerIndex
+            ) {
                 ELispSymbol symbol = asSym(var);
                 if (slot == ERROR_SLOT_UNINITIALIZED) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1784,16 +1788,23 @@ public class BuiltInEval extends ELispBuiltIns {
                 if (handler == null) {
                     return false;
                 }
-                if (slot == ERROR_SLOT_NIL) {
-                    return handler.executeGeneric(frame);
-                }
-                if (slot == ERROR_SLOT_DYNAMIC) {
-                    try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(new ELispSymbol[]{symbol}, new Object[]{data})) {
+                try {
+                    if (slot == ERROR_SLOT_NIL) {
                         return handler.executeGeneric(frame);
                     }
+                    if (slot == ERROR_SLOT_DYNAMIC) {
+                        try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(symbol, data)) {
+                            return handler.executeGeneric(frame);
+                        }
+                    }
+                    ELispLexical.setVariable(frame, slot, data);
+                    return handler.executeGeneric(frame);
+                } catch (ELispSignals.ELispSignalException newException) {
+                    if (e != null) {
+                        newException.addSuppressed(e);
+                    }
+                    throw newException;
                 }
-                ELispLexical.setVariable(frame, slot, data);
-                return handler.executeGeneric(frame);
             }
         }
     }
