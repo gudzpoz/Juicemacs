@@ -19,7 +19,7 @@ It seems... we also have this bug.
 Currently thread-local buffer-locals are treated as thread-locals. But they
 should be buffer-local thread-locals ;-) Buffalo buffalo buffalo.
 
-* TODO [#B] =cconv.el --- Closure conversion for statically scoped Emacs Lisp=
+* TODO [#B] =cconv.el=: Closure conversion for statically scoped Emacs Lisp
 
 Emacs offloads lexical scope analysis to =cconv.el=: =(function ...)= will call
 =internal-make-interpreted-closure-function= (set to
@@ -45,6 +45,22 @@ macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
 1))= to =((x . 1) (y . 1))=.
 
 To support this, we will need to rethink how we handle our materialized frames.
+
+* TODO [#B] =cl--generic-cyclic-definition=
+
+There is definitely a bug, but it is rather unreproducible. Can't
+deterministically trigger it. Have no idea what could be the reason (maybe
+something depending on hash table iteration order?).
+
+#+begin_src elisp
+  (cl--generic-cyclic-definition cl-generic-generalizers)
+#+end_src
+
+* TODO [#B] Byte compiler warnings
+
+=(require 'bytecomp)= throws a bunch of errors, but =(byte-compile '(lambda ()
+nil))= runs fine otherwise. I suspect that it comes from discrepancies with
+=cconv.el=.
 
 * TODO [#A] Frames, Windows, etc.
 
@@ -201,7 +217,7 @@ The current performance is pretty good and we might consider adding more checks
 to ensure a consistent behavior. But we will need some benchmark to ensure it
 does not slow down too much.
 
-* TODO [#B] Bytecode interpreter
+* TODO [#A] Bytecode Interpreter & Bootstrapping
 
 Now that [[https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/BytecodeDSL.md][Truffle has a bytecode DSL]], we can probably implement a bytecode
 interpreter more easily. However, I don't think anything (Juicemacs currently
@@ -216,8 +232,8 @@ Edit: No, =bytecomp.el= requires a working bytecode interpreter.
 
 ** Bootstrapping
 
-So we have a bytecode interpreter now. Compiled Emacs =.elc= files seem to
-assume a bootstrapped environment, meaning that it expects at least autoload
+So we have a bytecode interpreter now. However, compiled Emacs =.elc= files seem
+to assume a bootstrapped environment, meaning that it expects at least autoload
 definitions from =loaddefs.el= even before =loaddefs.el= is loaded.
 
 Emacs achieves this by somehow dumping its heap (approximately) and always
@@ -227,6 +243,18 @@ though.
 Also, currently Juicemacs load ~90% of =loadup.el= in around 13 seconds on my
 machine, which is not very acceptable. So we do need something similar to
 =pdump=.
+
+** =noninteractive=
+
+Currently, we set =noninteractive= to =t= in our tests and REPL to avoid running
+code expecting a bootstrapped environment. (We could also set =dump-mode=, but
+it seems to skip too many things.)
+
+This includes:
+
+- =user-emacs-directory=: Set to =nil= by =subr.el= and set to a valid value in
+  =top-level=. This seems to be used by Emacs =loadup.el= before running
+  =top-level= when =noninteractive= is =nil=.
 
 * TODO [#B] Understanding Non-Bare Symbols
 

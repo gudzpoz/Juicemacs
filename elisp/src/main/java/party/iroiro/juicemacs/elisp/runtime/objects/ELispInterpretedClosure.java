@@ -34,6 +34,8 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
     private volatile ELispFunctionObject function = null;
     @Nullable
     private Object name = null;
+    @Nullable
+    private Object pseudoEnvironment = null;
 
     public ELispInterpretedClosure(
             Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
@@ -53,6 +55,9 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
         if (index == CLOSURE_CONSTANTS) {
             Object env = inner[CLOSURE_CONSTANTS];
             if (env instanceof ELispLexical lexicalEnv) {
+                if (pseudoEnvironment != null) {
+                    return pseudoEnvironment;
+                }
                 @Nullable ELispLexical scope = lexicalEnv.parentScope();
                 @Nullable MaterializedFrame frame = lexicalEnv.materializedParent();
                 Object list = Objects.requireNonNull(scope).toAssocList(Objects.requireNonNull(frame));
@@ -72,7 +77,7 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
                         get(CLOSURE_DOC_STRING),
                         get(CLOSURE_INTERACTIVE)
                 );
-                return BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
+                return pseudoEnvironment = BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
             }
             return env;
         }
