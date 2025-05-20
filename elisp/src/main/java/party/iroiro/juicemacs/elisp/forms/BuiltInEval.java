@@ -2391,14 +2391,14 @@ public class BuiltInEval extends ELispBuiltIns {
             Object argList;
             switch (object) {
                 case ELispSubroutine s -> {
+                    ELispBuiltIn info = s.info();
                     if (s.specialForm()) {
-                        return new ELispCons((long) s.info().minArgs(), UNEVALLED);
+                        return new ELispCons((long) info.minArgs(), UNEVALLED);
                     }
-                    int max = s.info().maxArgs();
-                    if (max == -1) {
-                        return new ELispCons((long) s.info().minArgs(), MANY);
+                    if (info.varArgs()) {
+                        return new ELispCons((long) info.minArgs(), MANY);
                     }
-                    return new ELispCons((long) s.info().minArgs(), (long) s.info().maxArgs());
+                    return new ELispCons((long) info.minArgs(), (long) info.maxArgs());
                 }
                 case ELispCons cons when cons.car() == LAMBDA ->
                         argList = cons.get(1); // fallthrough

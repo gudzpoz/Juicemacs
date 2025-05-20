@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -11,6 +12,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -116,23 +118,13 @@ public class BuiltInFns extends ELispBuiltIns {
         }
 
         @Specialization
-        public static long lengthVector(ELispVector sequence) {
-            return sequence.size();
-        }
-
-        @Specialization
-        public static long lengthBoolVec(ELispBoolVector sequence) {
+        public static long lengthVector(ELispVectorLike<?> sequence) {
             return sequence.size();
         }
 
         @Specialization
         public static long lengthString(ELispString sequence) {
             return sequence.length();
-        }
-
-        @Specialization
-        public static long lengthClosure(ELispInterpretedClosure sequence) {
-            return sequence.size();
         }
     }
 
@@ -337,12 +329,20 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCompareStrings extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object compareStrings(ELispString str1, Object start1, Object end1, ELispString str2, Object start2, Object end2, boolean ignoreCase) {
-            PrimitiveIterator.OfInt chars1 = str1.value().iterator(notNilOr(start1, 0L));
-            PrimitiveIterator.OfInt chars2 = str2.value().iterator(notNilOr(start2, 0L));
-            long len1 = notNilOr(end1, str1.length());
-            long len2 = notNilOr(end2, str2.length());
-            long limit = Math.min(len1, len2);
+        public static Object compareStrings(
+                ELispString str1, Object start1, Object end1,
+                ELispString str2, Object start2, Object end2,
+                boolean ignoreCase
+        ) {
+            long start1Int = notNilOr(start1, 0L);
+            PrimitiveIterator.OfInt chars1 = str1.value().iterator(start1Int);
+            long start2Int = notNilOr(start2, 0L);
+            PrimitiveIterator.OfInt chars2 = str2.value().iterator(start2Int);
+            long end1Int = Math.min(notNilOr(end1, str1.length()), str1.length());
+            long end2Int = Math.min(notNilOr(end2, str2.length()), str2.length());
+            long len1 = end1Int - start1Int;
+            long len2 = end2Int - start2Int;
+            long limit = Math.min(len1 , len2);
             long count = 0;
             while (count < limit) {
                 if (chars1.hasNext() && chars2.hasNext()) {
@@ -369,11 +369,13 @@ public class BuiltInFns extends ELispBuiltIns {
                 }
                 return true;
             }
+
             if (len1 < len2) {
                 return -count - 1;
-            } else {
+            } else if (len1 > len2) {
                 return count + 1;
             }
+            return true;
         }
     }
 
@@ -1535,9 +1537,32 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "get", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FGet extends ELispBuiltInBaseNode {
-        @Specialization
         public static Object get(Object symbol, Object propname) {
             return asSym(symbol).getProperty(propname);
+        }
+
+        ValueStorage getStorage(ELispSymbol symbol) {
+            return getContext().getStorage(symbol);
+        }
+
+        @Specialization(guards = "symbol == oldSymbol")
+        public Object getCached(
+                ELispSymbol symbol, Object propname,
+                @Cached("symbol") ELispSymbol oldSymbol,
+                @Cached("getStorage(oldSymbol)") ValueStorage storage
+        ) {
+            return storage.getProperty(propname);
+        }
+
+        @Specialization
+        public Object getWithContext(Object symbol, Object propname) {
+            ELispSymbol sym = asSym(symbol);
+            Optional<ValueStorage> storage = getContext().getStorageLazy(sym);
+            //noinspection OptionalIsPresent
+            if (storage.isEmpty()) {
+                return false;
+            }
+            return storage.get().getProperty(propname);
         }
     }
 

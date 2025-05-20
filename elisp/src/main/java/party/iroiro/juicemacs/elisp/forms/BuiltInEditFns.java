@@ -1845,6 +1845,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                     objects[i] = l.intValue(); // NOPMD
                 }
             }
+            s = s.replace("%S", "%s");
             return new ELispString(String.format(s, objects));
         }
     }

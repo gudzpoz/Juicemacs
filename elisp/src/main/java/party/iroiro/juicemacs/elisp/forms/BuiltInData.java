@@ -1128,8 +1128,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FByteCodeFunctionP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean byteCodeFunctionP(Object object) {
-            // TODO: implement
-            return false;
+            return object instanceof ELispBytecode;
         }
     }
 
@@ -2175,7 +2174,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAref extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object arefVec(ELispVector array, long idx) {
+        public static Object arefVec(ELispVectorLike<?> array, long idx) {
             return array.get((int) idx);
         }
         @Specialization
@@ -2183,31 +2182,10 @@ public class BuiltInData extends ELispBuiltIns {
             return array.codePointAt(idx);
         }
         @Specialization
-        public static Object arefCharTable(ELispCharTable array, long idx) {
-            return array.getChar((int) idx);
-        }
-        @Specialization
-        public static Object arefBoolVec(ELispBoolVector array, long idx) {
-            return array.get((int) idx);
-        }
-        @Specialization
-        public static Object arefRecord(ELispRecord array, long idx) {
-            return array.get((int) idx);
-        }
-        @Specialization
-        public static Object arefBytecode(ELispBytecode array, long idx) {
-            return array.get((int) idx);
-        }
-        @Specialization
         public static Object aref(Object array, long idx) {
             return switch (array) {
-                case ELispVector vec -> vec.get((int) idx);
                 case ELispString str -> str.codePointAt(idx);
-                case ELispCharTable charTable -> charTable.getChar((int) idx);
-                case ELispBoolVector boolVec -> boolVec.get((int) idx);
-                case ELispRecord record -> record.get((int) idx);
-                case ELispBytecode bytecode -> bytecode.get((int) idx);
-                case ELispInterpretedClosure closure -> closure.get((int) idx);
+                case ELispVectorLike<?> vec -> vec.get((int) idx);
                 default -> throw ELispSignals.wrongTypeArgument(ARRAYP, array);
             };
         }
@@ -2224,7 +2202,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAset extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object aset(ELispVector array, long idx, Object newelt) {
+        public static Object aset(AbstractELispVector array, long idx, Object newelt) {
             array.set((int) idx, newelt);
             return newelt;
         }
@@ -2233,16 +2211,6 @@ public class BuiltInData extends ELispBuiltIns {
             boolean elt = !isNil(newelt);
             array.set((int) idx, elt);
             return elt;
-        }
-        @Specialization
-        public static Object asetRecord(ELispRecord array, long idx, Object newelt) {
-            array.set((int) idx, newelt);
-            return newelt;
-        }
-        @Specialization
-        public static Object asetCharTable(ELispCharTable array, long idx, Object newelt) {
-            array.setChar(Math.toIntExact(idx), newelt);
-            return newelt;
         }
     }
 

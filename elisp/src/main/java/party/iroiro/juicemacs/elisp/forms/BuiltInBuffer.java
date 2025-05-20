@@ -230,6 +230,10 @@ public class BuiltInBuffer extends ELispBuiltIns {
             buffer.setName(new ELispString(name));
             buffer.setLastName(buffer.getName());
             buffer.setUndoList(name.startsWith(" "));
+
+            buffer.reset();
+            buffer.resetLocalVariables(true);
+
             buffer.setMark(BuiltInAlloc.FMakeMarker.makeMarker());
             putBuffer(name, buffer);
             // TODO: run_buffer_list_update_hook
@@ -753,8 +757,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBarfIfBufferReadOnly extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void barfIfBufferReadOnly(Object position) {
-            throw new UnsupportedOperationException();
+        public static boolean barfIfBufferReadOnly(Object position) {
+            // TODO: readonly
+            return false;
         }
     }
 

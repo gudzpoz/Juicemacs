@@ -4,6 +4,8 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleStringBuffer;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.util.List;
@@ -211,8 +213,18 @@ public class BuiltInCmds extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSelfInsertCommand extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void selfInsertCommand(Object n, Object c) {
-            throw new UnsupportedOperationException();
+        public static boolean selfInsertCommand(Object n, Object c) {
+            // TODO
+            long count = BuiltInCallInt.FPrefixNumericValue.prefixNumericValue(n);
+            long character = notNilOr(c, ' ');
+            if (count == 1) {
+                return BuiltInEditFns.FInsert.insert(new Object[]{character});
+            }
+            MuleStringBuffer buffer = new MuleStringBuffer();
+            for (int i = 0; i < count; i++) {
+                buffer.append((int) character);
+            }
+            return BuiltInEditFns.FInsert.insert(new Object[]{new ELispString(buffer.build())});
         }
     }
 }

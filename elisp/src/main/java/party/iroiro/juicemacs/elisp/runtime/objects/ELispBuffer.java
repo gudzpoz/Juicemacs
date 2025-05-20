@@ -7,6 +7,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -21,8 +22,7 @@ import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public final class ELispBuffer extends AbstractELispIdentityObject {
     private final HashMap<ELispSymbol, Forwarded> localVariables;
@@ -238,6 +238,29 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public boolean isLive() {
         return !isNil(getName());
+    }
+
+    public void reset() {
+        Object bufferValue = ELispLanguage.get(null).currentBuffer().getValue();
+        @Nullable ELispBuffer currentBuffer = isNil(bufferValue) ? null : asBuffer(bufferValue);
+        setFilename(false);
+        setFileTruename(false);
+        setDirectory(currentBuffer == null ? false : currentBuffer.getDirectory());
+        setBackedUp(false);
+        setLocalMinorModes(false);
+        setAutoSaveFileName(false);
+        setReadOnly(false);
+        setMarkActive(false);
+        setPointBeforeScroll(false);
+        setFileFormat(false);
+        setAutoSaveFileFormat(true);
+        setLastSelectedWindow(false);
+        setDisplayCount(0L);
+        setDisplayTime(false);
+        // TODO: setEnableMultibyteCharacters(true);
+        // TODO: setCursorType(false);
+        // TODO: setExtraLineSpacing(false);
+        // TODO: setTsParserList(false);
     }
 
     public void resetLocalVariables(boolean permanentToo) {
@@ -930,19 +953,16 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     public static void initDirectory() {
-        String cwd = ELispContext.get(null).getEnv("user.dir");
+        ELispLanguage.Env env = ELispContext.get(null).truffleEnv();
+        String cwd = env.getCurrentWorkingDirectory() + env.getFileNameSeparator();
         ELispBuffer currentBuffer = currentBuffer();
-        if (cwd == null) {
-            currentBuffer.setDirectory(false);
+        String dirString = Path.of(cwd).toAbsolutePath() + File.separator;
+        ELispString dir = new ELispString(dirString);
+        Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(dir, true);
+        if (isNil(handler) || dirString.equals("/")) {
+            currentBuffer.setDirectory(dir);
         } else {
-            String dirString = Path.of(cwd).toAbsolutePath() + File.separator;
-            ELispString dir = new ELispString(dirString);
-            Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(dir, true);
-            if (isNil(handler) || dirString.equals("/")) {
-                currentBuffer.setDirectory(dir);
-            } else {
-                currentBuffer.setDirectory(new ELispString("/:" + dirString));
-            }
+            currentBuffer.setDirectory(new ELispString("/:" + dirString));
         }
         getMiniBuffer(0).setDirectory(currentBuffer.getDirectory());
     }

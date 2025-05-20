@@ -4,10 +4,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.MINUS;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public class BuiltInCallInt extends ELispBuiltIns {
     @Override
@@ -165,8 +168,20 @@ public class BuiltInCallInt extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPrefixNumericValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void prefixNumericValue(Object raw) {
-            throw new UnsupportedOperationException();
+        public static long prefixNumericValue(Object raw) {
+            if (isNil(raw)) {
+                return 1L;
+            }
+            if (raw instanceof Long l) {
+                return l;
+            }
+            if (raw instanceof ELispCons list && list.car() instanceof Long l) {
+                return l;
+            }
+            if (raw == MINUS) {
+                return -1L;
+            }
+            return 1L;
         }
     }
 }

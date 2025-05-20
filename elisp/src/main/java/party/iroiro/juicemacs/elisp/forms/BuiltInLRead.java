@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -154,11 +155,14 @@ public class BuiltInLRead extends ELispBuiltIns {
     public static boolean loadFile(ELispLanguage language, @Nullable Node caller, Object file, boolean errorIfNotFound) {
         Object loader = LOAD_SOURCE_FILE_FUNCTION.getValue();
         if (isNil(loader)) {
-            ELispRootNode root = loadFilePureJava(language, file, errorIfNotFound);
-            if (root == null) {
+            TruffleFile path = findLoadFilePureJava(file, errorIfNotFound);
+            if (path == null) {
                 return false;
             }
-            root.getCallTarget().call(caller);
+            ELispRootNode root = loadFilePureJava(language, path);
+            try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(LOAD_FILE_NAME, new ELispString(path.getName()))) {
+                root.getCallTarget().call(caller);
+            }
             return true;
         } else {
             ELispString path = locateOpenP(
@@ -184,7 +188,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     }
 
     @Nullable
-    private static ELispRootNode loadFilePureJava(ELispLanguage language, Object file, boolean errorIfNotFound) {
+    private static TruffleFile findLoadFilePureJava(Object file, boolean errorIfNotFound) {
         CompilerDirectives.transferToInterpreter();
         ELispContext context = ELispContext.get(null);
         TruffleLanguage.Env env = context.truffleEnv();
@@ -211,26 +215,32 @@ public class BuiltInLRead extends ELispBuiltIns {
                 }
             }
             if (target.isRegularFile()) {
-                try {
-                    context.out().println("load: " + env.getCurrentWorkingDirectory().getAbsoluteFile().relativize(target));
-                    return ELispParser.parse(
-                            language,
-                            context,
-                            Source.newBuilder("elisp", target).build()
-                    );
-                } catch (FileNotFoundException e) {
-                    throw ELispSignals.fileMissing(e, target);
-                } catch (EOFException e) {
-                    throw ELispSignals.endOfFile(target);
-                } catch (IOException e) {
-                    throw ELispSignals.error(e.getMessage());
-                }
+                return target;
             }
         }
         if (errorIfNotFound) {
             throw ELispSignals.fileMissing(new FileNotFoundException(file.toString()), file);
         }
         return null;
+    }
+
+    private static ELispRootNode loadFilePureJava(ELispLanguage language, TruffleFile file) {
+        ELispContext context = ELispContext.get(null);
+        TruffleLanguage.Env env = context.truffleEnv();
+        try {
+            context.out().println("load: " + env.getCurrentWorkingDirectory().getAbsoluteFile().relativize(file));
+            return ELispParser.parse(
+                    language,
+                    context,
+                    Source.newBuilder("elisp", file).build()
+            );
+        } catch (FileNotFoundException e) {
+            throw ELispSignals.fileMissing(e, file);
+        } catch (EOFException e) {
+            throw ELispSignals.endOfFile(file);
+        } catch (IOException e) {
+            throw ELispSignals.error(e.getMessage());
+        }
     }
 
     /**
@@ -738,10 +748,10 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInternSoft extends ELispBuiltInBaseNode {
         @Specialization
-        public Object internSoft(ELispSymbol symbol, Object obarray) {
+        public Object internSoft(ELispSymbol name, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            ELispSymbol found = array.internSoft(symbol.name());
-            return symbol == found ? symbol : false;
+            ELispSymbol found = array.internSoft(name.name());
+            return name == found ? name : false;
         }
         @Specialization
         public Object internSoft(ELispString name, Object obarray) {
