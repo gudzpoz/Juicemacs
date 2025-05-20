@@ -158,26 +158,21 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
     }
 
     private final static class ELispMacroexpandExpressions extends ELispInterpretedNode {
+        @SuppressWarnings("FieldMayBeFinal")
+        @Child
+        private DirectCallNode callNode;
         @Children
         private ELispExpressionNode[] nodes;
 
         @CompilerDirectives.CompilationFinal
-        private int nodeCount = 0;
-
-        @CompilerDirectives.CompilationFinal
-        private int currentExpression = 0;
-
-        @CompilerDirectives.CompilationFinal(dimensions = 1)
-        private final Object[] expressions;
-        private final Object macroexpand;
-
-        @CompilerDirectives.CompilationFinal
         private boolean macroExpanded = false;
+
+        private final Object[] expressions;
 
         private ELispMacroexpandExpressions(Object[] expressions, Object macroexpand) {
             this.nodes = new ELispExpressionNode[expressions.length];
             this.expressions = expressions;
-            this.macroexpand = macroexpand;
+            this.callNode = DirectCallNode.create(BuiltInEval.FFuncall.getFunctionObject(macroexpand).callTarget());
         }
 
         @Override
@@ -193,40 +188,25 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             return evalAndExpand(frame);
         }
 
-        private Object evalAndExpand(VirtualFrame frame) {
-            int nodeCount;
-            int currentExpression;
+        private synchronized Object evalAndExpand(VirtualFrame frame) {
+            ArrayList<Object> expressions = new ArrayList<>(List.of(this.expressions).reversed());
             ELispExpressionNode[] nodes = this.nodes;
-            synchronized (this) {
-                nodeCount = this.nodeCount;
-                currentExpression = this.currentExpression;
-            }
+            int nodeCount = 0;
             @Nullable Object result = null;
-            for (int i = 0; i < nodeCount; i++) {
-                ELispExpressionNode node = nodes[i];
-                if (i == nodeCount - 1) {
-                    result = node.executeGeneric(frame);
+            while (!expressions.isEmpty()) {
+                Object expression = expressions.removeLast();
+                Object expanded = callNode.call(expression, false);
+                BuiltInEval.FMacroexpand.copySourceLocation(expanded, expression);
+                if (expanded instanceof ELispCons form && form.car() == PROGN
+                        && form.cdr() instanceof ELispCons body) {
+                    expressions.addAll(List.of(body.toArray()).reversed());
                 } else {
-                    node.executeVoid(frame);
-                }
-            }
-            if (currentExpression != expressions.length) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                for (int i = currentExpression; i < expressions.length; i++) {
-                    Object expression = expressions[i];
-                    Object expanded = BuiltInEval.FFuncall.funcall(this, macroexpand, expression, false);
-                    Object[] newNodes = expandNodes(expanded);
-                    copySourceLocation(newNodes, expression);
-                    nodes = addChildren(nodes, newNodes);
-                    for (int j = 0; j < newNodes.length; j++) {
-                        ELispExpressionNode node = nodes[nodeCount + j];
-                        if (i == expressions.length - 1 && j == newNodes.length - 1) {
-                            result = node.executeGeneric(frame);
-                        } else {
-                            node.executeVoid(frame);
-                        }
-                    }
-                    nodeCount += newNodes.length;
+                    expanded = callNode.call(expanded, true);
+                    BuiltInEval.FMacroexpand.copySourceLocation(expanded, expression);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.nodes = nodes = addChild(nodes, expanded, nodeCount);
+                    result = nodes[nodeCount].executeGeneric(frame);
+                    nodeCount++;
                 }
             }
 
@@ -242,56 +222,20 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     notifyInserted(newChild);
                 }
             });
+            expressions.clear();
             return result == null ? false : result;
         }
 
-        private void copySourceLocation(Object[] objects, Object cons) {
-            if (!(cons instanceof ELispCons original) || original.getStartLine() == 0) {
-                return;
-            }
-            for (Object object : objects) {
-                if (object instanceof ELispCons expanded && expanded.getStartLine() == 0) {
-                    expanded.setSourceLocation(
-                            original.getStartLine(),
-                            original.getStartColumn(),
-                            original.getEndLine(),
-                            original.getEndColumn()
-                    );
-                }
-            }
-        }
-
-        private static Object[] expandNodes(Object expanded) {
-            Object @Nullable [] newNodes = null;
-            if (expanded instanceof ELispCons cons && cons.car() == PROGN) {
-                if (isNil(cons.cdr())) {
-                    newNodes = new Object[0];
-                } else if (cons.cdr() instanceof ELispCons body) {
-                    newNodes = body.toArray();
-                }
-            }
-            if (newNodes == null) {
-                newNodes = new Object[]{expanded};
-            }
-            return newNodes;
-        }
-
-        private synchronized ELispExpressionNode[] addChildren(ELispExpressionNode[] original, Object... array) {
+        private synchronized ELispExpressionNode[] addChild(ELispExpressionNode[] original, Object form, int i) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            int added = array.length;
-            int start = nodeCount;
             ELispExpressionNode[] nodes = original;
-            if (added + start > nodes.length) {
-                nodes = Arrays.copyOf(nodes, (int) ((added + start) * 1.5));
+            if (i + 1 > nodes.length) {
+                nodes = Arrays.copyOf(nodes, (int) ((i + 1) * 1.5));
                 this.nodes = nodes;
             }
-            for (int i = 0; i < added; i++) {
-                ELispExpressionNode newChild = create(array[i]);
-                nodes[start + i] = insert(newChild);
-                notifyInserted(newChild);
-            }
-            nodeCount = start + added;
-            currentExpression++;
+            ELispExpressionNode newChild = create(form);
+            nodes[i] = insert(newChild);
+            notifyInserted(newChild);
             return nodes;
         }
     }
