@@ -81,7 +81,7 @@ final class ELispRegExpParser {
             }
             case GroupEnd() -> {
                 if (processingGroupIndices.isEmpty()) {
-                    throw ELispSignals.error("Unmatched group end");
+                    throw ELispSignals.invalidRegexp("Unmatched ) or \\)");
                 }
                 int index = processingGroupIndices.removeAtIndex(processingGroupIndices.size() - 1);
                 if (index != -1) {
@@ -160,7 +160,7 @@ final class ELispRegExpParser {
                  CategoryChar _ -> new REAst.Atom(top);
             case Quantifier quantifier -> lookaheadQuantifier(quantifier);
             case GroupEnd() -> collectGroup();
-            case GroupStart ignored -> throw ELispSignals.error("Unbalanced group start");
+            case GroupStart ignored -> throw ELispSignals.error("Unmatched ( or \\(");
             case Alternation() -> throw CompilerDirectives.shouldNotReachHere(); // Processed by collectGroup
         };
     }
@@ -176,7 +176,7 @@ final class ELispRegExpParser {
         ArrayList<REAst> branch = new ArrayList<>();
         while (true) {
             if (stack.isEmpty()) {
-                throw ELispSignals.error("Unbalanced group end");
+                throw ELispSignals.invalidRegexp("Unmatched ) or \\)");
             }
             ELispRegExpLexer.REToken peek = stack.getLast();
             switch (peek) {

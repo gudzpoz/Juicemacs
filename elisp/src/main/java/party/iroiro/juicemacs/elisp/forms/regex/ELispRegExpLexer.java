@@ -145,8 +145,11 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
                 max = Integer.MAX_VALUE;
             }
         }
-        if (min > max || reader.unexpectedNext((byte) '\\', (byte) '}')) {
-            throw ELispSignals.error("Invalid quantifier");
+        if (min > max) {
+            throw ELispSignals.error("Invalid content of \\{\\}");
+        }
+        if (reader.unexpectedNext((byte) '\\', (byte) '}')) {
+            throw ELispSignals.error("Unmatched \\{");
         }
         reader.consume(2);
         return new REToken.Quantifier(min, max, true);
@@ -217,7 +220,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
                 continue;
             }
             if (!reader.hasNext()) {
-                throw ELispSignals.error("Unmatched [");
+                throw ELispSignals.error("Unmatched [ or [^");
             }
             int c = reader.next();
             if (c == ']') {
@@ -468,6 +471,9 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
         }
 
         public int next() {
+            if (!hasNext()) {
+                throw ELispSignals.invalidRegexp("Premature end of regular expression");
+            }
             return string.codePointAt(index++);
         }
 
