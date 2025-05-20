@@ -189,6 +189,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         processVars();
         searchVars();
         syntaxVars();
+        terminalVars();
         textpropVars();
         timefnsVars();
         treesitVars();
@@ -488,8 +489,8 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(COMPOSITION_FUNCTION_TABLE, compositionFunctionTable);
         initForwardTo(AUTO_COMPOSITION_EMOJI_ELIGIBLE_CODEPOINTS, autoCompositionEmojiEligibleCodepoints);
     }
-    private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded(Long.MAX_VALUE);
-    private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded(Long.MIN_VALUE);
+    private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded(2147483647L);
+    private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded(-2147483648L);
     private final ValueStorage.ForwardedBool symbolsWithPosEnabled = new ValueStorage.ForwardedBool(false);
     private void dataVars() {
         initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);
@@ -1134,6 +1135,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(FIND_WORD_BOUNDARY_FUNCTION_TABLE, findWordBoundaryFunctionTable);
         initForwardTo(COMMENT_END_CAN_BE_ESCAPED, commentEndCanBeEscaped);
     }
+    private final ValueStorage.Forwarded ringBellFunction = new ValueStorage.Forwarded(false);
+    private final ValueStorage.Forwarded deleteTerminalFunctions = new ValueStorage.Forwarded(false);
+    private void terminalVars() {
+        initForwardTo(RING_BELL_FUNCTION, ringBellFunction);
+        initForwardTo(DELETE_TERMINAL_FUNCTIONS, deleteTerminalFunctions);
+    }
     private final ValueStorage.Forwarded defaultTextProperties = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded charPropertyAliasAlist = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded inhibitPointMotionHooks = new ValueStorage.Forwarded(true);
@@ -1459,6 +1466,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         symsOfSearch();
         symsOfFrame();
         symsOfSyntax();
+        symsOfTerminal();
         symsOfTreesit();
         symsOfTextprop();
         symsOfComposite();
@@ -2146,6 +2154,9 @@ character."""),
         var findWordBoundaryFunctionTableJInit = FMakeCharTable.makeCharTable(NIL, NIL);
         findWordBoundaryFunctionTable.setValue(findWordBoundaryFunctionTableJInit);
         COMMENT_END_CAN_BE_ESCAPED.setBufferLocal(true);
+    }
+    private void symsOfTerminal() {
+        FProvide.provide(intern("multi-tty"), NIL);
     }
     private void symsOfTreesit() {
         defineError(TREESIT_ERROR, "Generic tree-sitter error", ERROR);
@@ -5745,6 +5756,7 @@ character."""),
     public static final ELispSymbol REPORT_EMACS_BUG_ADDRESS = new ELispSymbol("report-emacs-bug-address");
     public static final ELispSymbol RESIZE_MINI_FRAMES = new ELispSymbol("resize-mini-frames");
     public static final ELispSymbol RESIZE_MINI_WINDOWS = new ELispSymbol("resize-mini-windows");
+    public static final ELispSymbol RING_BELL_FUNCTION = new ELispSymbol("ring-bell-function");
     public static final ELispSymbol SAVED_REGION_SELECTION = new ELispSymbol("saved-region-selection");
     public static final ELispSymbol SCALABLE_FONTS_ALLOWED = new ELispSymbol("scalable-fonts-allowed");
     public static final ELispSymbol SCRIPT_REPRESENTATIVE_CHARS = new ELispSymbol("script-representative-chars");
@@ -6209,6 +6221,7 @@ character."""),
             REPORT_EMACS_BUG_ADDRESS,
             RESIZE_MINI_FRAMES,
             RESIZE_MINI_WINDOWS,
+            RING_BELL_FUNCTION,
             SAVED_REGION_SELECTION,
             SCALABLE_FONTS_ALLOWED,
             SCRIPT_REPRESENTATIVE_CHARS,
