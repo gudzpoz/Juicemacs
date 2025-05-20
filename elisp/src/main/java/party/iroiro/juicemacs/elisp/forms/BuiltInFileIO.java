@@ -90,11 +90,19 @@ public class BuiltInFileIO extends ELispBuiltIns {
             TruffleLanguage.Env env = getContext().truffleEnv();
             String sep = env.getFileNameSeparator();
             String name = filename.toString();
-            if (name.endsWith(sep) || name.endsWith("/") || name.endsWith("\\")) {
+            if (seemsLikeDirectory(name, sep)) {
                 return filename;
             }
             TruffleFile parent = env.getPublicTruffleFile(name).getParent();
-            return parent == null ? false : new ELispString(parent.toString());
+            if (parent == null) {
+                return false;
+            }
+            String dir = parent.toString();
+            return new ELispString(seemsLikeDirectory(dir, sep) ? dir : parent + sep);
+        }
+
+        private static boolean seemsLikeDirectory(String name, String sep) {
+            return name.endsWith(sep) || name.endsWith("/") || name.endsWith("\\");
         }
     }
 
@@ -194,7 +202,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FDirectoryFileName extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString directoryFileName(ELispString directory) {
-            return new ELispString(Path.of(directory.toString()).getFileName().toString());
+            return new ELispString(Path.of(directory.toString()).toString());
         }
     }
 

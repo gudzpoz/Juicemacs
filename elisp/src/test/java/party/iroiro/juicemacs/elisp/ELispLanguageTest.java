@@ -50,12 +50,14 @@ public class ELispLanguageTest {
                      .build()
         ) {
             System.out.println("Output: " + file);
-            // Loads until an error
             try {
+                // Circumvent dependency on a bootstrapped environment
                 context.eval("elisp", """
-                        (setq load-suffixes '(".el")
-                              noninteractive t)
+                        (setq load-suffixes '(".el") ;; .elc files expect bootstrapped environment
+                              noninteractive t)      ;; (noninteractive . nil) leads to usages of user-emacs-directory,
+                                                     ;; which is only available after bootstrapping
                         """);
+                // Loads until an error
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
                 e.printStackTrace(out);

@@ -98,7 +98,10 @@ public class ELispRepl implements Callable<Integer> {
                 .build()) {
             LineReader lineReader = getLineReader(context);
             try {
-                context.eval("elisp", "(setq load-suffixes '(\".el\"))");
+                context.eval("elisp", """
+                        (setq load-suffixes '(".el")
+                              noninteractive t)
+                        """);
                 context.eval("elisp", "(load \"loadup\")");
             } catch (PolyglotException e) {
                 printStackTrace(e, lineReader);
