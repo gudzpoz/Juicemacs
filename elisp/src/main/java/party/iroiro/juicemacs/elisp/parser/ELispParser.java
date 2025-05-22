@@ -41,6 +41,7 @@ public class ELispParser {
         MuleString applyShorthands(MuleString symbol);
     }
 
+    private @Nullable Source source = null;
     private final InternContext context;
     private final ELispLexer lexer;
     private boolean lexicalBinding;
@@ -192,7 +193,7 @@ public class ELispParser {
                 yield base;
             }
             case SquareOpen() -> new ELispVector(readVector());
-            case ByteCodeOpen() -> ELispBytecode.create(readVector());
+            case ClosureOpen() -> AbstractELispClosure.create(readVector(), source);
             case CharTableOpen() -> ELispCharTable.create(readVector());
             case SubCharTableOpen() -> ELispCharTable.SubTable.create(readVector());
             case CircularRef(long i) -> Objects.requireNonNull(cyclicReferences.get(i));
@@ -286,7 +287,8 @@ public class ELispParser {
         return nextObject();
     }
 
-    private Object[] parse() throws IOException {
+    private Object[] parse(@Nullable Source source) throws IOException {
+        this.source = source;
         List<Object> expressions = new ArrayList<>();
         while (hasNext()) {
             expressions.add(nextLisp());
@@ -317,14 +319,14 @@ public class ELispParser {
             @Nullable ELispLexical debugScope
     ) throws IOException {
         ELispParser parser = new ELispParser(context, source);
-        ELispExpressionNode expr = ELispInterpretedNode.createRoot(parser.parse(), debugScope);
+        ELispExpressionNode expr = ELispInterpretedNode.createRoot(parser.parse(source), debugScope);
         return new ELispRootNode(language, expr, parser.getWholeSection(source));
     }
 
     private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source, boolean debug)
             throws IOException {
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
-        ELispExpressionNode expr = ELispInterpretedNode.createMacroexpand(parser.parse(), parser.isLexicallyBound());
+        ELispExpressionNode expr = ELispInterpretedNode.createMacroexpand(parser.parse(source), parser.isLexicallyBound());
         if (!debug) {
             source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
         }

@@ -7,17 +7,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.*;
-import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.*;
 
@@ -25,67 +23,46 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
-public class ELispInterpretedClosure extends AbstractELispVector implements ELispLexical.ScopeHolder {
-    @Nullable
-    private final RootNode rootNode;
-    @Nullable
-    private volatile FunctionRootNode functionRootNode = null;
-    @Nullable
-    private volatile ELispFunctionObject function = null;
-    @Nullable
-    private Object name = null;
+public final class ELispInterpretedClosure extends AbstractELispClosure implements ELispLexical.ScopeHolder {
     @Nullable
     private Object pseudoEnvironment = null;
 
-    public ELispInterpretedClosure(
-            Object args, ELispCons body, Object env, Object doc, Object iForm, @Nullable RootNode rootNode
-    ) {
-        super(new Object[6]);
-        set(CLOSURE_ARGLIST, args);
-        set(CLOSURE_CODE, body);
-        set(CLOSURE_CONSTANTS, env);
-        set(CLOSURE_STACK_DEPTH, false);
-        set(CLOSURE_DOC_STRING, doc);
-        set(CLOSURE_INTERACTIVE, iForm);
-        this.rootNode = rootNode;
+    ELispInterpretedClosure(Object[] array, @Nullable Source source) {
+        super(array, source);
     }
 
     @Override
     public Object get(int index) {
-        if (index == CLOSURE_CONSTANTS) {
-            Object env = inner[CLOSURE_CONSTANTS];
-            if (env instanceof ELispLexical lexicalEnv) {
-                if (pseudoEnvironment != null) {
-                    return pseudoEnvironment;
-                }
-                @Nullable ELispLexical scope = lexicalEnv.parentScope();
-                @Nullable MaterializedFrame frame = lexicalEnv.materializedParent();
-                Object list = Objects.requireNonNull(scope).toAssocList(Objects.requireNonNull(frame));
-                if (isNil(list)) {
-                    return new ELispCons(true);
-                }
-                Object envTrim = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
-                if (isNil(envTrim)) {
-                    return list;
-                }
-                Object closure = BuiltInEval.FFuncall.funcall(
-                        null,
-                        envTrim,
-                        getArgs(),
-                        getBody(),
-                        list,
-                        get(CLOSURE_DOC_STRING),
-                        get(CLOSURE_INTERACTIVE)
-                );
-                return pseudoEnvironment = BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
-            }
+        if (index != CLOSURE_CONSTANTS) {
+            return super.get(index);
+        }
+        Object env = inner[CLOSURE_CONSTANTS];
+        if (!(env instanceof ELispLexical lexicalEnv)) {
             return env;
         }
-        return super.get(index);
-    }
-
-    private Object getArgs() {
-        return inner[CLOSURE_ARGLIST];
+        if (pseudoEnvironment != null) {
+            return pseudoEnvironment;
+        }
+        @Nullable ELispLexical scope = lexicalEnv.parentScope();
+        @Nullable MaterializedFrame frame = lexicalEnv.materializedParent();
+        Object list = Objects.requireNonNull(scope).toAssocList(Objects.requireNonNull(frame));
+        if (isNil(list)) {
+            return new ELispCons(true);
+        }
+        Object envTrim = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
+        if (isNil(envTrim)) {
+            return list;
+        }
+        Object closure = BuiltInEval.FFuncall.funcall(
+                null,
+                envTrim,
+                getArgs(),
+                getBody(),
+                list,
+                get(CLOSURE_DOC_STRING),
+                get(CLOSURE_INTERACTIVE)
+        );
+        return pseudoEnvironment = BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
     }
 
     private ELispCons getBody() {
@@ -96,46 +73,18 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
         return inner[CLOSURE_CONSTANTS];
     }
 
-    public ELispFunctionObject getFunction() {
-        ELispFunctionObject f = function;
-        if (f == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            ELispClosureCallNode node = new ELispClosureCallNode();
-            ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
-                    node, node.args.requiredArgCount(), node.args.maxArgCount()
-            );
-            FunctionRootNode root = new FunctionRootNode(
-                    ELispLanguage.get(node),
-                    this.name == null ? this : this.name,
-                    wrapper,
-                    ELispLexical.frameDescriptor(!isNil(getEnv()))
-            );
-            f = new ELispFunctionObject(root.getCallTarget());
-            functionRootNode = root; // NOPMD
-            function = f;
-        }
-        return f;
-    }
-
-    public Object getName() {
-        return name == null ? this : name;
-    }
-
-    public void setName(Object name) {
-        this.name = name;
-        FunctionRootNode f = functionRootNode;
-        if (f != null) {
-            f.setLispFunction(name);
-        }
-    }
-
     @Override
-    public void display(ELispPrint print) {
-        if (getEnv() instanceof ELispLexical) {
-            vectorPrintHelper(print, "#[", "]", subList(0, CLOSURE_CONSTANTS).iterator());
-        } else {
-            displayHelper(print, "#[", "]");
-        }
+    protected FunctionRootNode getFunctionRootNode() {
+        ELispClosureCallNode node = new ELispClosureCallNode();
+        ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
+                node, node.args.requiredArgCount(), node.args.maxArgCount()
+        );
+        return new FunctionRootNode(
+                ELispLanguage.get(node),
+                this.name == null ? this : this.name,
+                wrapper,
+                ELispLexical.frameDescriptor(!isNil(getEnv()))
+        );
     }
 
     @Override
@@ -267,10 +216,10 @@ public class ELispInterpretedClosure extends AbstractELispVector implements ELis
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            if (rootNode == null) {
+            if (rootSource == null) {
                 return null;
             }
-            return ELispInterpretedNode.ELispConsExpressionNode.getConsSourceSection(rootNode, getBody());
+            return getBody().getSourceSection(rootSource);
         }
 
         public ELispInterpretedClosure getClosure() {

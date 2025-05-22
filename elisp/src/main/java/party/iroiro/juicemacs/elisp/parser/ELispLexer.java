@@ -58,7 +58,7 @@ import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
 ///   - `#^[...]`: A character table.
 ///   - `#^^[...]`: A sub-char-table.
 ///   - `#(...)`: String with properties.
-///   - `#[...]`: Byte code.
+///   - `#[...]`: A interpreted closure or a bytecode function.
 ///   - `#&N"..."`: A bool vector.
 ///   - `#!`: The shebang.
 ///   - `#xFFFF / #XFFFF`: A hex integer.
@@ -175,9 +175,9 @@ public class ELispLexer {
         }
 
         /**
-         * Opening byte code as is in {@code #[}
+         * Opening a closure or bytecode function as is in {@code #[}
          */
-        record ByteCodeOpen() implements Token {
+        record ClosureOpen() implements Token {
         }
 
         /**
@@ -196,7 +196,7 @@ public class ELispLexer {
          * Closing square bracket
          *
          * <p>
-         * Please note that it also closes {@link ByteCodeOpen}, etc.
+         * Please note that it also closes {@link ClosureOpen}, etc.
          * </p>
          */
         record SquareClose() implements Token {
@@ -280,7 +280,7 @@ public class ELispLexer {
     private static final Token.StrWithPropsOpen STR_WITH_PROPS_OPEN = new Token.StrWithPropsOpen();
     private static final Token.ParenClose PAREN_CLOSE = new Token.ParenClose();
     private static final Token.SquareOpen SQUARE_OPEN = new Token.SquareOpen();
-    private static final Token.ByteCodeOpen BYTE_CODE_OPEN = new Token.ByteCodeOpen();
+    private static final Token.ClosureOpen CLOSURE_OPEN = new Token.ClosureOpen();
     private static final Token.CharTableOpen CHAR_TABLE_OPEN = new Token.CharTableOpen();
     private static final Token.SubCharTableOpen SUB_CHAR_TABLE_OPEN = new Token.SubCharTableOpen();
     private static final Token.SquareClose SQUARE_CLOSE = new Token.SquareClose();
@@ -389,6 +389,14 @@ public class ELispLexer {
         };
     }
 
+    /// Reads in an integer
+    ///
+    /// When `digits == -1`, we should support reading in an infinitely large number.
+    /// In this case, this function reads in one `long` portion at a time, and the caller
+    /// is responsible for concatenating all `long` integers into a [BigInteger] (by
+    /// detecting if there are unprocessed trailing numbers).
+    /// (Currently only [#readIntToken(int)] handles this, because characters, back refs,
+    /// etc. are not expected to surpass [Long#MAX_VALUE].)
     private long readInteger(int base, int digits, boolean earlyReturn) throws IOException {
         long value = 0;
         // When `digit == -1`, `i != digits` allows reading an infinitely large number.
@@ -422,6 +430,7 @@ public class ELispLexer {
                 try {
                     value = Math.addExact(Math.multiplyExact(value, base), digit);
                 } catch (ArithmeticException e) {
+                    // Current char is not consumed, to be processed by caller.
                     return value;
                 }
             } else {
@@ -793,7 +802,7 @@ public class ELispLexer {
                         throw ELispSignals.invalidReadSyntax("Expected '^' or '['");
                     }
                     case '(' -> STR_WITH_PROPS_OPEN;
-                    case '[' -> BYTE_CODE_OPEN;
+                    case '[' -> CLOSURE_OPEN;
                     case '&' -> {
                         long length = readInteger(10, -1, true);
                         if (reader.read() != '\"') {

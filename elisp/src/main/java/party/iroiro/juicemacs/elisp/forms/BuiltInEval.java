@@ -666,14 +666,35 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FMakeInterpretedClosure extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispInterpretedClosure makeInterpretedClosure(Object args, ELispCons body, Object env, Object docstring, Object iform) {
-            return new ELispInterpretedClosure(
-                    args,
-                    body,
-                    env,
-                    docstring,
-                    iform,
-                    null
-            );
+            return makeClosure(args, body, env, docstring, iform, null);
+        }
+
+        public static ELispInterpretedClosure makeClosure(Object args, ELispCons body, Object env, Object docstring, Object iform, @Nullable RootNode root) {
+            List<Object> inner = new ArrayList<>(CLOSURE_INTERACTIVE + 1);
+            inner.add(args);
+            inner.add(body);
+            inner.add(env);
+            boolean hasDoc = !isNil(docstring);
+            boolean hasIForm = !isNil(iform);
+            if (hasDoc || hasIForm) {
+                inner.add(false); // CLOSURE_STACK_DEPTH
+                inner.add(docstring);
+                if (hasIForm) {
+                    ELispCons cons = asCons(iform);
+                    if (isNil(cons.cdr())) {
+                        iform = false;
+                    } else {
+                        ELispCons iArgs = asCons(cons.cdr());
+                        if (isNil(iArgs.cdr())) {
+                            iform = iArgs.car();
+                        } else {
+                            iform = new ELispVector(new Object[]{iArgs.car(), iArgs.cdr()});
+                        }
+                    }
+                    inner.add(iform);
+                }
+            }
+            return (ELispInterpretedClosure) AbstractELispClosure.create(inner, root);
         }
     }
 
@@ -778,10 +799,10 @@ public class BuiltInEval extends ELispBuiltIns {
                             throw ELispSignals.invalidFunction(closure);
                         }
                     } else {
-                        scopeHolder = new ELispInterpretedClosure(
+                        scopeHolder = FMakeInterpretedClosure.makeClosure(
                                 args,
                                 body,
-                                scope != null,
+                                scope == null ? false : new ELispCons(true),
                                 doc,
                                 finalInteractive,
                                 getRootNode()

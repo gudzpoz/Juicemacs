@@ -1113,8 +1113,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FClosurep extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean closurep(Object object) {
-            return object instanceof ELispInterpretedClosure
-                    || object instanceof ELispBytecode;
+            return object instanceof AbstractELispClosure;
         }
     }
 

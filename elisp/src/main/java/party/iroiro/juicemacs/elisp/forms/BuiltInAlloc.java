@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.source.Source;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -239,7 +240,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             ArrayList<Object> list = new ArrayList<>();
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
-            return ELispBytecode.create(list);
+            return (ELispBytecode) AbstractELispClosure.create(list, (Source) null);
         }
     }
 
@@ -256,17 +257,16 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FMakeClosure extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispBytecode makeClosure(Object prototype, Object[] closureVars) {
-            if (!BuiltInData.FClosurep.closurep(prototype)) {
+            if (!(prototype instanceof ELispBytecode bytecode)) {
                 throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, prototype);
             }
-            ELispVectorLike<?> protofun = (ELispVectorLike<?>) prototype;
-            ELispVector constants = asVector(protofun.get(CLOSURE_CONSTANTS));
+            ELispVector constants = asVector(bytecode.get(CLOSURE_CONSTANTS));
             if (closureVars.length > constants.size()) {
                 throw ELispSignals.error("closure vars do not fit into constvec");
             }
             ELispVector copyConstants = BuiltInFns.FCopySequence.copySequenceVector(constants);
             copyConstants.fillFrom(closureVars);
-            ELispBytecode copy = ELispBytecode.create(protofun);
+            ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getRootSource());
             copy.set(CLOSURE_CONSTANTS, copyConstants);
             return copy;
         }

@@ -1,72 +1,32 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.nodes.bytecode.ELispBytecodeFallbackNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
-import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInData.isMultibyte;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asLong;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
-public final class ELispBytecode extends AbstractELispVector {
-    @Nullable
-    private volatile FunctionRootNode functionRootNode = null;
-    @Nullable
-    private volatile ELispFunctionObject function = null;
-    @Nullable
-    private Object name = null;
-
-    private ELispBytecode(Object[] inner) {
-        super(inner);
-    }
-
-    public static ELispBytecode create(List<?> inner) {
-        Object argList = inner.get(CLOSURE_ARGLIST);
-        Object byteCode = inner.get(CLOSURE_CODE);
-        Object constants = inner.get(CLOSURE_CONSTANTS);
-        Object stack = inner.get(CLOSURE_STACK_DEPTH);
-        if (!(
-                (argList instanceof Long || argList instanceof ELispCons || isNil(argList))
-                        && (byteCode instanceof ELispString s && !isMultibyte(s.value()))
-                        && (constants instanceof ELispVector)
-                        && (stack instanceof Long)
-        )) {
-            throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
-        }
-        if (inner.size() >= 5) {
-            Object doc = inner.get(4);
-            if (!(isNil(doc) || doc instanceof ELispString || doc instanceof ELispCons)) {
-                // Not string or autoload string
-                throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
-            }
-        }
-        if (inner.size() >= 7) {
-            throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
-        }
-        return new ELispBytecode(inner.toArray());
-    }
-
-    public Object getArgs() {
-        return get(CLOSURE_ARGLIST);
+public final class ELispBytecode extends AbstractELispClosure {
+    ELispBytecode(Object[] inner, @Nullable Source source) {
+        super(inner, source);
     }
 
     public byte[] getBytecode() {
@@ -82,41 +42,17 @@ public final class ELispBytecode extends AbstractELispVector {
     }
 
     @Override
-    public void display(ELispPrint print) {
-        displayHelper(print, "#[", "]");
-    }
-
-    public ELispFunctionObject getFunction() {
-        ELispFunctionObject f = function;
-        if (f == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            BytecodeCallNode node = new BytecodeCallNode();
-            ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
-                    node, node.requiredArgCount, node.maxArgCount
-            );
-            FunctionRootNode root = new FunctionRootNode(
-                    ELispLanguage.get(node),
-                    this.name == null ? this : this.name,
-                    wrapper,
-                    node.descriptor()
-            );
-            f = new ELispFunctionObject(root.getCallTarget());
-            functionRootNode = root; // NOPMD
-            function = f;
-        }
-        return f;
-    }
-
-    public Object getName() {
-        return name == null ? this : name;
-    }
-
-    public void setName(Object name) {
-        this.name = name;
-        FunctionRootNode f = functionRootNode;
-        if (f != null) {
-            f.setLispFunction(name);
-        }
+    public FunctionRootNode getFunctionRootNode() {
+        BytecodeCallNode node = new BytecodeCallNode();
+        ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
+                node, node.requiredArgCount, node.maxArgCount
+        );
+        return new FunctionRootNode(
+                ELispLanguage.get(node),
+                this.name == null ? this : this.name,
+                wrapper,
+                node.descriptor()
+        );
     }
 
     private final class BytecodeCallNode extends ELispExpressionNode {
@@ -209,6 +145,15 @@ public final class ELispBytecode extends AbstractELispVector {
         @Override
         public boolean hasTag(Class<? extends Tag> tag) {
             return tag == StandardTags.RootTag.class;
+        }
+
+        @Nullable
+        @Override
+        public SourceSection getSourceSection() {
+            if (rootSource == null) {
+                return null;
+            }
+            return rootSource.createUnavailableSection();
         }
     }
 }
