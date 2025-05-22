@@ -33,9 +33,21 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
     /// into `(ast_+ (ast_+ 1 2.0) some-big-num)` and avoid the costs of function calls and
     /// have each AST node get their own specialized implementation.
     ///
+    /// For example, `(+ 1 1.0 1)` can get inlined into `(long+double 1 (double+long 1.0 1))`,
+    /// so that each node gets its own specialized implementation to speed things up.
+    ///
+    /// The execution of inlined nodes and special forms are defined in
+    /// [party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode].
+    ///
     /// @see BuiltInData.FPlusBinary
     /// @see BuiltInData.FPlus
+    /// @see party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode
     public interface InlineFactory {
         ELispExpressionNode createNode(ELispExpressionNode[] arguments);
+    }
+
+    /// Similar to [InlineFactory], but with raw arguments
+    public interface SpecialFactory {
+        ELispExpressionNode createNode(Object[] arguments);
     }
 }

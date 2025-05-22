@@ -1,14 +1,13 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.MINUS;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
@@ -103,10 +102,14 @@ public class BuiltInCallInt extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "interactive", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FInteractive extends ELispBuiltInBaseNode {
+    public abstract static class FInteractive extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
         public static Void interactiveBailout(Object[] args) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
             throw new UnsupportedOperationException();
         }
     }

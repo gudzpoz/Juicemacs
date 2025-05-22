@@ -1151,9 +1151,9 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 symbol = s;
                 FunctionStorage storage = getContext().getFunctionStorage(s);
                 Object inner = storage.get();
-                if (inner instanceof ELispSubroutine(_, ELispSubroutine.InlineInfo inline, _) && inline != null) {
+                if (inner instanceof ELispSubroutine subroutine && subroutine.inlinable() && !subroutine.specialForm()) {
                     stable = storage.getStableAssumption();
-                    node = insertOrReplace(generateInlineNode(function, inline), node);
+                    node = insertOrReplace(generateInlineNode(function, subroutine), node);
                     callNode = node;
                     return node;
                 }
@@ -1174,7 +1174,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             return nodes;
         }
 
-        private ELispExpressionNode generateInlineNode(Object f, ELispSubroutine.InlineInfo inline) {
+        private ELispExpressionNode generateInlineNode(Object f, ELispSubroutine inline) {
             ELispBuiltIn info = inline.info();
             if (n < info.minArgs() || (!info.varArgs() && info.maxArgs() < n)) {
                 throw ELispSignals.wrongNumberOfArguments(f, n);

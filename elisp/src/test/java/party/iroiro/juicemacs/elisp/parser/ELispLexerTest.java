@@ -18,7 +18,7 @@ import com.oracle.truffle.api.source.Source;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.BackQuote;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.BoolVec;
-import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ByteCodeOpen;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ClosureOpen;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Char;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CharTableOpen;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CircularDef;
@@ -340,7 +340,7 @@ public class ELispLexerTest {
                 new EOF()
         ), lex("#_"));
         assertEquals(Arrays.asList(
-                new ByteCodeOpen(),
+                new ClosureOpen(),
                 new Symbol("a", true, true),
                 new SquareClose(),
                 new EOF()

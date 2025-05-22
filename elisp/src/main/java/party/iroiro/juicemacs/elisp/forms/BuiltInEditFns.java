@@ -21,7 +21,6 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.ELISP_SPECIAL_FORM;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CASE_FOLD_SEARCH;
@@ -453,11 +452,15 @@ public class BuiltInEditFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "save-excursion", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FSaveExcursion extends ELispBuiltInBaseNode {
+    public abstract static class FSaveExcursion extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode saveExcursionBailout(Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new SaveExcursionNode(body);
+        public static Void saveExcursionBailout(Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new SaveExcursionNode(arguments);
         }
 
         private static class SaveExcursionNode extends ELispExpressionNode {
@@ -518,11 +521,15 @@ public class BuiltInEditFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "save-current-buffer", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FSaveCurrentBuffer extends ELispBuiltInBaseNode {
+    public abstract static class FSaveCurrentBuffer extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode saveCurrentBufferBailout(Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new SaveCurrentBufferNode(body);
+        public static Void saveCurrentBufferBailout(Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new SaveCurrentBufferNode(arguments);
         }
 
         private static class SaveCurrentBufferNode extends ELispExpressionNode {
@@ -1595,12 +1602,16 @@ public class BuiltInEditFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "save-restriction", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FSaveRestriction extends ELispBuiltInBaseNode {
+    public abstract static class FSaveRestriction extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode saveRestrictionBailout(Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
+        public static Void saveRestrictionBailout(Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
             // TODO
-            return BuiltInEval.FProgn.progn(body);
+            return BuiltInEval.FProgn.progn(arguments);
         }
     }
 

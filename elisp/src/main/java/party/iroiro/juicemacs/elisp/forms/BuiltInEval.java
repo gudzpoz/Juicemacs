@@ -24,8 +24,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_ARGLIST;
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_CONSTANTS;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -34,8 +33,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
  */
 @SuppressWarnings({"DefaultAnnotationParam", "ForLoopReplaceableByForEach"})
 public class BuiltInEval extends ELispBuiltIns {
-
-    public static final String ELISP_SPECIAL_FORM = "elisp special form";
 
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -159,11 +156,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "or", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FOr extends ELispBuiltInBaseNode {
+    public abstract static class FOr extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode orBailout(Object[] conditions) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new OrNode(conditions);
+        public static Void orBailout(Object[] conditions) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new OrNode(arguments);
         }
 
         private static class OrNode extends ELispExpressionNode {
@@ -205,11 +206,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "and", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FAnd extends ELispBuiltInBaseNode {
+    public abstract static class FAnd extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode andBailout(Object[] conditions) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new AndNode(conditions);
+        public static Void andBailout(Object[] conditions) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new AndNode(arguments);
         }
 
         private static class AndNode extends ELispExpressionNode {
@@ -254,11 +259,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "if", minArgs = 2, maxArgs = 2, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FIf extends ELispBuiltInBaseNode {
+    public abstract static class FIf extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode ifBailout(Object cond, Object then, Object[] else_) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new IfNode(cond, then, else_);
+        public static Void ifBailout(Object cond, Object then, Object[] else_) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new IfNode(arguments[0], arguments[1], Arrays.copyOfRange(arguments, 2, arguments.length));
         }
 
         private static class IfNode extends ELispExpressionNode {
@@ -312,11 +321,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "cond", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FCond extends ELispBuiltInBaseNode {
+    public abstract static class FCond extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode condBailout(Object[] clauses) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new CondNode(clauses);
+        public static Void condBailout(Object[] clauses) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new CondNode(arguments);
         }
 
         private static class CondNode extends ELispExpressionNode {
@@ -383,11 +396,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "progn", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FProgn extends ELispBuiltInBaseNode {
+    public abstract static class FProgn extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode prognBailout(Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return progn(body);
+        public static Void prognBailout(Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return progn(arguments);
         }
 
         public static ELispExpressionNode progn(Object[] body) {
@@ -496,11 +513,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "prog1", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FProg1 extends ELispBuiltInBaseNode {
+    public abstract static class FProg1 extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode prog1Bailout(Object first, Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new Prog1Node(first, body);
+        public static Void prog1Bailout(Object first, Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new Prog1Node(arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length));
         }
 
         private static class Prog1Node extends ELispExpressionNode {
@@ -545,7 +566,7 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "setq", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FSetq extends ELispBuiltInBaseNode {
+    public abstract static class FSetq extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         static final class FSetqItem extends ELispExpressionNode {
             private final ELispSymbol symbol;
 
@@ -601,9 +622,13 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         @Specialization
-        public static ELispExpressionNode setqBailout(Object[] args) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            if (args.length % 2 != 0) {
+        public static Void setqBailout(Object[] args) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            if (arguments.length % 2 != 0) {
                 return new ELispExpressionNode() {
                     @Override
                     public void executeVoid(VirtualFrame frame) {
@@ -612,17 +637,17 @@ public class BuiltInEval extends ELispBuiltIns {
 
                     @Override
                     public Object executeGeneric(VirtualFrame frame) {
-                        throw ELispSignals.wrongNumberOfArguments(SETQ, args.length);
+                        throw ELispSignals.wrongNumberOfArguments(SETQ, arguments.length);
                     }
                 };
             }
-            if (args.length == 0) {
+            if (arguments.length == 0) {
                 return ELispInterpretedNode.literal(false);
             }
-            int half = args.length / 2;
+            int half = arguments.length / 2;
             ELispExpressionNode[] assignments = new ELispExpressionNode[half];
             for (int i = 0; i < half; i++) {
-                assignments[i] = new FSetqItem(asSym(args[i * 2]), args[i * 2 + 1]);
+                assignments[i] = new FSetqItem(asSym(arguments[i * 2]), arguments[i * 2 + 1]);
             }
             return new FProgn.PrognBlockNode(assignments);
         }
@@ -644,11 +669,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "quote", minArgs = 1, maxArgs = 1, varArgs = false, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FQuote extends ELispBuiltInBaseNode {
+    public abstract static class FQuote extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode quoteBailout(Object arg) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return ELispInterpretedNode.literal(arg);
+        public static Void quoteBailout(Object arg) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return ELispInterpretedNode.literal(arguments[0]);
         }
     }
 
@@ -711,11 +740,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "function", minArgs = 1, maxArgs = 1, varArgs = false, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FFunction extends ELispBuiltInBaseNode {
+    public abstract static class FFunction extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode functionBailout(Object arg) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return function(arg);
+        public static Void functionBailout(Object arg) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return function(arguments[0]);
         }
 
         public static ELispExpressionNode function(Object arg) {
@@ -929,12 +962,16 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "defvar", minArgs = 1, maxArgs = 3, varArgs = false, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FDefvar extends ELispBuiltInBaseNode {
+    public abstract static class FDefvar extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode defvarBailout(VirtualFrame frame, Object symbol, Object initvalue, Object docstring) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            boolean initValueMissing = frame.getArguments().length < 2;
-            return new DefVarNode(symbol, initvalue, initValueMissing);
+        public static Void defvarBailout(Object symbol, Object initvalue, Object docstring) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            boolean initValueMissing = arguments.length < 2;
+            return new DefVarNode(arguments[0], initValueMissing ? false : arguments[1], initValueMissing);
         }
 
         private static class DefVarNode extends ELispExpressionNode {
@@ -1007,11 +1044,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "defconst", minArgs = 2, maxArgs = 3, varArgs = false, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FDefconst extends ELispBuiltInBaseNode {
+    public abstract static class FDefconst extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode defconstBailout(Object symbol, Object initvalue, Object docstring) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new DefConstNode(symbol, initvalue);
+        public static Void defconstBailout(Object symbol, Object initvalue, Object docstring) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new DefConstNode(arguments[0], arguments[1]);
         }
 
         private static class DefConstNode extends ELispExpressionNode {
@@ -1085,14 +1126,19 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "let*", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FLetx extends ELispBuiltInBaseNode {
+    public abstract static class FLetx extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode letxBailout(Object varlist, Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            if (isNil(varlist)) {
+        public static Void letxBailout(Object varlist, Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            Object[] body = Arrays.copyOfRange(arguments, 1, arguments.length);
+            if (isNil(arguments[0])) {
                 return FProgn.progn(body);
             }
-            return new FLet.LetNode(varlist, body, true);
+            return new FLet.LetNode(arguments[0], body, true);
         }
     }
 
@@ -1108,7 +1154,7 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "let", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FLet extends ELispBuiltInBaseNode {
+    public abstract static class FLet extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         static Pair<ELispExpressionNode[], ELispSymbol[]> parseClauses(Object varlist) {
             List<ELispSymbol> symbolList = new ArrayList<>();
             List<ELispExpressionNode> values = new ArrayList<>();
@@ -1142,9 +1188,13 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         @Specialization
-        public static ELispExpressionNode letBailout(Object varlist, Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return let(varlist, body);
+        public static Void letBailout(Object varlist, Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return let(arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length));
         }
 
         public static ELispExpressionNode let(Object varlist, Object[] body) {
@@ -1303,11 +1353,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "while", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FWhile extends ELispBuiltInBaseNode {
+    public abstract static class FWhile extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode whileBailout(Object test, Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new WhileNode(test, body);
+        public static Void whileBailout(Object test, Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new WhileNode(arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length));
         }
 
         public final static class RepeatingBodyNode extends Node implements RepeatingNode {
@@ -1472,11 +1526,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "catch", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FCatch extends ELispBuiltInBaseNode {
+    public abstract static class FCatch extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode catchBailout(Object tag, Object[] body) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new CatchNode(tag, body);
+        public static Void catchBailout(Object tag, Object[] body) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new CatchNode(arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length));
         }
 
         private static class CatchNode extends ELispExpressionNode {
@@ -1540,11 +1598,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "unwind-protect", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FUnwindProtect extends ELispBuiltInBaseNode {
+    public abstract static class FUnwindProtect extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode unwindProtectBailout(Object bodyform, Object[] unwindforms) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return new UnwindProtectNode(bodyform, unwindforms);
+        public static Void unwindProtectBailout(Object bodyform, Object[] unwindforms) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return new UnwindProtectNode(arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length));
         }
 
         private static class UnwindProtectNode extends ELispExpressionNode {
@@ -1643,11 +1705,15 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "condition-case", minArgs = 2, maxArgs = 2, varArgs = true, rawArg = true)
     @GenerateNodeFactory
-    public abstract static class FConditionCase extends ELispBuiltInBaseNode {
+    public abstract static class FConditionCase extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
         @Specialization
-        public static ELispExpressionNode conditionCaseBailout(Object var, Object bodyform, Object[] handlers) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
-            return getConditionCaseNode(var, bodyform, handlers);
+        public static Void conditionCaseBailout(Object var, Object bodyform, Object[] handlers) {
+            return null;
+        }
+
+        @Override
+        public ELispExpressionNode createNode(Object[] arguments) {
+            return getConditionCaseNode(arguments[0], arguments[1], Arrays.copyOfRange(arguments, 2, arguments.length));
         }
 
         private static ConditionCaseNode getConditionCaseNode(Object var, Object bodyform, Object[] handlers) {
@@ -2027,7 +2093,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
         @Specialization
         public Object eval(Object form, boolean lexical, @Cached FunctionDispatchNode dispatchNode) {
-            CompilerDirectives.bailout(ELISP_SPECIAL_FORM);
             return evalForm(form, lexical, dispatchNode);
         }
 

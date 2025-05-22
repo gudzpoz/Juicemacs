@@ -15,11 +15,11 @@ import java.util.Objects;
 ///
 /// Several functions can be inlined into the AST (when [#inline()] is not null).
 ///
-/// @see InlineInfo
+/// @see party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.InlineFactory
 public record ELispSubroutine(
         ELispFunctionObject body,
-        @Nullable InlineInfo inline,
-        ELispBuiltIn info
+        ELispBuiltIn info,
+        @Nullable Object inlineFactory
 ) implements ELispValue {
     @Override
     public boolean lispEquals(Object other) {
@@ -44,33 +44,27 @@ public record ELispSubroutine(
         return info.rawArg();
     }
 
-    /// Information about an inline-able built-in function
-    ///
-    /// For example, `(+ 1 1.0 1)` can get inlined into `(long+double 1 (double+long 1.0 1))`,
-    /// so that each node gets its own specialized implementation to speed things up.
-    ///
-    /// Also, [special forms](https://www.gnu.org/software/emacs/manual/html_node/elisp/Special-Forms.html)
-    /// are inlined by default and do not need a factory (and [#factory()] is null).
-    ///
-    /// The execution of inlined nodes and special forms are defined in
-    /// [party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode].
-    ///
-    /// @see party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode
-    public record InlineInfo(ELispBuiltIn info, @Nullable Object factory) {
-        public ELispExpressionNode createNode(ELispExpressionNode[] args) {
-            if (factory instanceof NodeFactory<?> nodeFactory) {
-                return (ELispExpressionNode) nodeFactory.createNode((Object) args);
-            }
-            return ((ELispBuiltInBaseNode.InlineFactory) Objects.requireNonNull(factory)).createNode(args);
-        }
+    public boolean inlinable() {
+        return inlineFactory != null;
+    }
 
-        /// Returns `true` if the inline factory is hand-rolled
-        ///
-        /// This means one may apply the child nodes as is into [#createNode(ELispExpressionNode\[\])].
-        /// Otherwise, the caller will need to handle required args, optional args and varargs before
-        /// passing them to the factory.
-        public boolean isTailored() {
-            return factory instanceof ELispBuiltInBaseNode.InlineFactory;
+    /// Returns `true` if the inline factory is hand-rolled
+    ///
+    /// This means one may apply the child nodes as is into [#createNode(ELispExpressionNode\[\])].
+    /// Otherwise, the caller will need to handle required args, optional args and varargs before
+    /// passing them to the factory.
+    public boolean isTailored() {
+        return inlineFactory instanceof ELispBuiltInBaseNode.InlineFactory;
+    }
+
+    public ELispExpressionNode createNode(ELispExpressionNode[] args) {
+        if (inlineFactory instanceof NodeFactory<?> nodeFactory) {
+            return (ELispExpressionNode) nodeFactory.createNode((Object) args);
         }
+        return ((ELispBuiltInBaseNode.InlineFactory) Objects.requireNonNull(inlineFactory)).createNode(args);
+    }
+
+    public ELispExpressionNode createNode(Object[] args) {
+        return ((ELispBuiltInBaseNode.SpecialFactory) Objects.requireNonNull(inlineFactory)).createNode(args);
     }
 }
