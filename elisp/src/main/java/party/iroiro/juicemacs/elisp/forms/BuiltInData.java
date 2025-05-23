@@ -2768,8 +2768,23 @@ public class BuiltInData extends ELispBuiltIns {
         }
 
         @Specialization
-        public static Object mod(ELispBigNum x, ELispBigNum y) {
+        public static Object modBigNum(ELispBigNum x, ELispBigNum y) {
             return x.mod(y);
+        }
+
+        @Specialization
+        public static double modDouble(double x, double y) {
+            return x % y;
+        }
+
+        @Specialization
+        public static double modBigNumDouble(ELispBigNum x, double y) {
+            return x.doubleValue() % y;
+        }
+
+        @Specialization
+        public static double modDoubleBigNum(double x, ELispBigNum y) {
+            return x % y.doubleValue();
         }
     }
 

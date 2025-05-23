@@ -125,6 +125,7 @@ public final class PieceTreeBase {
         create(chunks, EOL, EOLNormalized);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void create(List<StringBuffer> chunks, EndOfLine eol, boolean eolNormalized) {
         buffers.clear();
         buffers.add(new StringBuffer(EMPTY_STRING, false));

@@ -1,16 +1,22 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall.getFunctionObject;
+import java.util.Arrays;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AUTOLOAD;
 
 @GenerateInline
 @GenerateCached(value = false)
@@ -48,8 +54,35 @@ public abstract class FunctionDispatchNode extends Node {
             case 3 -> FunctionDispatchNodeGen.Call3NodeGen.create(args);
             case 4 -> FunctionDispatchNodeGen.Call4NodeGen.create(args);
             case 5 -> FunctionDispatchNodeGen.Call5NodeGen.create(args);
-            default -> FunctionDispatchNodeGen.CallNNodeGen.create(args);
+            default -> FunctionDispatchNodeGen.CallNNodeGen.create(new ELispExpressionNode[]{
+                    args[0],
+                    new ToArrayNode(Arrays.copyOfRange(args, 1, args.length))
+            });
         };
+    }
+
+    public static final class ToArrayNode extends ELispExpressionNode {
+        @Children
+        final ELispExpressionNode[] nodes;
+
+        public ToArrayNode(ELispExpressionNode[] nodes) {
+            this.nodes = nodes;
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            super.executeVoid(frame);
+        }
+
+        @ExplodeLoop
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            Object[] arguments = new Object[nodes.length];
+            for (int i = 0; i < nodes.length; i++) {
+                arguments[i] = nodes[i].executeGeneric(frame);
+            }
+            return arguments;
+        }
     }
 
     @GenerateInline(value = false)
@@ -219,29 +252,36 @@ public abstract class FunctionDispatchNode extends Node {
 
     @NodeChild(value = "function", type = ELispExpressionNode.class)
     public abstract static class ToFunctionObjectNode extends ELispExpressionNode {
+        ELispFunctionObject getFunctionObject(ELispSymbol symbol, Object o) {
+            if (o instanceof ELispCons cons && cons.car() == AUTOLOAD) {
+                o = symbol;
+            }
+            return BuiltInEval.FFuncall.getFunctionObject(o);
+        }
+
         @Specialization(assumptions = "storage.getStableAssumption()", guards = "symbol == lastSymbol", limit = "2")
-        public ELispFunctionObject symbolToObject(
+        public ELispFunctionObject stableSymbolToObject(
                 ELispSymbol symbol,
                 @Cached("symbol") ELispSymbol lastSymbol,
                 @Cached("getContext().getFunctionStorage(lastSymbol)") FunctionStorage storage,
-                @Cached("toFunction(storage.get())") ELispFunctionObject o
+                @Cached("getFunctionObject(lastSymbol, storage.get())") ELispFunctionObject o
         ) {
             return o;
         }
 
         @Specialization
         public ELispFunctionObject symbolToObject(ELispSymbol symbol) {
-            return toFunction(getContext().getFunctionStorage(symbol).get());
+            return getFunctionObject(symbol, getContext().getFunctionStorage(symbol).get());
         }
 
         @Specialization
-        public ELispFunctionObject toFunction(AbstractELispClosure closure) {
+        public ELispFunctionObject closureToFunction(AbstractELispClosure closure) {
             return closure.getFunction();
         }
 
-        @Fallback
-        public ELispFunctionObject toFunction(Object o) {
-            return getFunctionObject(o);
+        @Specialization
+        public ELispFunctionObject toFunction(Object function) {
+            return BuiltInEval.FFuncall.getFunctionObject(function);
         }
     }
 }
