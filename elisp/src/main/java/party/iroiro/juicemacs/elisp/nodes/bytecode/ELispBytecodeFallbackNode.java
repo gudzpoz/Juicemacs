@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall.getFunctionObject;
 import static party.iroiro.juicemacs.elisp.nodes.bytecode.ByteCode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -1147,26 +1146,25 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             }
 
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (symbol == null && function instanceof ELispSymbol s) {
+            if (symbol == null && toSym(function) instanceof ELispSymbol s) {
                 symbol = s;
                 FunctionStorage storage = getContext().getFunctionStorage(s);
                 Object inner = storage.get();
                 if (inner instanceof ELispSubroutine subroutine && subroutine.inlinable() && !subroutine.specialForm()) {
                     stable = storage.getStableAssumption();
                     node = insertOrReplace(generateInlineNode(function, subroutine), node);
-                    callNode = node;
+                    callNode = node; // NOPMD: insertOrReplace called
                     return node;
                 }
             }
 
             stable = Assumption.NEVER_VALID;
             node = insertOrReplace(createCallSomeNode(base, n), node);
-            callNode = node;
-
+            callNode = node; // NOPMD: insertOrReplace called
             return node;
         }
 
-        private ELispExpressionNode[] getReadSlotNodes(int from, int to) {
+        private static ELispExpressionNode[] getReadSlotNodes(int from, int to) {
             ELispExpressionNode[] nodes = new ELispExpressionNode[to - from + 1];
             for (int i = from; i <= to; i++) {
                 nodes[i - from] = new ReadStackSlotNode(i);
@@ -1207,7 +1205,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     static ELispExpressionNode createCallSomeNode(int base, int n) {
         int argBase = base + 1;
         ELispExpressionNode[] args = new ELispExpressionNode[n + 1];
-        args[0] = ELispBytecodeFallbackNodeFactory.ToFunctionObjectNodeGen.create(new ReadStackSlotNode(base));
+        args[0] = FunctionDispatchNodeGen.ToFunctionObjectNodeGen.create(new ReadStackSlotNode(base));
         for (int i = 0; i < n; i++) {
             args[i + 1] = new ReadStackSlotNode(argBase + i);
         }
@@ -1257,29 +1255,6 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         public Object write(VirtualFrame frame, Object value) {
             frame.setObject(i, value);
             return value;
-        }
-    }
-
-    @NodeChild(value = "function", type = ELispExpressionNode.class)
-    abstract static class ToFunctionObjectNode extends ELispExpressionNode {
-        @Specialization(assumptions = "storage.getStableAssumption()", guards = "symbol == lastSymbol", limit = "2")
-        public ELispFunctionObject symbolToObject(
-                ELispSymbol symbol,
-                @Cached("symbol") ELispSymbol lastSymbol,
-                @Cached("getContext().getFunctionStorage(lastSymbol)") FunctionStorage storage,
-                @Cached("toFunction(storage.get())") ELispFunctionObject o
-        ) {
-            return o;
-        }
-
-        @Specialization
-        public ELispFunctionObject symbolToObject(ELispSymbol symbol) {
-            return toFunction(getContext().getFunctionStorage(symbol).get());
-        }
-
-        @Fallback
-        public ELispFunctionObject toFunction(Object o) {
-            return getFunctionObject(o);
         }
     }
 

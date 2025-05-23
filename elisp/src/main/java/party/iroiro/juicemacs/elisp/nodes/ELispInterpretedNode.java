@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.Frame;
@@ -185,10 +186,12 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (macroExpanded) {
                 return nodes[0].executeGeneric(frame);
             }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return evalAndExpand(frame);
         }
 
         private synchronized Object evalAndExpand(VirtualFrame frame) {
+            CompilerAsserts.neverPartOfCompilation();
             ArrayList<Object> expressions = new ArrayList<>(List.of(this.expressions).reversed());
             ELispExpressionNode[] nodes = this.nodes;
             int nodeCount = 0;
@@ -205,7 +208,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     BuiltInEval.FMacroexpand.copySourceLocation(expanded, expression);
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     this.nodes = nodes = addChild(nodes, expanded, nodeCount);
-                    result = nodes[nodeCount].executeGeneric(frame);
+                    result = nodes[nodeCount].executeGeneric(frame); // NOPMD: never part of compilation
                     nodeCount++;
                 }
             }
@@ -490,7 +493,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 return this;
             }
             ELispExpressionNode[] args = new ELispExpressionNode[length + 1];
-            args[0] = literal(getFunctionObject(function));
+            args[0] = literal(getFunctionObject(function)); // NOPMD: not assigning to field
             System.arraycopy(this.args, 0, args, 1, length);
             ELispExpressionNode callNode = FunctionDispatchNode.createSpecializedCallNode(args);
             return new CallNNodeWrapper(function, callNode);
@@ -504,6 +507,10 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         public CallNNodeWrapper(Object function, ELispExpressionNode callNode) {
             super(function);
             this.callNode = callNode;
+        }
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            callNode.executeVoid(frame);
         }
         @Override
         public Object executeGeneric(VirtualFrame frame) {
@@ -731,7 +738,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             return updateInnerNode().executeGeneric(frame);
         }
 
-        private ConsCallNode updateInnerNode() {
+        private ELispExpressionNode updateInnerNode() {
             ConsCallNode node = callNode;
             if (stable.isValid() && node != null) {
                 return node;
@@ -757,19 +764,22 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             if (node == null || node.getFunction() != function) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
+                cons.fillDebugInfo(getParent());
+                if (function instanceof ELispSubroutine sub) {
+                    if (sub.specialForm()) {
+                        return replace(sub.createNode(ConsCallNode.argsArray(cons)));
+                    }
+                }
                 ConsCallNode created = switch (function) {
-                    case ELispSubroutine sub when sub.inlinable() ->
-                            new ConsInlinedAstNode(function, sub, cons);
-                    case ELispCons c when c.car() == MACRO ->
-                            new ConsMacroCallNode(c, cons);
+                    case ELispSubroutine sub when sub.inlinable() -> new ConsInlinedAstNode(function, sub, cons);
+                    case ELispCons c when c.car() == MACRO -> new ConsMacroCallNode(c, cons);
                     case ELispCons c when c.car() == LAMBDA ->
                             ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons);
-                    case ELispSubroutine _, ELispInterpretedClosure _, ELispBytecode _, ELispExpressionNode _ ->
+                    case ELispSubroutine _, ELispInterpretedClosure _, ELispBytecode _ ->
                             ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(function, cons).trySpecialize();
                     default -> throw ELispSignals.invalidFunction(cons.car());
                 };
-                cons.fillDebugInfo(getParent());
-                if (created instanceof ConsMacroCallNode) {
+                if (created instanceof ConsInlinedAstNode || created instanceof ConsMacroCallNode) {
                     this.replace(created);
                 } else {
                     callNode = insertOrReplace(created, node);
@@ -821,7 +831,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             if (callNode != null) {
                 return;
             }
-            ConsCallNode consCallNode;
+            ELispExpressionNode consCallNode;
             try {
                 Object function = getIndirectFunction(storage == null ? cons.car() : storage.get());
                 if (function instanceof ELispCons fCons && fCons.car() == AUTOLOAD) {

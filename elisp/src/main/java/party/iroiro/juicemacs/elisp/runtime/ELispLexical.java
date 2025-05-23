@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.Node;
@@ -139,8 +140,9 @@ public record ELispLexical(
     /// [party.iroiro.juicemacs.elisp.forms.BuiltInEval.FWhile.RepeatingBodyNode]).
     ///
     /// @see ELispLexical
-    /// @see #captureEnv(VirtualFrame, Node, ScopeHolder)
-    public static void updateInnerClosures(VirtualFrame frame, Node loopNode) {
+    /// @see #captureEnv(MaterializedFrame, Node, ScopeHolder)
+    @CompilerDirectives.TruffleBoundary
+    public static void updateInnerClosures(MaterializedFrame frame, Node loopNode) {
         LinkedList<ScopeUpdatable> updateNeeded = getFrameSlot(frame);
         ListIterator<ScopeUpdatable> i = updateNeeded.listIterator();
         ArrayList<ELispLexical> branch = new ArrayList<>();
@@ -288,7 +290,7 @@ public record ELispLexical(
     }
 
     public synchronized int addVariable(Node currentNode, ELispSymbol symbol) {
-        return addVariable(Objects.requireNonNull(findRootScope(currentNode)), symbol);
+        return addVariable(Objects.requireNonNull(findRootScope(currentNode)), symbol); // NOPMD: not recursion
     }
 
     public synchronized int addVariable(Allocator counter, ELispSymbol symbol) {
@@ -378,8 +380,9 @@ public record ELispLexical(
         return new ELispLexical(scope, materializedParent, symbols, slots);
     }
 
-    /// @see #updateInnerClosures(VirtualFrame, Node)
-    public ELispLexical captureEnv(VirtualFrame frame, Node currentNode, ScopeHolder holder) {
+    /// @see #updateInnerClosures(MaterializedFrame, Node)
+    @CompilerDirectives.TruffleBoundary
+    public ELispLexical captureEnv(MaterializedFrame frame, Node currentNode, ScopeHolder holder) {
         LinkedList<ScopeUpdatable> frameSlot = getFrameSlot(frame);
         @Nullable ELispLexical updateNeeded = null;
         while (currentNode != null) {
@@ -401,7 +404,7 @@ public record ELispLexical(
                     updateNeeded = null;
                 }
             }
-            currentNode = currentNode.getParent();
+            currentNode = currentNode.getParent(); // NOPMD: not node creation
         }
         return newRoot(this, frame.materialize());
     }
@@ -482,6 +485,7 @@ public record ELispLexical(
             this.topIndex = START_SLOT;
         }
 
+        @CompilerDirectives.TruffleBoundary
         public int nextSlot() {
             return TOP_INDEX.getAndIncrement(this);
         }
@@ -498,7 +502,7 @@ public record ELispLexical(
     }
 
     public interface Dynamic extends AutoCloseable {
-        void close();
+        @Override void close();
     }
     private record DynamicBatch(ELispSymbol[] symbols, Object[] prevValues) implements Dynamic {
         @Override

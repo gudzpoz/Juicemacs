@@ -6,6 +6,11 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
+
+import static party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall.getFunctionObject;
 
 @GenerateInline
 @GenerateCached(value = false)
@@ -212,4 +217,31 @@ public abstract class FunctionDispatchNode extends Node {
         }
     }
 
+    @NodeChild(value = "function", type = ELispExpressionNode.class)
+    public abstract static class ToFunctionObjectNode extends ELispExpressionNode {
+        @Specialization(assumptions = "storage.getStableAssumption()", guards = "symbol == lastSymbol", limit = "2")
+        public ELispFunctionObject symbolToObject(
+                ELispSymbol symbol,
+                @Cached("symbol") ELispSymbol lastSymbol,
+                @Cached("getContext().getFunctionStorage(lastSymbol)") FunctionStorage storage,
+                @Cached("toFunction(storage.get())") ELispFunctionObject o
+        ) {
+            return o;
+        }
+
+        @Specialization
+        public ELispFunctionObject symbolToObject(ELispSymbol symbol) {
+            return toFunction(getContext().getFunctionStorage(symbol).get());
+        }
+
+        @Specialization
+        public ELispFunctionObject toFunction(AbstractELispClosure closure) {
+            return closure.getFunction();
+        }
+
+        @Fallback
+        public ELispFunctionObject toFunction(Object o) {
+            return getFunctionObject(o);
+        }
+    }
 }

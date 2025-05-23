@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -230,6 +231,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             return nextCons().car;
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Override
         public ELispCons nextCons() {
             ELispCons next;

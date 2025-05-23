@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -104,10 +105,12 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCapitalize extends ELispBuiltInBaseNode {
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         public static long capitalize(long obj) {
             return Character.toUpperCase((int) obj);
         }
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         public static ELispString capitalizeStr(ELispString obj) {
             return new ELispString(WordUtils.capitalize(obj.toString()));
         }

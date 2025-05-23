@@ -2506,7 +2506,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (args.length == 1) {
                 return switch (arg0) {
                     case Long l when l > Long.MIN_VALUE -> Math.negateExact(l);
-                    case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).negate());
+                    case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).negate()); // NOPMD: negative is fine
                     case Double d -> -d;
                     case ELispBigNum n -> n.negate();
                     default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
@@ -2527,14 +2527,14 @@ public class BuiltInData extends ELispBuiltIns {
                         try {
                             result = Math.subtractExact(result, l);
                         } catch (ArithmeticException e) {
-                            return tryMinusBigNum(BigInteger.valueOf(result), i, args);
+                            return tryMinusBigNum(BigInteger.valueOf(result), i, args); // NOPMD: valueOf(long) is fine
                         }
                     }
                     case Double _ -> {
                         return tryMinusDouble(toDouble(result), i, args);
                     }
                     case ELispBigNum _ -> {
-                        return tryMinusBigNum(BigInteger.valueOf(result), i, args);
+                        return tryMinusBigNum(BigInteger.valueOf(result), i, args); // NOPMD: valueOf(long) is fine
                     }
                     default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
@@ -2681,11 +2681,11 @@ public class BuiltInData extends ELispBuiltIns {
                         try {
                             quo = Math.divideExact(quo, l);
                         } catch (ArithmeticException e) {
-                            return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors);
+                            return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors); // NOPMD: valueOf(long) is fine
                         }
                     }
                     case ELispBigNum _ -> {
-                        return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors);
+                        return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors); // NOPMD: valueOf(long) is fine
                     }
                     default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, divisors[i]);
                 }
@@ -3051,7 +3051,7 @@ public class BuiltInData extends ELispBuiltIns {
             )) {
                 return value << count;
             }
-            return ELispBigNum.wrap(BigInteger.valueOf(value).shiftLeft((int) count));
+            return ash(ELispBigNum.forceWrap(value), count);
         }
 
         @Specialization
@@ -3082,7 +3082,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static Object add1(Object number) {
             return switch (number) {
                 case Long l when l < Long.MAX_VALUE -> l + 1;
-                case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).add(BigInteger.ONE));
+                case Long l -> ELispBigNum.forceWrap(l).add(ELispBigNum.ONE);
                 case Double d -> d + 1;
                 case ELispBigNum n -> n.add1();
                 default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
@@ -3112,7 +3112,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static Object sub1(Object number) {
             return switch (number) {
                 case Long l when l > Long.MIN_VALUE -> l - 1;
-                case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).subtract(BigInteger.ONE));
+                case Long l -> ELispBigNum.forceWrap(l).subtract(ELispBigNum.ONE);
                 case Double d -> d - 1;
                 case ELispBigNum n -> n.sub1();
                 default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);

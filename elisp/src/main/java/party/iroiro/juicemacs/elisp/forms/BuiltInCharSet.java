@@ -461,6 +461,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @ELispBuiltIn(name = "charsetp", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FCharsetp extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public boolean charsetp(Object object) {
             return toSym(object) instanceof ELispSymbol symbol && getThis(this).charsetHashTable.containsKey(symbol);
@@ -523,6 +524,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @ELispBuiltIn(name = "define-charset-alias", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDefineCharsetAlias extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public boolean defineCharsetAlias(ELispSymbol alias, Object charset) {
             ELispVector attr = getCharsetAttr(charset);

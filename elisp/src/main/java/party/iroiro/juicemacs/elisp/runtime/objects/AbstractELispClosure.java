@@ -81,10 +81,10 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         return source == null ? null : source.getSource();
     }
 
-    public static ELispVectorLike<Object> create(List<?> inner, @Nullable RootNode root) {
-        return create(inner, getRootNodeSource(root));
+    public static AbstractELispClosure create(List<?> inner, @Nullable RootNode root) {
+        return create(inner, getRootNodeSource(root)); // NOPMD: not recursion
     }
-    public static ELispVectorLike<Object> create(List<?> inner, @Nullable Source rootSource) {
+    public static AbstractELispClosure create(List<?> inner, @Nullable Source rootSource) {
         Object[] array = inner.toArray();
         int size = array.length;
         if (size >= CLOSURE_STACK_DEPTH && size <= CLOSURE_INTERACTIVE + 1) {

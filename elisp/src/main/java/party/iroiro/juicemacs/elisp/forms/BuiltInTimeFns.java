@@ -119,7 +119,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             if (seconds < Long.MAX_VALUE / hz / 2) {
                 return new ELispCons(seconds * hz + nanos * hz / 1_000_000_000L, hz);
             }
-            return toBigNumCons(seconds, nanos, BigInteger.valueOf(hz));
+            return toBigNumCons(seconds, nanos, BigInteger.valueOf(hz)); // NOPMD: valueOf(long) is fine
         }
         @CompilerDirectives.TruffleBoundary
         static Object toBigNumCons(long seconds, long nanos, BigInteger hz) {

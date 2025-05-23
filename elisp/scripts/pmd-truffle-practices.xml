@@ -51,6 +51,7 @@
                  and not(@MethodName="insert")
                  and not(@MethodName="replace")
                 ]
+                [not(ancestor::*[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.SpecialFactory")])]
                 ]]></value>
             </property>
         </properties>
@@ -70,7 +71,31 @@
             <property name="xpath">
                 <value><![CDATA[
                 //MethodDeclaration[pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.ExplodeLoop")]
-                //ForeachStatement
+                //ForeachStatement/*[2][pmd-java:typeIs("java.lang.Iterable")]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
+            name="TruffleExplodeLoopingNodeExecution"
+            language="java"
+            message="Explode looping node execution."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            In Truffle, a VirtualFrame should never escape (unless materialized). Truffle ensures this
+            by going through all node execution, method calls, etc. under a root node.
+            However, when a node is executed in a loop (with the current frame passed as an argument),
+            Truffle cannot analyze those usages fully without exploding the whole loop.
+            So, either annotate the method with @ExplodeLoop or use a LoopNode.
+        </description>
+        <priority>1</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //(ForStatement|WhileStatement|DoStatement)
+                //MethodCall[starts-with(@MethodName, "execute")]
+                [not(ancestor::*[pmd-java:hasAnnotation("com.oracle.truffle.api.nodes.ExplodeLoop")])]
                 ]]></value>
             </property>
         </properties>
@@ -123,9 +148,16 @@
                 /../..
                 //MethodDeclaration
                 [not(pmd-java:hasAnnotation("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary"))]
+                //MethodCall/*[1][not(pmd-java:typeIs("java.lang.Void"))]
                 [
-                    count(.//LocalVariableDeclaration/ClassType[@SimpleName="HashMap"]) > 0
-                    or count(.//LocalVariableDeclaration/ClassType[@SimpleName="BigInteger"]) > 0
+                 pmd-java:typeIs("java.util.stream.Stream")
+                 or pmd-java:typeIs("java.util.HashMap")
+                 or pmd-java:typeIs("java.util.HashSet")
+                 or pmd-java:typeIs("java.util.concurrent.ConcurrentHashMap")
+                 or pmd-java:typeIs("org.graalvm.collections.MapCursor")
+                 or pmd-java:typeIs("org.graalvm.collections.EconomicMap")
+                 or pmd-java:typeIs("java.math.BigInteger")
+                 or pmd-java:typeIs("java.math.BigDecimal")
                 ]
                 ]]></value>
             </property>

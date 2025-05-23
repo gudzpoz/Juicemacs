@@ -205,6 +205,7 @@ public final class ELispPrint {
         return this;
     }
 
+    @CompilerDirectives.TruffleBoundary
     private boolean printExisting(Object o) {
         if (stack.contains(o)) {
             Integer index = visited.computeIfAbsent(o, _ -> visited.size() + 1); // NOPMD

@@ -741,6 +741,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             return symbols;
         }
 
+        @CompilerDirectives.TruffleBoundary
         private static Pair<Object, ELispString> checkCharSetList(Object arg, ELispSymbol codingType) {
             int maxCharsetId = 0;
             @Nullable ELispCons list;

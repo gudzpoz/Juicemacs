@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -14,11 +15,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PrimitiveIterator;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import java.util.*;
+import java.util.stream.StreamSupport;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -29,26 +27,24 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         return BuiltInMiniBufFactory.getFactories();
     }
 
-    static abstract sealed class CompletionMatcher implements Consumer<Object>, BiConsumer<Object, Object> {
+    record CompletionItem(@Nullable MuleString s, Object key, Object value) {
+    }
+
+    static abstract sealed class CompletionMatcher {
         protected final MuleString target;
         protected final boolean ignoreCase;
         private final Object predicate;
-        private final FunctionDispatchNode dispatchNode;
-        private final Node node;
         private final ELispRegExp.CompiledRegExp[] regExps;
 
-        CompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
+        CompletionMatcher(ELispString target, Object predicate, ELispLanguage language) {
             this.predicate = predicate;
-            this.dispatchNode = dispatchNode;
-            this.node = node;
             this.ignoreCase = !isNil(COMPLETION_IGNORE_CASE.getValue());
-            this.regExps = getRegExps(node);
+            this.regExps = getRegExps(language);
             this.target = (this.ignoreCase ? BuiltInCaseFiddle.FUpcase.upcaseString(target) : target).value();
         }
 
-        public static ELispRegExp.CompiledRegExp[] getRegExps(Node node) {
+        public static ELispRegExp.CompiledRegExp[] getRegExps(ELispLanguage language) {
             ArrayList<ELispRegExp.CompiledRegExp> compiledRegExps = new ArrayList<>();
-            ELispLanguage language = ELispLanguage.get(node);
             for (Object regExp : asConsOrNil(COMPLETION_REGEXP_LIST.getValue())) {
                 if (regExp instanceof ELispString s) {
                     ELispRegExp.CompiledRegExp compiledRegExp = BuiltInSearch.compileRegExp(language, s, null);
@@ -59,35 +55,46 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         }
 
         @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-        public boolean forEachInCollection(Object collection) {
-            switch (collection) {
-                case ELispCons assocList -> assocList.forEach(this);
-                case ELispHashtable hashtable -> hashtable.forEach(this);
-                case ELispObarray obarray -> obarray.symbols().forEach(this);
-                default -> {
-                    return false;
-                }
+        public boolean forEachInCollection(Object collection, FunctionDispatchNode dispatchNode, Node node) {
+            Iterator<CompletionItem> i = getIterator(collection);
+            while (i.hasNext()) {
+                CompletionItem item = i.next();
+                tryMatch(item.s, item.key, item.value, dispatchNode, node);
             }
             return true;
         }
 
-        @Override
-        public void accept(Object key) {
+        @CompilerDirectives.TruffleBoundary
+        private Iterator<CompletionItem> getIterator(Object collection) {
+            return switch (collection) {
+                case ELispCons assocList -> assocList.stream().map(CompletionMatcher::toItem).iterator();
+                case ELispHashtable hashtable ->
+                        StreamSupport.stream(hashtable.spliterator(), false).map(CompletionMatcher::htToItem).iterator();
+                case ELispObarray obarray -> obarray.symbols().entrySet().stream().map(CompletionMatcher::obToItem).iterator();
+                default -> throw new UnsupportedOperationException();
+            };
+        }
+
+        public static CompletionItem toItem(Object key) {
             Object s = key instanceof ELispCons cons ? cons.car() : key;
-            tryMatch(getString(s), key, false);
+            return new CompletionItem(getString(s), key, false);
         }
 
-        @Override
-        public void accept(Object key, Object value) {
-            if (key instanceof MuleString s) {
-                // obarray
-                tryMatch(s, value, false);
-            }
-            // hashtable
-            tryMatch(getString(key), key, value);
+        public static CompletionItem obToItem(Map.Entry<MuleString, ELispSymbol> entry) {
+            MuleString key = entry.getKey();
+            return new CompletionItem(key, key, true);
         }
 
-        public void tryMatch(@Nullable MuleString s, Object key, Object value) {
+        public static CompletionItem htToItem(Map.Entry<Object, Object> entry) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+            return new CompletionItem(getString(key), key, value);
+        }
+
+        public void tryMatch(
+                @Nullable MuleString s, Object key, Object value,
+                FunctionDispatchNode dispatchNode, Node node
+        ) {
             if (s == null) {
                 return;
             }
@@ -503,8 +510,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             if (isNil(collection)) {
                 return false;
             }
-            TryCompletionMatcher matcher = new TryCompletionMatcher(string, predicate, dispatchNode, this);
-            if (!matcher.forEachInCollection(collection)) {
+            TryCompletionMatcher matcher = new TryCompletionMatcher(string, predicate, getLanguage());
+            if (!matcher.forEachInCollection(collection, dispatchNode, this)) {
                 return BuiltInEval.FFuncall.funcall(this, collection, string, predicate, false);
             }
             return matcher.reduce();
@@ -513,8 +520,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         private static final class TryCompletionMatcher extends CompletionMatcher {
             private final ArrayList<MuleString> matches = new ArrayList<>();
 
-            TryCompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
-                super(target, predicate, dispatchNode, node);
+            TryCompletionMatcher(ELispString target, Object predicate, ELispLanguage language) {
+                super(target, predicate, language);
             }
 
             @Override
@@ -612,8 +619,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             if (isNil(collection)) {
                 return false;
             }
-            AllCompletionMatcher matcher = new AllCompletionMatcher(string, predicate, dispatchNode, this);
-            if (!matcher.forEachInCollection(collection)) {
+            AllCompletionMatcher matcher = new AllCompletionMatcher(string, predicate, getLanguage());
+            if (!matcher.forEachInCollection(collection, dispatchNode, this)) {
                 return BuiltInEval.FFuncall.funcall(this, collection, string, predicate, true);
             }
             return matcher.reduce();
@@ -622,8 +629,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         private static final class AllCompletionMatcher extends CompletionMatcher {
             private final ArrayList<Object> matches = new ArrayList<>();
 
-            AllCompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
-                super(target, predicate, dispatchNode, node);
+            AllCompletionMatcher(ELispString target, Object predicate, ELispLanguage language) {
+                super(target, predicate, language);
             }
 
             @Override
@@ -740,8 +747,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             // TODO: Does Emacs work like this?
             //   "STRING is a valid completion if it appears in the list and PREDICATE is satisfied."
             //   No ignore case, no regexp or anything?
-            TestCompletionMatcher matcher = new TestCompletionMatcher(string, predicate, dispatchNode, this);
-            if (!matcher.forEachInCollection(collection)) {
+            TestCompletionMatcher matcher = new TestCompletionMatcher(string, predicate, getLanguage());
+            if (!matcher.forEachInCollection(collection, dispatchNode, this)) {
                 return BuiltInEval.FFuncall.funcall(this, collection, string, predicate, LAMBDA);
             }
             return matcher.matched;
@@ -750,8 +757,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         private static final class TestCompletionMatcher extends CompletionMatcher {
             boolean matched = false;
 
-            TestCompletionMatcher(ELispString target, Object predicate, FunctionDispatchNode dispatchNode, Node node) {
-                super(target, predicate, dispatchNode, node);
+            TestCompletionMatcher(ELispString target, Object predicate, ELispLanguage language) {
+                super(target, predicate, language);
             }
 
             @Override

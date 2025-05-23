@@ -152,6 +152,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         return result;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static boolean loadFile(ELispLanguage language, @Nullable Node caller, Object file, boolean errorIfNotFound) {
         Object loader = LOAD_SOURCE_FILE_FUNCTION.getValue();
         if (isNil(loader)) {

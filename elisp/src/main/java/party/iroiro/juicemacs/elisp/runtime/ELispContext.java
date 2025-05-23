@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
@@ -102,14 +103,11 @@ public final class ELispContext implements ELispParser.InternContext {
     }
     //#endregion InternContext
 
-    public HashMap<String, String> env() {
-        return env;
-    }
-
     public ELispLanguage.Env truffleEnv() {
         return truffleEnv;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Nullable
     public String getEnv(String key) {
         return env.get(key);

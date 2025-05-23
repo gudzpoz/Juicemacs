@@ -567,13 +567,18 @@ public class BuiltInFns extends ELispBuiltIns {
                 if (arg instanceof ELispString s) {
                     builder.append(s.value());
                 } else {
-                    Iterator<?> i = iterateSequence(arg);
-                    while (i.hasNext()) {
-                        builder.append(asInt(i.next()));
-                    }
+                    appendSequence(builder, arg);
                 }
             }
             return new ELispString(builder.build());
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        public static void appendSequence(MuleStringBuffer builder, Object sequence) {
+            Iterator<?> i = iterateSequence(sequence);
+            while (i.hasNext()) {
+                builder.append(asInt(i.next()));
+            }
         }
     }
 
@@ -893,6 +898,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "take", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FTake extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object take(long n, Object list) {
             if (isNil(list) || n <= 0) {
@@ -1009,6 +1015,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "member", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMember extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object member(Object elt, Object list) {
             if (isNil(list)) {
@@ -1034,6 +1041,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "memq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMemq extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object memq(Object elt, Object list) {
             if (isNil(list)) {
@@ -1059,6 +1067,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "memql", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMemql extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object memql(Object elt, Object list) {
             if (isNil(list)) {
@@ -1085,6 +1094,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "assq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FAssq extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object assq(Object key, Object alist) {
             if (isNil(alist)) {
@@ -1111,6 +1121,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "assoc", minArgs = 2, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FAssoc extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object assoc(Object key, Object alist, Object testfn) {
             if (isNil(alist)) {
@@ -1154,6 +1165,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "rassq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FRassq extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object rassq(Object key, Object alist) {
             if (isNil(alist)) {
@@ -1199,6 +1211,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "delq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDelq extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object delq(Object elt, Object list) {
             if (isNil(list)) {
@@ -1251,6 +1264,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean deleteNil(Object elt, ELispSymbol seq) {
             return expectNil(seq);
         }
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object deleteList(Object elt, ELispCons seq) {
             while (FEqual.equal(elt, seq.car())) {
@@ -1330,6 +1344,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return new ELispString(builder.build());
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispCons nreverseList(ELispCons seq) {
             ELispCons head = new ELispCons(seq.car());
@@ -1418,6 +1433,7 @@ public class BuiltInFns extends ELispBuiltIns {
             // TODO
             throw new UnsupportedOperationException();
         }
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static Object sortList(ELispCons seq, Object[] args) {
             SortParameters params = SortParameters.parse(args);
@@ -1545,7 +1561,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return getContext().getStorage(symbol);
         }
 
-        @Specialization(guards = "symbol == oldSymbol")
+        @Specialization(guards = "symbol == oldSymbol", limit = "1")
         public Object getCached(
                 ELispSymbol symbol, Object propname,
                 @Cached("symbol") ELispSymbol oldSymbol,

@@ -44,7 +44,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FCharToString extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString charToString(long char_) {
-            return new ELispString(new StringBuilder().appendCodePoint(Math.toIntExact(char_)).toString());
+            return new ELispString(new MuleStringBuffer().append(Math.toIntExact(char_)).build());
         }
     }
 
@@ -1660,6 +1660,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "message", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FMessage extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object message(Object formatString, Object[] args) {
             if (isNil(formatString)) {

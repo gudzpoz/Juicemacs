@@ -217,7 +217,7 @@ public abstract class ELispFrameSlotNode {
         }
 
         @Specialization(guards = "isLongOrIllegal(frame)")
-        protected final long setLong(VirtualFrame frame, long value) {
+        protected final long writeLong(VirtualFrame frame, long value) {
             int slot = getSlot();
             frame = getFrame(frame);
             frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Long);
@@ -226,7 +226,7 @@ public abstract class ELispFrameSlotNode {
         }
 
         @Specialization(guards = "isDoubleOrIllegal(frame)")
-        protected final double setDouble(VirtualFrame frame, double value) {
+        protected final double writeDouble(VirtualFrame frame, double value) {
             int slot = getSlot();
             frame = getFrame(frame);
             frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Double);
@@ -234,8 +234,8 @@ public abstract class ELispFrameSlotNode {
             return value;
         }
 
-        @Specialization(replaces = {"setLong", "setDouble"})
-        protected final Object setObject(VirtualFrame frame, Object value) {
+        @Specialization(replaces = {"writeLong", "writeDouble"})
+        protected final Object writeObject(VirtualFrame frame, Object value) {
             int slot = getSlot();
             frame = getFrame(frame);
             frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Object);

@@ -20,7 +20,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
-public sealed class ELispHashtable extends AbstractELispIdentityObject {
+public sealed class ELispHashtable extends AbstractELispIdentityObject implements Iterable<Map.Entry<Object, Object>> {
 
     protected final EconomicMap<Object, Object> inner;
     protected final Object weak;
@@ -131,6 +131,47 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject {
             action.accept(cursor.getKey(), cursor.getValue());
         }
     }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        MapCursor<Object, Object> entries = inner.getEntries();
+        return new Iterator<>() {
+            boolean hasNext = advance();
+            Object key = false;
+            Object value = false;
+
+            @Override
+            public boolean hasNext() {
+                return hasNext;
+            }
+
+            @Override
+            public Map.Entry<Object, Object> next() {
+                if (!hasNext) {
+                    throw new NoSuchElementException();
+                }
+                AbstractMap.SimpleEntry<Object, Object> entry = new AbstractMap.SimpleEntry<>(key, value);
+                hasNext = advance();
+                return entry;
+            }
+
+            private boolean advance() {
+                boolean hasNext = false;
+                @Nullable Object key = null;
+                @Nullable Object value = null;
+                while ((key == null || value == null) && (hasNext = entries.advance())) {
+                    key = ELispWeakHashtable.pruneWeakWrapper(entries.getKey());
+                    value = ELispWeakHashtable.pruneWeakWrapper(entries.getValue());
+                }
+                if (hasNext) {
+                    this.key = key;
+                    this.value = value;
+                }
+                return hasNext;
+            }
+        };
+    }
+
 
     @CompilerDirectives.TruffleBoundary
     public static ELispHashtable hashTableFromPlist(List<Object> list, boolean readSyntax) {
@@ -288,6 +329,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject {
             }
         }
 
+        @CompilerDirectives.TruffleBoundary
         private void purge() {
             Reference<?> poll = queue.poll();
             while (poll != null) {
@@ -298,6 +340,15 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject {
                 }
                 poll = queue.poll();
             }
+        }
+
+        @Nullable
+        static Object pruneWeakWrapper(Object weak) {
+            return switch (weak) {
+                case WeakKey key -> key.get();
+                case WeakValue value -> value.get();
+                default -> weak;
+            };
         }
 
         private static final class WeakKey extends WeakReference<Object> {

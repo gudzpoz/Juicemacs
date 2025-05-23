@@ -213,6 +213,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "get-buffer-create", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FGetBufferCreate extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispBuffer getBufferCreate(Object bufferOrName, Object inhibitBufferHooks) {
             Object object = FGetBuffer.getBuffer(bufferOrName);
@@ -650,6 +651,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillBuffer extends ELispBuiltInBaseNode {
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         public boolean killBuffer(Object bufferOrName) {
             HashMap<MuleString, ELispBuffer> buffers = getBuffers(this);
             if (bufferOrName instanceof ELispString name) {

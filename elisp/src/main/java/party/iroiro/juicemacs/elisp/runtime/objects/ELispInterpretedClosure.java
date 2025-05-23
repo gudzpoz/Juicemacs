@@ -49,7 +49,13 @@ public final class ELispInterpretedClosure extends AbstractELispClosure implemen
         if (isNil(list)) {
             return new ELispCons(true);
         }
-        Object envTrim = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
+        Object envTrim;
+        try {
+            envTrim = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
+        } catch (Throwable ignored) {
+            // Called from graal compiler thread.
+            envTrim = false;
+        }
         if (isNil(envTrim)) {
             return list;
         }
@@ -59,8 +65,8 @@ public final class ELispInterpretedClosure extends AbstractELispClosure implemen
                 getArgs(),
                 getBody(),
                 list,
-                get(CLOSURE_DOC_STRING),
-                get(CLOSURE_INTERACTIVE)
+                inner[CLOSURE_DOC_STRING],
+                inner[CLOSURE_INTERACTIVE]
         );
         return pseudoEnvironment = BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
     }

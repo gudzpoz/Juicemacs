@@ -4,7 +4,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -115,7 +118,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "list", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FList extends ELispBuiltInBaseNode {
+    public abstract static class FList extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public static Object list(Object[] objects) {
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
@@ -123,6 +126,38 @@ public class BuiltInAlloc extends ELispBuiltIns {
                 builder.add(arg);
             }
             return builder.build();
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return new ListNode(arguments);
+        }
+
+        private static final class ListNode extends ELispBuiltInBaseNode {
+            @Children
+            final ELispExpressionNode[] elements;
+
+            private ListNode(ELispExpressionNode[] elements) {
+                this.elements = elements;
+            }
+
+            @ExplodeLoop
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                for (ELispExpressionNode element : elements) {
+                    element.executeVoid(frame);
+                }
+            }
+
+            @ExplodeLoop
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+                for (ELispExpressionNode element : elements) {
+                    builder.add(element.executeGeneric(frame));
+                }
+                return builder.build();
+            }
         }
     }
 
@@ -240,7 +275,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             ArrayList<Object> list = new ArrayList<>();
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
-            return (ELispBytecode) AbstractELispClosure.create(list, (Source) null);
+            return (ELispBytecode) AbstractELispClosure.create(list, (Source) null); // NOPMD
         }
     }
 
@@ -266,7 +301,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             }
             ELispVector copyConstants = BuiltInFns.FCopySequence.copySequenceVector(constants);
             copyConstants.fillFrom(closureVars);
-            ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getRootSource());
+            ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getRootSource()); // NOPMD
             copy.set(CLOSURE_CONSTANTS, copyConstants);
             return copy;
         }

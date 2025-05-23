@@ -10,12 +10,13 @@
     </description>
 
     <rule
-            name="ELispAlwaysInterpretSpecialForms"
+            name="ELispSpecialFormsImplementation"
             language="java"
-            message="Add CompilerDirectives.bailout(...) to special forms"
+            message="Implement SpecialFactory for special forms with a placeholder."
             class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <description>
-            ELisp special forms return dynamically generated AST nodes and should always be interpreted.
+            Specializations for ELisp special forms should be merely placeholders.
+            Implement SpecialFactory for them.
         </description>
         <priority>3</priority>
         <properties>
@@ -24,11 +25,11 @@
                 //ClassDeclaration
                 [pmd-java:hasAnnotation("party.iroiro.juicemacs.elisp.forms.ELispBuiltIn")]
                 [ModifierList/Annotation[@SimpleName="ELispBuiltIn"]/AnnotationMemberList/MemberValuePair[@Image="rawArg"]]
-                /ClassBody/MethodDeclaration
-                [pmd-java:hasAnnotation("com.oracle.truffle.api.dsl.Specialization")]
-                [
-                 not(Block/ExpressionStatement/MethodCall[@MethodName="bailout"])
-                 or (not(ends-with(@Name, "Bailout")))
+                [not(pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.SpecialFactory"))
+                 or
+                 ./ClassBody/MethodDeclaration/ClassType
+                 [pmd-java:hasAnnotation("com.oracle.truffle.api.dsl.Specialization")]
+                 [not(pmd-java:typeIs("java.lang.Void"))]
                 ]
                 ]]></value>
             </property>
@@ -74,7 +75,11 @@
                 //ClassDeclaration
                 [./ExtendsList/ClassType[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltIns")]]
                 //CastExpression
-                [not (./PrimitiveType[@Kind="int" or @Kind="long" or @Kind="byte"])]
+                [not(
+                  ./PrimitiveType[@Kind="int" or @Kind="long" or @Kind="byte"]
+                  or ./ClassType[pmd-java:typeIs("java.lang.Object")]
+                )]
+                /*[2][pmd-java:typeIs("java.lang.Object")]
                 ]]></value>
             </property>
         </properties>
@@ -207,6 +212,7 @@
                 [not(ancestor::InfixExpression[@Operator=("==", "!=")])]
                 [not(parent::*[parent::MethodCall])]
                 [not(ancestor::*//Annotation[@SimpleName="Nullable"])]
+                [not(ancestor::*[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.SpecialFactory")])]
                 ]]></value>
             </property>
         </properties>

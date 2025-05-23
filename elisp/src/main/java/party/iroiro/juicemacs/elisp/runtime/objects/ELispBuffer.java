@@ -219,11 +219,13 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return intervals;
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Nullable
     public Forwarded getLocal(ELispSymbol symbol) {
         return localVariables.get(symbol);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Forwarded makeLocal(ELispSymbol symbol) {
         return localVariables.computeIfAbsent(symbol, _ -> new Forwarded());
     }
