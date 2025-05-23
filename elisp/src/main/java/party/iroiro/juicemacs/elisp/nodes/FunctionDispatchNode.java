@@ -6,22 +6,20 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
 import java.util.Arrays;
-
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.AUTOLOAD;
 
 @GenerateInline
 @GenerateCached(value = false)
 public abstract class FunctionDispatchNode extends Node {
 
+    /// Dispatch a function call
+    ///
+    /// The `function` argument must be a [ELispFunctionObject].
+    ///
+    /// @see FuncallDispatchNode
     public abstract Object executeDispatch(Node node, Object function, Object[] arguments);
 
     @Specialization(guards = "function.callTarget() == directCallNode.getCallTarget()", limit = "2")
@@ -250,38 +248,4 @@ public abstract class FunctionDispatchNode extends Node {
         }
     }
 
-    @NodeChild(value = "function", type = ELispExpressionNode.class)
-    public abstract static class ToFunctionObjectNode extends ELispExpressionNode {
-        ELispFunctionObject getFunctionObject(ELispSymbol symbol, Object o) {
-            if (o instanceof ELispCons cons && cons.car() == AUTOLOAD) {
-                o = symbol;
-            }
-            return BuiltInEval.FFuncall.getFunctionObject(o);
-        }
-
-        @Specialization(assumptions = "storage.getStableAssumption()", guards = "symbol == lastSymbol", limit = "2")
-        public ELispFunctionObject stableSymbolToObject(
-                ELispSymbol symbol,
-                @Cached("symbol") ELispSymbol lastSymbol,
-                @Cached("getContext().getFunctionStorage(lastSymbol)") FunctionStorage storage,
-                @Cached("getFunctionObject(lastSymbol, storage.get())") ELispFunctionObject o
-        ) {
-            return o;
-        }
-
-        @Specialization
-        public ELispFunctionObject symbolToObject(ELispSymbol symbol) {
-            return getFunctionObject(symbol, getContext().getFunctionStorage(symbol).get());
-        }
-
-        @Specialization
-        public ELispFunctionObject closureToFunction(AbstractELispClosure closure) {
-            return closure.getFunction();
-        }
-
-        @Specialization
-        public ELispFunctionObject toFunction(Object function) {
-            return BuiltInEval.FFuncall.getFunctionObject(function);
-        }
-    }
 }

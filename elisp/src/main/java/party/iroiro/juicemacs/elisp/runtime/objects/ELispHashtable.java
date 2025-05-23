@@ -145,6 +145,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                 return hasNext;
             }
 
+            @CompilerDirectives.TruffleBoundary
             @Override
             public Map.Entry<Object, Object> next() {
                 if (!hasNext) {
@@ -155,6 +156,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                 return entry;
             }
 
+            @CompilerDirectives.TruffleBoundary
             private boolean advance() {
                 boolean hasNext = false;
                 @Nullable Object key = null;

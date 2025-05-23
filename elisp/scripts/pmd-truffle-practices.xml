@@ -51,7 +51,7 @@
                  and not(@MethodName="insert")
                  and not(@MethodName="replace")
                 ]
-                [not(ancestor::*[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.SpecialFactory")])]
+                [not(ancestor::*/MethodDeclaration[@Name="createNode"])]
                 ]]></value>
             </property>
         </properties>

@@ -2141,16 +2141,65 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "apply", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FApply extends ELispBuiltInBaseNode {
+    public abstract static class FApply extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
-        public Object apply(Object function, Object[] arguments) {
+        public Object apply(Object function, Object[] arguments, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
             List<Object> objects = new ArrayList<>(Arrays.asList(arguments).subList(0, arguments.length - 1));
             Object last = arguments[arguments.length - 1];
             if (!isNil(last)) {
                 objects.addAll(asCons(last));
             }
             arguments = objects.toArray();
-            return FFuncall.funcall(this, function, arguments);
+            return dispatchNode.executeDispatch(this, function, arguments);
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 0) {
+                throw ELispSignals.wrongNumberOfArguments(APPLY, 0);
+            }
+            ELispExpressionNode toFunction = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(arguments[0]);
+            return FunctionDispatchNodeGen.CallNNodeGen.create(new ELispExpressionNode[]{
+                    toFunction,
+                    arguments.length == 1
+                            ? ELispInterpretedNode.literal(new Object[0])
+                            : new ApplyArgsToArrayNode(Arrays.copyOfRange(arguments, 1, arguments.length))
+            });
+        }
+
+        public static final class ApplyArgsToArrayNode extends ELispExpressionNode {
+            @Children
+            final ELispExpressionNode[] nodes;
+
+            public ApplyArgsToArrayNode(ELispExpressionNode[] arguments) {
+                this.nodes = arguments;
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                super.executeVoid(frame);
+            }
+
+            @ExplodeLoop
+            @Override
+            public Object[] executeGeneric(VirtualFrame frame) {
+                if (nodes.length == 1) {
+                    Object o = nodes[0].executeGeneric(frame);
+                    if (isNil(o)) {
+                        return new Object[0];
+                    }
+                    return asCons(o).toArray();
+                }
+                ArrayList<Object> objects = new ArrayList<>(nodes.length);
+                for (int i = 0; i < nodes.length - 1; i++) {
+                    objects.add(nodes[i].executeGeneric(frame));
+                }
+                Object o = nodes[nodes.length - 1].executeGeneric(frame);
+                if (!isNil(o)) {
+                    objects.addAll(asCons(o));
+                }
+                return objects.toArray();
+            }
         }
     }
 
@@ -2212,18 +2261,18 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRunHookWithArgs extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean runHookWithArgs(ELispSymbol hook, Object[] args) {
+        public boolean runHookWithArgs(ELispSymbol hook, Object[] args, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
             if (!hook.isBound()) {
                 return false;
             }
             Object value = hook.getValue();
             if (!isNil(value)) {
                 if (FFunctionp.functionp(value)) {
-                    FFuncall.funcall(this, value, args);
+                    dispatchNode.executeDispatch(this, value, args);
                 } else {
                     // TODO: Handle buffer-local hooks
                     for (Object function : asCons(value)) {
-                        FFuncall.funcall(this, function, args);
+                        dispatchNode.executeDispatch(this, function, args);
                     }
                 }
             }
@@ -2404,7 +2453,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (arguments.length == 0) {
                 throw ELispSignals.wrongNumberOfArguments(FUNCALL, 0);
             }
-            arguments[0] = FunctionDispatchNodeGen.ToFunctionObjectNodeGen.create(arguments[0]);
+            arguments[0] = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(arguments[0]);
             return FunctionDispatchNode.createSpecializedCallNode(arguments);
         }
     }

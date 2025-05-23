@@ -1205,7 +1205,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     static ELispExpressionNode createCallSomeNode(int base, int n) {
         int argBase = base + 1;
         ELispExpressionNode[] args = new ELispExpressionNode[n + 1];
-        args[0] = FunctionDispatchNodeGen.ToFunctionObjectNodeGen.create(new ReadStackSlotNode(base));
+        args[0] = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(new ReadStackSlotNode(base));
         for (int i = 0; i < n; i++) {
             args[i + 1] = new ReadStackSlotNode(argBase + i);
         }

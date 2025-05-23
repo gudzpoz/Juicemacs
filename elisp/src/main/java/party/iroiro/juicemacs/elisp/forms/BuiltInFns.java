@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -10,6 +11,8 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -1881,7 +1884,7 @@ public class BuiltInFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "mapconcat", minArgs = 2, maxArgs = 3)
     @GenerateNodeFactory
-    public abstract static class FMapconcat extends ELispBuiltInBaseNode {
+    public abstract static class FMapconcat extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public ELispString mapconcat(Object function, Object sequence, Object separator) {
             Iterator<?> i = iterateSequence(sequence);
@@ -1904,6 +1907,47 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             return new ELispString(builder.build());
         }
+
+        public abstract static class FMapconcatDispatcher extends ELispBuiltInBaseNode {
+            @Specialization
+            public Object mapconcat(
+                    ELispFunctionObject function,
+                    Object sequence,
+                    Object separator,
+                    @Cached FunctionDispatchNode dispatch
+            ) {
+                Iterator<?> i = iterateSequence(sequence);
+                Object[] args = new Object[1];
+                MuleStringBuffer builder = new MuleStringBuffer();
+                while (i.hasNext()) {
+                    args[0] = i.next();
+                    Object result = dispatch.executeDispatch(this, function, args); // NOPMD: no frame usage
+                    if (!isNil(result)) {
+                        if (result instanceof ELispString s) {
+                            builder.append(s.value());
+                        } else {
+                            FConcat.appendSequence(builder, result);
+                        }
+                    }
+                    if (!isNil(separator) && i.hasNext()) {
+                        builder.append(asStr(separator).value());
+                    }
+                }
+                return new ELispString(builder.build());
+            }
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments.length == 2) {
+                ELispExpressionNode[] args = new ELispExpressionNode[3];
+                args[0] = arguments[0];
+                args[1] = arguments[1];
+                args[2] = ELispInterpretedNode.literal(false);
+                arguments = args;
+            }
+            return FMapc.createMapperNode(arguments, BuiltInFnsFactory.FMapconcatFactory.FMapconcatDispatcherNodeGen::create);
+        }
     }
 
     /**
@@ -1915,7 +1959,7 @@ public class BuiltInFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "mapcar", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FMapcar extends ELispBuiltInBaseNode {
+    public abstract static class FMapcar extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public Object mapcar(Object function, Object sequence) {
             Iterator<?> i = iterateSequence(sequence);
@@ -1924,6 +1968,29 @@ public class BuiltInFns extends ELispBuiltIns {
                 builder.add(BuiltInEval.FFuncall.funcall(this, function, i.next()));
             }
             return builder.build();
+        }
+
+        public abstract static class FMapcarDispatcher extends ELispBuiltInBaseNode {
+            @Specialization
+            public Object mapcar(
+                    ELispFunctionObject function,
+                    Object sequence,
+                    @Cached FunctionDispatchNode dispatch
+            ) {
+                Iterator<?> i = iterateSequence(sequence);
+                Object[] args = new Object[1];
+                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+                while (i.hasNext()) {
+                    args[0] = i.next();
+                    builder.add(dispatch.executeDispatch(this, function, args)); // NOPMD: no frame usage
+                }
+                return builder.build();
+            }
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return FMapc.createMapperNode(arguments, BuiltInFnsFactory.FMapcarFactory.FMapcarDispatcherNodeGen::create);
         }
     }
 
@@ -1936,7 +2003,7 @@ public class BuiltInFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "mapc", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FMapc extends ELispBuiltInBaseNode {
+    public abstract static class FMapc extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public Object mapc(Object function, Object sequence) {
             Iterator<?> i = iterateSequence(sequence);
@@ -1944,6 +2011,36 @@ public class BuiltInFns extends ELispBuiltIns {
                 BuiltInEval.FFuncall.funcall(this, function, i.next());
             }
             return sequence;
+        }
+
+        public abstract static class FMapcDispatcher extends ELispBuiltInBaseNode {
+            @Specialization
+            public Object mapc(
+                    ELispFunctionObject function,
+                    Object sequence,
+                    @Cached FunctionDispatchNode dispatch
+            ) {
+                Iterator<?> i = iterateSequence(sequence);
+                Object[] args = new Object[1];
+                while (i.hasNext()) {
+                    args[0] = i.next();
+                    dispatch.executeDispatch(this, function, args); // NOPMD: no frame usage
+                }
+                return sequence;
+            }
+        }
+
+        public static ELispExpressionNode createMapperNode(
+                ELispExpressionNode[] args,
+                Function<ELispExpressionNode[], ELispExpressionNode> factory
+        ) {
+            args[0] = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(args[0]);
+            return factory.apply(args);
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return createMapperNode(arguments, BuiltInFnsFactory.FMapcFactory.FMapcDispatcherNodeGen::create);
         }
     }
 
@@ -1956,15 +2053,38 @@ public class BuiltInFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "mapcan", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FMapcan extends ELispBuiltInBaseNode {
+    public abstract static class FMapcan extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public Object mapcan(Object function, Object sequence) {
-            Iterator<?> iterator = iterateSequence(sequence);
+            Iterator<?> i= iterateSequence(sequence);
             ArrayList<Object> results = new ArrayList<>();
-            while (iterator.hasNext()) {
-                results.add(BuiltInEval.FFuncall.funcall(this, function, iterator.next()));
+            while (i.hasNext()) {
+                results.add(BuiltInEval.FFuncall.funcall(this, function, i.next()));
             }
             return FNconc.nconc(results.toArray());
+        }
+
+        public abstract static class FMapcanDispatcher extends ELispBuiltInBaseNode {
+            @Specialization
+            public Object mapcan(
+                    ELispFunctionObject function,
+                    Object sequence,
+                    @Cached FunctionDispatchNode dispatch
+            ) {
+                Iterator<?> i = iterateSequence(sequence);
+                Object[] args = new Object[1];
+                ArrayList<Object> results = new ArrayList<>();
+                while (i.hasNext()) {
+                    args[0] = i.next();
+                    results.add(dispatch.executeDispatch(this, function, args)); // NOPMD: no frame usage
+                }
+                return FNconc.nconc(results.toArray());
+            }
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return FMapc.createMapperNode(arguments, BuiltInFnsFactory.FMapcanFactory.FMapcanDispatcherNodeGen::create);
         }
     }
 
@@ -2633,8 +2753,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMaphash extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean maphash(Object function, ELispHashtable table) {
-            table.forEach((key, value) -> BuiltInEval.FFuncall.funcall(this, function, key, value));
+        public boolean maphash(Object function, ELispHashtable table, @Cached(inline = true) FuncallDispatchNode dispatch) {
+            Iterator<Map.Entry<Object, Object>> iterator = table.iterator();
+            Object[] args = new Object[2];
+            while (iterator.hasNext()) {
+                Map.Entry<Object, Object> entry = iterator.next();
+                args[0] = entry.getKey();
+                args[1] = entry.getValue();
+                dispatch.executeDispatch(this, function, args); // NOPMD: no frame usage
+            }
             return false;
         }
     }
