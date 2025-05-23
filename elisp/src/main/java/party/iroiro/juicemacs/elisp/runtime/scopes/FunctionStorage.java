@@ -24,7 +24,7 @@ public final class FunctionStorage {
         this.function = function;
         stableAssumption.invalidate();
         switch (toSym(function)) {
-            case ELispSymbol _ -> stableAssumption.getAssumption().invalidate();
+            case ELispSymbol _ -> stableAssumption.invalidate();
             case AbstractELispClosure closure -> closure.setName(symbol);
             case ELispCons cons when cons.car() == MACRO -> {
                 if (cons.cdr() instanceof AbstractELispClosure closure) {

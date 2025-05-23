@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.runtime.scopes;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -87,7 +88,10 @@ public final class ValueStorage {
 
     //#region Constant folding
     public Assumption getUnchangedAssumption() {
-        return unchangedAssumption.getAssumption();
+        if (isAssumeConstant() && delegate instanceof ValueStorage.PlainValue) {
+            return unchangedAssumption.getAssumption();
+        }
+        return Assumption.NEVER_VALID;
     }
     @Idempotent
     public boolean isAssumeConstant() {
@@ -107,14 +111,13 @@ public final class ValueStorage {
             }
         }
     }
-    @CompilerDirectives.TruffleBoundary
     public void noLongerAssumeConstant() {
         if (!assumeConstant) {
             return;
         }
         synchronized (this) {
             assumeConstant = false;
-            unchangedAssumption.getAssumption().invalidate();
+            unchangedAssumption.invalidate();
         }
     }
     //#endregion Constant folding
@@ -177,7 +180,22 @@ public final class ValueStorage {
         if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(value)) {
             return;
         }
-        updateAssumeConstant(context);
+        if (isAssumeConstant()) {
+            updateAssumeConstant(context);
+        }
+        this.delegate.setValue(value);
+    }
+
+    public void setValue(Object value, ELispSymbol symbol, Node node) {
+        if (isConstant()) {
+            throw ELispSignals.settingConstant(symbol);
+        }
+        if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(value)) {
+            return;
+        }
+        if (isAssumeConstant()) {
+            updateAssumeConstant(ELispContext.get(node));
+        }
         this.delegate.setValue(value);
     }
 
@@ -185,8 +203,10 @@ public final class ValueStorage {
         if (threadLocalValue != null && threadLocalValue.isBoundAndSetValue(UNBOUND)) {
             return;
         }
+        if (isAssumeConstant()) {
+            updateAssumeConstant(context);
+        }
         this.delegate = new PlainValue(UNBOUND);
-        updateAssumeConstant(context);
     }
 
     //#endregion Value API
@@ -224,8 +244,10 @@ public final class ValueStorage {
             // Recursive call: Truffle bails out
             target.setDefaultValue(value);
         } else {
-            updateAssumeConstant(context);
             delegate.setValue(value);
+            if (isAssumeConstant()) {
+                updateAssumeConstant(context);
+            }
         }
     }
 
