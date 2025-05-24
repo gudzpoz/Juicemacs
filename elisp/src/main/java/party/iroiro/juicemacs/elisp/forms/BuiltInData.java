@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
@@ -11,6 +10,7 @@ import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
@@ -49,19 +49,19 @@ public class BuiltInData extends ELispBuiltIns {
         return true;
     }
 
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
-    private static class NumberAsIsUnary extends ELispExpressionNode {
-        @SuppressWarnings("FieldMayBeFinal")
-        @Child
-        ELispExpressionNode arg;
-
-        public NumberAsIsUnary(ELispExpressionNode argument) {
-            arg = argument;
+    @ReportPolymorphism
+    @NodeChild(value = "arg", type = ELispExpressionNode.class)
+    abstract static class NumberAsIsUnary extends ELispExpressionNode {
+        @Specialization
+        public static long longAsIs(long value) {
+            return value;
         }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            Object o = arg.executeGeneric(frame);
+        @Specialization
+        public static double doubleAsIs(double value) {
+            return value;
+        }
+        @Specialization(replaces = {"longAsIs", "doubleAsIs"})
+        public static Object objectAsIs(Object o) {
             if (FNumberp.numberp(o)) {
                 return o;
             }
@@ -72,19 +72,15 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
-    @SuppressWarnings("PMD.TruffleNodeMissingExecuteVoid")
-    private static class BitAsIsUnary extends ELispExpressionNode {
-        @SuppressWarnings("FieldMayBeFinal")
-        @Child
-        ELispExpressionNode arg;
-
-        public BitAsIsUnary(ELispExpressionNode argument) {
-            arg = argument;
+    @ReportPolymorphism
+    @NodeChild(value = "arg", type = ELispExpressionNode.class)
+    abstract static class BitAsIsUnary extends ELispExpressionNode {
+        @Specialization
+        public static long longAsIs(long value) {
+            return value;
         }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            Object o = arg.executeGeneric(frame);
+        @Specialization(replaces = {"longAsIs"})
+        public static Object objectAsIs(Object o) {
             if (FIntegerp.integerp(o)) {
                 return o;
             }
@@ -95,6 +91,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    @ReportPolymorphism
     @NodeChild(value = "value", type = ELispExpressionNode.class)
     public abstract static class FMinusUnary extends ELispExpressionNode {
         @Specialization(rewriteOn = ArithmeticException.class)
@@ -115,6 +112,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    @ReportPolymorphism
     @NodeChild(value = "value", type = ELispExpressionNode.class)
     public abstract static class FQuoUnary extends ELispExpressionNode {
         @Specialization
@@ -136,6 +134,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    @ReportPolymorphism
     public abstract static class BinaryArithmeticNode extends ELispExpressionNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
@@ -325,6 +324,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    @ReportPolymorphism
     @NodeChild(value = "left", type = ELispExpressionNode.class)
     @NodeChild(value = "right", type = ELispExpressionNode.class)
     public abstract static class FMaxBinary extends ELispExpressionNode {
@@ -360,6 +360,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    @ReportPolymorphism
     @NodeChild(value = "left", type = ELispExpressionNode.class)
     @NodeChild(value = "right", type = ELispExpressionNode.class)
     public abstract static class FMinBinary extends ELispExpressionNode {
@@ -395,6 +396,7 @@ public class BuiltInData extends ELispBuiltIns {
         }
     }
 
+    @ReportPolymorphism
     public abstract static class BinaryBitwiseNode extends ELispExpressionNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
@@ -490,6 +492,7 @@ public class BuiltInData extends ELispBuiltIns {
         return Long.compare(asLong(a), asLong(b));
     }
 
+    @ReportPolymorphism
     public abstract static class BinaryCompareNode extends ELispExpressionNode {
         @Child @Executed protected ELispExpressionNode left;
         @Child @Executed protected ELispExpressionNode right;
@@ -690,14 +693,28 @@ public class BuiltInData extends ELispBuiltIns {
      * </pre>
      */
     @ELispBuiltIn(name = "eq", minArgs = 2, maxArgs = 2)
+    @TypeSystemReference(ELispTypeSystem.None.class)
     @GenerateNodeFactory
     public abstract static class FEq extends ELispBuiltInBaseNode {
-        @SuppressWarnings("PMD.ELispDoNotUseEqualsToCompare")
         @Specialization
+        public static boolean eqSymbol(ELispSymbol o1, ELispSymbol o2) {
+            return o1 == o2;
+        }
+        @Specialization(replaces = {"eqSymbol"})
         public static boolean eq(Object obj1, Object obj2) {
+            if (obj1 == obj2) {
+                return true;
+            }
             // Simulate the Emacs behavior of packed integers
             if (obj1 instanceof Long) {
                 return obj1.equals(obj2);
+            }
+            // In `(setq a2 (setq a1 (double-value)))`, due to boxing and unboxing,
+            // it is possible that `a1 != a2`. We do not want that, so we choose
+            // to let eq compare them by value.
+            if (obj1 instanceof Double d1) {
+                return obj2 instanceof Double d2 &&
+                        Double.doubleToRawLongBits(d1) == Double.doubleToRawLongBits(d2);
             }
             if (isNil(obj1)) {
                 return isNil(obj2);
@@ -705,7 +722,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (isT(obj1)) {
                 return isT(obj2);
             }
-            return obj1 == obj2 || obj1.equals(obj2);
+            return obj1.equals(obj2);
         }
     }
 
@@ -2480,7 +2497,7 @@ public class BuiltInData extends ELispBuiltIns {
                 return ELispInterpretedNode.literal(0L);
             }
             if (arguments.length == 1) {
-                return new NumberAsIsUnary(arguments[0]);
+                return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
             }
             return varArgsToBinary(arguments, 0, BuiltInDataFactory.FPlusBinaryNodeGen::create);
         }
@@ -2640,7 +2657,7 @@ public class BuiltInData extends ELispBuiltIns {
                 return ELispInterpretedNode.literal(1L);
             }
             if (arguments.length == 1) {
-                return new NumberAsIsUnary(arguments[0]);
+                return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
             }
             return varArgsToBinary(arguments, 0, BuiltInDataFactory.FTimesBinaryNodeGen::create);
         }
@@ -2824,7 +2841,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
             if (arguments.length == 1) {
-                return new NumberAsIsUnary(arguments[0]);
+                return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
             }
             return varArgsToBinary(arguments, 0, BuiltInDataFactory.FMaxBinaryNodeGen::create);
         }
@@ -2858,7 +2875,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
             if (arguments.length == 1) {
-                return new NumberAsIsUnary(arguments[0]);
+                return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
             }
             return varArgsToBinary(arguments, 0, BuiltInDataFactory.FMinBinaryNodeGen::create);
         }
@@ -2905,7 +2922,7 @@ public class BuiltInData extends ELispBuiltIns {
                 return ELispInterpretedNode.literal(defaultValue);
             }
             if (arguments.length == 1) {
-                return new BitAsIsUnary(arguments[0]);
+                return BuiltInDataFactory.BitAsIsUnaryNodeGen.create(arguments[0]);
             }
             return varArgsToBinary(arguments, 0, factory);
         }

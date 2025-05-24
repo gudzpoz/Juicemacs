@@ -5,15 +5,13 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.*;
 
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -289,18 +287,16 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "string-equal", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FStringEqual extends ELispBuiltInBaseNode {
-        // TODO: Handle symbols
         @Specialization
         public static boolean stringEqual(Object s1, Object s2) {
-            boolean nil1 = isNil(s1);
-            boolean nil2 = isNil(s2);
-            if (nil1 && nil2) {
-                return true;
+            return getInner(s1).equals(getInner(s2));
+        }
+
+        private static MuleString getInner(Object object) {
+            if (toSym(object) instanceof ELispSymbol symbol) {
+                return symbol.name();
             }
-            if (nil1 || nil2) {
-                return false;
-            }
-            return asStr(s1).lispEquals(asStr(s2));
+            return asStr(object).value();
         }
     }
 
@@ -1708,9 +1704,18 @@ public class BuiltInFns extends ELispBuiltIns {
      * </pre>
      */
     @ELispBuiltIn(name = "eql", minArgs = 2, maxArgs = 2)
+    @TypeSystemReference(ELispTypeSystem.None.class)
     @GenerateNodeFactory
     public abstract static class FEql extends ELispBuiltInBaseNode {
         @Specialization
+        public static boolean equalLong(long o1, long o2) {
+            return o1 == o2;
+        }
+        @Specialization
+        public static boolean equalDouble(double o1, double o2) {
+            return Double.doubleToRawLongBits(o1) == Double.doubleToRawLongBits(o2);
+        }
+        @Specialization(replaces = {"equalLong", "equalDouble"})
         public static boolean eql(Object obj1, Object obj2) {
             return BuiltInData.FEq.eq(obj1, obj2)
                     || (obj1 instanceof Double da && obj2 instanceof Double db &&
@@ -1731,9 +1736,22 @@ public class BuiltInFns extends ELispBuiltIns {
      * </pre>
      */
     @ELispBuiltIn(name = "equal", minArgs = 2, maxArgs = 2)
+    @TypeSystemReference(ELispTypeSystem.None.class)
     @GenerateNodeFactory
     public abstract static class FEqual extends ELispBuiltInBaseNode {
         @Specialization
+        public static boolean equalLong(long o1, long o2) {
+            return o1 == o2;
+        }
+        @Specialization
+        public static boolean equalDouble(double o1, double o2) {
+            return Double.doubleToRawLongBits(o1) == Double.doubleToRawLongBits(o2);
+        }
+        @Specialization
+        public static boolean equalString(ELispString o1, ELispString o2) {
+            return o1.value().equals(o2.value());
+        }
+        @Specialization(replaces = {"equalLong", "equalDouble", "equalString"})
         public static boolean equal(Object o1, Object o2) {
             if (o1 == o2) {
                 // This is both a fast path and a workaround to stack overflow due to recursion
@@ -1741,10 +1759,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             // TODO: Recursive objects?
             return switch (o1) {
-                case Long l when o2 instanceof Long n -> l.equals(n);
-                case Long l when o2 instanceof Double d -> d.equals(l.doubleValue());
-                case Double d when o2 instanceof Long n -> d.equals(n.doubleValue());
-                case Double d when o2 instanceof Double n -> d.equals(n);
+                case Number l -> o2 instanceof Number r && FEql.eql(l, r);
                 case ELispValue v -> v.lispEquals(o2);
                 default -> BuiltInData.FEq.eq(o1, o2);
             };
