@@ -1708,12 +1708,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEql extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean equalLong(long o1, long o2) {
-            return o1 == o2;
+        public static boolean equalLong(long obj1, long obj2) {
+            return obj1 == obj2;
         }
         @Specialization
-        public static boolean equalDouble(double o1, double o2) {
-            return Double.doubleToRawLongBits(o1) == Double.doubleToRawLongBits(o2);
+        public static boolean equalDouble(double obj1, double obj2) {
+            return Double.doubleToRawLongBits(obj1) == Double.doubleToRawLongBits(obj2);
         }
         @Specialization(replaces = {"equalLong", "equalDouble"})
         public static boolean eql(Object obj1, Object obj2) {

@@ -104,13 +104,13 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
     @ELispBuiltIn(name = "capitalize", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FCapitalize extends ELispBuiltInBaseNode {
-        @Specialization
         @CompilerDirectives.TruffleBoundary
+        @Specialization
         public static long capitalize(long obj) {
             return Character.toUpperCase((int) obj);
         }
-        @Specialization
         @CompilerDirectives.TruffleBoundary
+        @Specialization
         public static ELispString capitalizeStr(ELispString obj) {
             return new ELispString(WordUtils.capitalize(obj.toString()));
         }

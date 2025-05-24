@@ -697,8 +697,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FEq extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean eqSymbol(ELispSymbol o1, ELispSymbol o2) {
-            return o1 == o2;
+        public static boolean eqSymbol(ELispSymbol obj1, ELispSymbol obj2) {
+            return obj1 == obj2;
         }
         @Specialization(replaces = {"eqSymbol"})
         public static boolean eq(Object obj1, Object obj2) {

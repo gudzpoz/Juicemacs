@@ -650,8 +650,8 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "kill-buffer", minArgs = 0, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FKillBuffer extends ELispBuiltInBaseNode {
-        @Specialization
         @CompilerDirectives.TruffleBoundary
+        @Specialization
         public boolean killBuffer(Object bufferOrName) {
             HashMap<MuleString, ELispBuffer> buffers = getBuffers(this);
             if (bufferOrName instanceof ELispString name) {

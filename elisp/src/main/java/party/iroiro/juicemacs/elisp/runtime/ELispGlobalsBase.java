@@ -85,6 +85,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 new BuiltInMacros(),
                 new BuiltInMarker(),
                 new BuiltInMiniBuf(),
+                new BuiltInPdumper(),
                 new BuiltInPrint(),
                 new BuiltInProcess(),
                 builtInSearch,

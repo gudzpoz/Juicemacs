@@ -185,6 +185,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         macrosVars();
         markerVars();
         minibufVars();
+        pdumperVars();
         printVars();
         processVars();
         searchVars();
@@ -1048,6 +1049,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(READ_HIDE_CHAR, readHideChar);
         initForwardTo(INHIBIT_INTERACTION, inhibitInteraction);
         initForwardTo(READ_MINIBUFFER_RESTORE_WINDOWS, readMinibufferRestoreWindows);
+    }
+    private final ValueStorage.Forwarded pdumperFingerprint = new ValueStorage.Forwarded();
+    private void pdumperVars() {
+        initForwardTo(PDUMPER_FINGERPRINT, pdumperFingerprint);
     }
     private final ValueStorage.Forwarded standardOutput = new ValueStorage.Forwarded(true);
     private final ValueStorage.Forwarded floatOutputFormat = new ValueStorage.Forwarded(false);
@@ -5709,6 +5714,7 @@ character."""),
     public static final ELispSymbol PARSE_SEXP_IGNORE_COMMENTS = new ELispSymbol("parse-sexp-ignore-comments");
     public static final ELispSymbol PARSE_SEXP_LOOKUP_PROPERTIES = new ELispSymbol("parse-sexp-lookup-properties");
     public static final ELispSymbol PATH_SEPARATOR = new ELispSymbol("path-separator");
+    public static final ELispSymbol PDUMPER_FINGERPRINT = new ELispSymbol("pdumper-fingerprint");
     public static final ELispSymbol PREFIX_ARG = new ELispSymbol("prefix-arg");
     public static final ELispSymbol PREFIX_HELP_COMMAND = new ELispSymbol("prefix-help-command");
     public static final ELispSymbol PRELOADED_FILE_LIST = new ELispSymbol("preloaded-file-list");
@@ -6174,6 +6180,7 @@ character."""),
             PARSE_SEXP_IGNORE_COMMENTS,
             PARSE_SEXP_LOOKUP_PROPERTIES,
             PATH_SEPARATOR,
+            PDUMPER_FINGERPRINT,
             PREFIX_ARG,
             PREFIX_HELP_COMMAND,
             PRELOADED_FILE_LIST,
