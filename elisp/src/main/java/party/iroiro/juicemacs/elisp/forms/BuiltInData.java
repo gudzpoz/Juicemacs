@@ -706,8 +706,8 @@ public class BuiltInData extends ELispBuiltIns {
                 return true;
             }
             // Simulate the Emacs behavior of packed integers
-            if (obj1 instanceof Long) {
-                return obj1.equals(obj2);
+            if (obj1 instanceof Long l1) {
+                return obj2 instanceof Long l2 && l1.longValue() == l2.longValue();
             }
             // In `(setq a2 (setq a1 (double-value)))`, due to boxing and unboxing,
             // it is possible that `a1 != a2`. We do not want that, so we choose
@@ -722,7 +722,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (isT(obj1)) {
                 return isT(obj2);
             }
-            return obj1.equals(obj2);
+            return obj1.equals(obj2); // NOPMD: equals usage inside FEq
         }
     }
 

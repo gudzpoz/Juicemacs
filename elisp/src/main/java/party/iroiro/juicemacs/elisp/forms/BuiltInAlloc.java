@@ -317,10 +317,8 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeSymbol extends ELispBuiltInBaseNode {
         @Specialization
-        public ELispSymbol makeSymbol(ELispString name) {
-            ELispSymbol symbol = new ELispSymbol(name.value(), false);
-            getContext().autoCleanUp(symbol);
-            return symbol;
+        public static ELispSymbol makeSymbol(ELispString name) {
+            return new ELispSymbol(name.value(), false);
         }
     }
 

@@ -466,8 +466,15 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDeleteFileInternal extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void deleteFileInternal(Object filename) {
-            throw new UnsupportedOperationException();
+        public boolean deleteFileInternal(ELispString filename) {
+            Path path = FExpandFileName.expandFileNamePath(filename, false);
+            TruffleFile file = getContext().truffleEnv().getPublicTruffleFile(path.toString());
+            try {
+                file.delete();
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, filename);
+            }
+            return true;
         }
     }
 

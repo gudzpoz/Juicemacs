@@ -14,6 +14,10 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
@@ -21,12 +25,12 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentFrame;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
-public final class ValueStorage {
+public final class ValueStorage implements Externalizable {
     /// The unbound value, used as the value of void variables and not exposed to any caller.
     public static final Object UNBOUND = new Object();
 
     private final CyclicAssumption unchangedAssumption = new CyclicAssumption("variable assumed constant");
-    private int changes = 0;
+    private transient int changes = 0;
     @CompilerDirectives.CompilationFinal
     private volatile boolean assumeConstant = true;
 
@@ -318,6 +322,30 @@ public final class ValueStorage {
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
         props.forEach((k, v) -> builder.add(k).add(v));
         return builder.build();
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        out.writeObject(trappedWrite);
+        if (trappedWrite != TrappedWrite.NO_WRITE) {
+            out.writeBoolean(assumeConstant);
+        }
+        out.writeBoolean(special);
+        out.writeObject(delegate);
+        out.writeObject(properties);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        trappedWrite = (TrappedWrite) in.readObject();
+        if (trappedWrite == TrappedWrite.NO_WRITE) {
+            assumeConstant = true;
+        } else {
+            assumeConstant = in.readBoolean();
+        }
+        special = in.readBoolean();
+        delegate = (Value) in.readObject();
+        properties = (ELispHashtable) in.readObject();
     }
 
     /**

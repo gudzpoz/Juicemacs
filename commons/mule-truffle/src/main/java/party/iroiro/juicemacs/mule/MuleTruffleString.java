@@ -11,7 +11,7 @@ public final class MuleTruffleString implements MuleString {
     private static final TruffleString.SubstringNode SUBSTRING = TruffleString.SubstringNode.create();
     private static final TruffleString.FromJavaStringNode FROM_JAVA_STRING = TruffleString.FromJavaStringNode.create();
     private static final TruffleString.ToJavaStringNode TO_JAVA_STRING = TruffleString.ToJavaStringNode.create();
-    private static final TruffleString.ForceEncodingNode FORCE_ENCODING = TruffleString.ForceEncodingNode.create();
+    private static final TruffleString.SwitchEncodingNode SWITCH_ENCODING = TruffleString.SwitchEncodingNode.create();
     private static final TruffleString.CopyToByteArrayNode COPY_TO_BYTE_ARRAY = TruffleString.CopyToByteArrayNode.create();
     private static final TruffleString.EqualNode EQUAL = TruffleString.EqualNode.create();
 
@@ -59,7 +59,7 @@ public final class MuleTruffleString implements MuleString {
         return MuleString.hashCode(this);
     }
 
-    TruffleString truffleString() {
+    public TruffleString truffleString() {
         return string;
     }
 
@@ -68,7 +68,9 @@ public final class MuleTruffleString implements MuleString {
     }
 
     static byte[] toLatin1(TruffleString string) {
-        TruffleString converted = FORCE_ENCODING.execute(string, UTF_32, ISO_8859_1);
+        TruffleString converted = SWITCH_ENCODING.execute(string, ISO_8859_1, (_, _, _, _, _) -> {
+            throw new IllegalStateException("should not happen");
+        });
         return COPY_TO_BYTE_ARRAY.execute(converted, ISO_8859_1);
     }
 }

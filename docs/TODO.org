@@ -168,6 +168,33 @@ probably return to them some time:
 
 - [ ] =format-time-string=
 
+* TODO [#C] Support native-comp
+
+So this is what the bytecode compiler does:
+
+#+begin_verse
+(lisp-code)  -->  (lap)  -->  (bytecode)
+#+end_verse
+
+And this is what the native compiler does:
+
+#+begin_verse
+(lisp-code)  -->  (lap)  -->  (limple)  -->  (gcc-ir)  -->  (native-code)
+
+| these parts implemented in emacs lisp ||| these are in C |
+#+end_verse
+
+It should be possible that we intercept the calls from =comp--final1= and
+replace everything on the C end for our own implementation:
+
+#+begin_verse
+(lisp-code)  -->  (lap)  -->  (limple)  -//->  (truffle-bytecode-dsl)
+#+end_verse
+
+Also, Truffle bytecode DSL supports serialization, which means we might even be
+able to dump the bytecode into =.eln= files and simulate exactly =native-comp=
+behaviors.
+
 * TODO [#C] =add-variable-watcher=
 
 Currently I've only seen this used to =redisplay= things when certain variables

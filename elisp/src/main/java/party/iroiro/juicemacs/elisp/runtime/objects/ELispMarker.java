@@ -19,7 +19,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispMarker extends Number implements ELispValue {
-    private final MarkerPieceTree.Marker inner;
+    private MarkerPieceTree.Marker inner;
 
     public ELispMarker() {
         this(null, 1);
@@ -28,6 +28,10 @@ public final class ELispMarker extends Number implements ELispValue {
     public ELispMarker(@Nullable ELispBuffer buffer, long point) {
         this.inner = new MarkerPieceTree.Marker(MarkerPieceTree.Affinity.LEFT);
         setBuffer(buffer, point);
+    }
+
+    public ELispMarker(MarkerPieceTree.Marker marker) {
+        this.inner = marker;
     }
 
     public @Nullable ELispBuffer getBuffer() {
@@ -56,6 +60,14 @@ public final class ELispMarker extends Number implements ELispValue {
 
     public void setAffinity(MarkerPieceTree.Affinity affinity) {
         inner.setAffinity(affinity);
+    }
+
+    public MarkerPieceTree.Marker getInner() {
+        return inner;
+    }
+
+    public void setInner(MarkerPieceTree.Marker inner) {
+        this.inner = inner;
     }
 
     @Override

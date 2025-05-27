@@ -81,7 +81,7 @@ public record ELispLexical(
         IntArrayList slots
 ) {
     /// Placeholder to mark a symbol "dynamic"
-    public final static LexicalReference DYNAMIC = new LexicalReference(null, 0);
+    public static final LexicalReference DYNAMIC = new LexicalReference(null, 0);
 
     /// A stack frame slot that is definite invalid, to be used as an indicator of `null`
     ///
@@ -406,7 +406,7 @@ public record ELispLexical(
             }
             currentNode = currentNode.getParent(); // NOPMD: not node creation
         }
-        return newRoot(this, frame.materialize());
+        return newRoot(this, frame);
     }
 
     public static boolean isRootScope(Node currentNode) {

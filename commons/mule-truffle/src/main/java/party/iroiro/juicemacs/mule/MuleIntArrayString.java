@@ -59,7 +59,7 @@ public final class MuleIntArrayString implements MuleString {
         return MuleString.hashCode(this);
     }
 
-    int[] intArray() {
+    public int[] intArray() {
         return array;
     }
 }

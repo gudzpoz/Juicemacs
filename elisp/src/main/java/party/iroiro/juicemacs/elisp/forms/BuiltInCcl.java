@@ -22,7 +22,7 @@ public class BuiltInCcl extends ELispBuiltIns {
     private final HashMap<ELispSymbol, Long> cclProgramIndices = new HashMap<>();
     private final ArrayList<CclProgram> cclPrograms = new ArrayList<>();
 
-    private record CclProgram(ELispVector code) {
+    public record CclProgram(ELispVector code) {
     }
 
     private static BuiltInCcl getThis(Node node) {

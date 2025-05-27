@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.scopes;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -10,7 +11,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.toSym;
 
 public final class FunctionStorage {
     private final CyclicAssumption stableAssumption = new CyclicAssumption("stable function");
-
+    @CompilerDirectives.CompilationFinal
+    private boolean aliased = false;
     private Object function = false;
 
     public Object get() {
@@ -24,7 +26,7 @@ public final class FunctionStorage {
         this.function = function;
         stableAssumption.invalidate();
         switch (toSym(function)) {
-            case ELispSymbol _ -> stableAssumption.invalidate();
+            case ELispSymbol _ -> aliased = true;
             case AbstractELispClosure closure -> closure.setName(symbol);
             case ELispCons cons when cons.car() == MACRO -> {
                 if (cons.cdr() instanceof AbstractELispClosure closure) {
@@ -36,6 +38,6 @@ public final class FunctionStorage {
     }
 
     public Assumption getStableAssumption() {
-        return stableAssumption.getAssumption();
+        return aliased ? Assumption.NEVER_VALID : stableAssumption.getAssumption();
     }
 }

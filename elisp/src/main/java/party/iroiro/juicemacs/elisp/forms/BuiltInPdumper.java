@@ -1,9 +1,18 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.pdump.ELispPortableDumper;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class BuiltInPdumper extends ELispBuiltIns {
@@ -23,9 +32,18 @@ public class BuiltInPdumper extends ELispBuiltIns {
     @ELispBuiltIn(name = "dump-emacs-portable", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDumpEmacsPortable extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static Void dumpEmacsPortable(Object filename, Object trackReferrers) {
-            throw new UnsupportedOperationException();
+        public boolean dumpEmacsPortable(ELispString filename, Object trackReferrers) {
+            ELispContext context = getContext();
+            Path path = BuiltInFileIO.FExpandFileName.expandFileNamePath(filename, false);
+            TruffleFile file = context.truffleEnv().getPublicTruffleFile(path.toString());
+            try (var output = file.newOutputStream(StandardOpenOption.CREATE)) {
+                ELispPortableDumper.serializeFromContext(output, context);
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, filename);
+            }
+            return true;
         }
     }
 

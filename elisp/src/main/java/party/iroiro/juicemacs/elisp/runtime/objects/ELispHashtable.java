@@ -229,7 +229,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         print.print("))").end();
     }
 
-    private static final class ELispWeakHashtable extends ELispHashtable {
+    public static final class ELispWeakHashtable extends ELispHashtable {
         private final boolean weakKey;
         private final boolean weakValue;
         private final ReferenceQueue<Object> queue = new ReferenceQueue<>();

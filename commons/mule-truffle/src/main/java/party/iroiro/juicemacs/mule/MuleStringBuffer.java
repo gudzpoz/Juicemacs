@@ -8,6 +8,10 @@ import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 import party.iroiro.juicemacs.mule.utils.ByteArrayList;
 import party.iroiro.juicemacs.mule.utils.IntArrayList;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.ArrayList;
 import java.util.PrimitiveIterator;
 import java.util.Spliterator;
@@ -15,7 +19,7 @@ import java.util.Spliterators;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
-public final class MuleStringBuffer implements MuleString {
+public final class MuleStringBuffer implements MuleString, Externalizable {
     private static final TruffleString.FromIntArrayUTF32Node FROM_INT_ARRAY_UTF_32 =
             TruffleString.FromIntArrayUTF32Node.create();
     private static final TruffleStringBuilder.AppendStringNode APPEND_STRING_LATIN1 =
@@ -431,5 +435,31 @@ public final class MuleStringBuffer implements MuleString {
                 return stringI < strings.size() || offset < buildingLength();
             }
         };
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        out.writeInt(state);
+        startingCodePointIndices.writeExternal(out);
+        out.writeInt(strings.size());
+        for (MuleString s : strings) {
+            out.writeObject(s);
+        }
+        buildingBytes.writeExternal(out);
+        buildingCodePoints.writeExternal(out);
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        state = in.readInt();
+        startingCodePointIndices.readExternal(in);
+        int size = in.readInt();
+        strings.clear();
+        strings.ensureCapacity(size);
+        for (int i = 0; i < size; i++) {
+            strings.add((MuleString) in.readObject());
+        }
+        buildingBytes.readExternal(in);
+        buildingCodePoints.readExternal(in);
     }
 }

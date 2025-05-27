@@ -11,9 +11,9 @@ import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.SENTINEL;
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.rbDelete;
 
 public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.Marker> {
-    private final MarkerMovedListener listener;
+    private @Nullable MarkerMovedListener listener;
+    private T buffer;
     private final HashSet<Marker> markers;
-    private final T buffer;
 
     public MarkerPieceTree(MarkerMovedListener listener, T buffer) {
         this.listener = listener;
@@ -23,6 +23,23 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
 
     public T getBuffer() {
         return buffer;
+    }
+
+    public void setBuffer(T buffer) {
+        this.buffer = buffer;
+    }
+
+    @Nullable
+    public MarkerMovedListener getListener() {
+        return listener;
+    }
+
+    public void setListener(MarkerMovedListener listener) {
+        this.listener = listener;
+    }
+
+    public HashSet<Marker> getMarkers() {
+        return markers;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -127,8 +144,10 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
             long length = node.piece.length();
             if (length == 0) {
                 // a point mark: report position change, but do not delete
-                //noinspection DataFlowIssue
-                listener.onMarkerMoved(node.piece.mark(), markOffset);
+                if (listener != null) {
+                    //noinspection DataFlowIssue
+                    listener.onMarkerMoved(node.piece.mark(), markOffset);
+                }
                 pointMark = node;
             } else {
                 nodesToDel.add(node);

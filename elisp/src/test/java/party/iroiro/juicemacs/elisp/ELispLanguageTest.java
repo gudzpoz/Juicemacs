@@ -16,13 +16,13 @@ public class ELispLanguageTest {
     /// Returns a Truffle filesystem with working directory set correctly
     ///
     /// A correctly set PWD allows IDEA to click-to-jump to source location.
-    private FileSystem getFileSystem() {
+    private static FileSystem getFileSystem() {
         FileSystem fileSystem = FileSystem.newDefaultFileSystem();
         fileSystem.setCurrentWorkingDirectory(Path.of("..").toAbsolutePath()); // project root dir
         return fileSystem;
     }
 
-    public IOAccess getTestIOAccess() {
+    public static IOAccess getTestIOAccess() {
         return IOAccess.newBuilder().fileSystem(getFileSystem()).build();
     }
 

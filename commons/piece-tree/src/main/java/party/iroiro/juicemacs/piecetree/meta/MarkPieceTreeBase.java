@@ -79,6 +79,16 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
     }
     //#endregion Override methods to change behaviors
 
+    public long getLength() {
+        long length = 0;
+        MarkTreeNode<T> node = root;
+        while (node != SENTINEL) {
+            length += node.size_left + node.piece.length;
+            node = node.right;
+        }
+        return length;
+    }
+
     @CompilerDirectives.TruffleBoundary
     protected void insert(long offset, Piece<T> value) {
         if (root == SENTINEL) {
@@ -288,6 +298,9 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
 
     @CompilerDirectives.TruffleBoundary
     protected <R> R forEachMarkIn(long offset, long cnt, PieceConsumer<T, R> consumer) {
+        if (root == SENTINEL) {
+            return null;
+        }
         NodePosition<T> startPosition = nodeAt(offset);
         MarkTreeNode<T> currentNode = startPosition.node();
         long currentOffset = offset;

@@ -45,12 +45,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         internSymbols(bufferLocalVarSymbols());
     }
 
-    @Override
     public void init(ELispLanguage language, boolean postInit) {
         initSymbols();
-        super.init(language, postInit);
+        initSubroutines(language);
         initGlobalVariables();
         if (postInit) {
+            invocationDirectory.setValue(new ELispString(getContext().truffleEnv().getCurrentWorkingDirectory().toString()));
             postInitVariables();
         }
     }
@@ -3836,7 +3836,7 @@ character."""),
     public static final ELispSymbol YES_OR_NO_P_HISTORY = new ELispSymbol("yes-or-no-p-history");
     public static final ELispSymbol Z_GROUP = new ELispSymbol("z-group");
     public static final ELispSymbol ZERO_WIDTH = new ELispSymbol("zero-width");
-    private ELispSymbol[] allSymbols() {
+    private static ELispSymbol[] allSymbols() {
         return new ELispSymbol[] {
             NIL,
             T,
@@ -5874,7 +5874,7 @@ character."""),
     public static final ELispSymbol X_STRETCH_CURSOR = new ELispSymbol("x-stretch-cursor");
     public static final ELispSymbol YES_OR_NO_PROMPT = new ELispSymbol("yes-or-no-prompt");
     public static final ELispSymbol _TERMINAL_FRAME = new ELispSymbol("terminal-frame");
-    private ELispSymbol[] variableSymbols() {
+    private static ELispSymbol[] variableSymbols() {
         return new ELispSymbol[] {
             AFTER_INIT_TIME,
             AFTER_INSERT_FILE_FUNCTIONS,
@@ -6388,7 +6388,7 @@ character."""),
     public static final ELispSymbol TEXT_CONVERSION_STYLE = new ELispSymbol("text-conversion-style");
     public static final ELispSymbol TRUNCATE_LINES = new ELispSymbol("truncate-lines");
     public static final ELispSymbol WORD_WRAP = new ELispSymbol("word-wrap");
-    private ELispSymbol[] bufferLocalVarSymbols() {
+    private static ELispSymbol[] bufferLocalVarSymbols() {
         return new ELispSymbol[] {
             ABBREV_MODE,
             AUTO_FILL_FUNCTION,
@@ -6437,4 +6437,13 @@ character."""),
         };
     }
     //#endregion buffer.c
+    //#region getAllSymbols
+    public static ELispSymbol[][] getAllSymbols() {
+        return new ELispSymbol[][]{
+                allSymbols(),
+                variableSymbols(),
+                bufferLocalVarSymbols(),
+        };
+    }
+    //#endregion getAllSymbols
 }

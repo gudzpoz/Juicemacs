@@ -799,10 +799,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FObarrayMake extends ELispBuiltInBaseNode {
         @Specialization
-        public ELispObarray obarrayMake(Object size) {
-            ELispObarray obarray = new ELispObarray(new HashMap<>((int) notNilOr(size, 0)));
-            getContext().autoCleanUp(obarray);
-            return obarray;
+        public static ELispObarray obarrayMake(Object size) {
+            return new ELispObarray(new HashMap<>((int) notNilOr(size, 0)));
         }
     }
 

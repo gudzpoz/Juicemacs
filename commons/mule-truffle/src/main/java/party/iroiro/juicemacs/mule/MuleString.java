@@ -124,10 +124,15 @@ public sealed interface MuleString
         return MuleString.fromRaw(bytes);
     }
 
+    static MuleIntArrayString fromInts(int[] ints) {
+        return new MuleIntArrayString(ints);
+    }
+
     static MuleString fromString(String string) {
         TruffleString truffleString = MuleTruffleString.fromJavaString(string);
-        int bytes = truffleString.byteLength(TruffleString.Encoding.UTF_32);
-        if (bytes == string.length()) {
+        TruffleString.CodeRange range =
+                TruffleString.GetCodeRangeNode.getUncached().execute(truffleString, TruffleString.Encoding.UTF_32);
+        if (range.isSubsetOf(TruffleString.CodeRange.ASCII)) {
             // Latin1
             return fromLatin1(MuleTruffleString.toLatin1(truffleString));
         }

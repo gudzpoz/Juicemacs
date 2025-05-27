@@ -22,9 +22,9 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
     @Nullable
     protected final Source rootSource;
     @Nullable
-    protected volatile FunctionRootNode functionRootNode = null;
+    protected transient volatile FunctionRootNode functionRootNode = null;
     @Nullable
-    protected volatile ELispFunctionObject function = null;
+    protected transient volatile ELispFunctionObject function = null;
     @Nullable
     protected Object name = null;
 

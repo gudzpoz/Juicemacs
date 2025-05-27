@@ -63,7 +63,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             category = OptionCategory.EXPERT,
             stability = OptionStability.STABLE
     )
-    public static final OptionKey<Boolean> HARD_EXIT = new OptionKey<>(false); // NOPMD
+    public static final OptionKey<Boolean> HARD_EXIT = new OptionKey<>(false);
 
     @Option(
             name = "globalVariableMaxInvalidations",
@@ -71,7 +71,23 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             category = OptionCategory.EXPERT,
             stability = OptionStability.STABLE
     )
-    public static final OptionKey<Integer> GLOBAL_MAX_INVALIDATIONS = new OptionKey<>(3); // NOPMD
+    public static final OptionKey<Long> GLOBAL_MAX_INVALIDATIONS = new OptionKey<>(3L);
+
+    @Option(
+            name = "portableDump",
+            help = "Dump Emacs.",
+            category = OptionCategory.EXPERT,
+            stability = OptionStability.EXPERIMENTAL
+    )
+    public static final OptionKey<Boolean> PORTABLE_DUMP = new OptionKey<>(false);
+
+    @Option(
+            name = "dumpFile",
+            help = "The dump file to restore from.",
+            category = OptionCategory.EXPERT,
+            stability = OptionStability.EXPERIMENTAL
+    )
+    public static final OptionKey<String> DUMP_FILE = new OptionKey<>("");
 
     @Option(
             name = "truffleDebug",
@@ -79,7 +95,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             category = OptionCategory.EXPERT,
             stability = OptionStability.STABLE
     )
-    public static final OptionKey<Boolean> TRUFFLE_DEBUG = new OptionKey<>(false); // NOPMD
+    public static final OptionKey<Boolean> TRUFFLE_DEBUG = new OptionKey<>(false);
 
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
 

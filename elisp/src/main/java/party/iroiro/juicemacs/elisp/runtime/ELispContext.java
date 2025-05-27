@@ -2,27 +2,34 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
+import org.apache.fury.Fury;
+import org.apache.fury.memory.MemoryBuffer;
+import org.apache.fury.serializer.Serializer;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
+import party.iroiro.juicemacs.elisp.runtime.pdump.ELispPortableDumper;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 
+import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.ref.Cleaner;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
@@ -39,11 +46,11 @@ public final class ELispContext implements ELispParser.InternContext {
     private final PrintStream out;
     private final Options options;
 
-    private final ELispGlobals globals;
+    @CompilerDirectives.CompilationFinal
+    private ELispGlobals globals;
     private final SharedIndicesMap.ContextArray<ValueStorage> variablesArray;
     private final SharedIndicesMap.ContextArray<FunctionStorage> functionsArray;
     private final CyclicAssumption specialVariablesUnchanged;
-    private final Cleaner cleaner = Cleaner.create();
 
     public ELispContext(ELispLanguage language, TruffleLanguage.Env env) {
         this.language = language;
@@ -118,7 +125,16 @@ public final class ELispContext implements ELispParser.InternContext {
     }
 
     public void initGlobal(ELispLanguage language) {
-        globals.init(language, options.postInit);
+        if (options.dumpFile == null) {
+            globals.init(language, options.postInit);
+            return;
+        }
+        TruffleFile file = truffleEnv.getPublicTruffleFile(options.dumpFile);
+        try (var channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
+            ELispPortableDumper.deserializeIntoContext(channel, this);
+        } catch (IOException e) {
+            throw ELispSignals.reportFileError(e, new ELispString(options.dumpFile));
+        }
     }
 
     //#region Symbol lookup
@@ -182,10 +198,6 @@ public final class ELispContext implements ELispParser.InternContext {
     public void invalidateSpecialVariables() {
         specialVariablesUnchanged.invalidate();
     }
-
-    public void autoCleanUp(Object symbols) {
-        // TODO
-    }
     //#endregion Symbol lookup
 
     public static ELispContext get(@Nullable Node node) {
@@ -196,16 +208,81 @@ public final class ELispContext implements ELispParser.InternContext {
             int globalVariableMaxInvalidations,
             boolean postInit,
             boolean hardExit,
+            boolean pdump,
+            @Nullable String dumpFile,
             boolean debug
     ) {
         public static Options load(TruffleLanguage.Env env) {
             OptionValues options = env.getOptions();
-            int invalidations = options.get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS);
+            int invalidations = Math.toIntExact(options.get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
             boolean postInit = !options.get(ELispLanguage.BARE);
             boolean hardExit = options.get(ELispLanguage.HARD_EXIT);
+            boolean pdump = options.get(ELispLanguage.PORTABLE_DUMP);
+            String dumpFile = options.get(ELispLanguage.DUMP_FILE);
+            dumpFile = dumpFile.isEmpty() ? null : dumpFile;
             boolean debug = options.get(ELispLanguage.TRUFFLE_DEBUG);
 
-            return new Options(invalidations, postInit, hardExit, debug);
+            return new Options(invalidations, postInit, hardExit, pdump, dumpFile, debug);
+        }
+    }
+
+    public static final class ContextSerializer extends Serializer<ELispContext> {
+        private final ELispContext context;
+
+        public ContextSerializer(Fury fury, ELispContext context) {
+            super(fury, ELispContext.class);
+            this.context = context;
+        }
+
+        @Override
+        public void write(MemoryBuffer buffer, ELispContext context) {
+            for (ELispSymbol[] symbols : ELispGlobals.getAllSymbols()) {
+                DumpUtils.writeAnchors(fury, buffer, symbols);
+            }
+
+            ELispGlobals globals = context.globals;
+            ELispSubroutine[] subroutines = Objects.requireNonNull(globals.takeSubroutines());
+            buffer.writeInt32(subroutines.length);
+            for (ELispSubroutine subroutine : subroutines) {
+                fury.writeJavaString(buffer, subroutine.info().name());
+            }
+            DumpUtils.writeAnchors(fury, buffer, subroutines);
+
+            DumpUtils.writeAnchor(fury, buffer, ELispLexical.DYNAMIC);
+            DumpUtils.writeAnchor(fury, buffer, ValueStorage.UNBOUND);
+
+            fury.writeRef(buffer, globals);
+            DumpUtils.writeContextArray(fury, buffer, context.language.globalVariablesMap, context.variablesArray);
+            DumpUtils.writeContextArray(fury, buffer, context.language.globalFunctionsMap, context.functionsArray);
+        }
+
+        @Override
+        public ELispContext read(MemoryBuffer buffer) {
+            for (ELispSymbol[] symbols : ELispGlobals.getAllSymbols()) {
+                DumpUtils.readAnchors(fury, buffer, symbols);
+            }
+
+            int length = buffer.readInt32();
+            ELispSubroutine[] subroutines = new ELispSubroutine[length];
+            HashMap<String, ELispSubroutine> subroutineMap = new HashMap<>(length);
+            ELispGlobals tempGlobals = context.globals;
+            tempGlobals.initSubroutines(context.language);
+            for (ELispSubroutine subroutine : Objects.requireNonNull(tempGlobals.takeSubroutines())) {
+                subroutineMap.put(subroutine.info().name(), subroutine);
+            }
+            for (int i = 0; i < length; i++) {
+                String name = fury.readJavaString(buffer);
+                subroutines[i] = Objects.requireNonNull(subroutineMap.get(name));
+            }
+            DumpUtils.readAnchors(fury, buffer, subroutines);
+
+            DumpUtils.readAnchor(fury, buffer, ELispLexical.DYNAMIC);
+            DumpUtils.readAnchor(fury, buffer, ValueStorage.UNBOUND);
+
+            context.globals = (ELispGlobals) fury.readRef(buffer);
+            DumpUtils.readContextArray(fury, buffer, context.language.globalVariablesMap, context.variablesArray);
+            DumpUtils.readContextArray(fury, buffer, context.language.globalFunctionsMap, context.functionsArray);
+            return context;
         }
     }
 }

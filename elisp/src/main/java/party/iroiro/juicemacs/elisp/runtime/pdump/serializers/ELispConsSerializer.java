@@ -1,0 +1,173 @@
+package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
+
+import org.apache.fury.Fury;
+import org.apache.fury.memory.MemoryBuffer;
+import org.apache.fury.resolver.RefResolver;
+import org.apache.fury.serializer.collection.AbstractCollectionSerializer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
+
+import java.util.Collection;
+
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+
+public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons> {
+
+    public ELispConsSerializer(Fury fury) {
+        super(fury, ELispCons.class, false);
+    }
+
+    @Override
+    public void write(MemoryBuffer buffer, ELispCons value) {
+        if (value.cdr() instanceof ELispCons) {
+            writeList(buffer, value);
+        } else {
+            writeCons(buffer, value);
+        }
+    }
+
+    @Override
+    public ELispCons read(MemoryBuffer buffer) {
+        byte state = buffer.readByte();
+        if ((state & 0xF0) == 0xF0) {
+            return readList(buffer);
+        }
+        return readCons(buffer, state);
+    }
+
+    private void writeCons(MemoryBuffer buffer, ELispCons value) {
+        byte state = 0;
+        boolean hasDebug = value.getStartLine() != 0;
+        if (hasDebug) {
+            state |= 0x01;
+        }
+        boolean debugSameLine = value.getStartLine() == value.getEndLine();
+        if (debugSameLine) {
+            state |= 0x02;
+        }
+        boolean cdrNil = isNil(value.cdr());
+        if (cdrNil) {
+            state |= 0x04;
+        }
+        boolean carNil = isNil(value.car());
+        if (carNil) {
+            state |= 0x08;
+        }
+        buffer.writeByte(state);
+        if (!carNil) {
+            fury.writeRef(buffer, value.car());
+        }
+        if (!cdrNil) {
+            fury.writeRef(buffer, value.cdr());
+        }
+        if (hasDebug) {
+            buffer.writeVarUint32(value.getStartLine());
+            buffer.writeVarUint32(value.getStartColumn());
+            if (!debugSameLine) {
+                buffer.writeVarUint32(value.getEndLine());
+            }
+            buffer.writeVarUint32(value.getEndColumn());
+        }
+    }
+
+    private ELispCons readCons(MemoryBuffer buffer, byte state) {
+        boolean hasDebug = (state & 0x01) != 0;
+        boolean debugSameLine = (state & 0x02) != 0;
+        boolean cdrNil = (state & 0x04) != 0;
+        boolean carNil = (state & 0x08) != 0;
+        ELispCons cons = new ELispCons(false, false);
+        fury.getRefResolver().reference(cons);
+        if (!carNil) {
+            cons.setCar(fury.readRef(buffer));
+        }
+        if (!cdrNil) {
+            cons.setCdr(fury.readRef(buffer));
+        }
+        if (hasDebug) {
+            int startLine = buffer.readVarUint32();
+            int startColumn = buffer.readVarUint32();
+            int endLine = debugSameLine ? startLine : buffer.readVarUint32();
+            int endColumn = buffer.readVarUint32();
+            cons.setSourceLocation(startLine, startColumn, endLine, endColumn);
+        }
+        return cons;
+    }
+
+    private void writeList(MemoryBuffer buffer, ELispCons value) {
+        RefResolver resolver = fury.getRefResolver();
+        buffer.writeByte(0xFF);
+        try (DumpUtils.CounterSlot slot = DumpUtils.CounterSlot.record(buffer)) {
+            // list: (obj1 obj2 obj3 . tail)
+            // serialized:
+            // - counter (3)
+            // - writeRef(obj1) + location + ref(con2)
+            // - writeRef(obj2) + location + ref(con3)
+            // - writeRef(obj3) + location
+            // - if writeRefValueFlag(tail):  ||
+            //   - // ref written             || this part is essentially
+            // - else:                        || what writeRef() does
+            //   - writeNonRef(tail)          ||
+            ELispCons current = value;
+            while (true) {
+                fury.writeRef(buffer, current.car());
+                buffer.writeVarUint32(current.getStartLine());
+                buffer.writeVarUint32(current.getStartColumn());
+                buffer.writeVarUint32(current.getEndLine());
+                buffer.writeVarUint32(current.getEndColumn());
+                slot.inc();
+                if (!resolver.writeRefValueFlag(buffer, current.cdr())) {
+                    return;
+                }
+                if (!(current.cdr() instanceof ELispCons next)) {
+                    fury.writeNonRef(buffer, current.cdr());
+                    return;
+                }
+                buffer.writerIndex(buffer.writerIndex() - 1);
+                current = next;
+            }
+        }
+    }
+
+    private ELispCons readList(MemoryBuffer buffer) {
+        RefResolver resolver = fury.getRefResolver();
+        // list: (obj1 obj2 obj3 . tail)
+        // - count = 3
+        // - obj1 = readRef() + location + ref(cons2)
+        // - obj2 = readRef() + location + ref(cons3)
+        // - obj3 = readRef() + location
+        // - tail = readRef()
+        int count = buffer.readInt32();
+        ELispCons head = new ELispCons(false, false);
+        resolver.reference(head);
+        ELispCons current = head;
+        for (int i = 0; ; i++) {
+            Object car = fury.readRef(buffer);
+            current.setCar(car);
+            int startLine = buffer.readVarUint32();
+            int startColumn = buffer.readVarUint32();
+            int endLine = buffer.readVarUint32();
+            int endColumn = buffer.readVarUint32();
+            current.setSourceLocation(startLine, startColumn, endLine, endColumn);
+            if (i == count - 1) {
+                current.setCdr(fury.readRef(buffer));
+                break;
+            }
+            ELispCons next = new ELispCons(false, false);
+            resolver.preserveRefId();
+            resolver.reference(next);
+            current.setCdr(next);
+            current = next;
+        }
+        return head;
+    }
+
+    @Override
+    public Collection<?> onCollectionWrite(MemoryBuffer buffer, ELispCons value) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ELispCons onCollectionRead(Collection collection) {
+        throw new UnsupportedOperationException();
+    }
+}

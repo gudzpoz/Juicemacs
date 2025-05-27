@@ -31,21 +31,19 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     private final IntervalPieceTree<Object> intervals;
     private final MarkerPieceTree<ELispBuffer> markers;
     // TODO: Emacs has a point for each window
-    private MarkerPieceTree.Marker point;
+    private ELispMarker point;
 
     private ELispBuffer(Object[] bufferLocalFields, PieceTreeBase content, boolean inhibitBufferHooks) {
         this.bufferLocalFields = bufferLocalFields;
         this.content = content;
         this.intervals = new IntervalPieceTree<>();
         intervals.insert(0, content.getLength(), null);
-        this.markers = new MarkerPieceTree<>((_, _) -> {
-            // TODO: support undo-list
-        }, this);
-        markers.insertString(0, content.getLength());
-        point = new MarkerPieceTree.Marker(MarkerPieceTree.Affinity.RIGHT);
-        markers.insertMarker(0, point);
+        this.markers = new MarkerPieceTree<>(new MarkerMoveNotifier(), this);
         this.inhibitBufferHooks = inhibitBufferHooks;
         this.localVariables = new HashMap<>();
+        markers.insertString(0, content.getLength());
+        point = new ELispMarker(this, 1);
+        point.setAffinity(MarkerPieceTree.Affinity.RIGHT);
     }
 
     public ELispBuffer(Object[] bufferLocalFields) {
@@ -67,7 +65,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     /// @return 1-based index of the current editing point
     public long getPoint() {
-        return point.position() + 1;
+        return point.point();
     }
 
     public long getPoint(PieceTreeBase.Position position) {
@@ -86,7 +84,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     /// @param point 1-based index of the new editing point
     public void setPoint(long point) {
-        setMarkerPoint(this.point, point);
+        this.point.setBuffer(this, point);
     }
 
     public void setMarkerPoint(MarkerPieceTree.Marker marker, long point) {
@@ -94,7 +92,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     public PieceTreeBase.Position getPosition() {
-        return content.getPositionAt(point.position());
+        return content.getPositionAt(point.point() - 1);
     }
 
     public PieceTreeBase.Position getPosition(long point) {
@@ -967,5 +965,12 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             currentBuffer.setDirectory(new ELispString("/:" + dirString));
         }
         getMiniBuffer(0).setDirectory(currentBuffer.getDirectory());
+    }
+
+    public static class MarkerMoveNotifier implements MarkerPieceTree.MarkerMovedListener {
+        @Override
+        public void onMarkerMoved(MarkerPieceTree.Marker marker, long delta) {
+            // TODO: support undo-list
+        }
     }
 }

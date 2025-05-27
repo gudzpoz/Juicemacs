@@ -14,10 +14,10 @@ import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 ///
 /// The volatile keyword is used to avoid virtual-thread-local caching.
 public class ThreadLocalStorage {
-    private volatile Thread lastThread;
-    private Object lastThreadValue;
+    private transient volatile Thread lastThread;
+    private transient Object lastThreadValue;
     @Nullable
-    private volatile ThreadLocal<Object> values;
+    private transient volatile ThreadLocal<Object> values;
 
     public ThreadLocalStorage(Object initValue) {
         lastThread = Thread.currentThread();

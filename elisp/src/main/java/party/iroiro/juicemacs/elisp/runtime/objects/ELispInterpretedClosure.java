@@ -45,7 +45,10 @@ public final class ELispInterpretedClosure extends AbstractELispClosure implemen
         }
         @Nullable ELispLexical scope = lexicalEnv.parentScope();
         @Nullable MaterializedFrame frame = lexicalEnv.materializedParent();
-        Object list = Objects.requireNonNull(scope).toAssocList(Objects.requireNonNull(frame));
+        if (frame == null || scope == null) {
+            return false;
+        }
+        Object list = scope.toAssocList(frame);
         if (isNil(list)) {
             return new ELispCons(true);
         }
