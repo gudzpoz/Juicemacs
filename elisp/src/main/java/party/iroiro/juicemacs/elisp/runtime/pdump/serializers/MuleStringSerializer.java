@@ -50,7 +50,7 @@ public final class MuleStringSerializer extends Serializer<MuleString> {
         long length = buffer.readVarUint64();
         int flag = Byte.toUnsignedInt(buffer.readByte());
         int byteFlag = flag & 0xF0;
-        MuleString string = switch (byteFlag) {
+        return switch (byteFlag) {
             case 0 -> {
                 int state = flag & 0x0F;
                 byte[] bytes = buffer.readBytes(Math.toIntExact(length));
@@ -69,6 +69,5 @@ public final class MuleStringSerializer extends Serializer<MuleString> {
             case 0b11100000 -> muleStringBuffer.read(buffer);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
-        return string;
     }
 }

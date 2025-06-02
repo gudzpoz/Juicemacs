@@ -15,6 +15,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;

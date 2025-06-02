@@ -12,7 +12,6 @@ import org.apache.fury.serializer.ExternalizableSerializer;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
@@ -109,7 +108,6 @@ public final class ELispPortableDumper {
         Class<? extends MaterializedFrame> frameClass = Truffle.getRuntime().createMaterializedFrame(new Object[0]).getClass();
         fury.registerSerializer(frameClass, new MaterializedFrameSerializer(fury));
         fury.registerSerializer(ELispSubroutine.class, DumpUtils.never(fury, ELispSubroutine.class));
-        fury.registerSerializer(ELispLexical.class, new ELispLexicalSerializer(fury)); // TODO: until upstream fixes #2257
         fury.registerSerializer(JAVA_SOURCE.getClass(), new SourceSerializer(fury));
     }
 

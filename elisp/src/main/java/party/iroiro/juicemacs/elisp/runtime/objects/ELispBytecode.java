@@ -14,7 +14,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.nodes.bytecode.ELispBytecodeFallbackNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
 
 import java.util.ArrayList;
@@ -124,7 +124,7 @@ public final class ELispBytecode extends AbstractELispClosure {
         @ExplodeLoop
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            ELispLexical.@Nullable Dynamic dynamic;
+            @Nullable Dynamic dynamic;
             if (argSymbols == null) {
                 for (int i = 0; i < optionalRestArgs.length; i++) {
                     frame.setObject(i, optionalRestArgs[i].executeGeneric(frame));
@@ -135,9 +135,9 @@ public final class ELispBytecode extends AbstractELispClosure {
                 for (int i = 0; i < optionalRestArgs.length; i++) {
                     values[i] = optionalRestArgs[i].executeGeneric(frame);
                 }
-                dynamic = ELispLexical.pushDynamic(argSymbols, values);
+                dynamic = Dynamic.pushDynamic(argSymbols, values);
             }
-            try (ELispLexical.Dynamic _ = dynamic) {
+            try (Dynamic _ = dynamic) {
                 return body.executeGeneric(frame);
             }
         }

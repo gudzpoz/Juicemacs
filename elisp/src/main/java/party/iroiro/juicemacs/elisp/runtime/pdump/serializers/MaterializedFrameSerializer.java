@@ -7,7 +7,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.serializer.Serializer;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 
 public final class MaterializedFrameSerializer extends Serializer<MaterializedFrame> {
     public MaterializedFrameSerializer(Fury fury) {
@@ -18,8 +18,9 @@ public final class MaterializedFrameSerializer extends Serializer<MaterializedFr
     public void write(MemoryBuffer buffer, MaterializedFrame value) {
         FrameDescriptor descriptor = value.getFrameDescriptor();
         assert descriptor.getAuxiliarySlots().isEmpty();
-        assert descriptor.getNumberOfSlots() == ELispLexical.MAX_SLOTS;
-        for (int i = 0; i < ELispLexical.MAX_SLOTS; i++) {
+        int count = descriptor.getNumberOfSlots();
+        buffer.writeVarUint32(count);
+        for (int i = 0; i < count; i++) {
             FrameSlotKind kind = descriptor.getSlotKind(i);
             switch (kind) {
                 case Object -> {
@@ -42,11 +43,12 @@ public final class MaterializedFrameSerializer extends Serializer<MaterializedFr
 
     @Override
     public MaterializedFrame read(MemoryBuffer buffer) {
+        int count = buffer.readVarUint32();
         MaterializedFrame frame = Truffle.getRuntime()
-                .createVirtualFrame(new Object[0], ELispLexical.frameDescriptor(true))
+                .createVirtualFrame(new Object[0], ELispLexical.rootFrameDescriptor(count, true))
                 .materialize();
         fury.getRefResolver().reference(frame);
-        for (int i = 0; i < ELispLexical.MAX_SLOTS; i++) {
+        for (int i = 0; i < count; i++) {
             byte kind = buffer.readByte();
             switch (kind) {
                 case 0 -> {

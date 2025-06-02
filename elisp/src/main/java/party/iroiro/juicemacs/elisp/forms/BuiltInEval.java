@@ -7,18 +7,16 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.*;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
-import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -89,9 +87,9 @@ public class BuiltInEval extends ELispBuiltIns {
         @Child
         ELispExpressionNode inner;
 
-        private final ELispLexical scope;
+        private final ELispLexical.Scope scope;
 
-        public ScopeWrapperNode(ELispExpressionNode inner, ELispLexical scope) {
+        public ScopeWrapperNode(ELispExpressionNode inner, ELispLexical.Scope scope) {
             this.inner = inner;
             this.scope = scope;
         }
@@ -117,7 +115,7 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         @Override
-        public ELispLexical lexicalScope() {
+        public ELispLexical.Scope getScope() {
             return scope;
         }
     }
@@ -561,7 +559,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 ELispLexical.@Nullable LexicalReference reference = ELispLexical.getLexicalReference(this, symbol);
                 ELispExpressionNode replace = reference == null
                         ? GlobalVariableWriteNodeGen.create(symbol, inner)
-                        : ELispFrameSlotNode.createWrite(reference.index(), reference.frame(), inner);
+                        : ELispFrameSlotWriteNode.createWrite(reference, inner);
                 if (value instanceof ELispCons cons) {
                     replace = new SourceSectionWrapper(cons, replace); // NOPMD: replace called later
                 }
@@ -758,7 +756,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 public Object executeGeneric(@Nullable VirtualFrame frame) {
                     body.fillDebugInfo(getParent());
                     Object doc = this.doc.executeGeneric(frame);
-                    @Nullable ELispLexical scope = ELispLexical.getScope(this);
+                    ELispLexical.@Nullable Scope scope = ELispLexical.getScope(this);
 
                     Object cconvFunction = cconv.executeGeneric(null);
                     ELispInterpretedClosure scopeHolder;
@@ -791,7 +789,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     }
                     Object env = scope == null || frame == null
                             ? false
-                            : scope.captureEnv(frame.materialize(), this, scopeHolder);
+                            : new ELispLexical.Captured(scope, frame.materialize());
                     scopeHolder.set(CLOSURE_CONSTANTS, env);
                     return scopeHolder;
                 }
@@ -946,7 +944,7 @@ public class BuiltInEval extends ELispBuiltIns {
             public Object executeGeneric(VirtualFrame frame) {
                 ELispSymbol sym = asSym(symbol);
                 if (initValueMissing && !ELispLexical.isRootScope(this)) {
-                    ELispLexical.markDynamic(this, sym);
+                    ELispLexical.markAsDynamic(this, sym);
                 } else {
                     sym.setSpecial(true);
                     if (!initValueMissing) {
@@ -1088,7 +1086,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (isNil(arguments[0])) {
                 return FProgn.progn(body);
             }
-            return new FLet.LetNode(arguments[0], body, true);
+            return new LetNode(arguments[0], body, true);
         }
     }
 
@@ -1105,38 +1103,6 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "let", minArgs = 1, maxArgs = 1, varArgs = true, rawArg = true)
     @GenerateNodeFactory
     public abstract static class FLet extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
-        static Pair<ELispExpressionNode[], ELispSymbol[]> parseClauses(Object varlist) {
-            List<ELispSymbol> symbolList = new ArrayList<>();
-            List<ELispExpressionNode> values = new ArrayList<>();
-            for (Object assignment : ELispCons.iterate(varlist)) {
-                Object symbol;
-                Object value;
-                if (toSym(assignment) instanceof ELispSymbol sym) {
-                    symbol = sym;
-                    value = false;
-                } else {
-                    ELispCons cons = asCons(assignment);
-                    symbol = cons.car();
-                    if (cons.cdr() instanceof ELispCons cdr) {
-                        if (!isNil(cdr.cdr())) {
-                            throw ELispSignals.error("`let' bindings can have only one value-form");
-                        }
-                        value = cdr.car();
-                    } else {
-                        if (!isNil(cons.cdr())) {
-                            throw ELispSignals.wrongTypeArgument(LISTP, cons);
-                        }
-                        value = false;
-                    }
-                }
-                symbolList.add(asSym(symbol));
-                values.add(ELispInterpretedNode.create(value));
-            }
-            ELispSymbol[] symbols = symbolList.toArray(ELispSymbol[]::new);
-            ELispExpressionNode[] valueNodes = values.toArray(ELispExpressionNode[]::new);
-            return Pair.create(valueNodes, symbols);
-        }
-
         @Specialization
         public static Void letBailout(Object varlist, Object[] body) {
             return null;
@@ -1154,140 +1120,6 @@ public class BuiltInEval extends ELispBuiltIns {
             return new LetNode(varlist, body, false);
         }
 
-        private static class LetNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
-            @Children
-            ELispExpressionNode[] letClauses = new ELispExpressionNode[0];
-
-            @CompilerDirectives.CompilationFinal(dimensions = 1)
-            boolean[] dynamicClauses = new boolean[0];
-            @CompilerDirectives.CompilationFinal(dimensions = 1)
-            ELispSymbol[] dynamicSymbols = new ELispSymbol[0];
-
-            @SuppressWarnings("FieldMayBeFinal")
-            @Child
-            @Nullable
-            ELispExpressionNode bodyNode = null;
-
-            private final Object varlist;
-            private final Object[] body;
-            private final boolean letx;
-
-            public LetNode(Object varlist, Object[] body, boolean letx) {
-                this.varlist = varlist;
-                this.body = body;
-                this.letx = letx;
-            }
-
-            private ELispExpressionNode updateClauses() {
-                @Nullable ELispExpressionNode bodyNode = this.bodyNode;
-                if (bodyNode != null) {
-                    return bodyNode;
-                }
-
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                Pair<ELispExpressionNode[], ELispSymbol[]> pair = FLet.parseClauses(varlist);
-                ELispSymbol[] symbols = pair.getRight();
-                ELispExpressionNode[] clauses = pair.getLeft();
-
-                ArrayList<ELispSymbol> dynamicSymbols = new ArrayList<>();
-                boolean[] dynamicClauses = new boolean[symbols.length];
-
-                @Nullable ELispLexical oldScope = null;
-                @Nullable ELispLexical scope = ELispLexical.getScope(this);
-                if (!letx && scope != null) {
-                    scope = scope.fork();
-                }
-                int length = symbols.length;
-                Iterator<?> sourceSectionProvider = ELispCons.iterate(varlist).iterator();
-                for (int i = 0; i < length; i++) {
-                    ELispSymbol symbol = symbols[i];
-                    ELispExpressionNode clause = clauses[i];
-                    boolean isDynamic = scope == null || (symbol.isSpecial() || scope.isDynamic(symbol));
-                    if (isDynamic) {
-                        if (letx) {
-                            clause = GlobalVariableWriteNodeGen.GlobalVariableDynamicSwapNodeGen.create(symbol, clause);
-                        }
-                        dynamicSymbols.add(symbol);
-                        dynamicClauses[i] = true;
-                    }
-                    if (scope != null) {
-                        if (!isDynamic) {
-                            if (letx) {
-                                scope = scope.fork();
-                            }
-                            int slot = scope.addVariable(this, symbol);
-                            clause = ELispFrameSlotNode.createWrite(slot, null, clause);
-                            dynamicClauses[i] = false;
-                        }
-                        if (letx && oldScope != null) {
-                            clause = new ScopeWrapperNode(clause, oldScope);
-                        }
-                        oldScope = scope;
-                    }
-                    if (sourceSectionProvider.hasNext() && sourceSectionProvider.next() instanceof ELispCons cons) {
-                        clause = new SourceSectionWrapper(cons, clause);
-                    }
-                    clauses[i] = insert(clause);
-                    notifyInserted(clause);
-                }
-                this.letClauses = clauses;
-                this.dynamicClauses = dynamicClauses;
-                this.dynamicSymbols = dynamicSymbols.toArray(new ELispSymbol[0]);
-
-                bodyNode = FProgn.progn(body);
-                if (scope != null) {
-                    bodyNode = new ScopeWrapperNode(bodyNode, scope);
-                }
-                this.bodyNode = insert(bodyNode);
-                notifyInserted(bodyNode);
-                return bodyNode;
-            }
-
-            @ExplodeLoop
-            public ELispLexical.@Nullable Dynamic executeClauses(VirtualFrame frame) {
-                Object[] dynamicValues = dynamicSymbols.length == 0 ? null : new Object[dynamicSymbols.length];
-                int dynamicI = 0;
-                for (int i = 0; i < letClauses.length; i++) {
-                    boolean dynamic = dynamicClauses[i];
-                    ELispExpressionNode letClause = letClauses[i];
-                    if (dynamic) {
-                        assert dynamicValues != null;
-                        dynamicValues[dynamicI++] = letClause.executeGeneric(frame);
-                    } else {
-                        letClause.executeVoid(frame);
-                    }
-                }
-                if (!letx && dynamicValues != null) {
-                    for (int i = 0; i < dynamicValues.length; i++) {
-                        dynamicValues[i] = dynamicSymbols[i].swapThreadLocalValue(dynamicValues[i]);
-                    }
-                }
-                return dynamicValues == null ? null : ELispLexical.preparePopDynamic(dynamicSymbols, dynamicValues);
-            }
-
-            @Override
-            public void executeVoid(VirtualFrame frame) {
-                ELispExpressionNode bodyNode = updateClauses();
-                try (ELispLexical.Dynamic _ = executeClauses(frame)) {
-                    bodyNode.executeVoid(frame);
-                }
-            }
-
-            @Override
-            public Object executeGeneric(VirtualFrame frame) {
-                ELispExpressionNode bodyNode = updateClauses();
-                try (ELispLexical.Dynamic _ = executeClauses(frame)) {
-                    return bodyNode.executeGeneric(frame);
-                }
-            }
-
-            @Override
-            public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-                updateClauses();
-                return this;
-            }
-        }
     }
 
     /**
@@ -1322,33 +1154,19 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode bodyNode;
 
-            private final Assumption hasNoClosureCreation;
-
             public RepeatingBodyNode(Object test, Object[] body, Assumption hasNoClosureCreation) {
                 condition = ELispInterpretedNode.create(test);
                 bodyNode = FProgn.progn(body);
-                this.hasNoClosureCreation = hasNoClosureCreation;
             }
 
             @Override
             public boolean executeRepeating(VirtualFrame frame) {
-                try {
-                    if (isNil(condition.executeGeneric(frame))) {
-                        return false;
-                    } else {
-                        bodyNode.executeVoid(frame);
-                        return true;
-                    }
-                } finally {
-                    if (!hasNoClosureCreation.isValid()) {
-                        ELispLexical.updateInnerClosures(frame.materialize(), this);
-                    }
+                if (isNil(condition.executeGeneric(frame))) {
+                    return false;
+                } else {
+                    bodyNode.executeVoid(frame);
+                    return true;
                 }
-            }
-
-            public void notifyScopeUpdateNeeded() {
-                hasNoClosureCreation.invalidate();
-
             }
         }
 
@@ -1738,6 +1556,9 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @CompilerDirectives.CompilationFinal
             private int slot = ERROR_SLOT_UNINITIALIZED;
+            @CompilerDirectives.CompilationFinal
+            @Nullable
+            private ELispLexical lexicalBlock = null;
 
             public ConditionCaseNode(Object bodyform, int finalSuccessIndex, @Nullable Object[] handlerBodies, Object[] conditionNames, Object var) {
                 this.finalSuccessIndex = finalSuccessIndex;
@@ -1796,21 +1617,22 @@ public class BuiltInEval extends ELispBuiltIns {
                         @Nullable Object body = handlerBodies[i];
                         handlers[i] = body == null ? null : FProgn.progn(asCons(body).toArray());
                     }
-                    ELispLexical parent = ELispLexical.getScope(this);
                     if (isNil(symbol)) {
                         slot = ERROR_SLOT_NIL;
-                    } else if (parent == null) {
-                        slot = ERROR_SLOT_DYNAMIC;
                     } else {
-                        @Nullable ELispLexical scope = parent.fork();
-                        slot = scope.addVariable(this, symbol);
-                        if (slot < ELispLexical.MAX_SLOTS) {
-                            frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Object);
-                        }
-                        for (int i = 0; i < handlers.length; i++) {
-                            @Nullable ELispExpressionNode inner = handlers[i];
-                            if (inner != null) {
-                                handlers[i] = new ScopeWrapperNode(inner, scope);
+                        @Nullable ELispLexical block = ELispLexical.newBlock(this, new ELispSymbol[]{symbol});
+                        this.lexicalBlock = block;
+                        if (block == null) {
+                            slot = ERROR_SLOT_DYNAMIC;
+                        } else {
+                            slot = block.slots()[0];
+                            block.descriptor().setSlotKind(slot, FrameSlotKind.Object);
+                            ELispLexical.Scope scope = block.newScope(1);
+                            for (int i = 0; i < handlers.length; i++) {
+                                @Nullable ELispExpressionNode inner = handlers[i];
+                                if (inner != null) {
+                                    handlers[i] = new ScopeWrapperNode(inner, scope);
+                                }
                             }
                         }
                     }
@@ -1830,11 +1652,12 @@ public class BuiltInEval extends ELispBuiltIns {
                         return handler.executeGeneric(frame);
                     }
                     if (slot == ERROR_SLOT_DYNAMIC) {
-                        try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(symbol, data)) {
+                        try (Dynamic _ = Dynamic.pushDynamic(symbol, data)) {
                             return handler.executeGeneric(frame);
                         }
                     }
-                    ELispLexical.setVariable(frame, slot, data);
+                    frame = Objects.requireNonNull(lexicalBlock).newFrame(frame);
+                    frame.setObject(slot, data);
                     return handler.executeGeneric(frame);
                 } catch (ELispSignals.ELispSignalException newException) {
                     if (e != null) {
@@ -2694,7 +2517,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return FBacktraceFrameInternal.backtraceFrames((_, frame) -> {
                 Node node = frame.getCallNode();
                 Frame f = frame.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-                @Nullable ELispLexical lexical = null;
+                ELispLexical.@Nullable Scope lexical = null;
                 if (node != null) {
                     lexical = ELispLexical.getScope(node);
                 }
@@ -2702,8 +2525,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     // TODO: dynamic
                     return false;
                 }
-                return lexical.toAssocList(f);
+                return lexical.getRootScope().toAssocList(f);
             }, nframes, base);
         }
     }
+
 }

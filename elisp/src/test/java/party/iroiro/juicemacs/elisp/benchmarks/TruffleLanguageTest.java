@@ -15,8 +15,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TruffleLanguageTest {
+    /// Tests a basic bytecode compiler
     @Test
-    public void test() {
+    public void testBytecode() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
         builder.addSlots(1, FrameSlotKind.Int);
         RootNode rootNode = new RootNode(null, builder.build()) {
@@ -60,6 +61,147 @@ public class TruffleLanguageTest {
                         return frame.getInt(0);
                 }
             }
+        }
+    }
+
+    /// Tests whether materialized frames are inlined
+    @Test
+    public void testMaterializedFrame() {
+        LexicalScopeAddNode ast = new LexicalScopeAddNode(
+                new LexicalScopeReadArgNode(),
+                new LexicalScopeNode(
+                        new LexicalScopeAddNode(
+                                new LexicalScopeAddNode(
+                                        new LexicalScopeConstantNode(100),
+                                        new LexicalScopeUpperNode(1, 1)
+                                ),
+                                new LexicalScopeAccessNode(1)
+                        )
+                )
+        );
+
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlots(1, FrameSlotKind.Object);
+        builder.addSlots(1, FrameSlotKind.Int);
+        RootNode rootNode = new RootNode(null, builder.build()) {
+            @SuppressWarnings("FieldMayBeFinal")
+            @Child
+            LexicalNode body = ast;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return body.execute(frame);
+            }
+        };
+        DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(rootNode.getCallTarget());
+        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+            assertEquals(i * 3 + 200, callNode.call(i));
+        }
+    }
+
+    public abstract static class LexicalNode extends Node {
+        public abstract Object execute(VirtualFrame frame);
+    }
+
+    public static final class LexicalScopeNode extends LexicalNode {
+        private static final Object[] EMPTY_ARRAY = new Object[0];
+        private final FrameDescriptor descriptor;
+        @Child
+        public LexicalNode lexicalNode;
+
+        public LexicalScopeNode(LexicalNode lexicalNode) {
+            this.lexicalNode = lexicalNode;
+            FrameDescriptor.Builder descriptor = FrameDescriptor.newBuilder();
+            descriptor.addSlots(1, FrameSlotKind.Object);
+            descriptor.addSlots(1, FrameSlotKind.Int);
+            this.descriptor = descriptor.build();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            VirtualFrame newFrame = Truffle.getRuntime().createVirtualFrame(EMPTY_ARRAY, descriptor);
+            newFrame.setObject(0, frame.materialize());
+            return lexicalNode.execute(newFrame);
+        }
+    }
+
+    public static final class LexicalScopeAccessNode extends LexicalNode {
+        private final int slot;
+
+        public LexicalScopeAccessNode(int slot) {
+            this.slot = slot;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getInt(slot);
+        }
+    }
+
+    public static final class LexicalScopeUpperNode extends LexicalNode {
+        private final int slot;
+        private final int level;
+
+        public LexicalScopeUpperNode(int slot, int level) {
+            this.slot = slot;
+            this.level = level;
+        }
+
+        @ExplodeLoop
+        private VirtualFrame getFrame(VirtualFrame frame) {
+            for (int i = 0; i < level; i++) {
+                frame = fastCast(frame.getObject(0));
+            }
+            return frame;
+        }
+
+        @SuppressWarnings("unchecked")
+        private <T> T fastCast(Object o) {
+            return (T) o;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return getFrame(frame).getInt(slot);
+        }
+    }
+
+    public static final class LexicalScopeAddNode extends LexicalNode {
+        @Child
+        public LexicalNode left;
+        @Child
+        public LexicalNode right;
+
+        public LexicalScopeAddNode(LexicalNode left, LexicalNode right) {
+            this.left = left;
+            this.right = right;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int i = (Integer) left.execute(frame) + (Integer) right.execute(frame);
+            frame.setInt(1, i);
+            return i;
+        }
+    }
+
+    public static final class LexicalScopeConstantNode extends LexicalNode {
+        final Integer value;
+        public LexicalScopeConstantNode(int value) {
+            this.value = value;
+        }
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return value;
+        }
+    }
+
+    public static final class LexicalScopeReadArgNode extends LexicalNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object argument = frame.getArguments()[0];
+            frame.setInt(1, (Integer) argument);
+            return argument;
         }
     }
 }

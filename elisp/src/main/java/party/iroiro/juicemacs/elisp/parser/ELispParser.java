@@ -13,7 +13,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.LocatedToken;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -316,7 +316,7 @@ public class ELispParser {
             ELispLanguage language,
             InternContext context,
             Source source,
-            @Nullable ELispLexical debugScope
+            ELispLexical.@Nullable Scope debugScope
     ) throws IOException {
         ELispParser parser = new ELispParser(context, source);
         ELispExpressionNode expr = ELispInterpretedNode.createRoot(parser.parse(source), debugScope);

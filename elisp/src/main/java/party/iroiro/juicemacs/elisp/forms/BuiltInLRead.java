@@ -11,8 +11,8 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -161,7 +161,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 return false;
             }
             ELispRootNode root = loadFilePureJava(language, path);
-            try (ELispLexical.Dynamic _ = ELispLexical.pushDynamic(LOAD_FILE_NAME, new ELispString(path.getName()))) {
+            try (Dynamic _ = Dynamic.pushDynamic(LOAD_FILE_NAME, new ELispString(path.getName()))) {
                 root.getCallTarget().call(caller);
             }
             return true;

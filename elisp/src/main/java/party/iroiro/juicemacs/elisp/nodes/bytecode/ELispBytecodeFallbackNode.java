@@ -14,6 +14,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
+import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
@@ -1214,19 +1215,18 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
 
     /// Reads values from [VirtualFrame]
     ///
-    /// ## Why don't use [ELispFrameSlotNode]
+    /// ## Why don't use `ELispFrameSlotRead/WriteNode`
     ///
     /// In node-based Lisp interpreter ([ELispInterpretedNode]), we rely on two nodes
-    /// from [ELispFrameSlotNode] to read from/write to stack frames. They wrap primitive
+    /// ([party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode] and
+    /// [party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode])
+    /// to read from/write to stack frames. They wrap primitive
     /// in mutable containers to reduce GC pressure (reducing primitive boxing costs).
     ///
     /// However, we choose to differ in this bytecode interpreter because a primitive
     /// container will not save too much boxing in this case: bytecodes reuse stack
     /// slots, and if the slot of a primitive overlaps with a non-primitive (which
     /// is very likely in bytecodes), we still need boxing & unboxing.
-    ///
-    /// Also, [ELispFrameSlotNode ELispFrameSlotNodes] have been abused to read arguments
-    /// too
     static class ReadStackSlotNode extends ELispExpressionNode {
         final int i;
         ReadStackSlotNode(int i) {
@@ -1279,7 +1279,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
 
         void bind(ELispSymbol symbol, Object value) {
-            bindings.add(ELispLexical.pushDynamic(symbol, value));
+            bindings.add(Dynamic.pushDynamic(symbol, value));
         }
 
         void saveCurrentBuffer(Object buffer) {
@@ -1302,7 +1302,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             for (int i = 0; i < count; i++) {
                 try {
                     switch (bindings.removeLast()) {
-                        case ELispLexical.Dynamic d -> d.close();
+                        case Dynamic d -> d.close();
                         case SaveCurrentBuffer(Object buffer) ->
                                 BuiltInBuffer.FSetBuffer.setBuffer(buffer);
                         case SaveExcursion(ELispBuffer buffer, ELispMarker marker) -> {

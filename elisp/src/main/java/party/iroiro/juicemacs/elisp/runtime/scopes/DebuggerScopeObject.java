@@ -10,11 +10,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispFrameSlotNode;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.ArrayList;
@@ -22,7 +21,7 @@ import java.util.ArrayList;
 @ExportLibrary(InteropLibrary.class)
 public record DebuggerScopeObject(
         ELispContext context,
-        ELispLexical lexical,
+        ELispLexical.Scope lexical,
         MaterializedFrame frame
 ) implements TruffleObject {
     @ExportMessage
@@ -58,20 +57,23 @@ public record DebuggerScopeObject(
     @ExportMessage
     public Object getMembers(boolean includeInternal) {
         ArrayList<ELispString> members = new ArrayList<>();
-        ELispLexical scope = lexical;
+        ELispLexical.Scope scope = lexical;
         while (scope != null) {
-            for (ELispSymbol symbol : scope.symbols()) {
-                members.add(new ELispString(symbol.name()));
+            int limit = scope.limit();
+            for (int i = limit - 1; i >= 0; i--) {
+                if (scope.block().slots()[i] != ELispLexical.DYNAMIC_VARIABLE_SLOT) {
+                    members.add(new ELispString(scope.block().getSymbol(i).name()));
+                }
             }
-            scope = scope.parentScope();
+            scope = scope.block().upperScope();
         }
         return new ELispVector(members.toArray());
     }
 
     @ExportMessage
     public boolean isMemberReadable(String member) {
-        int ref = lexical.getSlot(context.intern(member));
-        return ref != ELispLexical.NON_VAR_SLOT0;
+        ELispLexical.@Nullable LexicalReference ref = lexical.getReference(context.intern(member));
+        return ref != null && ref.frame() == null;
     }
 
     @ExportMessage
@@ -80,7 +82,7 @@ public record DebuggerScopeObject(
         if (ref == null) {
             throw UnsupportedMessageException.create();
         }
-        ELispExpressionNode read = ELispFrameSlotNode.createRead(ref.index(), ref.frame());
+        ELispExpressionNode read = ELispFrameSlotReadNode.createRead(ref);
         return read.executeGeneric(frame);
     }
 
@@ -96,19 +98,19 @@ public record DebuggerScopeObject(
 
     @ExportMessage
     public boolean hasScopeParent() {
-        return lexical.parentScope() != null;
+        return lexical.block().upperScope() != null;
     }
 
     @ExportMessage
     public DebuggerScopeObject getScopeParent() throws UnsupportedMessageException {
-        @Nullable ELispLexical parent = lexical.parentScope();
+        ELispLexical.@Nullable Scope parent = lexical.block().upperScope();
         if (parent == null) {
             throw UnsupportedMessageException.create();
         }
         return new DebuggerScopeObject(
                 context,
                 parent,
-                lexical.materializedParent() == null ? frame : lexical.materializedParent()
+                lexical.block().parentFrame() == null ? ELispLexical.getFrameSlot(frame) : lexical.block().parentFrame()
         );
     }
 }

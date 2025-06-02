@@ -21,7 +21,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -119,7 +119,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
-        @Nullable ELispLexical scope = ELispLexical.getScope(request.getLocation());
+        ELispLexical.@Nullable Scope scope = ELispLexical.getScope(request.getLocation());
         return ELispParser.parseDebugEval(this, ELispContext.get(null), request.getSource(), scope);
     }
 

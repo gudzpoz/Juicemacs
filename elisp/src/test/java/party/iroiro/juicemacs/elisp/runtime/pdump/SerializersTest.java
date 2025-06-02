@@ -1,19 +1,14 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.apache.fury.Fury;
 import org.apache.fury.config.Language;
 import org.apache.fury.memory.MemoryBuffer;
-import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.junit.jupiter.api.Test;
-import party.iroiro.juicemacs.elisp.runtime.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.HashMap;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -86,46 +81,6 @@ public class SerializersTest {
         assertEquals(hashtable.size(), restored.size());
         assertEquals(2L, restored.get(1L));
         assertEquals(4L, restored.get(3L));
-    }
-
-    @Test
-    public void testELispLexical() {
-        ELispLexical.Allocator allocator = new ELispLexical.Allocator();
-        ELispLexical lexical = ELispLexical.newRoot();
-        lexical.addVariable(allocator, new ELispSymbol("arg1"));
-        lexical.addVariable(allocator, new ELispSymbol("arg2"));
-        lexical = lexical.fork();
-        lexical.addVariable(allocator, new ELispSymbol("var1"));
-        lexical.addVariable(allocator, new ELispSymbol("var2"));
-        MaterializedFrame frame = Truffle.getRuntime().createMaterializedFrame(new Object[0], ELispLexical.frameDescriptor(true));
-        lexical = lexical.fork().withParentFrame(frame);
-        lexical.addVariable(allocator, new ELispSymbol("var3"));
-
-        ELispLexical restored = roundTrip(lexical);
-        while (restored != null && lexical != null) {
-            assertEquals(
-                    lexical.materializedParent() == null,
-                    restored.materializedParent() == null
-            );
-            assertEquals(
-                    lexical.parentScope() == null,
-                    restored.parentScope() == null
-            );
-
-            IntArrayList expectedSlots = lexical.slots();
-            IntArrayList slots = restored.slots();
-            assertEquals(expectedSlots, slots);
-
-            List<ELispSymbol> expectedSymbols = lexical.symbols();
-            List<ELispSymbol> symbols = restored.symbols();
-            assertEquals(expectedSlots.size(), symbols.size());
-            for (int i = 0; i < expectedSlots.size(); i++) {
-                assertEquals(expectedSymbols.get(i).name(), symbols.get(i).name());
-            }
-
-            lexical = lexical.parentScope();
-            restored = restored.parentScope();
-        }
     }
 
     @Test
