@@ -125,7 +125,7 @@ public final class ELispCodings {
 
         CODING_SYSTEM_LIST.setValue(new ELispCons(name, CODING_SYSTEM_LIST.getValue()));
         ELispString nameString = new ELispString(name.name());
-        Object assoc = BuiltInFns.FAssoc.assoc(nameString, CODING_SYSTEM_ALIST.getValue(), false);
+        Object assoc = BuiltInFns.FAssoc.assocEqual(nameString, CODING_SYSTEM_ALIST.getValue());
         if (isNil(assoc)) {
             CODING_SYSTEM_ALIST.setValue(new ELispCons(
                     new ELispCons(nameString),

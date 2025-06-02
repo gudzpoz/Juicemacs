@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 
+import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
@@ -1122,19 +1123,25 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FAssoc extends ELispBuiltInBaseNode {
         @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static Object assoc(Object key, Object alist, Object testfn) {
-            if (isNil(alist)) {
-                return false;
-            }
+        public Object assoc(
+                Object key, Object alist, Object testfn,
+                @Cached(inline = true) FuncallDispatchNode dispatchNode
+        ) {
             if (testfn == EQ) {
                 return FAssq.assq(key, alist);
             }
             if (isNil(testfn) || testfn == EQUAL) {
-                return assocEqual(key, asCons(alist));
+                return assocEqual(key, alist);
             }
+            if (isNil(alist)) {
+                return false;
+            }
+            Object[] args = new Object[2];
+            args[0] = key;
             for (Object e : asCons(alist)) {
                 if (e instanceof ELispCons cons) {
-                    Object p = BuiltInEval.FFuncall.funcall(null, testfn, cons.car(), key);
+                    args[1] = cons.car();
+                    Object p = dispatchNode.executeDispatch(this, testfn, args);
                     if (!isNil(p)) {
                         return cons;
                     }
@@ -1143,8 +1150,11 @@ public class BuiltInFns extends ELispBuiltIns {
             return false;
         }
 
-        private static Object assocEqual(Object key, ELispCons alist) {
-            for (Object e : alist) {
+        public static Object assocEqual(Object key, Object alist) {
+            if (isNil(alist)) {
+                return false;
+            }
+            for (Object e : asCons(alist)) {
                 if (e instanceof ELispCons cons) {
                     if (FEqual.equal(cons.car(), key)) {
                         return cons;
@@ -1519,19 +1529,50 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "plist-get", minArgs = 2, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FPlistGet extends ELispBuiltInBaseNode {
-        @Specialization
-        public Object plistGet(Object plist, Object prop, Object predicate) {
+        public static boolean useEq(Object predicate) {
+            return isNil(predicate) || predicate == EQ;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Specialization(guards = "useEq(predicate)")
+        public static Object plistGetEq(Object plist, Object prop, Object predicate) {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
             }
-            ELispSymbol eq = isNil(predicate) ? EQ : asSym(predicate);
-            Iterator<Object> iterator = cons.iterator();
+            ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(0);
             try {
+                while (iterator.hasNext()) {
+                    Object key = iterator.next();
+                    if (BuiltInData.FEq.eq(prop, key)) {
+                        return iterator.next();
+                    }
+                    iterator.next();
+                }
+            } catch (NoSuchElementException ignored) {
+            }
+            return false;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Specialization(replaces = "plistGetEq")
+        public static Object plistGet(
+                Object plist, Object prop, Object predicate,
+                @Bind Node node,
+                @Cached(inline = true) FuncallDispatchNode dispatchNode
+        ) {
+            if (!(plist instanceof ELispCons cons)) {
+                return false;
+            }
+            if (useEq(predicate)) {
+                return plistGetEq(plist, prop, predicate);
+            }
+            try {
+                Iterator<Object> iterator = cons.iterator();
                 Object[] args = new Object[2];
                 args[0] = prop;
                 while (iterator.hasNext()) {
                     args[1] = iterator.next();
-                    if (!isNil(BuiltInEval.FFuncall.funcall(this, eq, args))) {
+                    if (!isNil(dispatchNode.executeDispatch(node, predicate, args))) {
                         return iterator.next();
                     }
                     iterator.next();
