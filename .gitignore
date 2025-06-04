@@ -1,5 +1,10 @@
 # emacs-extractor output
 elisp/extraction.json
+# pdump output
+*.pdmp
+# elisp files
+*.elc
+*.eln
 
 # Ignore Gradle project-specific cache directory
 .gradle

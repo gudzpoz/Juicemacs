@@ -28,7 +28,8 @@ tasks.register('jvmCmd') {
 
     doLast {
         var classpath = tasks.run.classpath
-        var cmd = "java -cp ${classpath.asPath} ${application.mainClass.get()}"
+        var graalRuntimeArgs = graalArgs.collect { "\"${((String) it).replace("\"", "\\\"")}\"" }.join(" ")
+        var cmd = "java ${graalRuntimeArgs} -cp ${classpath.asPath} ${application.mainClass.get()}"
         println(cmd)
     }
 }

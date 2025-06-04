@@ -4,18 +4,45 @@
 
 plugins {
     id 'java'
-    id 'jacoco'
     id 'pmd'
+    // // JaCoCo transforms the bytecode, which severely impacts how
+    // // Graal/Truffle JIT compile the program.
+    // // (For example, it introduces concurrency constructs to pass
+    // // signals for code coverage, which Graal/Truffle will try to
+    // // inline-&-compile and will eventually bail out because it is
+    // // just too complex.)
+    // id 'jacoco'
 }
 
 repositories {
     mavenCentral()
 }
 
+List<String> getGraalVMArgs() {
+    boolean isGraalVM = file("${System.getProperty("java.home")}/lib/graalvm").exists()
+    List<String> graalArgs = []
+    if (!isGraalVM) {
+        var classpath = configurations.create('compilerClasspath') {
+            canBeResolved = true
+        }
+        dependencies {
+            compilerClasspath "org.graalvm.compiler:compiler:${truffleVersion}"
+        }
+        var jars = classpath.filter { it.name.endsWith(".jar") }  // Filter out POMs
+        graalArgs += [
+                '-XX:+UnlockExperimentalVMOptions',
+                '-XX:+EnableJVMCI',
+                "--upgrade-module-path=${jars.asPath}",
+        ]
+    }
+    return graalArgs
+}
+
 ext {
     eclipseCollectionsVersion = '11.1.0'
     pmdVersion = '7.7.0'
     truffleVersion = '24.2.1'
+    graalArgs = getGraalVMArgs()
 }
 
 dependencies {
@@ -34,9 +61,4 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(23)
     }
-}
-
-test {
-     // Always generate JaCoCo report after tests run
-    finalizedBy jacocoTestReport
 }
