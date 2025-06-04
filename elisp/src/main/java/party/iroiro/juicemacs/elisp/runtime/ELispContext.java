@@ -237,6 +237,9 @@ public final class ELispContext implements ELispParser.InternContext {
 
         @Override
         public void write(MemoryBuffer buffer, ELispContext context) {
+            DumpUtils.writeAnchor(fury, buffer, Boolean.FALSE);
+            DumpUtils.writeAnchor(fury, buffer, Boolean.TRUE);
+
             for (ELispSymbol[] symbols : ELispGlobals.getAllSymbols()) {
                 DumpUtils.writeAnchors(fury, buffer, symbols);
             }
@@ -259,6 +262,9 @@ public final class ELispContext implements ELispParser.InternContext {
 
         @Override
         public ELispContext read(MemoryBuffer buffer) {
+            DumpUtils.readAnchor(fury, buffer, Boolean.FALSE);
+            DumpUtils.readAnchor(fury, buffer, Boolean.TRUE);
+
             for (ELispSymbol[] symbols : ELispGlobals.getAllSymbols()) {
                 DumpUtils.readAnchors(fury, buffer, symbols);
             }

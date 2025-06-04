@@ -11,6 +11,8 @@ import party.iroiro.juicemacs.mule.MuleString;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.EQ;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 
 public class SerializersTest {
     private Fury getFury() {
@@ -77,7 +79,22 @@ public class SerializersTest {
         ELispHashtable hashtable = new ELispHashtable();
         hashtable.put(1L, 2L);
         hashtable.put(3L, 4L);
-        ELispHashtable restored = roundTrip(hashtable);
+
+        Fury fury = getFury();
+        MemoryBuffer buffer = MemoryBuffer.newHeapBuffer(4096);
+        DumpUtils.writeAnchor(fury, buffer, EQ);
+        DumpUtils.writeAnchor(fury, buffer, NIL);
+        DumpUtils.writeAnchor(fury, buffer, Boolean.FALSE);
+        fury.serialize(buffer, hashtable);
+        int expectedSize = buffer.writerIndex();
+
+        DumpUtils.readAnchor(fury, buffer, EQ);
+        DumpUtils.readAnchor(fury, buffer, NIL);
+        DumpUtils.readAnchor(fury, buffer, Boolean.FALSE);
+        Object deserializedObject = fury.deserialize(buffer);
+        assertEquals(expectedSize, buffer.readerIndex());
+
+        ELispHashtable restored = (ELispHashtable) deserializedObject;
         assertEquals(hashtable.size(), restored.size());
         assertEquals(2L, restored.get(1L));
         assertEquals(4L, restored.get(3L));
