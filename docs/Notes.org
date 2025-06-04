@@ -283,6 +283,12 @@ This improves the performance a little bit. However, after this, we changed
 brings a ~3x performance boost and we run =mandelbrot= almost as fast as Java
 now.
 
+**** Re-re-implementation
+
+Now we follow what GraalJs does and implement dynamic variable slot allocation
+by creating a frame chain. It turns out that Graal/Truffle does an amazing job
+at optimizing materialized frames away.
+
 *** The Graal Truffle tutorial series by Adam Ruka
 
 #+begin_src js

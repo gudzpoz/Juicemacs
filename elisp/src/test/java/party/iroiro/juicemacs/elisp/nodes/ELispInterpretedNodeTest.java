@@ -36,25 +36,12 @@ public class ELispInterpretedNodeTest {
 
                      ;; macro #2 (quoted with #')
                      (defalias 'x (cons 'macro #'(lambda (v) (list 'and v 1))))
-                     (setq the-value (test-changing-func)) ; macro -> (and (* 10 form-change-var) 1) -> 1
-                     (setq result (+ result the-value)) ; 110 + 1 -> 111
+                     (setq the-value (test-changing-func))
+                     ;; macro -> (and (* 10 form-change-var) 1) -> 1? No!
 
-                     ;; macro #1 (quoted with ')
-                     (defalias 'x (cons 'macro '(lambda (v) (list 'cdr (list 'quote v)))))
-                     (setq the-cons (test-changing-func)) ; macro -> '(10 form-change-var)
-                     (setq result (+ result (car the-cons))) ; 111 + 10 -> 121
-
-                     ;; macro #2 (quoted with ')
-                     (defalias 'x (cons 'macro '(lambda (v) (list 'and v 1))))
-                     (setq the-value (test-changing-func)) ; macro -> (and (* 10 form-change-var) 1) -> 1
-                     (setq result (+ result the-value)) ; 121 + 1 -> 122
-
-                     (defalias 'x (symbol-function #'quote))
-                     (setq the-cons (test-changing-func)) ; quote -> '(* 10 form-change-var)
-                     (setq result (+ result (* 100 (elt the-cons 1)))) ; 122 + 10 * 100 -> 1122
-                     result)
+                     (+ result (if (numberp the-value) 1 0)))
                     """);
-            assertEquals(1122L, v.asInt());
+            assertEquals(110L, v.asInt());
         }
     }
 }

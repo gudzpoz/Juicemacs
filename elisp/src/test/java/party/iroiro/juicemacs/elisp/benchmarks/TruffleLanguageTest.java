@@ -10,9 +10,12 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 
 public class TruffleLanguageTest {
     /// Tests a basic bytecode compiler
@@ -31,7 +34,7 @@ public class TruffleLanguageTest {
             }
         };
         DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(rootNode.getCallTarget());
-        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+        for (int i = 0; i < 10000; i++) {
             assertEquals(i - 100, callNode.call(i));
         }
     }
@@ -60,6 +63,23 @@ public class TruffleLanguageTest {
                     case RETURN:
                         return frame.getInt(0);
                 }
+            }
+        }
+    }
+
+    @Test
+    public void testChainedMaterializedFrames() {
+        try (Context context = getTestingContext()) {
+            context.eval("elisp", """
+                    ;;; -*- lexical-binding: t -*-
+                    (defalias 'vector-length #'(lambda (x y)
+                      (let ((xx (* x x)))
+                        (let ((yy (* y y)))
+                          (sqrt (+ xx yy))))))
+                    """);
+            for (int i = 0; i < 10000; i++) {
+                Value value = context.eval("elisp", "(vector-length 400 300)");
+                assertEquals(500.0, value.asDouble());
             }
         }
     }
@@ -94,7 +114,7 @@ public class TruffleLanguageTest {
             }
         };
         DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(rootNode.getCallTarget());
-        for (int i = 0; i < Integer.MAX_VALUE; i++) {
+        for (int i = 0; i < 10000; i++) {
             assertEquals(i * 3 + 200, callNode.call(i));
         }
     }

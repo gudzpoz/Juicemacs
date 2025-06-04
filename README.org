@@ -76,6 +76,11 @@ be implemented.)
   Emacs
 - [[file:docs/TODO.org]]: TODO list & DONE list, tracking current/solved challenges
 
+** Blog posts
+
+- [[https://kyo.iroiro.party/en/posts/emacs-lisp-interpreter-with-graalvm-truffle/][Writing a Lisp JIT Interpreter with GraalVM Truffle]]
+- [[https://kyo.iroiro.party/en/posts/why-rewriting-emacs-is-hard/][Why Rewriting Emacs Is Hard]]
+
 * Similar projects
 
 - https://github.com/remacs/remacs

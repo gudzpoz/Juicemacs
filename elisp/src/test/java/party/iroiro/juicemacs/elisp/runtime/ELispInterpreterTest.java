@@ -125,8 +125,10 @@ public class ELispInterpreterTest {
                 Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
                 List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
                 assertEquals("signal", list.getFirst().getRootName());
-                assertEquals("<eval>", list.get(1).getRootName());
+                assertEquals("Unnamed", list.get(1).getRootName());
                 assertEquals(2, list.get(1).getSourceLocation().getStartLine());
+                assertEquals("Unnamed", list.get(2).getRootName());
+                assertEquals(1, list.get(2).getSourceLocation().getStartLine());
             }
             // Inlined
             {

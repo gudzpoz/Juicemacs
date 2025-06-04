@@ -210,40 +210,6 @@ should probably get replaced by a weaker map.
 However, I don't think many people are using non-interned symbols as a value
 container. So it is probably fine.
 
-* TODO [#B] Make functions mutable
-
-Currently in GNU Emacs 29, a function may be a =lambda/closure= cons:
-
-#+begin_src elisp :results value code
-  ;;; -*- lexical-binding: t -*-
-  (defalias 'my-func #'(lambda () 42))
-  (symbol-function 'my-func)
-#+end_src
-
-#+RESULTS:
-#+begin_src elisp
-(lambda nil 42)
-#+end_src
-
-With lexical binding, you will get =(closure (t) nil 42)= instead of =(lambda
-nil 42)=.
-
-Since it is a cons, you may modify it to change the function definition on the
-fly. For the GNU Emacs interpreter, since it literally evaluates the cons, it is
-fine. But for Truffle interpreters, which usually wants a static AST for better
-JIT performance, this is bad news.
-
-Currently, we don't bother checking whether each AST node needs update and the
-function may be considered immutable once the whole AST is constructed. (One
-exception is that we check at each cons node =(maybe-function arg1 ...)= whether
-the target function is changed so as to handle subroutines, functions as well as
-macros.) Also, with our interpreter, =(function (lambda ()))= produces =<a
-closure object>= instead of a cons, which is another behavioral difference.
-
-The current performance is pretty good and we might consider adding more checks
-to ensure a consistent behavior. But we will need some benchmark to ensure it
-does not slow down too much.
-
 * TODO [#A] Bytecode Interpreter & Bootstrapping
 
 Now that [[https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/BytecodeDSL.md][Truffle has a bytecode DSL]], we can probably implement a bytecode
@@ -449,6 +415,45 @@ interop, but otherwise simply using some classes with public member should do.
 
 * Considered Done (For Now)
 
+** CANCELLED [#B] Make functions mutable
+
+#+begin_quote
+EDIT: This is cancelled. Let's simply try to align with the Emacs bytecode
+compiler: this is unsupported.
+#+end_quote
+
+Currently in GNU Emacs 29, a function may be a =lambda/closure= cons:
+
+#+begin_src elisp :results value code
+  ;;; -*- lexical-binding: t -*-
+  (defalias 'my-func #'(lambda () 42))
+  (symbol-function 'my-func)
+#+end_src
+
+#+RESULTS:
+#+begin_src elisp
+(lambda nil 42)
+#+end_src
+
+With lexical binding, you will get =(closure (t) nil 42)= instead of =(lambda
+nil 42)=.
+
+Since it is a cons, you may modify it to change the function definition on the
+fly. For the GNU Emacs interpreter, since it literally evaluates the cons, it is
+fine. But for Truffle interpreters, which usually wants a static AST for better
+JIT performance, this is bad news.
+
+Currently, we don't bother checking whether each AST node needs update and the
+function may be considered immutable once the whole AST is constructed. (One
+exception is that we check at each cons node =(maybe-function arg1 ...)= whether
+the target function is changed so as to handle subroutines, functions as well as
+macros.) Also, with our interpreter, =(function (lambda ()))= produces =<a
+closure object>= instead of a cons, which is another behavioral difference.
+
+The current performance is pretty good and we might consider adding more checks
+to ensure a consistent behavior. But we will need some benchmark to ensure it
+does not slow down too much.
+
 ** DONE [#B] Re-implement lexical scoping
 
 Current implementation of lexical scoping spends too much time book-keeping. For
@@ -528,6 +533,14 @@ frame with a new copy for each loop.
       copy.exitScope(frame, prevFrame);
   }
 #+end_src
+
+*** Re-design
+
+See this blog post: [[https://kyo.iroiro.party/en/posts/emacs-lisp-interpreter-with-graalvm-truffle/#frames-within-frames][Writing a Lisp JIT Interpreter with GraalVM Truffle]].
+Basically, because Graal/Truffle seems to inline =MaterializedFrame= just fine
+(provided that it is used correctly and can be virtualized), we can construct a
+dynamically expanding "frame chain", making space for new variables by adding a
+new linked frame.
 
 ** DONE [#C] =module-info.java=
 

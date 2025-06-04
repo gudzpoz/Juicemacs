@@ -109,7 +109,7 @@ public final class ELispLexical {
     }
 
     public void markAsDynamic(ELispSymbol symbol) {
-        int i = findSymbol(symbol);
+        int i = findSymbol(symbol, frameSlots.length);
         if (i == -1) {
             symbols.add(symbol);
         } else if (i < frameSlots.length) {
@@ -118,8 +118,11 @@ public final class ELispLexical {
     }
 
     /// @return index of symbol in [#symbols], `-1` when not found
-    private int findSymbol(ELispSymbol symbol) {
-        for (int i = 0, size = symbols.size(); i < size; i++) {
+    private int findSymbol(ELispSymbol symbol, int limit) {
+        if (limit == frameSlots.length) {
+            limit = symbols.size();
+        }
+        for (int i = limit - 1; i >= 0; i--) {
             if (symbols.get(i) == symbol) {
                 return i;
             }
@@ -285,7 +288,7 @@ public final class ELispLexical {
             while (scope != null) {
                 int limit = scope.limit;
                 ELispLexical block = scope.block;
-                int i = block.findSymbol(symbol);
+                int i = block.findSymbol(symbol, limit);
                 if (i >= block.frameSlots.length) {
                     return DYNAMIC;
                 }
