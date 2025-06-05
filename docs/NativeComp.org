@@ -1,0 +1,771 @@
+#+title: Extracting Emacs LIMPLE (Native Compilation)
+
+So, instead of re-building a bytecode analyzer (see [[file:Bytecode.org]]), it is
+best we utilize what Emacs' =native-comp= provides: it converts Emacs bytecode
+into LIMPLE, an intermediate representation (IR) suitable for =libgccjit=. If we
+are to use Truffle bytecode DSL, LIMPLE is definitely more convenient than
+bytecode. And this document aims to extract specification for LIMPLE similar to
+what [[file:Bytecode.org]] does.
+
+* LIMPLE Operators
+
+One may think of LIMPLE as structured bytecode, and it also consists of various
+"instructions". Each instruction is a list, led by a symbol - an operator.
+
+These operators are defined in =comp-common.el=, with =comp-limple-ops= holding
+all of them:
+
+#+begin_src elisp
+  (require 'comp-common)
+  (require 'cl-macs)
+  (defvar op-return '(return))
+  (let* ((op-table '((op-return
+                      comp-limple-calls
+                      comp-limple-assignments
+                      comp-limple-branches)))
+         (op-lists (mapcar #'symbol-value (car op-table)))
+         (table-height (apply #'max (mapcar #'length op-lists))))
+    (let ((all-ops (apply #'append op-lists)))
+      (cl-assert (equal (sort comp-limple-ops) (sort all-ops))))
+    (dotimes (i table-height (nreverse op-table))
+      (push (mapcar (lambda (list)
+                      (let ((op (nth i list)))
+                        (if op (format "=%S=" op) "")))
+                    op-lists)
+            op-table)))
+#+end_src
+
+#+RESULTS:
+| op-return | comp-limple-calls | comp-limple-assignments  | comp-limple-branches |
+| =return=  | =call=            | =assume=                 | =jump=               |
+|           | =callref=         | =fetch-handler=          | =cond-jump=          |
+|           | =direct-call=     | =set=                    |                      |
+|           | =direct-callref=  | =setimm=                 |                      |
+|           |                   | =set-par-to-local=       |                      |
+|           |                   | =set-args-to-local=      |                      |
+|           |                   | =set-rest-args-to-local= |                      |
+
+* Data Structures
+
+Emacs =native-comp= organizes LIMPLE instructions and various metadata into a
+dozen data structures:
+
+- Context: src_elisp{(cl-defstruct (comp-ctxt (:include comp-cstr-ctxt)) ...)}
+  - Context with constraints: src_elisp{(cl-defstruct comp-cstr-ctxt)}
+- Function: src_elisp{(cl-defstruct (comp-func (:copier nil)) ...)}
+  - Lexical-scoped function: src_elisp{(cl-defstruct (comp-func-l (:include
+    comp-func)) ...)}
+  - Dynamic-scoped function: src_elisp{(cl-defstruct (comp-func-d (:include
+    comp-func)) ...)}
+- LIMPLE blocks: src_elisp{(cl-defstruct (comp-block ...) ...)}
+  - ...
+- References: src_elisp{(cl-defstruct (comp-mvar (:constructor make--comp-mvar0)) ...)}
+- ...
+
+There are a lot of them and =comp.c= actually accesses these structure data,
+emitting GCC IR. It certainly is much more complex than bytecode... Let's see if
+we can break it down.
+
+** LIMPLE Experiments
+
+Let's first try to native-compile a function to see what happens. Upon async
+native compilation, Emacs launches another Emacs instance and sends LIMPLE data
+over, which we may intercept to take a peek at the intermediate products:
+
+#+begin_src elisp :results discard
+  (require 'cl-macs)
+  (defvar intercept-limple nil)
+  (defvar intercept-limple-products nil)
+  (define-advice delete-file (:before (filename &optional trash))
+    (when (and intercept-limple
+               (string-suffix-p ".el" filename))
+      (cl-assert (string-match-p "emacs-int-comp-" filename))
+      (unless intercept-limple-products
+        (with-temp-buffer
+          (insert-file-contents filename)
+          (setq intercept-limple-products (buffer-string))))))
+
+  (defun intercept-native-compile (symbol)
+    "Returns the contents of the file Emacs sends for native-compilation."
+    (cl-assert (and (symbolp symbol)
+                    (symbol-function symbol)))
+    (let ((native-comp-jit-compilation nil)
+          (intercept-limple t)
+          intercept-limple-products)
+      (native-compile symbol)
+      intercept-limple-products))
+#+end_src
+
+#+RESULTS:
+
+And this is our first function and what it compiles (half-way) to:
+
+#+begin_src elisp :wrap src elisp
+  (defun test-func ()
+    1234567890)
+  (intercept-native-compile 'test-func)
+#+end_src
+
+#+RESULTS:
+#+begin_src elisp
+  ;; -*-coding: utf-8-emacs-unix; -*-
+  (require 'comp)
+  (setf native-comp-verbose 0
+        comp-libgccjit-reproducer nil
+
+        comp-ctxt
+        #s(comp-ctxt (...) ; typeof-types (from `comp-cstr-ctxt')
+                     ...   ; other fields from `comp-cstr-ctxt'
+                     "....eln" ; output
+                     2 ; speed
+                     1 ; safety
+                     0 ; debug
+                     nil   ; compiler-options
+                     nil   ; driver-options
+                     ;; `top-level-forms': list of `byte-to-native-func-def' and more
+                     (...)
+                     ;; `funcs-h': Map<string, comp-func>
+                     #s(hash-table ...)
+                     ;; `sym-to-c-name-h': Map<symbol, string>
+                     #s(hash-table ...)
+                     ;; various other fields
+                     #s(hash-table test equal)   ; `byte-func-to-func-h'
+                     #s(hash-table test equal)   ; `lambda-fixups-h'
+                     #s(hash-table data (0 nil)) ; `function-docs'
+                     ... ; various `comp-data-container' for relocation
+                     nil ; `with-late-load'
+                     )
+
+        native-comp-eln-load-path '(...)
+        native-comp-compiler-options 'nil
+        native-comp-driver-options 'nil
+        byte-compile-warnings 't
+        load-path '(...)
+        )
+  nil
+  (message "Compiling %s..." '"....eln")
+  (comp--final1)
+#+end_src
+
+Well, it's certainly not pretty and it did take me a while to manually
+pretty-format this and the following block. But anyways, since we are compiling
+a function, we are most interested in the =funcs-h= field of the =comp-ctxt=
+data Emacs passed over: [fn:cyclic-read-syntax]
+
+#+begin_src elisp
+  ;;; `funcs-h': #s(hash-table-start
+  ;; key1:
+  "F746573742d66756e63_test_func_0"
+  ;; value1:
+  #s(comp-func-d test-func ; `name': symbol
+                 "F746573742d66756e63_test_func_0" ; `c-name': string
+                 #[nil "\300\207" [1234567890] 1]  ; `byte-func': bytecode-closure
+                 nil ; `doc': string
+                 nil ; `int-spec': form
+                 nil ; `command-modes': what?
+                 ;; `lap': LAP (bytecode)
+                 ((byte-constant 1234567890 . 0) (byte-return . 0))
+                 t ; `ssa-status'
+                 1 ; `frame-size'
+                 0 ; `vframe-size'
+                 ;; `blocks': Map<symbol, comp-block>
+                 #s(hash-table
+                    test eq data
+                    (entry
+                     #3=#s(comp-block-lap entry ; `name'
+                                          ;; `insns': the instructions (LIMPLE!)
+                                          ((comment "Lisp function: test-func") (jump bb_0))
+                                          nil ; `closed'
+                                          ;; `in-edges' & `out-edges': list of `comp-edge'
+                                          nil (#s(comp-edge #3# #6# 0))
+                                          #3# ; `idom': "immediate dominator"?
+                                          #s(hash-table) ; `df': "dominator frontier set"?
+                                          1 ; `post-num': post order number
+                                          #s(comp-vec ...) ; `final-frame'
+                                          -1 nil ; `sp' & `addr': used during limpification
+                                          nil ; `non-ret-insn'
+                                          nil ; `no-ret'
+                                          )
+                     bb_0
+                     #6=#s(comp-block-lap bb_0 ; `name'
+                                          ;; `insns'
+                                          ((setimm #4=#s(comp-mvar nil nil ((1234567890 . 1234567890))
+                                                                   nil 21261352245837 0)
+                                                   1234567890)
+                                           (return #4#))
+                                          nil (#s(comp-edge #3# #6# 0)) nil ; `closed', `in-edges', `out-edges'
+                                          #3# #s(hash-table) ; `idom', `df'
+                                          0 ; `post-num'
+                                          #s(comp-vec ...) ; `final-frame'
+                                          -1 0 nil nil)))
+                 ;; `lap-block': label -> block name, `edges-h': number -> edge
+                 #s(hash-table ...) #s(hash-table ...)
+                 ;; `block-cnt-gen', `edge-cnt-gen': two closures
+                 ...
+                 nil ; `has-non-local'
+                 2   ; `speed'
+                 1   ; `safety'
+                 nil ; `pure'
+                 nil ; `declared-type'
+                 #s(comp-mvar nil (nil) nil nil nil nil) ; `return-type'
+                 nil ; `args'
+                 )
+  ;; key2:
+  #8="top_level_run"
+  ;; value2:
+  #s(comp-func-l top-level-run
+                 "top_level_run"
+                 nil nil nil nil nil
+                 t 2 0
+                 ;; `blocks': Map<symbol, comp-block>
+                 #s(hash-table
+                    test eq data
+                    (entry
+                     #s(comp-block-lap entry
+                                       ((comment "Top level")
+                                        (set-par-to-local #11=#s(comp-mvar #9# nil nil nil 21261321342068 0) 0)
+                                        (set #12=#s(comp-mvar #9# nil nil nil 21261321342126 1)
+                                             (call comp--register-subr
+                                                   #s(comp-mvar nil (test-func) nil nil nil nil)
+                                                   #s(comp-mvar nil (#1#) nil nil nil nil)
+                                                   #s(comp-mvar nil (#13=(0 . 0)) nil nil nil nil)
+                                                   #s(comp-mvar nil (nil) nil nil nil nil)
+                                                   #s(comp-mvar nil (nil) nil nil nil nil)
+                                                   #s(comp-mvar nil (#14=(0 nil nil)) nil nil nil nil)
+                                                   #11#))
+                                        (return #12#))
+                                       nil nil nil nil
+                                       #s(hash-table) nil
+                                       #s(comp-vec #s(hash-table data (0 #11# 1 #12#)) 0 2)
+                                       -1 nil nil nil)))
+                 #s(hash-table test equal)
+                 #s(hash-table)
+                 #[0 #7# [(-1)] 2]
+                 #[0 #7# [(-1)] 2]
+                 nil 2 1 nil nil nil
+                 #s(comp-args 1 1))
+  ;;; hashtable-end)
+#+end_src
+
+A mess as it seems, we can still extract some information from =funcs-h=:
+
+- When compiling /one/ function (=test-func=), =native-comp= emits /two/
+  =comp-func=, with one (=top_level_run=) dedicated to registering the function
+  using =comp--register-subr=.
+- The =#s(comp-func-d test-func ...)= function contains two blocks. One is
+  called =entry= and contains only one instruction =(jump bb_0)= that jumps into
+  the function body.
+- =#s(comp-mvar ...)= serves two purposes:
+  - Immediate value: =#s(comp-mvar ... (nil) ... nil)= is just a =nil= immediate
+    value.
+  - Left value container (or stack slot): =#(comp-mvar ... 0)= is stack slot #0.
+
+** Prett Printing
+
+For obvious reasons, I don't want to read through =prin1= clutter like this ever
+again, so let's pretty-print it with =comp--log-func=:
+
+#+begin_src elisp :lexical t :results discard
+  (defun extract-setf-form (results)
+    (with-temp-buffer
+      (insert results)
+      (goto-char (point-min))
+      (let (setf-form)
+        (while (not (eq (car-safe setf-form) 'setf))
+          (setq setf-form (read (current-buffer))))
+        setf-form)))
+
+  (defun prune-mvar-hash (func)
+    (cl-loop
+     for block being the hash-values of (comp-func-blocks func)
+     do
+     (cl-loop
+      for insn in (comp-block-insns block)
+      do
+      (cl-loop
+       for operand in insn
+       do (if (and (comp-mvar-p operand)
+                   (numberp (comp-mvar-id operand)))
+              (setf (comp-mvar-id operand) (or (comp-mvar-slot operand) -1)))))))
+
+  (define-advice comp--prettyformat-mvar (:override (mvar))
+    (let ((slot (comp-mvar-slot mvar))
+          (id (comp-mvar-id mvar))
+          (spec (comp-cstr-to-type-spec mvar)))
+      (cond
+       ((numberp slot) (format "#(mvar@%s)" slot))
+       ((and (null slot) (null id)) (format "#(mvar=%S)" spec))
+       (t (format "#(mvar %s %S)" slot spec)))))
+
+  (defun pp-intercept-native-compile (symbol)
+    (with-temp-buffer
+      (let* ((results (intercept-native-compile 'test-func))
+             (setf-form (extract-setf-form results))
+             (comp-ctxt (plist-get (cdr setf-form) 'comp-ctxt))
+             (funcs-h (comp-ctxt-funcs-h comp-ctxt))
+             (comp-log-buffer-name (current-buffer)))
+        (maphash (lambda (_ func)
+                   (prune-mvar-hash func)
+                   (comp--log-func func -1))
+                 funcs-h)
+        (buffer-string))))
+#+end_src
+
+#+RESULTS:
+
+#+begin_src elisp :wrap src elisp
+  (defun test-func ()
+    1234567890)
+  (pp-intercept-native-compile 'test-func)
+#+end_src
+
+#+RESULTS:
+#+begin_src elisp
+
+Function: test-func
+
+<entry>
+(comment "Lisp function: test-func")
+(jump bb_0)
+<bb_0>
+(setimm #(mvar@0) 1234567890)
+(return #(mvar@0))
+
+Function: top-level-run
+
+<entry>
+(comment "Top level")
+(set-par-to-local #(mvar@0) 0)
+(set #(mvar@1) (call comp--register-subr #(mvar=(member test-func)) #(mvar=(member "F746573742d66756e63_test_func_0")) #(mvar=(member (0 . 0))) #(mvar=null) #(mvar=null) #(mvar=(member (0 nil nil))) #(mvar@0)))
+(return #(mvar@1))
+#+end_src
+
+So much better. Let's play with it a bit more:
+
+- Dynamic function arguments are turned into =symbol-value= invocation:
+
+  #+begin_src elisp :lexical nil :wrap src elisp
+    (defun test-func (arg) arg)
+    (pp-intercept-native-compile 'test-func)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_src elisp
+    ...
+    <entry>
+    (comment "Lisp function: test-func")
+    (jump bb_0)
+    <bb_0>
+    (set #(mvar@0) (call symbol-value #(mvar=(member arg))))
+    (return #(mvar@0))
+    ...
+  #+end_src
+
+- Lexical function arguments are injected by the prologue (=entry= block) with
+  =set-par-to-local=:
+
+  #+begin_src elisp :lexical t :wrap src elisp
+    (defun test-func (arg) arg)
+    (pp-intercept-native-compile 'test-func)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_src elisp
+    ...
+    <entry>
+    (comment "Lisp function: test-func")
+    (set-par-to-local #(mvar@0) 0)
+    (jump bb_0)
+    <bb_0>
+    (return #(mvar@0))
+    ...
+  #+end_src
+
+- Conditional statements are transformed into blocks (with =cond-jump= usages):
+
+  #+begin_src elisp :lexical t :wrap src elisp
+    (defun test-func (arg) (if arg 1 0))
+    (pp-intercept-native-compile 'test-func)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_src elisp
+    ...
+    <entry>
+    (comment "Lisp function: test-func")
+    (set-par-to-local #(mvar@0) 0)
+    (jump bb_0)
+    <bb_0>
+    (set #(mvar@1) #(mvar@0))
+    (cond-jump #(mvar@1) #(mvar=null) bb_2 bb_1)
+    <bb_2>
+    (setimm #(mvar@1) 0)
+    (return #(mvar@1))
+    <bb_1>
+    (setimm #(mvar@1) 1)
+    (return #(mvar@1))
+    ...
+  #+end_src
+
+- Loops are also broken into blocks:
+
+  #+begin_src elisp :lexical t :wrap src elisp
+    (defun test-func () (while (external-func) (step)))
+    (pp-intercept-native-compile 'test-func)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_src elisp
+    ...
+    <entry>
+    (jump bb_0)
+    <bb_0>
+    (setimm #(mvar@0) external-func)
+    (set #(mvar@0) (callref funcall #(mvar@0)))
+    (cond-jump #(mvar@0) #(mvar=null) bb_2 bb_1)
+    <bb_2>
+    (return #(mvar@0))
+    <bb_1>
+    (setimm #(mvar@0) step)
+    (set #(mvar@0) (callref funcall #(mvar@0)))
+    (jump bb_3_latch)
+    <bb_3_latch>
+    (call comp-maybe-gc-or-quit)
+    (jump bb_0)
+    ...
+  #+end_src
+
+  Note that =external-func= and =step= here are also found in the
+  =comp-data-container= fields in =comp-ctxt=, possibly marked for relocation:
+
+  #+begin_src elisp
+    ;;; ...
+    #s(comp-data-container
+       nil #s(hash-table
+              test comp-imm-equal-test data
+              (external-func t nil t step t #32# t)))
+  #+end_src
+
+- Signal handling is hard:
+
+  #+begin_src elisp :lexical t :wrap src elisp
+    (defun test-func () (condition-case err (external-func) (error t)))
+    (pp-intercept-native-compile 'test-func)
+  #+end_src
+
+  #+RESULTS:
+  #+begin_src elisp
+    ...
+    <bb_0>
+    (setimm #(mvar@0) (error))
+    (push-handler condition-case #(mvar@0) bb_3 bb_1)
+    <bb_3>
+    (fetch-handler #(mvar@0))
+    (jump bb_2)
+    <bb_2>
+    (setimm #(mvar@1) t)
+    (return #(mvar@1))
+    <bb_1>
+    (setimm #(mvar@0) external-func)
+    (set #(mvar@0) (callref funcall #(mvar@0)))
+    (pop-handler)
+    (return #(mvar@0))
+    ...
+  #+end_src
+
+Now, we can also notice that many fields in the structs are only used /during/
+LIMPLE optimization. So, next we are going to look into =comp.c= to see what
+actually get used so as to not miss anything.
+
+** TODO Look into what LIMPLE other special forms produce
+
+So =push-handler, pop-handler= are not in =comp-limple-ops=. Emacs bytecode has
+a bunch of op codes for representing special forms like =condition-case= and
+=catch=. We will see how LIMPLE handles them.
+
+* =comp.c=
+
+The real compilation from LIMPLE to binary starts at =comp--final1=, which
+contains no more than five lines of code:
+
+#+begin_src elisp
+  (defun comp--final1 ()
+    (comp--init-ctxt)
+    (unwind-protect
+        (comp--compile-ctxt-to-file (comp-ctxt-output comp-ctxt))
+      (comp--release-ctxt)))
+#+end_src
+
+- =comp--init-ctxt=: It tries to acquire a =gcc_jit_context=, registers a bunch
+  of emitters for inlinable/non-local-exit constructs, and adds Emacs built-in
+  data types to the context.
+- =comp--release-ctxt=: Releases the context.
+
+- =comp--compile-ctxt-to-file=: Does final relocation, checks output file and
+  finally calls =comp--compile-ctxt-to-file0=, jumping into the C side.
+
+** From Lisp Through C Back To Lisp
+
+Because most of the structs (like =comp-ctxt=) are defined with =cl-defstruct=,
+=comp.c= makes heavy use of macros like =CALL1I, CALL2I, CALL3I, ...= so as to
+access fields in these structs. Let's try to extract what Lisp function it
+calls:
+
+#+begin_src elisp
+  (defvar CALLNI-functions nil)
+  (with-temp-buffer
+    (insert-file-contents "../elisp/emacs/src/comp.c")
+    (goto-char (point-min))
+    (let (functions)
+      (while (search-forward-regexp "CALL\\([0-9N]\\)I[[:space:]]*(\\([^,)]+\\)\\(:?,\\|)\\)" nil t)
+        (let ((function (string-trim (match-string 2)))
+              (n (read (match-string 1))))
+          (when (not (string= function "fun"))
+            (push (list n function) functions))))
+      (setq CALLNI-functions (seq-uniq (sort functions :key #'cadr)))
+      (cons (list "CALL[N]I" "Function Name") CALLNI-functions)))
+#+end_src
+
+#+RESULTS:
+| CALL[N]I | Function Name                 |
+|        0 | backtrace                     |
+|        2 | cl-typep                      |
+|        1 | comp-args-max                 |
+|        1 | comp-block-insns              |
+|        1 | comp-clean-up-stale-eln       |
+|        1 | comp-cstr-imm                 |
+|        1 | comp-cstr-imm-vld-p           |
+|        1 | comp-ctxt-byte-func-to-func-h |
+|        1 | comp-ctxt-compiler-options    |
+|        1 | comp-ctxt-d-default           |
+|        1 | comp-ctxt-d-ephemeral         |
+|        1 | comp-ctxt-d-impure            |
+|        1 | comp-ctxt-debug               |
+|        1 | comp-ctxt-driver-options      |
+|        1 | comp-ctxt-funcs-h             |
+|        1 | comp-ctxt-function-docs       |
+|        1 | comp-ctxt-speed               |
+|        1 | comp-data-container-idx       |
+|        1 | comp-data-container-l         |
+|        2 | comp-delete-or-replace-file   |
+|        1 | comp-func-blocks              |
+|        1 | comp-func-c-name              |
+|        1 | comp-func-frame-size          |
+|        1 | comp-func-has-non-local       |
+|        1 | comp-func-l-args              |
+|        1 | comp-func-l-p                 |
+|        1 | comp-func-name                |
+|        1 | comp-func-safety              |
+|        1 | comp-func-speed               |
+|        1 | comp-mvar-slot                |
+|        2 | comp-mvar-type-hint-match-p   |
+|        1 | comp-nargs-p                  |
+|        1 | file-name-base                |
+|        1 | file-name-sans-extension      |
+|        1 | hash-table-count              |
+|        2 | make-directory                |
+|        4 | make-temp-file                |
+|        1 | split-string                  |
+
+We want to know what fields in these =cl-struct= objects the compiler needs
+access to (so as to write our compiler), so let's try to extract them out of
+these function names:
+
+#+begin_src elisp :wrap details
+  (require 'pcase)
+  (with-temp-buffer
+    (pcase-dolist (`(,n ,name) CALLNI-functions)
+      (when (string-prefix-p "comp-" name)
+        (let* ((symbol (intern-soft name))
+               (function (symbol-function symbol))
+               (doc (function-documentation function))
+               (doc-parts (if doc (string-split doc "\n\n") '("nil" "(fn ...)")))
+               (doc (string-replace "\n" "\n  "(car doc-parts)))
+               (sig (string-replace "fn" name (cadr doc-parts))))
+          (cl-assert (and symbol function))
+          (cl-assert (length= doc-parts 2))
+          (insert (format "- =%s= ::\n  %s\n" sig doc)))))
+    (pcase-dolist (`(,regexp . ,replace)
+                   '(("`\\([A-Za-z-]+\\)'" . "=\\1=")
+                     ("\n[[:space:]]+" . "\n  ")))
+      (goto-char (point-min))
+      (while (re-search-forward regexp nil t)
+        (replace-match replace nil nil)))
+    (buffer-string))
+#+end_src
+
+#+RESULTS:
+#+begin_details
+- =(comp-args-max CL-X)= ::
+  Access slot "max" of =comp-args= struct CL-X.
+  Maximum number of arguments allowed.
+- =(comp-block-insns CL-X)= ::
+  Access slot "insns" of =comp-block= struct CL-X.
+  List of instructions.
+- =(comp-clean-up-stale-eln FILE)= ::
+  Remove all FILE*.eln* files found in =native-comp-eln-load-path=.
+  The files to be removed are those produced from the original source
+  filename (including FILE).
+- =(comp-cstr-imm CSTR)= ::
+  Return the immediate value of CSTR.
+  =comp-cstr-imm-vld-p= *must* be satisfied before calling
+  =comp-cstr-imm=.
+- =(comp-cstr-imm-vld-p CSTR)= ::
+  Return t if one and only one immediate value can be extracted from CSTR.
+- =(comp-ctxt-byte-func-to-func-h CL-X)= ::
+  Access slot "byte-func-to-func-h" of =comp-ctxt= struct CL-X.
+  byte-function -> comp-func.
+  Needed to replace immediate byte-compiled lambdas with the compiled reference.
+- =(comp-ctxt-compiler-options CL-X)= ::
+  Access slot "compiler-options" of =comp-ctxt= struct CL-X.
+  Options for the GCC compiler.
+- =(comp-ctxt-d-default CL-X)= ::
+  Access slot "d-default" of =comp-ctxt= struct CL-X.
+  Standard data relocated in use by functions.
+- =(comp-ctxt-d-ephemeral CL-X)= ::
+  Access slot "d-ephemeral" of =comp-ctxt= struct CL-X.
+  Relocated data not necessary after load.
+- =(comp-ctxt-d-impure CL-X)= ::
+  Access slot "d-impure" of =comp-ctxt= struct CL-X.
+  Relocated data that cannot be moved into pure space.
+  This is typically for top-level forms other than defun.
+- =(comp-ctxt-debug CL-X)= ::
+  Access slot "debug" of =comp-ctxt= struct CL-X.
+  Default debug level for this compilation unit.
+- =(comp-ctxt-driver-options CL-X)= ::
+  Access slot "driver-options" of =comp-ctxt= struct CL-X.
+  Options for the GCC driver.
+- =(comp-ctxt-funcs-h CL-X)= ::
+  Access slot "funcs-h" of =comp-ctxt= struct CL-X.
+  c-name -> comp-func.
+- =(comp-ctxt-function-docs CL-X)= ::
+  Access slot "function-docs" of =comp-ctxt= struct CL-X.
+  Documentation index -> documentation
+- =(comp-ctxt-speed CL-X)= ::
+  Access slot "speed" of =comp-ctxt= struct CL-X.
+  Default speed for this compilation unit.
+- =(comp-data-container-idx CL-X)= ::
+  Access slot "idx" of =comp-data-container= struct CL-X.
+  Obj -> position into the previous field.
+- =(comp-data-container-l CL-X)= ::
+  Access slot "l" of =comp-data-container= struct CL-X.
+  Constant objects used by functions.
+- =(comp-delete-or-replace-file OLDFILE &optional NEWFILE)= ::
+  Replace OLDFILE with NEWFILE.
+  When NEWFILE is nil just delete OLDFILE.
+  Takes the necessary steps when dealing with OLDFILE being a
+  shared library that might be currently loaded into a running Emacs
+  session.
+- =(comp-func-blocks CL-X)= ::
+  Access slot "blocks" of =comp-func= struct CL-X.
+  Basic block symbol -> basic block.
+- =(comp-func-c-name CL-X)= ::
+  Access slot "c-name" of =comp-func= struct CL-X.
+  The function name in the native world.
+- =(comp-func-frame-size CL-X)= ::
+  Access slot "frame-size" of =comp-func= struct CL-X.
+- =(comp-func-has-non-local CL-X)= ::
+  Access slot "has-non-local" of =comp-func= struct CL-X.
+  t if non local jumps are present.
+- =(comp-func-l-args CL-X)= ::
+  Access slot "args" of =comp-func-l= struct CL-X.
+  Argument specification of the function
+- =(comp-func-l-p ...)= ::
+  nil
+- =(comp-func-name CL-X)= ::
+  Access slot "name" of =comp-func= struct CL-X.
+  Function symbol name. Nil indicates anonymous.
+- =(comp-func-safety CL-X)= ::
+  Access slot "safety" of =comp-func= struct CL-X.
+  Safety level (see =safety=).
+- =(comp-func-speed CL-X)= ::
+  Access slot "speed" of =comp-func= struct CL-X.
+  Optimization level (see =native-comp-speed=).
+- =(comp-mvar-slot CL-X)= ::
+  Access slot "slot" of =comp-mvar= struct CL-X.
+  Slot number in the array if a number or
+  =scratch= for scratch slot.
+- =(comp-mvar-type-hint-match-p MVAR TYPE-HINT)= ::
+  Match MVAR against TYPE-HINT.
+  In use by the back-end.
+- =(comp-nargs-p ...)= ::
+  nil
+#+end_details
+
+These functions can be roughly categorized:
+
+- The actual code:
+
+  - Instructions:
+    - =comp-ctxt-funcs-h=
+    - =comp-func-blocks=
+    - =comp-block-insns=
+
+  - Signature:
+    - =comp-args-max=
+    - =comp-nargs-p=
+    - =comp-func-frame-size=
+    - =comp-func-has-non-local=
+    - =comp-func-l-args=
+      - =comp-func-l-p=
+
+- Values:
+  - =comp-cstr-imm=
+  - =comp-cstr-imm-vld-p=
+  - =comp-mvar-slot=
+  - =comp-mvar-type-hint-match-p=
+
+- Relocation:
+
+  - =comp-ctxt-d-default=
+  - =comp-ctxt-d-ephemeral=
+  - =comp-ctxt-d-impure=
+  - =comp-data-container-idx=
+  - =comp-data-container-l=
+
+And these (and especially relocation) are what we will focus when reading
+=comp.c=.
+
+** Emitting Functions
+
+The key part of =comp--compile-ctxt-to-file0= seems to be this:
+
+#+begin_src c
+  comp.d_default_idx =
+    CALL1I (comp-data-container-idx, CALL1I (comp-ctxt-d-default, Vcomp_ctxt));
+  comp.d_impure_idx =
+    CALL1I (comp-data-container-idx, CALL1I (comp-ctxt-d-impure, Vcomp_ctxt));
+  comp.d_ephemeral_idx =
+    CALL1I (comp-data-container-idx, CALL1I (comp-ctxt-d-ephemeral, Vcomp_ctxt));
+  emit_ctxt_code ();
+  // ...
+  struct Lisp_Hash_Table *func_h =
+    XHASH_TABLE (CALL1I (comp-ctxt-funcs-h, Vcomp_ctxt));
+  DOHASH (func_h, k, function)
+    declare_function (function);
+  /* Compile all functions. Can't be done before because the
+     relocation structs has to be already defined.  */
+  DOHASH (func_h, k, function)
+    compile_function (function);
+#+end_src
+
+The actual lines of code are not much, but it seems every piece somehow has
+something to do with relocation. It's actually not surprising, because unlike
+what we intend to do (JIT compilation, no persistent data (yet)), Emacs almost
+always dump the compilation product into =.eln= file before actually loading
+them, meaning serialization (and thus restoring, e.g., interned symbols) is a
+must.
+
+There is another thing to note: we have to grasp how Emacs loads an =.eln= file.
+Most ideally, it might load them all from the C side, and we don't need to
+provide a matching Lisp API that can potentially impact our internal designs.
+
+But anyways, if we are to support relocation constructs, we might as well do it
+after implementing a fully working pdumper. And thus this post might remain
+incomplete for some more time.
+
+* Footnotes
+
+[fn:cyclic-read-syntax] The Lisp code here uses Emacs read syntax for cyclic
+representation (like =#1== and =#1#=). =#<number>== marks the sexp that follows
+it, and =#<number>#= refers to the sexp previously marked.

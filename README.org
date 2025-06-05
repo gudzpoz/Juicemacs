@@ -74,6 +74,8 @@ be implemented.)
 - [[file:docs/Notes.org]]: Reading list and notes for implementing this Emacs clone
 - [[file:docs/Bytecode.org]]: Extracting (part of) the Emacs bytecode specs from
   Emacs
+- [[file:docs/NativeComp.org]]: Looking into Emacs =native-comp= and how we can
+  reuse it for a more efficient bytecode interpreter
 - [[file:docs/TODO.org]]: TODO list & DONE list, tracking current/solved challenges
 
 ** Blog posts
