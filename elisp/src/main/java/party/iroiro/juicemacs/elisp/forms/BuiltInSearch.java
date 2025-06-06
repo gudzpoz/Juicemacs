@@ -164,8 +164,15 @@ public class BuiltInSearch extends ELispBuiltIns {
         /// @return `-1` if not found; the end of the match if `forward`; `start - 1` if `!forward`
         abstract long searchOnce(ELispBuffer buffer, boolean forward, long start, long startEnd, long searchEnd);
 
+        protected void setMatchImpl(Node node, Object matchData) {
+            BuiltInSearch.setMatch(node, matchData, false);
+        }
+
+        abstract void setMatch(Node node);
+
         static final class StringSearch extends SearchConvention<MuleString> {
             private final boolean caseFold;
+            long matchStart = -1;
 
             private StringSearch(MuleString pattern, boolean caseFold) {
                 super(pattern);
@@ -176,10 +183,12 @@ public class BuiltInSearch extends ELispBuiltIns {
             long searchOnce(ELispBuffer buffer, boolean forward, long start, long startEnd, long searchEnd) {
                 while (start != startEnd) {
                     if (currentMatch(buffer, start, searchEnd)) {
+                        matchStart = start;
                         return forward ? start + pattern.length() : start - 1;
                     }
                     start += forward ? 1 : -1;
                 }
+                matchStart = -1;
                 return -1;
             }
 
@@ -206,6 +215,11 @@ public class BuiltInSearch extends ELispBuiltIns {
                     start++;
                 }
                 return true;
+            }
+
+            @Override
+            void setMatch(Node node) {
+                setMatchImpl(node, matchStart == -1 ? false : ELispCons.listOf(matchStart, matchStart + pattern.length()));
             }
         }
 
@@ -237,6 +251,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                     matchData = cons;
                     return true;
                 }
+                matchData = null;
                 return false;
             }
 
@@ -246,7 +261,13 @@ public class BuiltInSearch extends ELispBuiltIns {
                     matchData = cons;
                     return asLong(cons.get(1));
                 }
+                matchData = null;
                 return -1;
+            }
+
+            @Override
+            void setMatch(Node node) {
+                setMatchImpl(node, Objects.requireNonNullElse(matchData, false));
             }
         }
     }
@@ -380,9 +401,9 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSearchBackward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object searchBackward(ELispString string, Object bound, Object noerror, Object count) {
+        public Object searchBackward(ELispString string, Object bound, Object noerror, Object count) {
             long repeat = notNilOr(count, 1);
-            return FSearchForward.searchForward(string, bound, noerror, -repeat);
+            return FSearchForward.searchForward(this, string, bound, noerror, -repeat);
         }
     }
 
@@ -413,11 +434,17 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSearchForward extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object searchForward(ELispString string, Object bound, Object noerror, Object count) {
+        public Object searchForwardFunc(ELispString string, Object bound, Object noerror, Object count) {
+            return searchForward(this, string, bound, noerror, count);
+        }
+
+        public static Object searchForward(Node node, ELispString string, Object bound, Object noerror, Object count) {
             SearchConvention.StringSearch s =
                     new SearchConvention.StringSearch(string.value(), !isNil(CASE_FOLD_SEARCH.getValue()));
             ELispBuffer buffer = currentBuffer();
-            return s.search(buffer, bound, noerror, count);
+            Object result = s.search(buffer, bound, noerror, count);
+            s.setMatch(node);
+            return result;
         }
     }
 
@@ -485,11 +512,9 @@ public class BuiltInSearch extends ELispBuiltIns {
         ) {
             ELispBuffer buffer = currentBuffer();
             ELispRegExp.CompiledRegExp pattern = compileRegExp(ELispLanguage.get(null), regexp, null);
-            SearchConvention.RegexpSearch s = new SearchConvention.RegexpSearch(pattern);
+            SearchConvention<ELispRegExp.CompiledRegExp> s = new SearchConvention.RegexpSearch(pattern);
             Object result = s.search(buffer, bound, noerror, count);
-            if (s.matchData != null) {
-                setMatch(node, s.matchData, false);
-            }
+            s.setMatch(node);
             return result;
         }
     }

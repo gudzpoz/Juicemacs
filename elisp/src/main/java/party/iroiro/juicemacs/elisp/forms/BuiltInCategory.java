@@ -88,7 +88,7 @@ public class BuiltInCategory extends ELispBuiltIns {
     public abstract static class FDefineCategory extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean defineCategory(Object category, ELispString docstring, Object table) {
-            long cat= checkCategory(category);
+            long cat = checkCategory(category);
             ELispCharTable categoryTable = checkCategoryTable(table);
             if (!isNil(getCategoryDocstring(categoryTable, cat))) {
                 throw ELispSignals.error("Category already defined");

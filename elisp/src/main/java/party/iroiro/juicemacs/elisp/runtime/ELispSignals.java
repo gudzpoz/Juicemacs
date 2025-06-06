@@ -201,10 +201,10 @@ public abstract class ELispSignals {
 
     //#region emacs_abort
     public static ELispSignalException kill(Object data) {
-        return signal(FATAL, data);
+        return signal(FATAL, KILL_EMACS, data);
     }
     public static ELispSignalException fatal(String message) {
-        return kill(message);
+        return signal(FATAL, FATAL, message);
     }
     //#endregion emacs_abort
 

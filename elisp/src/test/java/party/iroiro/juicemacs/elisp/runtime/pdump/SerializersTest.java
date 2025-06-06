@@ -75,6 +75,38 @@ public class SerializersTest {
     }
 
     @Test
+    public void testConsWithDebug() {
+        ELispCons simple = new ELispCons(true, true);
+        simple.setSourceLocation(1, 2, 3, 4);
+        ELispCons restored = roundTrip(simple);
+        assertTrue(restored.lispEquals(simple));
+        assertEquals(simple.getStartLine(), restored.getStartLine());
+        assertEquals(simple.getStartColumn(), restored.getStartColumn());
+        assertEquals(simple.getEndLine(), restored.getEndLine());
+        assertEquals(simple.getEndColumn(), restored.getEndColumn());
+
+        ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+        for (int i = 0; i < 10; i++) {
+            builder.add((long) i);
+        }
+        ELispCons list = (ELispCons) builder.build();
+        ELispCons.ConsIterator i = list.consIterator(0);
+        while (i.hasNextCons()) {
+            i.nextCons().setSourceLocation(1, 2, 3, 4);
+        }
+        ELispCons listRestored = roundTrip(list);
+        assertTrue(listRestored.lispEquals(list));
+        i = listRestored.consIterator(0);
+        while (i.hasNextCons()) {
+            ELispCons cons = i.nextCons();
+            assertEquals(1, cons.getStartLine());
+            assertEquals(2, cons.getStartColumn());
+            assertEquals(3, cons.getEndLine());
+            assertEquals(4, cons.getEndColumn());
+        }
+    }
+
+    @Test
     public void testHashtable() {
         ELispHashtable hashtable = new ELispHashtable();
         hashtable.put(1L, 2L);

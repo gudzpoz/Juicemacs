@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp;
 
+import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Context;
 
 
@@ -11,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ELispLanguageTest {
     /// Returns a Truffle filesystem with working directory set correctly
@@ -26,44 +30,77 @@ public class ELispLanguageTest {
         return IOAccess.newBuilder().fileSystem(getFileSystem()).build();
     }
 
+    public static Context.Builder getContextBuilder(@Nullable PrintStream out) {
+        String loadPath = Path.of("emacs", "lisp").toAbsolutePath().toString();
+        String dataPath = Path.of("emacs", "etc").toAbsolutePath().toString();
+        Context.Builder builder = Context.newBuilder("elisp")
+                .allowExperimentalOptions(true)
+                // Uncomment the following two lines to use an external debugger for Lisp before we get to edebug.
+//                .option("elisp.truffleDebug", "true")
+//                .option("inspect", "4242")
+                // Uncomment the following two lines to adjust compilation settings.
+                // Basically:
+                // - engine.Compilation=false: Debug Java code,
+                // - engine.Compilation=true && engine.CompilationFailureAction=Diagnose: Debug JIT compilation.
+//                .option("engine.Compilation", "false")
+//                .option("engine.CompilationFailureAction", "Diagnose")
+                .environment("EMACSLOADPATH", loadPath)
+                .environment("EMACSDATA", dataPath)
+                .allowIO(getTestIOAccess());
+        if (out != null) {
+            builder.out(out);
+        }
+        return builder;
+    }
+
+    public static boolean hasDump(boolean bootstrap) {
+        File file = getFileSystem().toAbsolutePath(Path.of(bootstrap ? "bootstrap-emacs.pdmp" : "emacs.pdmp")).toFile();
+        return file.isFile();
+    }
+
+    public static void tryDump(boolean bootstrap, @Nullable PrintStream out) {
+        String dumpMode = bootstrap ? "pbootstrap" : "pdump";
+        if (hasDump(bootstrap)) {
+            Objects.requireNonNullElse(out, System.out).println(
+                    dumpMode + " file exists, skip dumping"
+            );
+            return;
+        }
+        Context.Builder builder = getContextBuilder(out);
+        if (!bootstrap) {
+            builder.option("elisp.dumpFile", "bootstrap-emacs.pdmp");
+        }
+        try (Context context = builder.build()) {
+            // Circumvent dependency on a bootstrapped environment
+            // - .elc files expect bootstrapped environment
+            context.eval("elisp", "(setq load-suffixes '(\".el\"))");
+            // - (noninteractive . nil) leads to usages of user-emacs-directory,
+            //   which is only available after bootstrapping
+            context.eval("elisp", "(setq noninteractive t)");
+
+            // Loads until an error
+            context.eval("elisp", "(setq dump-mode \"" + dumpMode + "\")");
+            context.eval("elisp", "(load \"loadup\")");
+        } catch (PolyglotException e) {
+            // loadup.el calls (kill-emacs) after dumping
+            String message = e.getMessage();
+            String expected = "(fatal kill-emacs nil)";
+            if (!message.equals(expected)) {
+                e.printStackTrace(Objects.requireNonNullElse(out, System.err));
+            }
+            assertEquals(expected, message);
+        }
+    }
+
     @Test
     public void test() throws IOException {
         Path file = Files.createTempFile("juicemacs-ert", ".txt");
-        String loadPath = Path.of("emacs", "lisp").toAbsolutePath().toString();
-        String dataPath = Path.of("emacs", "etc").toAbsolutePath().toString();
-        try (PrintStream out = createOut(file.toFile());
-             Context context = Context.newBuilder("elisp")
-                     .allowExperimentalOptions(true)
-                     // Uncomment the following two lines to use an external debugger for Lisp before we get to edebug.
-//                     .option("elisp.truffleDebug", "true")
-//                     .option("inspect", "4242")
-                     // Uncomment the following two lines to adjust compilation settings.
-                     // Basically:
-                     // - engine.Compilation=false: Debug Java code,
-                     // - engine.Compilation=true && engine.CompilationFailureAction=Diagnose: Debug JIT compilation.
-//                     .option("engine.Compilation", "false")
-//                     .option("engine.CompilationFailureAction", "Diagnose")
-                     .environment("EMACSLOADPATH", loadPath)
-                     .environment("EMACSDATA", dataPath)
-                     .allowIO(getTestIOAccess())
-                     .out(out)
-                     .build()
-        ) {
+        try (PrintStream out = createOut(file.toFile())) {
             System.out.println("Output: " + file);
-            try {
-                // Circumvent dependency on a bootstrapped environment
-                context.eval("elisp", """
-                        (setq load-suffixes '(".el") ;; .elc files expect bootstrapped environment
-                              noninteractive t)      ;; (noninteractive . nil) leads to usages of user-emacs-directory,
-                                                     ;; which is only available after bootstrapping
-                        """);
-                // Loads until an error
-                context.eval("elisp", "(load \"loadup\")");
-            } catch (PolyglotException e) {
-                e.printStackTrace(out);
-            }
-            // Tries to run ERT
-            try {
+            tryDump(true, out);
+            tryDump(false, out);
+            try (Context context = getContextBuilder(out).option("elisp.dumpFile", "emacs.pdmp").build()) {
+                // Test bytecode compiler
                 context.eval("elisp", """
                         ;; -*- lexical-binding: t -*-
                         (require 'bytecomp)
@@ -72,10 +109,7 @@ public class ELispLanguageTest {
                         (message "%s" (byte-compile (lambda (x) (1+ x))))
                         (message "%s" (byte-compile (lambda (x) (+ x 2))))
                         """);
-            } catch (PolyglotException e) {
-                e.printStackTrace(out);
-            }
-            try {
+                // Try to run ERT
                 context.eval("elisp", """
                         ;; TODO: pp requires a bunch of sexp parsing functions
                         (require 'pp)

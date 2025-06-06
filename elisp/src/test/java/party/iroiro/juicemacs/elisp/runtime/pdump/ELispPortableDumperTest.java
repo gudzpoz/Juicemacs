@@ -1,9 +1,9 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+import party.iroiro.juicemacs.elisp.ELispLanguageTest;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,23 +45,7 @@ public class ELispPortableDumperTest {
 
     @Test
     public void testLoadedEmacsDump() {
-        try (Context context = getTestingContextBuilder()
-                     .allowIO(getTestIOAccess())
-                     .build()
-        ) {
-            // Circumvent dependency on a bootstrapped environment
-            context.eval("elisp", """
-                        (setq load-suffixes '(".el") ;; .elc files expect bootstrapped environment
-                              noninteractive t       ;; (noninteractive . nil) leads to usages of user-emacs-directory,
-                                                     ;; which is only available after bootstrapping
-                              dump-mode "pbootstrap")
-                        """);
-            // Loads until an error
-            context.eval("elisp", "(load \"loadup\")");
-        } catch (PolyglotException e) {
-            // loadup.el calls (kill-emacs) after dumping
-            assertEquals("(fatal nil)", e.getMessage(), e.getMessage());
-        }
+        ELispLanguageTest.tryDump(true, null);
         try (Context context = getTestingContextBuilder()
                 .allowIO(getTestIOAccess())
                 .allowExperimentalOptions(true)

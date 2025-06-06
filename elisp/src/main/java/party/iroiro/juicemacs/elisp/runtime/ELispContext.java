@@ -262,6 +262,7 @@ public final class ELispContext implements ELispParser.InternContext {
 
         @Override
         public ELispContext read(MemoryBuffer buffer) {
+            fury.getRefResolver().reference(context);
             DumpUtils.readAnchor(fury, buffer, Boolean.FALSE);
             DumpUtils.readAnchor(fury, buffer, Boolean.TRUE);
 

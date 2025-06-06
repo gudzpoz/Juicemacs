@@ -20,7 +20,7 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_S
 public sealed abstract class AbstractELispClosure extends AbstractELispVector
         permits ELispInterpretedClosure, ELispBytecode {
     @Nullable
-    protected final Source rootSource;
+    protected Source rootSource;
     @Nullable
     protected transient volatile FunctionRootNode functionRootNode = null;
     @Nullable
@@ -50,6 +50,12 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         return rootSource;
     }
 
+    public void setRootSource(@Nullable Source rootSource) {
+        if (rootSource != null) {
+            this.rootSource = rootSource;
+        }
+    }
+
     protected Object getArgs() {
         return get(CLOSURE_ARGLIST);
     }
@@ -73,7 +79,7 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
     }
 
     @Nullable
-    protected static Source getRootNodeSource(@Nullable RootNode rootNode) {
+    public static Source getRootNodeSource(@Nullable RootNode rootNode) {
         if (rootNode == null) {
             return null;
         }

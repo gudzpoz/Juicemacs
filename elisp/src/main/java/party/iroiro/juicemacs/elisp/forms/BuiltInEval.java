@@ -736,6 +736,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
             }
             ELispCons body = iterator.hasNext() ? iterator.currentCons() : new ELispCons(false);
+            body.fillDebugInfo(def);
             ELispExpressionNode finalDocString = docString;
             Object finalInteractive = interactive;
             return new ELispExpressionNode() {
@@ -757,7 +758,15 @@ public class BuiltInEval extends ELispBuiltIns {
                     body.fillDebugInfo(getParent());
                     Object doc = this.doc.executeGeneric(frame);
                     ELispLexical.@Nullable Scope scope = ELispLexical.getScope(this);
+                    Object env = scope == null || frame == null
+                            ? false
+                            : new ELispLexical.Captured(scope, frame.materialize());
 
+                    return createClosure(scope, doc, env);
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private AbstractELispClosure createClosure(ELispLexical.@Nullable Scope scope, Object doc, Object env) {
                     Object cconvFunction = cconv.executeGeneric(null);
                     ELispInterpretedClosure scopeHolder;
                     if (!isNil(cconvFunction) && scope != null) {
@@ -770,9 +779,12 @@ public class BuiltInEval extends ELispBuiltIns {
                                 doc,
                                 finalInteractive
                         );
+                        @Nullable Source source = AbstractELispClosure.getRootNodeSource(getRootNode());
                         if (closure instanceof ELispInterpretedClosure c) {
                             scopeHolder = c;
+                            c.setRootSource(source);
                         } else if (closure instanceof ELispBytecode b) {
+                            b.setRootSource(source);
                             return b;
                         } else {
                             throw ELispSignals.invalidFunction(closure);
@@ -787,9 +799,6 @@ public class BuiltInEval extends ELispBuiltIns {
                                 getRootNode()
                         );
                     }
-                    Object env = scope == null || frame == null
-                            ? false
-                            : new ELispLexical.Captured(scope, frame.materialize());
                     scopeHolder.set(CLOSURE_CONSTANTS, env);
                     return scopeHolder;
                 }
@@ -2293,6 +2302,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "func-arity", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FFuncArity extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispCons funcArity(Object function) {
             Object object = ELispInterpretedNode.getIndirectFunction(function);
@@ -2529,5 +2539,4 @@ public class BuiltInEval extends ELispBuiltIns {
             }, nframes, base);
         }
     }
-
 }

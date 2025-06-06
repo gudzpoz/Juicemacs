@@ -174,6 +174,7 @@ public final class ELispLexical {
     /// Also, Emacs oclosures directly depend on the order of the list items.
     ///
     /// @see Scope#toAssocList(Frame)
+    @CompilerDirectives.TruffleBoundary
     public static ELispLexical.Scope newBlockFromAlist(MaterializedFrame frame, ELispCons cons) {
         ArrayList<ELispSymbol> symbols = new ArrayList<>();
         for (int i = 0, count = cons.size(); i < count; i++) {
@@ -210,6 +211,7 @@ public final class ELispLexical {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     @Nullable
     public static Scope getScope(Node currentNode) {
         while (currentNode != null) {
@@ -230,6 +232,7 @@ public final class ELispLexical {
         return scope == null ? null : scope.getReference(symbol);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public static boolean isRootScope(Node currentNode) {
         while (currentNode != null) {
             if (currentNode instanceof ScopeProvider provider) {

@@ -357,13 +357,14 @@ public class BuiltInCharSet extends ELispBuiltIns {
         attrs.set(CHARSET_PLIST, asCons(args[CHARSET_ARG_PLIST]));
 
         boolean newDefinitionP = !charsetHashTable.containsKey(name);
-        charsetHashTable.put(name, attrs);
         int id;
         if (newDefinitionP) {
             id = internalCharsetList.size();
         } else {
             id = getCharset(name).id;
         }
+        attrs.set(CHARSET_ID, (long) id);
+        charsetHashTable.put(name, attrs);
         boolean compactCodesP = true;
         boolean unifiedP = false;
         ELispCharset charset = new ELispCharset(
@@ -396,7 +397,6 @@ public class BuiltInCharSet extends ELispBuiltIns {
         } else {
             internalCharsetList.set(id, charset);
         }
-        attrs.set(CHARSET_ID, (long) id);
 
         if (method == CharsetMethod.MAP) {
             charset.load(this);
