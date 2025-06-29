@@ -2226,7 +2226,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
             }
             return (object instanceof ELispSubroutine sub && !sub.specialForm())
-                    || object instanceof ELispInterpretedClosure
+                    || object instanceof AbstractELispClosure
                     || object instanceof ELispCons cons && cons.car() == LAMBDA;
         }
     }

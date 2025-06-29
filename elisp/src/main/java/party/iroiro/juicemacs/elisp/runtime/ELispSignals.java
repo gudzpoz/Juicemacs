@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -163,6 +164,9 @@ public abstract class ELispSignals {
     }
     public static ELispSignalException fileMissing(FileNotFoundException e, Object file) {
         return signal(FILE_MISSING, e.getClass().getSimpleName(), e.getMessage(), file);
+    }
+    public static ELispSignalException fileAlreadyExists(TruffleFile file) {
+        return signal(FILE_ALREADY_EXISTS, file.toString());
     }
     public static ELispSignalException endOfFile() {
         return signal(END_OF_FILE);

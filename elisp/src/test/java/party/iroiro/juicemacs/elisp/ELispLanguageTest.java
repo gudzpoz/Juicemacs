@@ -42,7 +42,7 @@ public class ELispLanguageTest {
                 // Basically:
                 // - engine.Compilation=false: Debug Java code,
                 // - engine.Compilation=true && engine.CompilationFailureAction=Diagnose: Debug JIT compilation.
-//                .option("engine.Compilation", "false")
+                .option("engine.Compilation", "false")
 //                .option("engine.CompilationFailureAction", "Diagnose")
                 .environment("EMACSLOADPATH", loadPath)
                 .environment("EMACSDATA", dataPath)
@@ -67,13 +67,8 @@ public class ELispLanguageTest {
             return;
         }
         Context.Builder builder = getContextBuilder(out);
-        if (!bootstrap) {
-            builder.option("elisp.dumpFile", "bootstrap-emacs.pdmp");
-        }
         try (Context context = builder.build()) {
             // Circumvent dependency on a bootstrapped environment
-            // - .elc files expect bootstrapped environment
-            context.eval("elisp", "(setq load-suffixes '(\".el\"))");
             // - (noninteractive . nil) leads to usages of user-emacs-directory,
             //   which is only available after bootstrapping
             context.eval("elisp", "(setq noninteractive t)");

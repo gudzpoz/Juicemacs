@@ -16,6 +16,11 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
@@ -431,6 +436,44 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 return cons;
             }
             return tailCdr;
+        }
+
+        public static Collector<Object, ListBuilder, Object> collector() {
+            return new Collector<>() {
+                @Override
+                public Supplier<ListBuilder> supplier() {
+                    return ListBuilder::new;
+                }
+
+                @Override
+                public BiConsumer<ListBuilder, Object> accumulator() {
+                    return ListBuilder::add;
+                }
+
+                @Override
+                public BinaryOperator<ListBuilder> combiner() {
+                    return (list1, list2) -> {
+                        if (list1.tail == null) {
+                            return list2;
+                        }
+                        if (list2.cons != null) {
+                            list1.tail.setCdr(list2.cons);
+                            list1.tail = list2.tail;
+                        }
+                        return list1;
+                    };
+                }
+
+                @Override
+                public Function<ListBuilder, Object> finisher() {
+                    return ListBuilder::build;
+                }
+
+                @Override
+                public Set<Characteristics> characteristics() {
+                    return Set.of();
+                }
+            };
         }
     }
 

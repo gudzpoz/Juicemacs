@@ -101,8 +101,9 @@ public class BuiltInDoc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSnarfDocumentation extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void snarfDocumentation(Object filename) {
-            throw ELispSignals.error("not implemented");
+        public boolean snarfDocumentation(Object filename) {
+            BuiltInEditFns.FMessage.message(getContext(), "Snarf-documentation not implemented");
+            return false;
         }
     }
 

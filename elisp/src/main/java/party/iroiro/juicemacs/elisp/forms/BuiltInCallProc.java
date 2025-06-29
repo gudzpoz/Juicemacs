@@ -3,11 +3,18 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.mule.MuleString;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCallProc extends ELispBuiltIns {
     @Override
@@ -67,8 +74,54 @@ public class BuiltInCallProc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCallProcess extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void callProcess(Object program, Object[] args) {
-            throw new UnsupportedOperationException();
+        public Object callProcess(ELispString program, Object[] args) {
+            Object input = args.length > 0 ? args[0] : false;
+            if (!isNil(input)) {
+                throw new UnsupportedOperationException();
+            }
+            @Nullable ELispBuffer buffer = null;
+            if (args.length > 1 && !isNil(args[1])) {
+                Object outSpec = args[1];
+                if (outSpec instanceof ELispCons cons) {
+                    if (!isNil(cons.get(1))) {
+                        // TODO: error stream
+                        throw new UnsupportedOperationException();
+                    }
+                    outSpec = cons.get(0);
+                }
+                buffer = isT(outSpec)
+                        ? getContext().currentBuffer()
+                        : asBuffer(BuiltInBuffer.FGetBuffer.getBuffer(outSpec));
+            }
+            boolean redisplay = args.length > 2 && !isNil(args[2]);
+            // TODO: redisplay
+            String[] commands = new String[1 + Math.max(args.length - 3, 0)];
+            commands[0] = program.toString();
+            for (int i = 1; i < commands.length; i++) {
+                commands[i] = args[i + 2].toString();
+            }
+            try {
+                // TODO: encoding
+                Process process = Runtime.getRuntime().exec(commands);
+                long ret = process.waitFor();
+                if (buffer == null) {
+                    return ret;
+                }
+                try (BufferedReader reader = process.inputReader()) {
+                    String line;
+                    // TODO: encoding & CR/LF
+                    MuleString newline = MuleString.fromString("\n");
+                    while ((line = reader.readLine()) != null) {
+                        buffer.insert(MuleString.fromString(line));
+                        buffer.insert(newline);
+                    }
+                }
+                return ret;
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, program);
+            } catch (InterruptedException e) {
+                throw ELispSignals.kill(e.getMessage());
+            }
         }
     }
 

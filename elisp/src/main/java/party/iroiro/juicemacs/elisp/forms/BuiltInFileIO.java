@@ -535,8 +535,26 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FAddNameToFile extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void addNameToFile(Object file, Object newname, Object okIfAlreadyExists) {
-            throw new UnsupportedOperationException();
+        public boolean addNameToFile(ELispString file, ELispString newname, Object okIfAlreadyExists) {
+            TruffleLanguage.Env env = getContext().truffleEnv();
+            TruffleFile from = env.getPublicTruffleFile(file.toString());
+            TruffleFile to = env.getPublicTruffleFile(newname.toString());
+            if (to.isDirectory()) {
+                to = to.resolve(from.getName());
+            }
+            if (to.exists()) {
+                if (isNil(okIfAlreadyExists)) {
+                    // TODO: confirm interactively
+                    throw ELispSignals.fileAlreadyExists(to);
+                }
+                return false;
+            }
+            try {
+                from.copy(to);
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, file);
+            }
+            return true;
         }
     }
 

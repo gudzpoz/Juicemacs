@@ -173,6 +173,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         compVars();
         compositeVars();
         dataVars();
+        diredVars();
         dispnewVars();
         docVars();
         editfnsVars();
@@ -502,6 +503,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);
         initForwardTo(MOST_NEGATIVE_FIXNUM, mostNegativeFixnum);
         initForwardTo(SYMBOLS_WITH_POS_ENABLED, symbolsWithPosEnabled);
+    }
+    private final ValueStorage.Forwarded completionIgnoredExtensions = new ValueStorage.Forwarded(false);
+    private void diredVars() {
+        initForwardTo(COMPLETION_IGNORED_EXTENSIONS, completionIgnoredExtensions);
     }
     private final ValueStorage.ForwardedLong baudRate = new ValueStorage.ForwardedLong();
     private final ValueStorage.ForwardedBool inverseVideo = new ValueStorage.ForwardedBool();
@@ -5464,6 +5469,7 @@ character."""),
     public static final ELispSymbol COMMAND_ERROR_FUNCTION = new ELispSymbol("command-error-function");
     public static final ELispSymbol COMMAND_LINE_ARGS = new ELispSymbol("command-line-args");
     public static final ELispSymbol COMMENT_USE_SYNTAX_PPSS = new ELispSymbol("comment-use-syntax-ppss");
+    public static final ELispSymbol COMPLETION_IGNORED_EXTENSIONS = new ELispSymbol("completion-ignored-extensions");
     public static final ELispSymbol COMPLETION_REGEXP_LIST = new ELispSymbol("completion-regexp-list");
     public static final ELispSymbol COMPOSE_CHARS_AFTER_FUNCTION = new ELispSymbol("compose-chars-after-function");
     public static final ELispSymbol COMPOSITION_BREAK_AT_POINT = new ELispSymbol("composition-break-at-point");
@@ -5930,6 +5936,7 @@ character."""),
             COMMAND_ERROR_FUNCTION,
             COMMAND_LINE_ARGS,
             COMMENT_USE_SYNTAX_PPSS,
+            COMPLETION_IGNORED_EXTENSIONS,
             COMPLETION_REGEXP_LIST,
             COMPOSE_CHARS_AFTER_FUNCTION,
             COMPOSITION_BREAK_AT_POINT,
