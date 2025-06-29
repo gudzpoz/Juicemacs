@@ -257,7 +257,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 case GOTOIFNONNILELSEPOP:          // 0206
                     boolean elsePop = op == GOTOIFNILELSEPOP || op == GOTOIFNONNILELSEPOP;
                     ref = Byte.toUnsignedInt(bytes[i + 1]) + (Byte.toUnsignedInt(bytes[i + 2]) << 8);
-                    if (stackTop != -1) {
+                    if (stackTop != Integer.MIN_VALUE) {
                         jumpTarget = ref;
                         jumpTargetTop = stackTop + (elsePop ? 0 : stackDelta);
                     }
@@ -315,8 +315,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         int target = asInt(v);
                         jumps.add(target);
                         int targetTrackedTop = stackTops[target];
-                        if (targetStackTop != -1) {
-                            if (targetTrackedTop == -1) {
+                        if (targetStackTop != Integer.MIN_VALUE) {
+                            if (targetTrackedTop == Integer.MIN_VALUE) {
                                 stackTops[target] = targetStackTop;
                             } else if (targetTrackedTop != targetStackTop) {
                                 throw ELispSignals.invalidFunction(object);
@@ -470,14 +470,19 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                                         : op - VARBIND;
                         bindings.bind(asSym(constants[ref]), frame.getObject(oldTop));
                         break;
+                    case CALL6:                        // 046
+                    case CALL7:                        // 047
+                        ref = op == CALL6 ? Byte.toUnsignedInt(bytecode[bci + 1]) :
+                                Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
+                        top -= ref;
+                        // fallthrough
                     case CALL:                         // 040
                     case CALL1:                        // 041
                     case CALL2:                        // 042
                     case CALL3:                        // 043
                     case CALL4:                        // 044
                     case CALL5:                        // 045
-                    case CALL6:                        // 046
-                    case CALL7:                        // 047
+                        // TODO
                         ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case UNBIND:                       // 050
