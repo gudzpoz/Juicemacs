@@ -27,6 +27,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
         return BuiltInBufferFactory.getFactories();
     }
 
+    //#region buffer_local_flags
+    public final byte[] bufferLocalFlags = new byte[77];
+    //#endregion buffer_local_flags
     private final HashMap<MuleString, ELispBuffer> buffers = new HashMap<>();
     private final ValueStorage.Forwarded minibufferList = new ValueStorage.Forwarded();
 

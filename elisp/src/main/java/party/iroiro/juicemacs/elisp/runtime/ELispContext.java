@@ -133,9 +133,14 @@ public final class ELispContext implements ELispParser.InternContext {
         TruffleFile file = truffleEnv.getPublicTruffleFile(options.dumpFile);
         try (var channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
             ELispPortableDumper.deserializeIntoContext(channel, this);
+            patchContext();
         } catch (IOException e) {
             throw ELispSignals.reportFileError(e, new ELispString(options.dumpFile));
         }
+    }
+
+    public void patchContext() {
+        globals.patchGlobals();
     }
 
     //#region Symbol lookup

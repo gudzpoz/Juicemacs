@@ -74,6 +74,11 @@ public final class ELispGlobals extends ELispGlobalsBase {
         ctx.forwardTo(symbol, value);
     }
 
+    @Override
+    public void patchGlobals() {
+        initBuffer();
+    }
+
     //#region extra globals
     private static final ELispString emptyUnibyteString = new ELispString("");
 
@@ -1497,7 +1502,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         bufferDefaults.setCategoryTable(standardCategoryTable);
     }
     private void initBufferOnce() {
-        ELispBuffer.initBufferLocalVars(ctx, bufferDefaults);
+        ELispBuffer.initBufferLocalVars(ctx, bufferDefaults, builtInBuffer);
     }
     private void initMinibufOnce() {
         getMiniBuffer(0);

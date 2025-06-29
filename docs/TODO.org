@@ -134,6 +134,37 @@ way.
     =buffer-undo-list=: nothing can save you if you are fully exposing your undo
     data.
 
+* TODO [#B] CDR coding or alternatives
+
+I am quite envious about [[https://v8.dev/blog/elements-kinds][how JS gets to optimize their internal array
+representations]]. In Lisp dialects that expose =cons= structure, I don't think it
+is possible without tons of workarounds. But... yes, let's see if we can work
+around that.
+
+The basic idea is to use an [[https://en.wikipedia.org/wiki/Unrolled_linked_list][unrolled linked list]], treating conses as mere
+list iterators.
+
+** Workarounds
+
+| Function          | Cons Operation            | Deque Operation        | Frequent |
+| =cons=            | =(cons item nil)=         | =List.of(item)=        | 🟢      |
+|                   | =(cons item list)=        | =list.push(item)=      | 🟢      |
+|                   | =(cons obj1 obj2)=        | /invalid/              | 🟢      |
+| =car=             | =(car list)=              | =list.get(0)=          | 🟢      |
+| =cdr=             | =(cdr list)=              | =list.subList(1)=      | 🟢      |
+| =setcar=          | =(setcar list item)=      | =list.set(0, item)=    | 🟢      |
+| =setcdr=          | =(setcdr list nil)=       | =list.split()?=        | ❓       |
+|                   | =(setcdr list-end list2)= | =list.extend(list2)=   | 🟢      |
+|                   | =(setcdr list obj)=       | /invalid/              | ❓       |
+| =append=          |                           |                        | 🟢      |
+| =nconc=           |                           |                        | 🟢      |
+| =memq=            |                           |                        | 🟢      |
+| =remq=            |                           |                        | 🟢      |
+| =assq=            |                           |                        | 🟢      |
+| =assq-delete-all= |                           |                        | ❓       |
+| =sort=            | =(sort list)=             | =list.stream().sort()= | 🟢      |
+| =nreverse=        |                           |                        | 🟢      |
+
 * TODO [#A] Use =ert.el=
 
 I have stopped writing tests for newly implemented subroutines. We should
@@ -236,6 +267,32 @@ though.
 Also, currently Juicemacs load ~90% of =loadup.el= in around 13 seconds on my
 machine, which is not very acceptable. So we do need something similar to
 =pdump=.
+
+*** =pdump=
+
+We have a pdumper now which simply serializes all data. It is quite slow
+(compare: running =loadup.el= in 13 seconds, and loading =.pdmp= data in 6
+seconds).
+
+But anyway, we can continue bootstrapping in this way (and consider accelerating
+data loading with native compilation after all these settle). The one thing here
+is that Emacs has complex bootstrapping logic:
+
+- Emacs seems to require two rounds of dumping:
+  - =pbootstrap=
+  - =pdump=
+- For example, =init_buffer_once= is only run on the initial run, while
+  =init_buffer= is always run whether or not the current session is loaded from
+  =.pdmp=.
+- The above depends on a dumped C variable =bool initialized=. This variable is
+  used extensively in =emacs.c= during initialization and also by other source
+  files (mostly for assertions at a glance).
+- I've met some problems already:
+
+  - =define-category= errs if a category is already defined. However,
+    =characters.el= (defining a bunch of categories) is always run during
+    =loadup=, throwing "category already defined" errors on the second =pdump=
+    run. Why? How does Emacs bootstrap circumvent this?
 
 ** =noninteractive=
 

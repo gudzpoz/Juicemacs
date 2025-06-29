@@ -165,4 +165,6 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     public ELispSymbol intern(MuleString name) {
         return globalObarray.intern(name);
     }
+
+    public abstract void patchGlobals();
 }

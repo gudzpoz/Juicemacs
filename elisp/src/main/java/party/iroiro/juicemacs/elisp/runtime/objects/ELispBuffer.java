@@ -10,6 +10,7 @@ import java.util.*;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
@@ -282,11 +283,18 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         setInvisibilitySpec(true);
 
         // TODO: Reset vars
+        ELispGlobals globals = ELispContext.get(null).globals();
+        ELispBuffer defaults = globals.getBufferDefaults();
+        byte[] localFlags = globals.builtInBuffer.bufferLocalFlags;
+        for (int i = 0; i < localFlags.length; i++) {
+            if (localFlags[i] > 0 && permanentToo) {
+                bufferLocalFields[i] = defaults.bufferLocalFields[i];
+            }
+        }
     }
 
     //#region struct buffer
     private final Object[] bufferLocalFields;
-    private static final byte[] BUFFER_LOCAL_FLAGS = new byte[77];
     /**
      * The name of this buffer.
      */
@@ -790,7 +798,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     //#endregion struct buffer
 
     @SuppressWarnings("DuplicatedCode")
-    public static void initBufferLocalVars(ELispContext context, ELispBuffer defaultValues) {
+    public static void initBufferLocalVars(ELispContext context, ELispBuffer defaultValues, BuiltInBuffer builtInBuffer) {
         //#region init_buffer_once
         defaultValues.setName(new ELispString(" *buffer-defaults*"));
         defaultValues.setMajorMode(FUNDAMENTAL_MODE);
@@ -811,83 +819,84 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         defaultValues.setHorizontalScrollBarType(T);
         defaultValues.setCursorType(T);
         defaultValues.setCursorInNonSelectedWindows(T);
-        BUFFER_LOCAL_FLAGS[BVAR_NAME] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_LAST_NAME] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_FILENAME] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_DIRECTORY] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_BACKED_UP] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_SAVE_LENGTH] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_AUTO_SAVE_FILE_NAME] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_READ_ONLY] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_MARK] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_LOCAL_VAR_ALIST] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_MAJOR_MODE] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_LOCAL_MINOR_MODES] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_MODE_NAME] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_MODE_LINE_FORMAT] = 1;
-        BUFFER_LOCAL_FLAGS[BVAR_HEADER_LINE_FORMAT] = 38;
-        BUFFER_LOCAL_FLAGS[BVAR_TAB_LINE_FORMAT] = 39;
-        BUFFER_LOCAL_FLAGS[BVAR_KEYMAP] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_ABBREV_TABLE] = 13;
-        BUFFER_LOCAL_FLAGS[BVAR_SYNTAX_TABLE] = 15;
-        BUFFER_LOCAL_FLAGS[BVAR_CATEGORY_TABLE] = 17;
-        BUFFER_LOCAL_FLAGS[BVAR_TAB_WIDTH] = 7;
-        BUFFER_LOCAL_FLAGS[BVAR_FILL_COLUMN] = 11;
-        BUFFER_LOCAL_FLAGS[BVAR_LEFT_MARGIN] = 12;
-        BUFFER_LOCAL_FLAGS[BVAR_AUTO_FILL_FUNCTION] = 4;
-        BUFFER_LOCAL_FLAGS[BVAR_DOWNCASE_TABLE] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_UPCASE_TABLE] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_CASE_CANON_TABLE] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_CASE_EQV_TABLE] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_TRUNCATE_LINES] = Byte.MIN_VALUE; // PERMANENT_LOCAL
-        BUFFER_LOCAL_FLAGS[BVAR_WORD_WRAP] = 9;
-        BUFFER_LOCAL_FLAGS[BVAR_CTL_ARROW] = 10;
-        BUFFER_LOCAL_FLAGS[BVAR_BIDI_DISPLAY_REORDERING] = 18;
-        BUFFER_LOCAL_FLAGS[BVAR_BIDI_PARAGRAPH_DIRECTION] = 19;
-        BUFFER_LOCAL_FLAGS[BVAR_BIDI_PARAGRAPH_SEPARATE_RE] = 20;
-        BUFFER_LOCAL_FLAGS[BVAR_BIDI_PARAGRAPH_START_RE] = 21;
-        BUFFER_LOCAL_FLAGS[BVAR_SELECTIVE_DISPLAY] = 5;
-        BUFFER_LOCAL_FLAGS[BVAR_SELECTIVE_DISPLAY_ELLIPSES] = 6;
-        BUFFER_LOCAL_FLAGS[BVAR_OVERWRITE_MODE] = 3;
-        BUFFER_LOCAL_FLAGS[BVAR_ABBREV_MODE] = 2;
-        BUFFER_LOCAL_FLAGS[BVAR_DISPLAY_TABLE] = 14;
-        BUFFER_LOCAL_FLAGS[BVAR_MARK_ACTIVE] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_ENABLE_MULTIBYTE_CHARACTERS] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_BUFFER_FILE_CODING_SYSTEM] = Byte.MIN_VALUE; // PERMANENT_LOCAL
-        BUFFER_LOCAL_FLAGS[BVAR_FILE_FORMAT] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_AUTO_SAVE_FILE_FORMAT] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_CACHE_LONG_SCANS] = 16;
-        BUFFER_LOCAL_FLAGS[BVAR_WIDTH_TABLE] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_PT_MARKER] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_BEGV_MARKER] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_ZV_MARKER] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_POINT_BEFORE_SCROLL] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_FILE_TRUENAME] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_INVISIBILITY_SPEC] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_LAST_SELECTED_WINDOW] = 0;
-        BUFFER_LOCAL_FLAGS[BVAR_DISPLAY_COUNT] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_LEFT_MARGIN_COLS] = 23;
-        BUFFER_LOCAL_FLAGS[BVAR_RIGHT_MARGIN_COLS] = 24;
-        BUFFER_LOCAL_FLAGS[BVAR_LEFT_FRINGE_WIDTH] = 25;
-        BUFFER_LOCAL_FLAGS[BVAR_RIGHT_FRINGE_WIDTH] = 26;
-        BUFFER_LOCAL_FLAGS[BVAR_FRINGES_OUTSIDE_MARGINS] = 27;
-        BUFFER_LOCAL_FLAGS[BVAR_SCROLL_BAR_WIDTH] = 28;
-        BUFFER_LOCAL_FLAGS[BVAR_SCROLL_BAR_HEIGHT] = 29;
-        BUFFER_LOCAL_FLAGS[BVAR_VERTICAL_SCROLL_BAR_TYPE] = 30;
-        BUFFER_LOCAL_FLAGS[BVAR_HORIZONTAL_SCROLL_BAR_TYPE] = 31;
-        BUFFER_LOCAL_FLAGS[BVAR_INDICATE_EMPTY_LINES] = 32;
-        BUFFER_LOCAL_FLAGS[BVAR_INDICATE_BUFFER_BOUNDARIES] = 33;
-        BUFFER_LOCAL_FLAGS[BVAR_FRINGE_INDICATOR_ALIST] = 34;
-        BUFFER_LOCAL_FLAGS[BVAR_FRINGE_CURSOR_ALIST] = 35;
-        BUFFER_LOCAL_FLAGS[BVAR_DISPLAY_TIME] = -1;
-        BUFFER_LOCAL_FLAGS[BVAR_SCROLL_UP_AGGRESSIVELY] = 36;
-        BUFFER_LOCAL_FLAGS[BVAR_SCROLL_DOWN_AGGRESSIVELY] = 37;
-        BUFFER_LOCAL_FLAGS[BVAR_CURSOR_TYPE] = 40;
-        BUFFER_LOCAL_FLAGS[BVAR_EXTRA_LINE_SPACING] = 41;
-        BUFFER_LOCAL_FLAGS[BVAR_TS_PARSER_LIST] = 42;
-        BUFFER_LOCAL_FLAGS[BVAR_TEXT_CONVERSION_STYLE] = 43;
-        BUFFER_LOCAL_FLAGS[BVAR_CURSOR_IN_NON_SELECTED_WINDOWS] = 44;
-        BUFFER_LOCAL_FLAGS[BVAR_UNDO_LIST] = -1;
+        byte[] bufferLocalFlags = builtInBuffer.bufferLocalFlags;
+        bufferLocalFlags[BVAR_NAME] = 0;
+        bufferLocalFlags[BVAR_LAST_NAME] = 0;
+        bufferLocalFlags[BVAR_FILENAME] = -1;
+        bufferLocalFlags[BVAR_DIRECTORY] = -1;
+        bufferLocalFlags[BVAR_BACKED_UP] = -1;
+        bufferLocalFlags[BVAR_SAVE_LENGTH] = -1;
+        bufferLocalFlags[BVAR_AUTO_SAVE_FILE_NAME] = -1;
+        bufferLocalFlags[BVAR_READ_ONLY] = -1;
+        bufferLocalFlags[BVAR_MARK] = 0;
+        bufferLocalFlags[BVAR_LOCAL_VAR_ALIST] = 0;
+        bufferLocalFlags[BVAR_MAJOR_MODE] = -1;
+        bufferLocalFlags[BVAR_LOCAL_MINOR_MODES] = -1;
+        bufferLocalFlags[BVAR_MODE_NAME] = -1;
+        bufferLocalFlags[BVAR_MODE_LINE_FORMAT] = 1;
+        bufferLocalFlags[BVAR_HEADER_LINE_FORMAT] = 38;
+        bufferLocalFlags[BVAR_TAB_LINE_FORMAT] = 39;
+        bufferLocalFlags[BVAR_KEYMAP] = 0;
+        bufferLocalFlags[BVAR_ABBREV_TABLE] = 13;
+        bufferLocalFlags[BVAR_SYNTAX_TABLE] = 15;
+        bufferLocalFlags[BVAR_CATEGORY_TABLE] = 17;
+        bufferLocalFlags[BVAR_TAB_WIDTH] = 7;
+        bufferLocalFlags[BVAR_FILL_COLUMN] = 11;
+        bufferLocalFlags[BVAR_LEFT_MARGIN] = 12;
+        bufferLocalFlags[BVAR_AUTO_FILL_FUNCTION] = 4;
+        bufferLocalFlags[BVAR_DOWNCASE_TABLE] = 0;
+        bufferLocalFlags[BVAR_UPCASE_TABLE] = 0;
+        bufferLocalFlags[BVAR_CASE_CANON_TABLE] = 0;
+        bufferLocalFlags[BVAR_CASE_EQV_TABLE] = 0;
+        bufferLocalFlags[BVAR_TRUNCATE_LINES] = Byte.MIN_VALUE; // PERMANENT_LOCAL
+        bufferLocalFlags[BVAR_WORD_WRAP] = 9;
+        bufferLocalFlags[BVAR_CTL_ARROW] = 10;
+        bufferLocalFlags[BVAR_BIDI_DISPLAY_REORDERING] = 18;
+        bufferLocalFlags[BVAR_BIDI_PARAGRAPH_DIRECTION] = 19;
+        bufferLocalFlags[BVAR_BIDI_PARAGRAPH_SEPARATE_RE] = 20;
+        bufferLocalFlags[BVAR_BIDI_PARAGRAPH_START_RE] = 21;
+        bufferLocalFlags[BVAR_SELECTIVE_DISPLAY] = 5;
+        bufferLocalFlags[BVAR_SELECTIVE_DISPLAY_ELLIPSES] = 6;
+        bufferLocalFlags[BVAR_OVERWRITE_MODE] = 3;
+        bufferLocalFlags[BVAR_ABBREV_MODE] = 2;
+        bufferLocalFlags[BVAR_DISPLAY_TABLE] = 14;
+        bufferLocalFlags[BVAR_MARK_ACTIVE] = -1;
+        bufferLocalFlags[BVAR_ENABLE_MULTIBYTE_CHARACTERS] = -1;
+        bufferLocalFlags[BVAR_BUFFER_FILE_CODING_SYSTEM] = Byte.MIN_VALUE; // PERMANENT_LOCAL
+        bufferLocalFlags[BVAR_FILE_FORMAT] = -1;
+        bufferLocalFlags[BVAR_AUTO_SAVE_FILE_FORMAT] = -1;
+        bufferLocalFlags[BVAR_CACHE_LONG_SCANS] = 16;
+        bufferLocalFlags[BVAR_WIDTH_TABLE] = 0;
+        bufferLocalFlags[BVAR_PT_MARKER] = 0;
+        bufferLocalFlags[BVAR_BEGV_MARKER] = 0;
+        bufferLocalFlags[BVAR_ZV_MARKER] = 0;
+        bufferLocalFlags[BVAR_POINT_BEFORE_SCROLL] = -1;
+        bufferLocalFlags[BVAR_FILE_TRUENAME] = -1;
+        bufferLocalFlags[BVAR_INVISIBILITY_SPEC] = -1;
+        bufferLocalFlags[BVAR_LAST_SELECTED_WINDOW] = 0;
+        bufferLocalFlags[BVAR_DISPLAY_COUNT] = -1;
+        bufferLocalFlags[BVAR_LEFT_MARGIN_COLS] = 23;
+        bufferLocalFlags[BVAR_RIGHT_MARGIN_COLS] = 24;
+        bufferLocalFlags[BVAR_LEFT_FRINGE_WIDTH] = 25;
+        bufferLocalFlags[BVAR_RIGHT_FRINGE_WIDTH] = 26;
+        bufferLocalFlags[BVAR_FRINGES_OUTSIDE_MARGINS] = 27;
+        bufferLocalFlags[BVAR_SCROLL_BAR_WIDTH] = 28;
+        bufferLocalFlags[BVAR_SCROLL_BAR_HEIGHT] = 29;
+        bufferLocalFlags[BVAR_VERTICAL_SCROLL_BAR_TYPE] = 30;
+        bufferLocalFlags[BVAR_HORIZONTAL_SCROLL_BAR_TYPE] = 31;
+        bufferLocalFlags[BVAR_INDICATE_EMPTY_LINES] = 32;
+        bufferLocalFlags[BVAR_INDICATE_BUFFER_BOUNDARIES] = 33;
+        bufferLocalFlags[BVAR_FRINGE_INDICATOR_ALIST] = 34;
+        bufferLocalFlags[BVAR_FRINGE_CURSOR_ALIST] = 35;
+        bufferLocalFlags[BVAR_DISPLAY_TIME] = -1;
+        bufferLocalFlags[BVAR_SCROLL_UP_AGGRESSIVELY] = 36;
+        bufferLocalFlags[BVAR_SCROLL_DOWN_AGGRESSIVELY] = 37;
+        bufferLocalFlags[BVAR_CURSOR_TYPE] = 40;
+        bufferLocalFlags[BVAR_EXTRA_LINE_SPACING] = 41;
+        bufferLocalFlags[BVAR_TS_PARSER_LIST] = 42;
+        bufferLocalFlags[BVAR_TEXT_CONVERSION_STYLE] = 43;
+        bufferLocalFlags[BVAR_CURSOR_IN_NON_SELECTED_WINDOWS] = 44;
+        bufferLocalFlags[BVAR_UNDO_LIST] = -1;
         context.forwardTo(BUFFER_FILE_NAME, new ValueStorage.ForwardedPerBuffer(BVAR_FILENAME, STRINGP));
         context.forwardTo(DEFAULT_DIRECTORY, new ValueStorage.ForwardedPerBuffer(BVAR_DIRECTORY, STRINGP));
         context.forwardTo(BUFFER_BACKED_UP, new ValueStorage.ForwardedPerBuffer(BVAR_BACKED_UP, NIL));

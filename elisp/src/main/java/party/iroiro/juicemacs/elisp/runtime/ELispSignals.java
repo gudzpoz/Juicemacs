@@ -105,8 +105,8 @@ public abstract class ELispSignals {
         return new ELispSignalException(exception.getTag(), exception.getData(), location);
     }
 
-    @CompilerDirectives.TruffleBoundary
     private static ELispSignalException signal(ELispSymbol error, Object... data) {
+        CompilerDirectives.transferToInterpreter();
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
         for (Object datum : data) {
             builder.add(datum instanceof String s ? new ELispString(s) : datum);
