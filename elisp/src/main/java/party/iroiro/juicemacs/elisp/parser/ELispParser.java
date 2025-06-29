@@ -100,6 +100,7 @@ public class ELispParser {
         return switch (token.token()) {
             case EOF() -> throw new EOFException();
             case SkipToEnd() -> false; // TODO: Skip to EOF
+            case LoadFileName() -> LOAD_FILE_NAME.getValue();
             case SetLexicalBindingMode _ -> throw ELispSignals.invalidReadSyntax("Unexpected lexical binding mode");
             case FixNum(long value) -> value;
             case BigNum(BigInteger value) -> ELispBigNum.wrap(value);

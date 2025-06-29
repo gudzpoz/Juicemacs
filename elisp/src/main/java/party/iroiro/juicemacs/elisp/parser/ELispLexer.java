@@ -244,6 +244,13 @@ public class ELispLexer {
         record CircularDef(long id) implements Token {
         }
 
+        /**
+         * Reference to {@link party.iroiro.juicemacs.elisp.runtime.ELispGlobals#LOAD_FILE_NAME}
+         * as is in {@code #$} in lazy docstrings
+         */
+        record LoadFileName() implements Token {
+        }
+
         record Char(int value) implements Token {
         }
 
@@ -289,6 +296,7 @@ public class ELispLexer {
     private static final Token.BackQuote BACK_QUOTE = new Token.BackQuote();
     private static final Token.Unquote UNQUOTE = new Token.Unquote();
     private static final Token.UnquoteSplicing UNQUOTE_SPLICING = new Token.UnquoteSplicing();
+    private static final Token.LoadFileName LOAD_FILE_NAME = new Token.LoadFileName();
     static final Token.Symbol EMPTY_SYMBOL = new Token.Symbol("", true, true);
     static final Token.Symbol NIL_SYMBOL = new Token.Symbol("nil", true, false);
 
@@ -838,8 +846,7 @@ public class ELispLexer {
                         }
                         yield null;
                     }
-                    // TODO: #$ - Vload_file_name
-                    case '$' -> NIL_SYMBOL;
+                    case '$' -> LOAD_FILE_NAME;
                     case ':' -> potentialUnescapedSymbolChar(reader.peek())
                             ? readSymbolOrNumber(reader.read(), true, false)
                             : new Token.Symbol("", false, true);

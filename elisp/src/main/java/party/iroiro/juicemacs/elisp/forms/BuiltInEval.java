@@ -975,8 +975,10 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefvar1 extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defvar1(Object sym, Object initvalue, Object docstring) {
-            throw new UnsupportedOperationException();
+        public static Object defvar1(ELispSymbol sym, Object initvalue, Object docstring) {
+            sym.setSpecial(true);
+            sym.setDefaultValue(initvalue);
+            return sym;
         }
     }
 
@@ -1050,8 +1052,10 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefconst1 extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defconst1(Object sym, Object initvalue, Object docstring) {
-            throw new UnsupportedOperationException();
+        public static ELispSymbol defconst1(ELispSymbol sym, Object initvalue, Object docstring) {
+            sym.setValue(initvalue);
+            sym.setSpecial(true);
+            return sym;
         }
     }
 

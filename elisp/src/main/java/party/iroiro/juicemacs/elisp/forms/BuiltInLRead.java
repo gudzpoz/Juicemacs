@@ -141,6 +141,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                         throw ELispSignals.fileMissing(new FileNotFoundException(test.toString()), test);
                     }
                     if (lastModified.isAfter(saveMtime)) {
+                        saveMtime = lastModified;
                         result = test;
                     }
                 }
@@ -169,7 +170,6 @@ public class BuiltInLRead extends ELispBuiltIns {
             ELispString path = locateOpenP(
                     LOAD_PATH.getValue(),
                     asStr(file),
-                    // TODO: Emacs bytecodes assume a bootstrapped environment. So we still need dumping?
                     LOAD_SUFFIXES.getValue(),
                     false, true, true
             );
@@ -208,9 +208,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (stem.endsWith(".el") || stem.endsWith(".elc")) {
                 target = directory.resolve(stem);
             } else {
-                // TODO: Emacs bytecodes assume a bootstrapped environment. So we still need dumping?
-                // target = directory.resolve(stem + ".elc");
-                target = directory.resolve(stem + ".el");
+                target = directory.resolve(stem + ".elc");
                 if (!target.isRegularFile()) {
                     target = directory.resolve(stem + ".el");
                 }
@@ -428,8 +426,8 @@ public class BuiltInLRead extends ELispBuiltIns {
         public static ELispCons getLoadSuffixes() {
             // TODO: Let load use these.
             return ELispCons.listOf(
-                    new ELispString(".el"),
-                    new ELispString(".elc")
+                    new ELispString(".elc"),
+                    new ELispString(".el")
             );
         }
     }
