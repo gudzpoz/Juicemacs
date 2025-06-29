@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 
 /// Represents an AST node that introduces a new sub-framee
@@ -184,11 +183,12 @@ public final class ELispLexical {
         ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
         int index = block.frameSlots.length - 1;
         while (i.hasNext()) {
-            ELispCons binding = asCons(i.next());
-            ELispSymbol symbol = asSym(binding.car());
-            Object value = binding.cdr();
-            block.symbols.set(index, symbol);
-            setVariable(frame, block.frameSlots[index], value);
+            if (i.next() instanceof ELispCons binding) {
+                ELispSymbol symbol = asSym(binding.car());
+                Object value = binding.cdr();
+                block.symbols.set(index, symbol);
+                setVariable(frame, block.frameSlots[index], value);
+            }
             index--;
         }
         return block.newScope(block.frameSlots.length);

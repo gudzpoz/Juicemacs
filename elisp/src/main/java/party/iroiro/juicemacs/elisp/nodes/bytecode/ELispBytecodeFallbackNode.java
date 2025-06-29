@@ -243,6 +243,12 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 case PLUS:                         // 0134
                     nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FPlusBinaryNodeGen::create));
                     yield nodes.size() - 1;
+                case MAX:                          // 0135
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FMaxBinaryNodeGen::create));
+                    yield nodes.size() - 1;
+                case MIN:                          // 0136
+                    nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FMinBinaryNodeGen::create));
+                    yield nodes.size() - 1;
                 case MULT:                         // 0137
                     nodes.add(createBinaryNode(stackTop, BuiltInDataFactory.FTimesBinaryNodeGen::create));
                     yield nodes.size() - 1;
@@ -635,23 +641,13 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case DIFF:                         // 0132
                     case NEGATE:                       // 0133
                     case PLUS:                         // 0134
-                        ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
-                        break;
                     case MAX:                          // 0135
-                        frame.setObject(top, BuiltInData.FMax.max(frame.getObject(top), new Object[]{
-                                frame.getObject(top + 1),
-                        }));
-                        break;
                     case MIN:                          // 0136
-                        frame.setObject(top, BuiltInData.FMin.min(frame.getObject(top), new Object[]{
-                                frame.getObject(top + 1),
-                        }));
-                        break;
                     case MULT:                         // 0137
                         ((ELispExpressionNode) nodes[indices[bci]]).executeVoid(frame);
                         break;
                     case POINT:                        // 0140
-                        frame.setObject(top, BuiltInEditFns.FPoint.point());
+                        frame.setObject(top, context.currentBuffer().getPoint());
                         break;
                     case SAVE_CURRENT_BUFFER_OBSOLETE: // 0141
                         throw new UnsupportedOperationException();
@@ -747,6 +743,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                                 asLong(frame.getObject(top + 1)),
                                 context.currentBuffer()
                         ));
+                        break;
                     case DELETE_REGION:                // 0174
                         frame.setObject(top, BuiltInEditFns.FDeleteRegion.deleteRegion(
                                 asLong(frame.getObject(top)),
@@ -923,7 +920,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         CompilerAsserts.partialEvaluationConstant(top);
                         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
                         for (int i = 0; i < count; i++) {
-                            builder.add(frame.getObject(top + 1));
+                            builder.add(frame.getObject(top + i));
                         }
                         frame.setObject(top, builder.build());
                         break;
@@ -936,7 +933,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         CompilerAsserts.partialEvaluationConstant(top);
                         Object[] args = new Object[count];
                         for (int i = 0; i < count; i++) {
-                            args[i] = frame.getObject(top);
+                            args[i] = frame.getObject(top + i);
                         }
                         frame.setObject(top, op == CONCATN
                                 ? BuiltInFns.FConcat.concat(args)
