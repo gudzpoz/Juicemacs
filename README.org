@@ -4,8 +4,9 @@
 [[https://openjdk.org/projects/jdk/23/][https://img.shields.io/badge/Java-23-orange.svg?logo=openjdk&ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
-that over-ambitiously aims to achieve the following:
+that over-ambitiously aims to explore the following:
 
+- Speculative JIT compilation
 - Transparent(-ish) concurrentization of ELisp code
 - Polyglot programming with Python, JavaScript, etc.
 - GNU Emacs 30 compatibility
@@ -26,24 +27,23 @@ live with:
 
 * Running
 
-It is still a long long way to go before Juicemacs can load all of =loadup.el=.
-Currently it stops at the last few lines trying to run =top-level= due to
-missing UI subroutines. But it can already use a lot of functions/macros loaded
-in the "upper half" of =loadup.el=.
+Currently, Juicemacs has two functional interpreters (one for AST, one for
+bytecoed) and enough built-in rountines implemented to handle =pdump=. It
+usually stops when =top-level= tries to use unimplemented UI subroutines.
 
 To run it:
 1. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
-2. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
-   data/elisp files ready.
-3. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"= (in the project root) for
+2. Clone the repository, go to [[file:elisp/emacs/]] and build a GNU Emacs to have
+   all the generated data/elisp files ready.
+3. Run src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd)"} (in the project root) for
    a REPL.
 
 By the way, you may also try:
 - src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --help"}
-- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect 4242"} (for a
+- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect=4242"} (for a
   [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome DevTools protocol server]])
 
-And specially:
+And specially, if you want to try out the experimental slowish pdump:
 - src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"}
 - src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump-file=../emacs.pdmp"}
 

@@ -254,6 +254,21 @@ integer-based tests our interpreter is significantly slower than nativecomp.
 
 Edit: No, =bytecomp.el= requires a working bytecode interpreter.
 
+Edit: No, I misunderstood how Emacs bootstraps so the following sub-sections are
+speaking nonsense. It does dump twice, but the two dumps are rather independent:
+
+1. =pbootstrap=:
+
+   - =temacs= -> =(load "loadup")= -> =(dump-emacs)= -> =bootstrap-emacs=
+   - =bootstrap-emacs= is used to byte-compile files into =.elc=
+
+2. =pdump=:
+
+   - =pdump= expects =.elc= files, but otherwise it has nothing to do with
+     =bootstrap-emacs=. (I wrongly thought =bootstrap-emacs= is used to dump a
+     second time.)
+   - =pdump= -> =(load "loadup")= (=.elc=) -> =(dump-emacs)= -> =emacs=
+
 ** Bootstrapping
 
 So we have a bytecode interpreter now. However, compiled Emacs =.elc= files seem
