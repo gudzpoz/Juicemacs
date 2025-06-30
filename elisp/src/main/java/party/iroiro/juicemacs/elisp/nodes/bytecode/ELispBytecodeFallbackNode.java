@@ -13,6 +13,8 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -999,6 +1001,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 if (CompilerDirectives.inInterpreter()) {
                     bci = exceptionJumps[target];
                     top = exceptionJumpsStackTop[target];
+                    frame.setObject(top, getExceptionData(e));
                    continue;
                 } else {
                     for (int i = 0; i < exceptionJumps.length; i++) {
@@ -1008,6 +1011,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             top = exceptionJumpsStackTop[i];
                             CompilerAsserts.partialEvaluationConstant(bci);
                             CompilerAsserts.partialEvaluationConstant(top);
+                            frame.setObject(top, getExceptionData(e));
                             continue loop;
                         }
                     }
@@ -1034,6 +1038,15 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             throw rethrow;
         }
         return handler.target;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static Object getExceptionData(AbstractTruffleException e) {
+        if (e instanceof ELispSignals.ELispSignalException signal) {
+            return new ELispCons(signal.getTag(), signal.getData());
+        } else {
+            return ((ELispSignals.ELispCatchException) e).getData();
+        }
     }
 
     private int backEdgePoll(VirtualFrame frame, int bci, int nextBci, int stackTop, Bindings bindings) {
@@ -1220,8 +1233,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     /// ## Why don't use `ELispFrameSlotRead/WriteNode`
     ///
     /// In node-based Lisp interpreter ([ELispInterpretedNode]), we rely on two nodes
-    /// ([party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode] and
-    /// [party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode])
+    /// ([ELispFrameSlotReadNode] and
+    /// [ELispFrameSlotWriteNode])
     /// to read from/write to stack frames. They wrap primitive
     /// in mutable containers to reduce GC pressure (reducing primitive boxing costs).
     ///
