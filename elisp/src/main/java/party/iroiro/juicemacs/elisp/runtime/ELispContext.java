@@ -128,6 +128,9 @@ public final class ELispContext implements ELispParser.InternContext {
     public void initGlobal(ELispLanguage language) {
         if (options.dumpFile == null) {
             globals.init(language, options.postInit);
+            if (!options.pdump.isEmpty()) {
+                setValue(ELispGlobals.DUMP_MODE, new ELispString(options.pdump));
+            }
             return;
         }
         TruffleFile file = truffleEnv.getPublicTruffleFile(options.dumpFile);
@@ -214,7 +217,7 @@ public final class ELispContext implements ELispParser.InternContext {
             int globalVariableMaxInvalidations,
             boolean postInit,
             boolean hardExit,
-            boolean pdump,
+            String pdump,
             @Nullable String dumpFile,
             boolean debug
     ) {
@@ -223,7 +226,7 @@ public final class ELispContext implements ELispParser.InternContext {
             int invalidations = Math.toIntExact(options.get(ELispLanguage.GLOBAL_MAX_INVALIDATIONS));
             boolean postInit = !options.get(ELispLanguage.BARE);
             boolean hardExit = options.get(ELispLanguage.HARD_EXIT);
-            boolean pdump = options.get(ELispLanguage.PORTABLE_DUMP);
+            String pdump = options.get(ELispLanguage.PORTABLE_DUMP);
             String dumpFile = options.get(ELispLanguage.DUMP_FILE);
             dumpFile = dumpFile.isEmpty() ? null : dumpFile;
             boolean debug = options.get(ELispLanguage.TRUFFLE_DEBUG);

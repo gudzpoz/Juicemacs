@@ -79,7 +79,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
             category = OptionCategory.EXPERT,
             stability = OptionStability.EXPERIMENTAL
     )
-    public static final OptionKey<Boolean> PORTABLE_DUMP = new OptionKey<>(false);
+    public static final OptionKey<String> PORTABLE_DUMP = new OptionKey<>("");
 
     @Option(
             name = "dumpFile",

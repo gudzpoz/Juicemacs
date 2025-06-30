@@ -35,14 +35,17 @@ To run it:
 1. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
 2. Go to [[file:elisp/emacs/]] and build a GNU Emacs to have all the generated
    data/elisp files ready.
-3. Delete/rename the generated =lisp/loaddefs.el= file.
-4. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"= (in the project root) for
+3. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"= (in the project root) for
    a REPL.
 
 By the way, you may also try:
-- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --help"=
-- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect 4242"= (for a [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome
-  DevTools protocol server]])
+- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --help"}
+- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect 4242"} (for a
+  [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome DevTools protocol server]])
+
+And specially:
+- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"}
+- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump-file=../emacs.pdmp"}
 
 ** ERT Testing
 
@@ -55,7 +58,7 @@ Juicemacs currently can run some of these tests [[file:elisp/src/test/java/party
   (require 'pp)
   (defalias 'pp 'princ)
   ;; ert asserts about newlines produced by pp
-  (defun cl-assert (&rest _) t)
+  (defun cl--assertion-failed (&rest _) t)
 
   (require 'ert)
   (load "../test/src/data-tests")

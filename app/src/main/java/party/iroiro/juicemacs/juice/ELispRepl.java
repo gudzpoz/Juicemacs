@@ -45,6 +45,14 @@ public class ELispRepl implements Callable<Integer> {
     @Nullable
     File emacsDataDir;
 
+    @Option(names = {"--dump"}, description = "Dump Emacs")
+    @Nullable
+    String dumpEmacs;
+
+    @Option(names = {"--dump-file"}, description = "Load Emacs from dump file")
+    @Nullable
+    File dumpFile;
+
     @Option(names = {"--inspect"}, description = "Truffle Chrome debugger port")
     @Nullable
     Integer inspectPort;
@@ -65,7 +73,6 @@ public class ELispRepl implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-
         if (userLoadPaths == null || userLoadPaths.length == 0) {
             userLoadPaths = new File[]{Path.of("..", "elisp", "emacs", "lisp").toFile()};
         }
@@ -94,6 +101,14 @@ public class ELispRepl implements Callable<Integer> {
                 builder.option(option, value);
             }
         }
+        if (dumpEmacs != null) {
+            if (dumpFile != null) {
+                System.err.println("--dump-file option ignored while dumping");;
+            }
+            builder.option("elisp.portableDump", dumpEmacs);
+        } else if (dumpFile != null) {
+            builder.option("elisp.dumpFile", dumpFile.getAbsolutePath());
+        }
         try (Context context = builder
                 .build()) {
             LineReader lineReader = getLineReader(context);
@@ -101,7 +116,11 @@ public class ELispRepl implements Callable<Integer> {
                 context.eval("elisp", """
                         (setq noninteractive t)
                         """);
-                context.eval("elisp", "(load \"loadup\")");
+                if (dumpEmacs == null && dumpFile != null) {
+                    context.eval("elisp", "(eval top-level)");
+                } else {
+                    context.eval("elisp", "(load \"loadup\")");
+                }
             } catch (PolyglotException e) {
                 printStackTrace(e, lineReader);
             }

@@ -66,15 +66,9 @@ public class ELispLanguageTest {
             );
             return;
         }
-        Context.Builder builder = getContextBuilder(out);
+        Context.Builder builder = getContextBuilder(out).option("elisp.portableDump", dumpMode);
         try (Context context = builder.build()) {
-            // Circumvent dependency on a bootstrapped environment
-            // - (noninteractive . nil) leads to usages of user-emacs-directory,
-            //   which is only available after bootstrapping
-            context.eval("elisp", "(setq noninteractive t)");
-
             // Loads until an error
-            context.eval("elisp", "(setq dump-mode \"" + dumpMode + "\")");
             context.eval("elisp", "(load \"loadup\")");
         } catch (PolyglotException e) {
             // loadup.el calls (kill-emacs) after dumping
@@ -95,6 +89,11 @@ public class ELispLanguageTest {
             tryDump(true, out);
             tryDump(false, out);
             try (Context context = getContextBuilder(out).option("elisp.dumpFile", "emacs.pdmp").build()) {
+                try {
+                    context.eval("elisp", "(eval top-level)");
+                } catch (PolyglotException e) {
+                    e.printStackTrace(out);
+                }
                 // Test bytecode compiler
                 context.eval("elisp", """
                         ;; -*- lexical-binding: t -*-
@@ -110,7 +109,7 @@ public class ELispLanguageTest {
                         (require 'pp)
                         (defalias 'pp 'princ)
                         ;; ert asserts about newlines produced by pp
-                        (defun cl-assert (&rest _) t)
+                        (defun cl--assertion-failed (&rest _) t)
 
                         (require 'ert)
                         (load "../test/src/data-tests")
