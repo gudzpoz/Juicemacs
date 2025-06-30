@@ -1,27 +1,28 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -29,6 +30,12 @@ public class BuiltInDired extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInDiredFactory.getFactories();
+    }
+
+    public static TruffleFile getTruffleFile(@Nullable Node node, ELispString file) {
+        return ELispContext.get(node).truffleEnv().getPublicTruffleFile(
+                BuiltInFileIO.FExpandFileName.expandFileNamePath(file, false).toString()
+        );
     }
 
     record CompletionRegexpFilter(ELispContext context, ArrayList<ELispRegExp.CompiledRegExp> regexps)
@@ -59,8 +66,7 @@ public class BuiltInDired extends ELispBuiltIns {
              Dynamic _ = Dynamic.pushDynamic(CASE_FOLD_SEARCH, ignoreCase)) {
             // TODO: encode file names
             ELispContext context = ELispContext.get(node);
-            TruffleLanguage.Env env = context.truffleEnv();
-            TruffleFile d = env.getPublicTruffleFile(dirname.toString());
+            TruffleFile d = getTruffleFile(node, dirname);
             Collection<TruffleFile> listing = d.list();
 
             Object allCompletion = listing.stream().filter((entry) -> {
@@ -118,8 +124,33 @@ public class BuiltInDired extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDirectoryFiles extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void directoryFiles(Object directory, Object full, Object match, Object nosort, Object count) {
-            throw new UnsupportedOperationException();
+        public Object directoryFiles(ELispString directory, boolean full, Object match, boolean nosort, Object count) {
+            long limit = notNilOr(count, -1);
+            ELispRegExp.@Nullable CompiledRegExp matcher = isNil(match)
+                    ? null
+                    : BuiltInSearch.compileRegExp(getLanguage(), asStr(match), null);
+            TruffleFile dir = getTruffleFile(this, directory);
+            try {
+                Stream<TruffleFile> stream = dir.list().stream();
+                if (matcher != null) {
+                    ELispBuffer buffer = currentBuffer();
+                    stream = stream.filter((file) ->
+                            !isNil(matcher.call(MuleString.fromString(file.getName()), false, 0, Long.MAX_VALUE, buffer)));
+                }
+                if (!nosort) {
+                    stream = stream.sorted(Comparator.comparing(TruffleFile::getName));
+                }
+                if (limit >= 0) {
+                    stream = stream.limit(limit);
+                }
+                Object collect = (full
+                        ? stream.map((file) -> new ELispString(file.getAbsoluteFile().toString()))
+                        : stream.map((file) -> new ELispString(file.getName())))
+                        .collect(ELispCons.ListBuilder.collector());
+                return collect;
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, directory);
+            }
         }
     }
 
@@ -262,8 +293,63 @@ public class BuiltInDired extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFileAttributes extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void fileAttributes(Object filename, Object idFormat) {
-            throw new UnsupportedOperationException();
+        public Object fileAttributes(ELispString filename, Object idFormat) {
+            // TODO: id-format
+            TruffleFile file = getTruffleFile(this, filename);
+            if (!file.exists()) {
+                return false;
+            }
+            try {
+                return ELispCons.listOf(
+                        // #0: directory?
+                        file.isDirectory()
+                                ? true
+                                : file.isSymbolicLink()
+                                ? new ELispString(file.readSymbolicLink().toString())
+                                : false,
+                        // #1: TODO: links
+                        1L,
+                        // #2: uid
+                        new ELispString(file.getOwner().getName()),
+                        // #3: gid
+                        new ELispString(file.getGroup().getName()),
+                        // #4: last access time
+                        BuiltInTimeFns.ELispTimeFnsNode.toTimeCons(file.getLastAccessTime().toInstant()),
+                        // #5: modification time
+                        BuiltInTimeFns.ELispTimeFnsNode.toTimeCons(file.getLastModifiedTime().toInstant()),
+                        // #6: TODO: status change time
+                        BuiltInTimeFns.ELispTimeFnsNode.toTimeCons(file.getCreationTime().toInstant()),
+                        // #7: size
+                        file.size(),
+                        // #8: mode
+                        permissionString(file),
+                        // #9: ?
+                        false,
+                        // #10: TODO: inode
+                        1,
+                        // #11: TODO: device
+                        0
+                );
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, filename);
+            }
+        }
+
+        private ELispString permissionString(TruffleFile file) throws IOException {
+            byte[] string = new byte[10];
+            string[0] = (byte) (file.isDirectory() ? 'd' :
+                    file.isSymbolicLink() ? 'l' :'-');
+            Set<PosixFilePermission> permissions = file.getPosixPermissions();
+            string[1] = (byte) (permissions.contains(PosixFilePermission.OWNER_READ) ? 'r' : '-');
+            string[2] = (byte) (permissions.contains(PosixFilePermission.OWNER_WRITE) ? 'w' : '-');
+            string[3] = (byte) (permissions.contains(PosixFilePermission.OWNER_EXECUTE) ? 'x' : '-');
+            string[4] = (byte) (permissions.contains(PosixFilePermission.GROUP_READ) ? 'r' : '-');
+            string[5] = (byte) (permissions.contains(PosixFilePermission.GROUP_WRITE) ? 'w' : '-');
+            string[6] = (byte) (permissions.contains(PosixFilePermission.GROUP_EXECUTE) ? 'x' : '-');
+            string[7] = (byte) (permissions.contains(PosixFilePermission.OTHERS_READ) ? 'r' : '-');
+            string[8] = (byte) (permissions.contains(PosixFilePermission.OTHERS_WRITE) ? 'w' : '-');
+            string[9] = (byte) (permissions.contains(PosixFilePermission.OTHERS_EXECUTE) ? 'x' : '-');
+            return new ELispString(string);
         }
     }
 

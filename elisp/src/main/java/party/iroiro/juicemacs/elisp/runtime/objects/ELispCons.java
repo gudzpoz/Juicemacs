@@ -181,15 +181,18 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
                 && BuiltInFns.FEqual.equal(cdr(), cons.cdr());
     }
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
+        if (depth > LISP_HASH_CODE_MAX_DEPTH) {
+            return 0;
+        }
         int result = 1;
         ConsIterator i = consIterator(0);
         ELispCons last = this;
         while (i.hasNextCons()) {
             last = i.nextCons();
-            result = 31 * result + ELispValue.lispHashCode(last.car);
+            result = 31 * result + ELispValue.lispHashCode(last.car, depth + 1);
         }
-        result = 31 * result + ELispValue.lispHashCode(last.cdr);
+        result = 31 * result + ELispValue.lispHashCode(last.cdr, depth + 1);
         return result;
     }
 

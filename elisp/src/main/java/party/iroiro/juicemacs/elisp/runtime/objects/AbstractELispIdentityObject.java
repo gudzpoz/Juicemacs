@@ -13,7 +13,7 @@ public abstract class AbstractELispIdentityObject implements ELispValue {
     }
 
     @Override
-    public final int lispHashCode() {
+    public final int lispHashCode(int depth) {
         return System.identityHashCode(this);
     }
 

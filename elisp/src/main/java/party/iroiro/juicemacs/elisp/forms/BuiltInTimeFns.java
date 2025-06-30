@@ -98,11 +98,11 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     }
 
     @TypeSystemReference(TimeFnsTypeSystem.class)
-    abstract static class ELispTimeFnsNode extends ELispBuiltInBaseNode {
+    public abstract static class ELispTimeFnsNode extends ELispBuiltInBaseNode {
         @Child
         GlobalVariableReadNode currentTimeList = GlobalVariableReadNodeGen.create(CURRENT_TIME_LIST);
 
-        static Object toTimeList(Instant instant) {
+        public static Object toTimeList(Instant instant) {
             long seconds = instant.getEpochSecond();
             long nanos = instant.getNano();
             return ELispCons.listOf(
@@ -110,10 +110,10 @@ public class BuiltInTimeFns extends ELispBuiltIns {
                     nanos / 1000, (nanos % 1000) * 1000
             );
         }
-        static Object toTimeCons(Instant instant) {
+        public static Object toTimeCons(Instant instant) {
             return toTimeConsHz(instant, 1_000_000_000);
         }
-        static Object toTimeConsHz(Instant instant, long hz) {
+        public static Object toTimeConsHz(Instant instant, long hz) {
             long seconds = instant.getEpochSecond();
             long nanos = instant.getNano();
             if (seconds < Long.MAX_VALUE / hz / 2) {
@@ -122,7 +122,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             return toBigNumCons(seconds, nanos, BigInteger.valueOf(hz)); // NOPMD: valueOf(long) is fine
         }
         @CompilerDirectives.TruffleBoundary
-        static Object toBigNumCons(long seconds, long nanos, BigInteger hz) {
+        public static Object toBigNumCons(long seconds, long nanos, BigInteger hz) {
             return new ELispCons(
                     ELispBigNum.wrap(
                             BigInteger.valueOf(seconds)
@@ -137,7 +137,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             );
         }
 
-        Object toTime(Instant instant) {
+        public Object toTime(Instant instant) {
             Object transition = currentTimeList.executeGeneric(null);
             if (isT(transition)) {
                 return toTimeList(instant);

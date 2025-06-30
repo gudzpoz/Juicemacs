@@ -232,7 +232,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     }
 
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
         return hashCode();
     }
 

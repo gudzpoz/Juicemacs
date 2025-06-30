@@ -150,7 +150,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         return other instanceof ELispString s && value.equals(s.value);
     }
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
         return value.hashCode();
     }
 

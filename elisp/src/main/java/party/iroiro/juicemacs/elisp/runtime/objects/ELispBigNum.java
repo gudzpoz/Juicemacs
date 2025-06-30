@@ -164,7 +164,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
         return equals(other);
     }
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
         return hashCode();
     }
     @Override

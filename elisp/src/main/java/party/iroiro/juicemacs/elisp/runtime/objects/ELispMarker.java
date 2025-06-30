@@ -82,7 +82,7 @@ public final class ELispMarker extends Number implements ELispValue {
         return false;
     }
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
         return Objects.hash(getBuffer(), point());
     }
 

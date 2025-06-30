@@ -804,6 +804,7 @@ public class BuiltInData extends ELispBuiltIns {
                 }
                 // TODO: Handle other pseudo-vectors
                 case ELispInterpretedClosure _ -> INTERPRETED_FUNCTION;
+                case ELispBytecode _ -> BYTE_CODE_FUNCTION;
 
                 // identity objects
                 case ELispHashtable _ -> HASH_TABLE;

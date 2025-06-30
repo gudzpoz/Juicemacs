@@ -346,9 +346,18 @@ public class BuiltInFileIO extends ELispBuiltIns {
             if (path.startsWith("~")) {
                 path = System.getProperty("user.home") + path.substring(1);
             } else if (!path.startsWith("/")) {
-                return Path.of(isNil(defaultDirectory)
-                        ? System.getProperty("user.home") // TODO: default-directory
-                        : defaultDirectory.toString(), path);
+                String dir;
+                if (!isNil(defaultDirectory)) {
+                    dir = defaultDirectory.toString();
+                } else {
+                    Object globalDir = DEFAULT_DIRECTORY.getValue();
+                    if (!isNil(globalDir)) {
+                        dir = globalDir.toString();
+                    } else {
+                        dir = System.getProperty("user.home");
+                    }
+                }
+                return Path.of(dir, path);
             }
             return Path.of(path);
         }

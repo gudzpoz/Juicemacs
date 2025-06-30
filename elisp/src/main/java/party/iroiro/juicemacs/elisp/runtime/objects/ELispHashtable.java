@@ -61,7 +61,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                 }
                 @Override
                 public int hashCode(Object o) {
-                    return ELispValue.lispHashCode(o);
+                    return ELispValue.lispHashCode(o, 0);
                 }
             };
         } else {

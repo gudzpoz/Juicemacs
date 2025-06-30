@@ -127,7 +127,7 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         return other instanceof ELispBoolVector vector && size == vector.size && Arrays.equals(bits, vector.bits);
     }
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
         return size + 31 * Arrays.hashCode(bits);
     }
 }

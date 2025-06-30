@@ -26,7 +26,7 @@ public record ELispSubroutine(
         return this.equals(other);
     }
     @Override
-    public int lispHashCode() {
+    public int lispHashCode(int depth) {
         return hashCode();
     }
 

@@ -47,14 +47,17 @@ public abstract class AbstractELispVector extends ELispVectorLike<Object> {
 
     @SuppressWarnings("PMD.TruffleNoDirectRecursion")
     @Override
-    public int lispHashCode() {
-        return lispHashCode(inner);
+    public int lispHashCode(int depth) {
+        return lispHashCode(inner, depth);
     }
 
-    public static int lispHashCode(Object[] objects) {
+    public static int lispHashCode(Object[] objects, int depth) {
+        if (depth > LISP_HASH_CODE_MAX_DEPTH) {
+            return 0;
+        }
         int result = 1;
         for (Object o : objects) {
-            result = 31 * result +ELispValue.lispHashCode(o);
+            result = 31 * result + ELispValue.lispHashCode(o, depth + 1);
         }
         return result;
     }

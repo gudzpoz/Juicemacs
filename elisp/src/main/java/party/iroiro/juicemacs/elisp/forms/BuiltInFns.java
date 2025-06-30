@@ -2544,7 +2544,7 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static long sxhashEqual(Object obj) {
             if (obj instanceof ELispValue v) {
-                return v.lispHashCode();
+                return v.lispHashCode(0);
             }
             return obj.hashCode();
         }
