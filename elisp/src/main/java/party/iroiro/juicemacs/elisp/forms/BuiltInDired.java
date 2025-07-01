@@ -135,7 +135,7 @@ public class BuiltInDired extends ELispBuiltIns {
                 if (matcher != null) {
                     ELispBuffer buffer = currentBuffer();
                     stream = stream.filter((file) ->
-                            !isNil(matcher.call(MuleString.fromString(file.getName()), false, 0, Long.MAX_VALUE, buffer)));
+                            !isNil(matcher.call(MuleString.fromString(file.getName()), true, 0, -1, buffer)));
                 }
                 if (!nosort) {
                     stream = stream.sorted(Comparator.comparing(TruffleFile::getName));

@@ -67,7 +67,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         if (predicate instanceof Long l) {
             return (f) -> {
                 TruffleFile file = env.getPublicTruffleFile(f.toString());
-                if (!file.exists()) {
+                if (!file.exists() || file.isDirectory()) {
                     return false;
                 }
                 if ((l & ACCESS_X_OK) != 0 && !file.isExecutable()) {
@@ -80,7 +80,8 @@ public class BuiltInLRead extends ELispBuiltIns {
             };
         }
         if (isNil(predicate) || isT(predicate)) {
-            return BuiltInFileIO.FFileReadableP::fileReadableP;
+            return f -> !BuiltInFileIO.FFileDirectoryP.fileDirectoryP(f)
+                    && BuiltInFileIO.FFileReadableP.fileReadableP(f);
         }
         return f -> {
             Object ret = BuiltInEval.FFuncall.funcall(null, predicate, f);
@@ -125,7 +126,8 @@ public class BuiltInLRead extends ELispBuiltIns {
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
                 boolean exists;
                 if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
-                    exists = env.getPublicTruffleFile(test.toString()).isReadable();
+                    TruffleFile file = env.getPublicTruffleFile(test.toString());
+                    exists = !file.isDirectory() && file.isReadable();
                 } else {
                     exists = filePredicate.test(test);
                 }

@@ -84,8 +84,18 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRandom extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void random(Object limit) {
-            throw new UnsupportedOperationException();
+        public static Object random(Object limit) {
+            Random r = new Random();
+            if (isT(limit)) {
+                // TODO
+            }
+            if (limit instanceof Long l) {
+                return r.nextLong(l);
+            }
+            if (limit instanceof ELispBigNum big) {
+                throw new UnsupportedOperationException();
+            }
+            return r.nextLong();
         }
     }
 

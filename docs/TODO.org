@@ -241,86 +241,6 @@ should probably get replaced by a weaker map.
 However, I don't think many people are using non-interned symbols as a value
 container. So it is probably fine.
 
-* TODO [#A] Bytecode Interpreter & Bootstrapping
-
-Now that [[https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/BytecodeDSL.md][Truffle has a bytecode DSL]], we can probably implement a bytecode
-interpreter more easily. However, I don't think anything (Juicemacs currently
-can run) in Emacs actually /requires/ a working bytecode interpreter. Since our
-interpreter is more or less on par with nativecomp /when fully warmed up/, we
-can continue with our AST interpreter until we run into some real bottlenecks.
-
-Edit: I was benchmarking using floats, which Emacs is known to be bad at. In
-integer-based tests our interpreter is significantly slower than nativecomp.
-
-Edit: No, =bytecomp.el= requires a working bytecode interpreter.
-
-Edit: No, I misunderstood how Emacs bootstraps so the following sub-sections are
-speaking nonsense. It does dump twice, but the two dumps are rather independent:
-
-1. =pbootstrap=:
-
-   - =temacs= -> =(load "loadup")= -> =(dump-emacs)= -> =bootstrap-emacs=
-   - =bootstrap-emacs= is used to byte-compile files into =.elc=
-
-2. =pdump=:
-
-   - =pdump= expects =.elc= files, but otherwise it has nothing to do with
-     =bootstrap-emacs=. (I wrongly thought =bootstrap-emacs= is used to dump a
-     second time.)
-   - =pdump= -> =(load "loadup")= (=.elc=) -> =(dump-emacs)= -> =emacs=
-
-** Bootstrapping
-
-So we have a bytecode interpreter now. However, compiled Emacs =.elc= files seem
-to assume a bootstrapped environment, meaning that it expects at least autoload
-definitions from =loaddefs.el= even before =loaddefs.el= is loaded.
-
-Emacs achieves this by somehow dumping its heap (approximately) and always
-restarts from this heap snapshot. I don't know how we are going to deal with
-though.
-
-Also, currently Juicemacs load ~90% of =loadup.el= in around 13 seconds on my
-machine, which is not very acceptable. So we do need something similar to
-=pdump=.
-
-*** =pdump=
-
-We have a pdumper now which simply serializes all data. It is quite slow
-(compare: running =loadup.el= in 13 seconds, and loading =.pdmp= data in 6
-seconds).
-
-But anyway, we can continue bootstrapping in this way (and consider accelerating
-data loading with native compilation after all these settle). The one thing here
-is that Emacs has complex bootstrapping logic:
-
-- Emacs seems to require two rounds of dumping:
-  - =pbootstrap=
-  - =pdump=
-- For example, =init_buffer_once= is only run on the initial run, while
-  =init_buffer= is always run whether or not the current session is loaded from
-  =.pdmp=.
-- The above depends on a dumped C variable =bool initialized=. This variable is
-  used extensively in =emacs.c= during initialization and also by other source
-  files (mostly for assertions at a glance).
-- I've met some problems already:
-
-  - =define-category= errs if a category is already defined. However,
-    =characters.el= (defining a bunch of categories) is always run during
-    =loadup=, throwing "category already defined" errors on the second =pdump=
-    run. Why? How does Emacs bootstrap circumvent this?
-
-** =noninteractive=
-
-Currently, we set =noninteractive= to =t= in our tests and REPL to avoid running
-code expecting a bootstrapped environment. (We could also set =dump-mode=, but
-it seems to skip too many things.)
-
-This includes:
-
-- =user-emacs-directory=: Set to =nil= by =subr.el= and set to a valid value in
-  =top-level=. This seems to be used by Emacs =loadup.el= before running
-  =top-level= when =noninteractive= is =nil=.
-
 * TODO [#B] Understanding Non-Bare Symbols
 
 According to [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Symbols-with-Position.html][Symbols with Position (GNU Emacs Lisp Reference Manual)]], it seems
@@ -486,6 +406,86 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#A] Bytecode Interpreter & Bootstrapping
+
+Now that [[https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/BytecodeDSL.md][Truffle has a bytecode DSL]], we can probably implement a bytecode
+interpreter more easily. However, I don't think anything (Juicemacs currently
+can run) in Emacs actually /requires/ a working bytecode interpreter. Since our
+interpreter is more or less on par with nativecomp /when fully warmed up/, we
+can continue with our AST interpreter until we run into some real bottlenecks.
+
+Edit: I was benchmarking using floats, which Emacs is known to be bad at. In
+integer-based tests our interpreter is significantly slower than nativecomp.
+
+Edit: No, =bytecomp.el= requires a working bytecode interpreter.
+
+Edit: No, I misunderstood how Emacs bootstraps so the following sub-sections are
+speaking nonsense. It does dump twice, but the two dumps are rather independent:
+
+1. =pbootstrap=:
+
+   - =temacs= -> =(load "loadup")= -> =(dump-emacs)= -> =bootstrap-emacs=
+   - =bootstrap-emacs= is used to byte-compile files into =.elc=
+
+2. =pdump=:
+
+   - =pdump= expects =.elc= files, but otherwise it has nothing to do with
+     =bootstrap-emacs=. (I wrongly thought =bootstrap-emacs= is used to dump a
+     second time.)
+   - =pdump= -> =(load "loadup")= (=.elc=) -> =(dump-emacs)= -> =emacs=
+
+*** Bootstrapping
+
+So we have a bytecode interpreter now. However, compiled Emacs =.elc= files seem
+to assume a bootstrapped environment, meaning that it expects at least autoload
+definitions from =loaddefs.el= even before =loaddefs.el= is loaded.
+
+Emacs achieves this by somehow dumping its heap (approximately) and always
+restarts from this heap snapshot. I don't know how we are going to deal with
+though.
+
+Also, currently Juicemacs load ~90% of =loadup.el= in around 13 seconds on my
+machine, which is not very acceptable. So we do need something similar to
+=pdump=.
+
+**** =pdump=
+
+We have a pdumper now which simply serializes all data. It is quite slow
+(compare: running =loadup.el= in 13 seconds, and loading =.pdmp= data in 6
+seconds).
+
+But anyway, we can continue bootstrapping in this way (and consider accelerating
+data loading with native compilation after all these settle). The one thing here
+is that Emacs has complex bootstrapping logic:
+
+- Emacs seems to require two rounds of dumping:
+  - =pbootstrap=
+  - =pdump=
+- For example, =init_buffer_once= is only run on the initial run, while
+  =init_buffer= is always run whether or not the current session is loaded from
+  =.pdmp=.
+- The above depends on a dumped C variable =bool initialized=. This variable is
+  used extensively in =emacs.c= during initialization and also by other source
+  files (mostly for assertions at a glance).
+- I've met some problems already:
+
+  - =define-category= errs if a category is already defined. However,
+    =characters.el= (defining a bunch of categories) is always run during
+    =loadup=, throwing "category already defined" errors on the second =pdump=
+    run. Why? How does Emacs bootstrap circumvent this?
+
+*** =noninteractive=
+
+Currently, we set =noninteractive= to =t= in our tests and REPL to avoid running
+code expecting a bootstrapped environment. (We could also set =dump-mode=, but
+it seems to skip too many things.)
+
+This includes:
+
+- =user-emacs-directory=: Set to =nil= by =subr.el= and set to a valid value in
+  =top-level=. This seems to be used by Emacs =loadup.el= before running
+  =top-level= when =noninteractive= is =nil=.
 
 ** CANCELLED [#B] Make functions mutable
 
