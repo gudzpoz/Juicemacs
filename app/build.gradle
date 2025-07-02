@@ -25,6 +25,7 @@ tasks.run.configure {
 
 tasks.register('jvmCmd') {
     dependsOn tasks.run.taskDependencies
+    dependsOn tasks.compileJava.taskDependencies
 
     doLast {
         var classpath = tasks.run.classpath

@@ -84,8 +84,17 @@ public class BuiltInFloatFns extends ELispBuiltIns {
             }
 
             @Override
-            long divide(long x, long y) {
-                return 0;
+            long divide(long n, long d) {
+                long quo = n / d;
+                long rem = n % d;
+                boolean negativeDivisor = d < 0;
+                boolean negativeRemainder = rem < 0;
+                long absRem = Math.abs(rem);
+                long absRemDistance = Math.abs(d) - absRem;
+                if (absRemDistance < absRem + (quo & 1)) {
+                    quo += negativeDivisor == negativeRemainder ? 1 : -1;
+                }
+                return quo;
             }
 
             @Override
@@ -100,16 +109,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
 
             @Override
             long divide(long n, long d) {
-                long quo = n / d;
-                long rem = n % d;
-                boolean negativeDivisor = d < 0;
-                boolean negativeRemainder = rem < 0;
-                long absRem = Math.abs(rem);
-                long absRemDistance = Math.abs(d) - absRem;
-                if (absRemDistance < absRem + (quo & 1)) {
-                    quo += negativeDivisor == negativeRemainder ? 1 : -1;
-                }
-                return quo;
+                return n / d;
             }
 
             @Override

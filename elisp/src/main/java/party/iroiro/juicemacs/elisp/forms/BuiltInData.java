@@ -102,13 +102,13 @@ public class BuiltInData extends ELispBuiltIns {
         public double negDouble(double value) {
             return -value;
         }
+        @Specialization
+        public Object negBigNum(ELispBigNum bigNum) {
+            return bigNum.negate();
+        }
         @Fallback
         public Object negObject(Object value) {
-            return switch (value) {
-                case Double d -> -d;
-                case Number n -> ELispTypeSystemGen.asImplicitELispBigNum(n).negate();
-                default -> throw ELispSignals.wrongTypeArgument(NUMBERP, value);
-            };
+            throw ELispSignals.wrongTypeArgument(NUMBERP, value);
         }
     }
 
@@ -123,14 +123,13 @@ public class BuiltInData extends ELispBuiltIns {
         public double quoDouble(double value) {
             return 1 / value;
         }
+        @Specialization
+        public Object quoBigNum(ELispBigNum bigNum) {
+            return bigNum.reciprocal();
+        }
         @Fallback
         public Object quoObject(Object value) {
-            return switch (value) {
-                case Double d -> 1 / d;
-                case Long l -> 1 / l;
-                case ELispBigNum bigNum -> bigNum.reciprocal();
-                default -> throw ELispSignals.wrongTypeArgument(NUMBERP, value);
-            };
+            throw ELispSignals.wrongTypeArgument(NUMBERP, value);
         }
     }
 
@@ -145,6 +144,9 @@ public class BuiltInData extends ELispBuiltIns {
         }
 
         public abstract long longs(long left, long right);
+        public abstract Object longBigNum(long left, ELispBigNum right);
+        public abstract Object bigNumLong(ELispBigNum left, long right);
+        public abstract Object bigNums(ELispBigNum left, ELispBigNum right);
         public abstract double longDouble(long left, double right);
         public abstract double doubleLong(double left, long right);
         public abstract double doubles(double left, double right);
@@ -171,6 +173,21 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Override
         @Specialization
+        public Object longBigNum(long left, ELispBigNum right) {
+            return right.add(ELispBigNum.forceWrap(left));
+        }
+        @Override
+        @Specialization
+        public Object bigNumLong(ELispBigNum left, long right) {
+            return left.add(ELispBigNum.forceWrap(right));
+        }
+        @Override
+        @Specialization
+        public Object bigNums(ELispBigNum left, ELispBigNum right) {
+            return left.add(right);
+        }
+        @Override
+        @Specialization
         public double longDouble(long left, double right) {
             return left + right;
         }
@@ -185,12 +202,17 @@ public class BuiltInData extends ELispBuiltIns {
             return left + right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longBigNum", "bigNumLong", "bigNums", "longDouble", "doubleLong", "doubles"})
         public Number fallback(Object left, Object right) {
             return super.fallback(left, right);
         }
         @Override
         public Number generalCase(Number left, Number right) {
+            if (left instanceof Long ll && right instanceof Long rr) {
+                if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
+                    return ll + rr;
+                }
+            }
             if (left instanceof Double dl) {
                 return dl + right.doubleValue();
             }
@@ -212,6 +234,21 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Override
         @Specialization
+        public Object longBigNum(long left, ELispBigNum right) {
+            return ELispBigNum.forceWrap(left).subtract(right);
+        }
+        @Override
+        @Specialization
+        public Object bigNumLong(ELispBigNum left, long right) {
+            return left.subtract(ELispBigNum.forceWrap(right));
+        }
+        @Override
+        @Specialization
+        public Object bigNums(ELispBigNum left, ELispBigNum right) {
+            return left.subtract(right);
+        }
+        @Override
+        @Specialization
         public double longDouble(long left, double right) {
             return left - right;
         }
@@ -226,12 +263,17 @@ public class BuiltInData extends ELispBuiltIns {
             return left - right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longBigNum", "bigNumLong", "bigNums", "longDouble", "doubleLong", "doubles"})
         public Number fallback(Object left, Object right) {
             return super.fallback(left, right);
         }
         @Override
         public Number generalCase(Number left, Number right) {
+            if (left instanceof Long ll && right instanceof Long rr) {
+                if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
+                    return ll - rr;
+                }
+            }
             if (left instanceof Double dl) {
                 return dl - right.doubleValue();
             }
@@ -253,6 +295,21 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Override
         @Specialization
+        public Object longBigNum(long left, ELispBigNum right) {
+            return ELispBigNum.forceWrap(left).multiply(right);
+        }
+        @Override
+        @Specialization
+        public Object bigNumLong(ELispBigNum left, long right) {
+            return left.multiply(ELispBigNum.forceWrap(right));
+        }
+        @Override
+        @Specialization
+        public Object bigNums(ELispBigNum left, ELispBigNum right) {
+            return left.multiply(right);
+        }
+        @Override
+        @Specialization
         public double longDouble(long left, double right) {
             return left * right;
         }
@@ -267,12 +324,17 @@ public class BuiltInData extends ELispBuiltIns {
             return left * right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longBigNum", "bigNumLong", "bigNums", "longDouble", "doubleLong", "doubles"})
         public Number fallback(Object left, Object right) {
             return super.fallback(left, right);
         }
         @Override
         public Number generalCase(Number left, Number right) {
+            if (left instanceof Long ll && right instanceof Long rr) {
+                if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
+                    return ll * rr;
+                }
+            }
             if (left instanceof Double dl) {
                 return dl * right.doubleValue();
             }
@@ -294,6 +356,21 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Override
         @Specialization
+        public Object longBigNum(long left, ELispBigNum right) {
+            return ELispBigNum.forceWrap(left).divide(right);
+        }
+        @Override
+        @Specialization
+        public Object bigNumLong(ELispBigNum left, long right) {
+            return left.divide(ELispBigNum.forceWrap(right));
+        }
+        @Override
+        @Specialization
+        public Object bigNums(ELispBigNum left, ELispBigNum right) {
+            return left.divide(right);
+        }
+        @Override
+        @Specialization
         public double longDouble(long left, double right) {
             return left / right;
         }
@@ -308,12 +385,17 @@ public class BuiltInData extends ELispBuiltIns {
             return left / right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longBigNum", "bigNumLong", "bigNums", "longDouble", "doubleLong", "doubles"})
         public Number fallback(Object left, Object right) {
             return super.fallback(left, right);
         }
         @Override
         public Number generalCase(Number left, Number right) {
+            if (left instanceof Long ll && right instanceof Long rr) {
+                if (Math.abs(ll) < Integer.MAX_VALUE) {
+                    return ll / rr;
+                }
+            }
             if (left instanceof Double dl) {
                 return dl / right.doubleValue();
             }
@@ -534,7 +616,7 @@ public class BuiltInData extends ELispBuiltIns {
             return left == right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
             return compareTo(left, right) == 0;
         }
@@ -565,7 +647,7 @@ public class BuiltInData extends ELispBuiltIns {
             return left < right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
             return compareTo(left, right) < 0;
         }
@@ -596,7 +678,7 @@ public class BuiltInData extends ELispBuiltIns {
             return left <= right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
             return compareTo(left, right) <= 0;
         }
@@ -627,7 +709,7 @@ public class BuiltInData extends ELispBuiltIns {
             return left >= right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
             return compareTo(left, right) >= 0;
         }
@@ -658,7 +740,7 @@ public class BuiltInData extends ELispBuiltIns {
             return left > right;
         }
         @Override
-        @Fallback
+        @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
             return compareTo(left, right) > 0;
         }
@@ -3105,21 +3187,25 @@ public class BuiltInData extends ELispBuiltIns {
         public static boolean isSafeLong(long number) {
             return number < Long.MAX_VALUE;
         }
-
         @Specialization(guards = {"isSafeLong(number)"})
-        public static long add1Long(long number) {
+        public static long add1LongSafe(long number) {
             return number + 1;
         }
-
+        @Specialization
+        public static Object add1Long(long number) {
+            return ELispBigNum.forceWrap(number).add1();
+        }
+        @Specialization
+        public static Object add1BigNum(ELispBigNum number) {
+            return number.add1();
+        }
+        @Specialization
+        public static double add1Double(double number) {
+            return number + 1;
+        }
         @Fallback
         public static Object add1(Object number) {
-            return switch (number) {
-                case Long l when l < Long.MAX_VALUE -> l + 1;
-                case Long l -> ELispBigNum.forceWrap(l).add(ELispBigNum.ONE);
-                case Double d -> d + 1;
-                case ELispBigNum n -> n.add1();
-                default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
-            };
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
         }
     }
 
@@ -3135,21 +3221,25 @@ public class BuiltInData extends ELispBuiltIns {
         public static boolean isSafeLong(long number) {
             return number > Long.MIN_VALUE;
         }
-
         @Specialization(guards = {"isSafeLong(number)"})
-        public static long sub1Long(long number) {
+        public static long sub1LongSafe(long number) {
             return number - 1;
         }
-
+        @Specialization
+        public static Object sub1Long(long number) {
+            return ELispBigNum.forceWrap(number).sub1();
+        }
+        @Specialization
+        public static Object sub1BigNum(ELispBigNum number) {
+            return number.sub1();
+        }
+        @Specialization
+        public static double sub1Double(double number) {
+            return number - 1;
+        }
         @Fallback
         public static Object sub1(Object number) {
-            return switch (number) {
-                case Long l when l > Long.MIN_VALUE -> l - 1;
-                case Long l -> ELispBigNum.forceWrap(l).subtract(ELispBigNum.ONE);
-                case Double d -> d - 1;
-                case ELispBigNum n -> n.sub1();
-                default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
-            };
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
         }
     }
 

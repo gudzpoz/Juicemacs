@@ -98,13 +98,15 @@ public record DebuggerScopeObject(
 
     @ExportMessage
     public boolean hasScopeParent() {
-        return lexical.block().upperScope() != null;
+        ELispLexical.@Nullable Scope parent = lexical.block().upperScope();
+        return parent != null
+                && (lexical.block().parentFrame() != null || ELispLexical.getFrameSlot(frame) != null);
     }
 
     @ExportMessage
     public DebuggerScopeObject getScopeParent() throws UnsupportedMessageException {
         ELispLexical.@Nullable Scope parent = lexical.block().upperScope();
-        if (parent == null) {
+        if (parent == null || (lexical.block().parentFrame() == null && ELispLexical.getFrameSlot(frame) == null)) {
             throw UnsupportedMessageException.create();
         }
         return new DebuggerScopeObject(

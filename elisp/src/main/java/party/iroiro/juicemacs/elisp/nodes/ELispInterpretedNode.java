@@ -422,13 +422,13 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         @ExportMessage
         public boolean hasScope(Frame frame) {
             ELispLexical.@Nullable Scope lexical = ELispLexical.getScope(this);
-            return lexical != null;
+            return frame != null && lexical != null;
         }
 
         @ExportMessage
         public Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
             ELispLexical.@Nullable Scope lexical = ELispLexical.getScope(this);
-            if (lexical == null) {
+            if (frame == null || lexical == null) {
                 throw UnsupportedMessageException.create();
             }
             return new DebuggerScopeObject(getContext(), lexical, frame.materialize());
