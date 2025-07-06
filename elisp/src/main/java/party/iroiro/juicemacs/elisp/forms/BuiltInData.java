@@ -2864,7 +2864,11 @@ public class BuiltInData extends ELispBuiltIns {
             if (y == 0) {
                 throw ELispSignals.arithError();
             }
-            return Long.remainderUnsigned(x, y);
+            long r = x % y;
+            if (y < 0 ? r > 0 : r < 0) {
+                r += y;
+            }
+            return r;
         }
 
         @Specialization
@@ -2874,17 +2878,21 @@ public class BuiltInData extends ELispBuiltIns {
 
         @Specialization
         public static double modDouble(double x, double y) {
-            return x % y;
+            double r = x % y;
+            if (y < 0 ? r > 0 : r < 0) {
+                r += y;
+            }
+            return r;
         }
 
         @Specialization
         public static double modBigNumDouble(ELispBigNum x, double y) {
-            return x.doubleValue() % y;
+            return modDouble(x.doubleValue(), y);
         }
 
         @Specialization
         public static double modDoubleBigNum(double x, ELispBigNum y) {
-            return x % y.doubleValue();
+            return modDouble(x, y.doubleValue());
         }
     }
 
@@ -3166,11 +3174,17 @@ public class BuiltInData extends ELispBuiltIns {
             )) {
                 return value << count;
             }
+            if (value == 0) {
+                return 0L;
+            }
             return ash(ELispBigNum.forceWrap(value), count);
         }
 
         @Specialization
         public static Object ash(ELispBigNum value, long count) {
+            if (count > Short.MAX_VALUE) {
+                throw ELispSignals.overflowError();
+            }
             return value.shiftLeft(count);
         }
     }

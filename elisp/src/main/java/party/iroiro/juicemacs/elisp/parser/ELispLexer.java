@@ -710,7 +710,7 @@ public class ELispLexer {
             Matcher integer = INTEGER_PATTERN.matcher(number);
             if (integer.matches()) {
                 String text = integer.group(1);
-                if (text.length() < 20) {
+                if (text.length() <= 18) {
                     return new Token.FixNum(Long.parseLong(
                             text,
                             0,

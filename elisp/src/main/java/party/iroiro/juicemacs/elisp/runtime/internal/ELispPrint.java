@@ -179,7 +179,7 @@ public final class ELispPrint {
         // TODO: symbol interned -> #: prefix
         MuleString name = symbol.name();
         if (name.length() == 0) {
-            print('#').printInt('#');
+            print('#').print('#');
             return;
         }
         // If the symbol looks similar to a number, prefix it with a backslash
