@@ -119,7 +119,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         private void appendCodePoint(EolAwareStringBuilder output, byte[] bytes, int trailing) {
             switch (trailing) {
                 case 1 -> {
-                    int codePoint = (bytes[0] & 0b00011111) << 6 | (bytes[1] & 0b111111);
+                    int codePoint = ((bytes[0] & 0b00011111) << 6) | (bytes[1] & 0b111111);
                     if (codePoint < 0x80) {
                         output.appendRawByte((byte) (codePoint | 0x80));
                     } else {
@@ -127,22 +127,22 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
                     }
                 }
                 case 2 -> output.appendCodePoint(
-                        bytes[0] & 0b00001111 << 12
-                                | bytes[1] & 0b00111111 << 6
-                                | bytes[2] & 0b00111111
+                        ((bytes[0] & 0b00001111) << 12)
+                                | ((bytes[1] & 0b00111111) << 6)
+                                | (bytes[2] & 0b00111111)
                 );
                 case 3 -> output.appendCodePoint(
-                        bytes[0] & 0b00000111 << 18
-                                | bytes[1] & 0b00111111 << 12
-                                | bytes[2] & 0b00111111 << 6
-                                | bytes[3] & 0b00111111
+                        ((bytes[0] & 0b00000111) << 18)
+                                | ((bytes[1] & 0b00111111) << 12)
+                                | ((bytes[2] & 0b00111111) << 6)
+                                | (bytes[3] & 0b00111111)
                 );
                 case 4 -> {
-                    int codePoint = bytes[0] & 0b00000011 << 24
-                            | bytes[1] & 0b00111111 << 18
-                            | bytes[2] & 0b00111111 << 12
-                            | bytes[3] & 0b00111111 << 6
-                            | bytes[4] & 0b00111111;
+                    int codePoint = ((bytes[0] & 0b00000011) << 24)
+                            | ((bytes[1] & 0b00111111) << 18)
+                            | ((bytes[2] & 0b00111111) << 12)
+                            | ((bytes[3] & 0b00111111) << 6)
+                            | (bytes[4] & 0b00111111);
                     if (codePoint > MAX_CHAR) {
                         for (byte b : bytes) {
                             output.appendRawByte(b);

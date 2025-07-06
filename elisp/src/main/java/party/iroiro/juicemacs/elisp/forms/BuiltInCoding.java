@@ -5,17 +5,22 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.mule.MuleByteArrayString;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
+import java.io.IOException;
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
@@ -371,10 +376,16 @@ public class BuiltInCoding extends ELispBuiltIns {
     public abstract static class FDecodeCodingString extends ELispBuiltInBaseNode {
         @Specialization
         public Object decodeCodingString(ELispString string, ELispSymbol codingSystem, Object nocopy, Object buffer) {
+            FCheckCodingSystem.checkCodingSystem(codingSystem);
             ELispCodings codings = getThis(this);
-            ELispCodingSystem system = codings.resolveCodingSystem(codingSystem);
-            // TODO
-            return string;
+            ELispCodingSystem coding = codings.resolveCodingSystem(codingSystem);
+            byte[] bytes = ((MuleByteArrayString) string.value()).bytes();
+            ValueStorage.Forwarded container = new ValueStorage.Forwarded();
+            try (SeekableInMemoryByteChannel channel = new SeekableInMemoryByteChannel(bytes)) {
+                return new ELispString(codings.decode(coding, channel, 0, bytes.length, container).build());
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, ELispGlobals.STRING);
+            }
         }
     }
 
