@@ -967,7 +967,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         ELispBuffer currentBuffer = currentBuffer();
         String dirString = Path.of(cwd).toAbsolutePath() + File.separator;
         ELispString dir = new ELispString(dirString);
-        Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(dir, true);
+        Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(dir, true, null);
         if (isNil(handler) || dirString.equals("/")) {
             currentBuffer.setDirectory(dir);
         } else {

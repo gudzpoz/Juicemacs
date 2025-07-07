@@ -3,16 +3,22 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystem;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
+import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -68,9 +74,46 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FFindFileNameHandler extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object findFileNameHandler(Object filename, Object operation) {
-            // TODO
-            return false;
+        public static Object findFileNameHandler(
+                ELispString filename, Object operation,
+                @Nullable @Bind Node node
+        ) {
+            ELispSymbol operationSym = asSym(toSym(operation));
+            Object handlers = FILE_NAME_HANDLER_ALIST.getValue();
+            Object inhibitedOp = INHIBIT_FILE_NAME_OPERATION.getValue();
+            Object inhibited = BuiltInData.FEq.eq(operationSym, inhibitedOp)
+                    ? INHIBIT_FILE_NAME_HANDLERS.getValue()
+                    : false;
+
+            ELispContext context = ELispContext.get(node);
+            ELispLanguage language = context.language();
+            ELispBuffer buffer = context.currentBuffer();
+            Object result = false;
+            long pos = -1;
+            for (Object handlerCons : ELispCons.iterate(handlers)) {
+                if (handlerCons instanceof ELispCons cons
+                        && cons.car() instanceof ELispString string) {
+                    Object handler = cons.cdr();
+                    Object operations = handler instanceof ELispSymbol handlerSym
+                            ? handlerSym.getProperty(OPERATIONS)
+                            : false;
+                    if ((!isNil(operations) && isNil(BuiltInFns.FMemq.memq(operationSym, operations)))
+                            || !isNil(BuiltInFns.FMemq.memq(handler, inhibited))) {
+                        continue;
+                    }
+                    ELispRegExp.CompiledRegExp regexp =
+                            BuiltInSearch.compileRegExp(language, string, null);
+                    Object match = regexp.call(filename.value(), true, 0, -1, buffer);
+                    if (!isNil(match)) {
+                        long newPos = asLong(asCons(match).car());
+                        if (newPos > pos) {
+                            result = handler;
+                            pos = newPos;
+                        }
+                    }
+                }
+            }
+            return result;
         }
     }
 

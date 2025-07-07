@@ -40,7 +40,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
         for (String element : path.split(File.pathSeparator)) {
             ELispString current = element.isEmpty() ? emptyElement : new ELispString(element);
             if (current != null) {
-                Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(current, true);
+                Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(current, true, null);
                 if (toSym(handler) instanceof ELispSymbol symbol) {
                     if (!isNil(symbol.getProperty(SAFE_MAGIC))) {
                         handler = false;

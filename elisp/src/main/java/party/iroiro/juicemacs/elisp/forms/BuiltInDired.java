@@ -230,9 +230,9 @@ public class BuiltInDired extends ELispBuiltIns {
         @Specialization
         public Object fileNameAllCompletions(ELispString file, ELispString directory) {
             directory = BuiltInFileIO.FExpandFileName.expandFileName(directory, false);
-            Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(directory, FILE_NAME_ALL_COMPLETIONS);
+            Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(directory, FILE_NAME_ALL_COMPLETIONS, this);
             if (isNil(handler)) {
-                handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(file, FILE_NAME_ALL_COMPLETIONS);
+                handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(file, FILE_NAME_ALL_COMPLETIONS, this);
             }
             if (!isNil(handler)) {
                 return BuiltInEval.FFuncall.funcall(this, handler, FILE_NAME_ALL_COMPLETIONS, file, directory);

@@ -123,7 +123,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                                 .append(name.value())
                                 .append(suffixString.value())
                                 .build());
-                Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P);
+                Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P, null);
                 boolean exists;
                 if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
                     TruffleFile file = env.getPublicTruffleFile(test.toString());
@@ -289,7 +289,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                             for (int i = 0; i < vec.size(); i++) {
                                 vec.setUntyped(i, substitute(vec.get(i)));
                             }
-                            yield this;
+                            yield vec;
                         }
                         default -> tree;
                     };
