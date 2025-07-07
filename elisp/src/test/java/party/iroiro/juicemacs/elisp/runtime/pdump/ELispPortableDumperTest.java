@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static party.iroiro.juicemacs.elisp.ELispLanguageTest.getTestIOAccess;
+import static party.iroiro.juicemacs.elisp.TestingUtils.getTestIOAccess;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContextBuilder;
 
 public class ELispPortableDumperTest {

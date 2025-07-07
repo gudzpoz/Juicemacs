@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static party.iroiro.juicemacs.elisp.ELispLanguageTest.getContextBuilder;
+import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 
 public class ElSemiFuzzTest {
     @Rule

@@ -5,8 +5,6 @@ import org.graalvm.polyglot.Context;
 
 
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.IOAccess;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
@@ -17,44 +15,8 @@ import java.util.Objects;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ELispLanguageTest {
-    /// Returns a Truffle filesystem with working directory set correctly
-    ///
-    /// A correctly set PWD allows IDEA to click-to-jump to source location.
-    private static FileSystem getFileSystem() {
-        FileSystem fileSystem = FileSystem.newDefaultFileSystem();
-        fileSystem.setCurrentWorkingDirectory(Path.of("..").toAbsolutePath()); // project root dir
-        return fileSystem;
-    }
-
-    public static IOAccess getTestIOAccess() {
-        return IOAccess.newBuilder().fileSystem(getFileSystem()).build();
-    }
-
-    public static Context.Builder getContextBuilder(@Nullable PrintStream out) {
-        String loadPath = Path.of("emacs", "lisp").toAbsolutePath().toString();
-        String dataPath = Path.of("emacs", "etc").toAbsolutePath().toString();
-        Context.Builder builder = Context.newBuilder("elisp")
-                .allowExperimentalOptions(true)
-                // Uncomment the following two lines to use an external debugger for Lisp before we get to edebug.
-//                .option("elisp.truffleDebug", "true")
-//                .option("inspect", "4242")
-                // Uncomment the following two lines to adjust compilation settings.
-                // Basically:
-                // - engine.Compilation=false: Debug Java code,
-                // - engine.Compilation=true && engine.CompilationFailureAction=Diagnose: Debug JIT compilation.
-                .option("engine.Compilation", "false")
-//                .option("engine.CompilationFailureAction", "Diagnose")
-                .environment("EMACSLOADPATH", loadPath)
-                .environment("EMACSDATA", dataPath)
-                .allowIO(getTestIOAccess());
-        if (out != null) {
-            builder.out(out);
-        }
-        return builder;
-    }
-
     public static boolean hasDump(boolean bootstrap) {
-        File file = getFileSystem().toAbsolutePath(Path.of(bootstrap ? "bootstrap-emacs.pdmp" : "emacs.pdmp")).toFile();
+        File file = TestingUtils.getFileSystem().toAbsolutePath(Path.of(bootstrap ? "bootstrap-emacs.pdmp" : "emacs.pdmp")).toFile();
         return file.isFile();
     }
 
@@ -66,7 +28,7 @@ public class ELispLanguageTest {
             );
             return;
         }
-        Context.Builder builder = getContextBuilder(out).option("elisp.portableDump", dumpMode);
+        Context.Builder builder = TestingUtils.getContextBuilder(out).option("elisp.portableDump", dumpMode);
         try (Context context = builder.build()) {
             // Loads until an error
             context.eval("elisp", "(load \"loadup\")");
@@ -84,11 +46,11 @@ public class ELispLanguageTest {
     @Test
     public void test() throws IOException {
         Path file = Files.createTempFile("juicemacs-ert", ".txt");
-        try (PrintStream out = createOut(file.toFile())) {
+        try (PrintStream out = TestingUtils.createOut(file.toFile())) {
             System.out.println("Output: " + file);
             tryDump(true, out);
             tryDump(false, out);
-            try (Context context = getContextBuilder(out).option("elisp.dumpFile", "emacs.pdmp").build()) {
+            try (Context context = TestingUtils.getContextBuilder(out).option("elisp.dumpFile", "emacs.pdmp").build()) {
                 try {
                     context.eval("elisp", "(eval top-level)");
                 } catch (PolyglotException e) {
@@ -122,28 +84,4 @@ public class ELispLanguageTest {
             // TODO: Make the test fail when there are errors, after we fully bootstrap loadup.el.
         }
     }
-
-    private PrintStream createOut(File file) throws FileNotFoundException {
-        return new PrintStream(new OutputStream() {
-            final FileOutputStream out = new FileOutputStream(file);
-
-            @Override
-            public void write(int b) throws IOException {
-                out.write(b);
-                System.out.write(b);
-            }
-
-            @Override
-            public void flush() throws IOException {
-                out.flush();
-                System.out.flush();
-            }
-
-            @Override
-            public void close() throws IOException {
-                out.close();
-            }
-        });
-    }
-
 }
