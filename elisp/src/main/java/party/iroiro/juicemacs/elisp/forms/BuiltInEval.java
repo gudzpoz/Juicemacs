@@ -49,43 +49,6 @@ public class BuiltInEval extends ELispBuiltIns {
         }
     }
 
-    public static final class SourceSectionWrapper extends ELispExpressionNode {
-        private final ELispCons cons;
-        @Child
-        ELispExpressionNode inner;
-
-        public SourceSectionWrapper(ELispCons cons, ELispExpressionNode inner) {
-            this.cons = cons;
-            this.inner = inner;
-        }
-
-        @Override
-        public void executeVoid(VirtualFrame frame) {
-            inner.executeVoid(frame);
-        }
-
-        @Override
-        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-            return inner.executeLong(frame);
-        }
-
-        @Override
-        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-            return inner.executeDouble(frame);
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return inner.executeGeneric(frame);
-        }
-
-        @Override
-        @Nullable
-        public SourceSection getSourceSection() {
-            return ELispInterpretedNode.getConsSourceSection(this, cons);
-        }
-    }
-
     public static final class ScopeWrapperNode extends ELispExpressionNode implements ELispLexical.ScopeProvider {
         @Child
         ELispExpressionNode inner;
@@ -567,7 +530,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         ? GlobalVariableWriteNodeGen.create(symbol, inner)
                         : ELispFrameSlotWriteNode.createWrite(reference, inner);
                 if (value instanceof ELispCons cons) {
-                    replace = new SourceSectionWrapper(cons, replace); // NOPMD: replace called later
+                    replace = new ELispInterpretedNode.SourceSectionWrapper(cons, replace); // NOPMD: replace called later
                 }
                 return replace(replace);
             }

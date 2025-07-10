@@ -55,6 +55,18 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         };
     }
 
+    public static ELispExpressionNode createWithLocation(Object expression, ELispCons original) {
+        ELispExpressionNode node = create(expression);
+        if (original.getStartLine() != 0) {
+            if (expression instanceof ELispCons cons) {
+                cons.fillDebugInfo(original);
+            } else {
+                node = new SourceSectionWrapper(original, node);
+            }
+        }
+        return node;
+    }
+
     public static ELispExpressionNode literal(Object expression) {
         return switch (expression) {
             case Long l -> new ELispLongLiteralNode(l);
@@ -252,6 +264,59 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             nodes[i] = insert(newChild);
             notifyInserted(newChild);
             return nodes;
+        }
+    }
+
+    public static final class SourceSectionWrapper extends ELispExpressionNode {
+        private final ELispCons cons;
+        @Child
+        ELispExpressionNode inner;
+
+        public SourceSectionWrapper(ELispCons cons, ELispExpressionNode inner) {
+            this.cons = cons;
+            this.inner = inner;
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame) {
+            try {
+                inner.executeVoid(frame);
+            } catch (RuntimeException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+            try {
+                return inner.executeLong(frame);
+            } catch (RuntimeException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+            try {
+                return inner.executeDouble(frame);
+            } catch (RuntimeException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            try {
+                return inner.executeGeneric(frame);
+            } catch (RuntimeException e) {
+                throw ELispSignals.remapException(e, this);
+            }
+        }
+
+        @Override
+        @Nullable
+        public SourceSection getSourceSection() {
+            return getConsSourceSection(this, cons);
         }
     }
 
@@ -626,7 +691,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         private ELispExpressionNode updateInnerNode() {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            cons.fillDebugInfo(getParent());
             Object cardinal = cons.car();
             @Nullable Assumption stable = toSym(cardinal) instanceof ELispSymbol sym
                     ? getContext().getFunctionStorage(sym).getStableAssumption()
@@ -645,8 +709,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                     )) {
                         Object[] args = ConsCallNode.argsArrayWithFunc(callable, cons);
                         Object o = FuncallDispatchNodeGen.getUncached().executeDispatch(this, args);
-                        BuiltInEval.FMacroexpand.copySourceLocation(o, cons);
-                        yield ELispInterpretedNode.create(o);
+                        yield ELispInterpretedNode.createWithLocation(o, cons);
                     }
                 }
                 case ELispSubroutine sub when sub.inlinable() && stable != null && stable != Assumption.NEVER_VALID ->

@@ -99,7 +99,7 @@ public class LetNode extends ELispExpressionNode {
                 clause = new BuiltInEval.ScopeWrapperNode(clause, block.newScope(letx ? i : 0));
             }
             if (sourceSectionProvider.hasNext() && sourceSectionProvider.next() instanceof ELispCons cons) {
-                clause = new BuiltInEval.SourceSectionWrapper(cons, clause);
+                clause = new ELispInterpretedNode.SourceSectionWrapper(cons, clause);
             }
             clauses[i] = insert(clause);
             notifyInserted(clause);
