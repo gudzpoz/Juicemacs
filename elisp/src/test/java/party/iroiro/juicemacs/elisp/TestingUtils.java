@@ -67,6 +67,7 @@ public abstract class TestingUtils {
 //                .option("engine.Compilation", "false")
 //                .option("engine.CompilationFailureAction", "Diagnose")
 //                .option("engine.TraceCompilation", "true")
+//                .option("engine.TraceInlining", "true")
                 .environment("EMACSLOADPATH", loadPath)
                 .environment("EMACSDATA", dataPath)
                 .allowIO(getTestIOAccess());

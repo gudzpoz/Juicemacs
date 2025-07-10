@@ -162,7 +162,7 @@ public class BuiltInEvalTest extends BaseFormTest {
                               (setq result 2)
                               (message "soft exit"))
                             """,
-                    "(fatal -1)"
+                    "(fatal kill-emacs -1)"
             );
             assertEquals(1L, bindings.getMember("result").asLong());
         }

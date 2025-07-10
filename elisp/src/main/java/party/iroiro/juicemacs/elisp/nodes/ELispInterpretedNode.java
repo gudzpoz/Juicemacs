@@ -432,7 +432,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
         @Override
         public SourceSection getSourceSection() {
-            return getParent().getSourceSection();
+            return getConsSourceSection(this, cons);
         }
 
         //#region NodeLibrary
@@ -628,6 +628,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             cons.fillDebugInfo(getParent());
             Object cardinal = cons.car();
+            @Nullable Assumption stable = toSym(cardinal) instanceof ELispSymbol sym
+                    ? getContext().getFunctionStorage(sym).getStableAssumption()
+                    : null;
             Object function = ReadFunctionObjectNodes.getFunctionUncached(this, cardinal);
             if (function instanceof ELispSubroutine sub) {
                 if (sub.specialForm()) {
@@ -635,10 +638,6 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                 }
             }
             ELispExpressionNode created = switch (function) {
-                case ELispSubroutine sub when sub.inlinable() -> {
-                    Assumption stable = getContext().getFunctionStorage(asSym(cardinal)).getStableAssumption();
-                    yield new ConsInlinedAstNode(stable, sub, cons);
-                }
                 case ELispCons c when c.car() == MACRO -> {
                     Object callable = ReadFunctionObjectNodes.getFunctionUncached(this, c.cdr());
                     try (Dynamic _ = Dynamic.withLexicalBinding(
@@ -650,6 +649,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
                         yield ELispInterpretedNode.create(o);
                     }
                 }
+                case ELispSubroutine sub when sub.inlinable() && stable != null && stable != Assumption.NEVER_VALID ->
+                        new ConsInlinedAstNode(stable, sub, cons);
                 case ELispSubroutine _, ELispInterpretedClosure _, ELispBytecode _ ->
                         ELispInterpretedNodeFactory.ConsFunctionCallNodeGen.create(cons);
                 default -> throw ELispSignals.invalidFunction(cons.car());

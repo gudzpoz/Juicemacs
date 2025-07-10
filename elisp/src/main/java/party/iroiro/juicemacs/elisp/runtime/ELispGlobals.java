@@ -45,14 +45,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
         internSymbols(bufferLocalVarSymbols());
     }
 
-    public void init(ELispLanguage language, boolean postInit) {
+    public void init(ELispLanguage language) {
         initSymbols();
         initSubroutines(language);
         initGlobalVariables();
-        if (postInit) {
-            invocationDirectory.setValue(new ELispString(getContext().truffleEnv().getCurrentWorkingDirectory().toString()));
-            postInitVariables();
-        }
+        invocationDirectory.setValue(new ELispString(getContext().truffleEnv().getCurrentWorkingDirectory().toString()));
+        postInitVariables();
     }
 
     private void internSymbols(ELispSymbol[] symbols) {

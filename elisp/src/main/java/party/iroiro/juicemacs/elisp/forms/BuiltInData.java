@@ -1418,6 +1418,10 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCar extends ELispBuiltInBaseNode {
         @Specialization
+        public static Object carCons(ELispCons cons) {
+            return cons.car();
+        }
+        @Specialization
         public static Object car(Object list) {
             return switch (list) {
                 case ELispCons cons -> cons.car();
@@ -1437,6 +1441,10 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCarSafe extends ELispBuiltInBaseNode {
         @Specialization
+        public static Object carSafeCons(ELispCons cons) {
+            return cons.car();
+        }
+        @Specialization(replaces = "carSafeCons")
         public static Object carSafe(Object object) {
             if (object instanceof ELispCons cons) {
                 return cons.car();
@@ -1458,6 +1466,10 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdr extends ELispBuiltInBaseNode {
         @Specialization
+        public static Object cdrCons(ELispCons cons) {
+            return cons.cdr();
+        }
+        @Specialization
         public static Object cdr(Object list) {
             return switch (list) {
                 case ELispCons cons -> cons.cdr();
@@ -1477,6 +1489,10 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdrSafe extends ELispBuiltInBaseNode {
         @Specialization
+        public static Object cdrSafeCons(ELispCons cons) {
+            return cons.cdr();
+        }
+        @Specialization(replaces = "cdrSafeCons")
         public static Object cdrSafe(Object object) {
             if (object instanceof ELispCons cons) {
                 return cons.cdr();

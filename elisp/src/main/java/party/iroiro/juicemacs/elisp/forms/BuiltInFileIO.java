@@ -380,15 +380,16 @@ public class BuiltInFileIO extends ELispBuiltIns {
         @Specialization
         public static ELispString expandFileName(ELispString name, Object defaultDirectory) {
             return new ELispString(MuleString.fromString(
-                    expandFileNamePath(name, defaultDirectory).toAbsolutePath().toString()
+                    expandFileNamePath(name, defaultDirectory).toString()
             ));
         }
 
         public static Path expandFileNamePath(ELispString name, Object defaultDirectory) {
-            String path = name.toString();
-            if (path.startsWith("~")) {
-                path = System.getProperty("user.home") + path.substring(1);
-            } else if (!path.startsWith("/")) {
+            String file = name.toString();
+            Path path;
+            if (file.startsWith("~")) {
+                path = Path.of(System.getProperty("user.home") + file.substring(1));
+            } else if (!file.startsWith("/")) {
                 String dir;
                 if (!isNil(defaultDirectory)) {
                     dir = defaultDirectory.toString();
@@ -400,9 +401,14 @@ public class BuiltInFileIO extends ELispBuiltIns {
                         dir = System.getProperty("user.home");
                     }
                 }
-                return Path.of(dir, path);
+                if (dir.startsWith("~")) {
+                    dir = System.getProperty("user.home") + dir.substring(1);
+                }
+                path = Path.of(dir, file).toAbsolutePath();
+            } else {
+                path = Path.of(file);
             }
-            return Path.of(path);
+            return path.toAbsolutePath().normalize();
         }
     }
 

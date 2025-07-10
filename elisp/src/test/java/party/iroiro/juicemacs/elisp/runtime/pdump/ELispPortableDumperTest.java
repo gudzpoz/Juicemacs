@@ -13,11 +13,10 @@ import static party.iroiro.juicemacs.elisp.TestingUtils.getTestIOAccess;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContextBuilder;
 
 public class ELispPortableDumperTest {
-    private void testBasicDump(boolean bare) throws IOException {
+    @Test
+    public void testCoreDump() throws IOException {
         File dump = File.createTempFile("juicemacs", ".pdmp");
-        try(Context context = getTestingContextBuilder()
-                .option("elisp.bare", bare ? "true" : "false")
-                .build()) {
+        try(Context context = getTestingContextBuilder().build()) {
             context.eval("elisp", "(setq some-value 42)");
             context.eval("elisp", "(defalias 'my-func #'(lambda () (1+ some-value)))");
             context.eval("elisp", "(dump-emacs-portable \"" + dump.getAbsolutePath() + "\")");
@@ -31,16 +30,6 @@ public class ELispPortableDumperTest {
             Value value = context.eval("elisp", "(1- (my-func))");
             assertEquals(42L, value.asLong());
         }
-    }
-
-    @Test
-    public void testBareDump() throws IOException {
-        testBasicDump(true);
-    }
-
-    @Test
-    public void testCoreDump() throws IOException {
-        testBasicDump(false);
     }
 
     @Test

@@ -34,16 +34,22 @@ public class ThreadLocalStorage {
     }
 
     public Object getValue() {
-        if (Thread.currentThread() == lastThread) {
+        Thread current = Thread.currentThread();
+        if (current == lastThread) {
             return lastThreadValue;
         } else {
-            Object value = fallbackGet();
-            if (!lastThread.isAlive()) {
-                lastThread = Thread.currentThread();
-                lastThreadValue = value;
-            }
-            return value;
+            return getSlowPath(current);
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private Object getSlowPath(Thread current) {
+        Object value = fallbackGet();
+        if (!lastThread.isAlive()) {
+            lastThread = current;
+            lastThreadValue = value;
+        }
+        return value;
     }
 
     private ThreadLocal<Object> getThreadValues(@Nullable ThreadLocal<Object> threadLocal) {

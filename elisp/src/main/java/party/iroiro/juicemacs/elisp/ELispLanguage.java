@@ -52,12 +52,6 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     public static final String MIME_TYPE = "text/x-elisp";
 
     @Option(
-            name = "bare", help = "Inhibit initializing globals.",
-            category = OptionCategory.INTERNAL, stability = OptionStability.STABLE
-    )
-    public static final OptionKey<Boolean> BARE = new OptionKey<>(false);
-
-    @Option(
             name = "hardExit",
             help = "True to use Truffle hard exits for kill-emacs, false for an exception-based soft exit.",
             category = OptionCategory.EXPERT,

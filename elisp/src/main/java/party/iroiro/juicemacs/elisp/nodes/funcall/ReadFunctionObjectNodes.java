@@ -8,8 +8,8 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
@@ -71,7 +71,7 @@ public abstract class ReadFunctionObjectNodes {
         } else if (toSym(car) instanceof ELispSymbol symbol) {
             return ReadFunctionObjectNodesFactory.ReadFormSymbolCardinalFunctionNodeGen.create(symbol);
         }
-        return ReadFunctionObjectNodesFactory.InvalidFunctionNodeGen.create(car);
+        return ReadFunctionObjectNodesFactory.ReadDynamicSymbolNodeGen.create(ELispInterpretedNode.literal(car));
     }
 
     public abstract static class GetSymbolFunctionNode extends Node {
@@ -188,25 +188,13 @@ public abstract class ReadFunctionObjectNodes {
             if (cons.car() == LAMBDA) {
                 return BuiltInEval.FFunction.getFunction(cons);
             }
-            if (cons.car() == MACRO) {
-                return cons;
-            }
-            throw ELispSignals.invalidFunction(cons);
+            // cons.car() == MACRO and others
+            return cons;
         }
 
         @Fallback
         public Object nonConsAsIs(Object car) {
             return car;
-        }
-    }
-
-    @NodeField(name = "function", type = Object.class)
-    public abstract static class InvalidFunctionNode extends ELispExpressionNode {
-        public abstract Object getFunction();
-
-        @Specialization
-        public Void invalid() {
-            throw ELispSignals.invalidFunction(getFunction());
         }
     }
 

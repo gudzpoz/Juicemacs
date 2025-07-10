@@ -833,8 +833,15 @@ public class BuiltInEval extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefaultToplevelValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object defaultToplevelValue(ELispSymbol symbol) {
-            return symbol.getDefaultValue();
+        public Object defaultToplevelValue(ELispSymbol symbol) {
+            Optional<ValueStorage> storage = getContext().getStorageLazy(symbol);
+            if (storage.isPresent()) {
+                Object value = storage.get().getDefaultValue();
+                if (value != ValueStorage.UNBOUND) {
+                    return value;
+                }
+            }
+            throw ELispSignals.voidVariable(symbol);
         }
     }
 

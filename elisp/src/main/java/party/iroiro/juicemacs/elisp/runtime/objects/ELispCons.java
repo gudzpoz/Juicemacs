@@ -59,7 +59,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
     }
 
     public void setCar(Object car) {
-        this.car = Objects.requireNonNull(car);
+        this.car = car;
     }
 
     public void setCdr(Object cdr) {

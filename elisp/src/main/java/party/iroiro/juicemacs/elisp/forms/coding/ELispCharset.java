@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
@@ -167,6 +168,7 @@ public final class ELispCharset {
         return method.encodeChar(code, this);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void mapChars(Consumer<ELispCons> callback, int from, int to) {
         boolean partial = minCode < from || to < maxCode;
 

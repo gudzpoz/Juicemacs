@@ -26,6 +26,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.CircularRef;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Dot;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.EOF;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Function;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.LoadFileName;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ParenClose;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.ParenOpen;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Quote;
@@ -397,7 +398,7 @@ public class ELispLexerTest {
                 new EOF()
         ), lex("#@07skipped\037test"));
         assertEquals(Arrays.asList(
-                ELispLexer.NIL_SYMBOL,
+                new LoadFileName(),
                 new EOF()
         ), lex("#$"));
     }

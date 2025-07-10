@@ -6,6 +6,9 @@ elisp/extraction.json
 *.elc
 *.eln
 
+# GraalVM / Truffle
+graal_dumps
+
 # Ignore Gradle project-specific cache directory
 .gradle
 
