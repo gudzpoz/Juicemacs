@@ -12,7 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
-import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
+import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.nodes.bytecode.ELispBytecodeFallbackNode;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
@@ -55,7 +55,7 @@ public final class ELispBytecode extends AbstractELispClosure {
         );
     }
 
-    private final class BytecodeCallNode extends ELispExpressionNode {
+    public final class BytecodeCallNode extends ELispExpressionNode {
         final ELispInterpretedClosure.@Nullable ClosureArgs dynamicArgs;
         final ELispSymbol @Nullable[] argSymbols;
         final int requiredArgCount;

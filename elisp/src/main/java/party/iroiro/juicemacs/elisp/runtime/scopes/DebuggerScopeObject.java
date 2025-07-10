@@ -73,7 +73,7 @@ public record DebuggerScopeObject(
     @ExportMessage
     public boolean isMemberReadable(String member) {
         ELispLexical.@Nullable LexicalReference ref = lexical.getReference(context.intern(member));
-        return ref != null && ref.frame() == null;
+        return ref != null;
     }
 
     @ExportMessage
@@ -99,20 +99,15 @@ public record DebuggerScopeObject(
     @ExportMessage
     public boolean hasScopeParent() {
         ELispLexical.@Nullable Scope parent = lexical.block().upperScope();
-        return parent != null
-                && (lexical.block().parentFrame() != null || ELispLexical.getFrameSlot(frame) != null);
+        return parent != null && ELispLexical.getFrameSlot(frame) != null;
     }
 
     @ExportMessage
     public DebuggerScopeObject getScopeParent() throws UnsupportedMessageException {
         ELispLexical.@Nullable Scope parent = lexical.block().upperScope();
-        if (parent == null || (lexical.block().parentFrame() == null && ELispLexical.getFrameSlot(frame) == null)) {
+        if (parent == null || ELispLexical.getFrameSlot(frame) == null) {
             throw UnsupportedMessageException.create();
         }
-        return new DebuggerScopeObject(
-                context,
-                parent,
-                lexical.block().parentFrame() == null ? ELispLexical.getFrameSlot(frame) : lexical.block().parentFrame()
-        );
+        return new DebuggerScopeObject(context, parent, ELispLexical.getFrameSlot(frame));
     }
 }

@@ -334,6 +334,57 @@ And we need the following mechanism:
 We will try to first follow a tutorial and then look into how some official
 implementations do this.
 
+*** Lambda Reimplementation
+
+So it seems I have mis-implemented closure creation: src_elisp{(cl-loop for i
+from 0 to 10 collect (lambda () i))} should let all these lambdas share their
+AST and internal =FunctionRootNode= so as to reduce costs. Otherwise, because
+nodes should only be created in interpreted mode, every time a new closure is
+created, the code will deopt, jumping from compiled code to interpreted
+execution, causing significant slowdown.
+
+I will try to follow how GraalJs handles this. (TL;DR: Read =JSArguments.java=,
+=JSFunctionObject.java= and finally =JSFunctionCallNode.java=.)
+
+1. I was benchmarking =(mapc ...)=, so let's take a look at =Array.forEach= in
+   GraalJs, which seems to be in =ArrayPrototypeBuiltins.java=.
+2. The corresponding node implementation is =JSArrayForEachNode=, which depends
+   on two other nodes:
+   - =ArrayForEachIndexCallOperation=: Parent node
+   - =MaybeResultNode=: Whether to continue execution, used by
+     =ArrayForEachIndexCallOperation= node
+3. After basic type checking, the =@Specialization= method in
+   =JSArrayForEachNode= eventually calls =forEachIndexCall=, which is
+   implemented by =ArrayForEachIndexCallOperation=.
+4. =ArrayForEachIndexCallOperation= seems a tiny wrapper around
+   =ForEachIndexCallNode=, located in =ForEachIndexCallNode.java= (which also
+   contains the definition of =MaybeResult=).
+5. =ForEachIndexCallNode=:
+   - =executeForEachIndexFast=
+   - =callback(index, value, target, callback, callbackThisArg, currentResult)=
+   - =callbackNode.apply(index, value, target, callback, callbackThisArg, currentResult)=
+   - =maybeResultNode.apply(index, value, callbackResult, currentResult)=
+6. =callbackNode= is a =DefaultCallbackNode= passed from
+   =ArrayForEachIndexCallOperation=.
+7. The =callbackNode= further wraps around =JSFunctionCallNode= and
+   =JSArguments=: =callNode.executeCall(JSArguments.create(callbackThisArg,
+   callback, value, boxIndex(index), target))=.
+
+Looking at =JSArguments= and =JSFunctionObject=, we can take a glimpse of how
+GraalJs handles closures:
+
+- Functions created from a certain "closure creating node" share their
+  =RootNode=.
+- JS Functions, when called, are passed two extra arguments: =this= and the
+  function object itself.
+- Function objects store captured parent frames.
+
+So, in order to follow suit, we need to:
+
+1. Change the current call convention
+2. Let =function= special form (and =make-closure= function) caches and reuse
+   previous AST (=RootNode=).
+
 *** SimpleLanguage - Official Implementation #1
 
 Its approach is quite similar to the previous tutorial:

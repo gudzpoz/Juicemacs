@@ -106,7 +106,7 @@ public final class ELispCons extends AbstractSequentialList<Object> implements E
             return;
         }
         while (parent != null) {
-            if (parent instanceof ELispInterpretedNode.ELispConsExpressionNode consExpr
+            if (parent instanceof ELispInterpretedNode.ConsCallNode consExpr
                     && consExpr.getCons().getStartLine() != 0) {
                 ELispCons upper = consExpr.getCons();
                 setSourceLocation(

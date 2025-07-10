@@ -17,7 +17,7 @@ public abstract class ELispFrameSlotReadNode extends ELispExpressionNode {
     }
 
     public static ELispExpressionNode createRead(ELispLexical.LexicalReference ref) {
-        GetFrameNode framer = GetFrameNode.create(ref.level(), ref.frame());
+        GetFrameNode framer = GetFrameNode.create(ref.level());
         return ELispFrameSlotReadNodeGen.create(framer, ref.index());
     }
 

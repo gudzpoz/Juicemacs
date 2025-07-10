@@ -10,12 +10,15 @@ import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.nodes.*;
 
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -79,7 +82,7 @@ public class BuiltInEval extends ELispBuiltIns {
         @Override
         @Nullable
         public SourceSection getSourceSection() {
-            return ELispInterpretedNode.ELispConsExpressionNode.getConsSourceSection(this, cons);
+            return ELispInterpretedNode.getConsSourceSection(this, cons);
         }
     }
 
@@ -255,15 +258,18 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode elseBranch;
 
+            final ConditionProfile conditionProfile;
+
             public IfNode(Object cond, Object then, Object[] else_) {
                 condition = ELispInterpretedNode.create(cond);
                 thenBranch = ELispInterpretedNode.create(then);
                 elseBranch = FProgn.progn(else_);
+                conditionProfile = ConditionProfile.create();
             }
 
             @Override
             public void executeVoid(VirtualFrame frame) {
-                if (isNil(condition.executeGeneric(frame))) {
+                if (conditionProfile.profile(isNil(condition.executeGeneric(frame)))) {
                     elseBranch.executeVoid(frame);
                     return;
                 }
@@ -744,9 +750,8 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Child
                 ELispExpressionNode doc = finalDocString;
 
-                @SuppressWarnings("FieldMayBeFinal")
-                @Child
-                ELispExpressionNode cconv = GlobalVariableReadNodeGen.create(INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION);
+                @Nullable
+                private ELispInterpretedClosure constructed = null;
 
                 @Override
                 public void executeVoid(VirtualFrame frame) {
@@ -755,51 +760,35 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 @Override
                 public Object executeGeneric(@Nullable VirtualFrame frame) {
-                    body.fillDebugInfo(getParent());
-                    Object doc = this.doc.executeGeneric(frame);
                     ELispLexical.@Nullable Scope scope = ELispLexical.getScope(this);
                     Object env = scope == null || frame == null
                             ? false
                             : new ELispLexical.Captured(scope, frame.materialize());
+                    @Nullable ELispInterpretedClosure prev = constructed;
+                    if (prev != null) {
+                        AbstractELispClosure newClosure = ELispInterpretedClosure.create(prev, (RootNode) null);
+                        newClosure.set(CLOSURE_CONSTANTS, env);
+                        return newClosure;
+                    }
 
+                    Object doc = this.doc.executeGeneric(frame);
                     return createClosure(scope, doc, env);
                 }
 
                 @CompilerDirectives.TruffleBoundary
                 private AbstractELispClosure createClosure(ELispLexical.@Nullable Scope scope, Object doc, Object env) {
-                    Object cconvFunction = cconv.executeGeneric(null);
-                    ELispInterpretedClosure scopeHolder;
-                    if (!isNil(cconvFunction) && scope != null) {
-                        Object closure = FFuncall.funcall(
-                                this,
-                                cconvFunction,
-                                args,
-                                body,
-                                new ELispCons(true),
-                                doc,
-                                finalInteractive
-                        );
-                        @Nullable Source source = AbstractELispClosure.getRootNodeSource(getRootNode());
-                        if (closure instanceof ELispInterpretedClosure c) {
-                            scopeHolder = c;
-                            c.setRootSource(source);
-                        } else if (closure instanceof ELispBytecode b) {
-                            b.setRootSource(source);
-                            return b;
-                        } else {
-                            throw ELispSignals.invalidFunction(closure);
-                        }
-                    } else {
-                        scopeHolder = FMakeInterpretedClosure.makeClosure(
-                                args,
-                                body,
-                                scope == null ? false : new ELispCons(true),
-                                doc,
-                                finalInteractive,
-                                getRootNode()
-                        );
-                    }
+                    body.fillDebugInfo(getParent());
+                    // TODO: make use of INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION to clean up frames
+                    ELispInterpretedClosure scopeHolder = FMakeInterpretedClosure.makeClosure(
+                            args,
+                            body,
+                            scope == null ? false : new ELispCons(true),
+                            doc,
+                            finalInteractive,
+                            getRootNode()
+                    );
                     scopeHolder.set(CLOSURE_CONSTANTS, env);
+                    constructed = scopeHolder;
                     return scopeHolder;
                 }
             };
@@ -1167,18 +1156,21 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode bodyNode;
 
+            final LoopConditionProfile loopConditionProfile;
+
             public RepeatingBodyNode(Object test, Object[] body, Assumption hasNoClosureCreation) {
                 condition = ELispInterpretedNode.create(test);
                 bodyNode = FProgn.progn(body);
+                loopConditionProfile = LoopConditionProfile.create();
             }
 
             @Override
             public boolean executeRepeating(VirtualFrame frame) {
-                if (isNil(condition.executeGeneric(frame))) {
-                    return false;
-                } else {
+                if (loopConditionProfile.profile(!isNil(condition.executeGeneric(frame)))) {
                     bodyNode.executeVoid(frame);
                     return true;
+                } else {
+                    return false;
                 }
             }
         }
@@ -1878,14 +1870,14 @@ public class BuiltInEval extends ELispBuiltIns {
         ).content(Source.CONTENT_NONE).build();
 
         @Specialization
-        public Object eval(Object form, boolean lexical, @Cached FunctionDispatchNode dispatchNode) {
-            return evalForm(form, lexical, dispatchNode);
+        public Object eval(Object form, boolean lexical) {
+            return evalForm(form, lexical);
         }
 
         @CompilerDirectives.TruffleBoundary(transferToInterpreterOnException = false)
-        private Object evalForm(Object form, boolean lexical, FunctionDispatchNode dispatchNode) {
+        private Object evalForm(Object form, boolean lexical) {
             ELispRootNode root = getEvalRoot(this, form, lexical);
-            return dispatchNode.executeDispatch(this, new ELispFunctionObject(root.getCallTarget()), new Object[0]);
+            return root.getCallTarget().call();
         }
 
         public static ELispRootNode getEvalRoot(
@@ -1915,7 +1907,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 return form == oldForm;
             }
 
-            @Specialization(guards = "sameForm(form, oldForm)", limit = "1")
+            @Specialization(guards = "sameForm(form, oldForm)", limit = "3")
             public Object eval(
                     Object form, Object lexical,
                     @Cached("form") Object oldForm,
@@ -1951,16 +1943,10 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @Specialization(replaces = "eval")
             public Object evalPolymorphic(
-                    Object form,
-                    Object lexical,
-                    @Cached(value = "getEvalFunction()", neverDefault = true) ELispFunctionObject evalFunction,
-                    @Cached("create(evalFunction.callTarget())") DirectCallNode dispatchNode
+                    Object form, Object lexical,
+                    @Cached(inline = false) FuncallDispatchNode dispatchNode
             ) {
-                return dispatchNode.call(form, lexical);
-            }
-
-            ELispFunctionObject getEvalFunction() {
-                return FFuncall.getFunctionObject(EVAL);
+                return dispatchNode.dispatch(this, EVAL, form, lexical);
             }
         }
     }
@@ -1980,13 +1966,15 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FApply extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public Object apply(Object function, Object[] arguments, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
-            List<Object> objects = new ArrayList<>(Arrays.asList(arguments).subList(0, arguments.length - 1));
+            List<Object> objects = new ArrayList<>(arguments.length);
+            objects.add(function);
+            objects.addAll(Arrays.asList(arguments).subList(0, arguments.length - 1));
             Object last = arguments[arguments.length - 1];
             if (!isNil(last)) {
                 objects.addAll(asCons(last));
             }
             arguments = objects.toArray();
-            return dispatchNode.executeDispatch(this, function, arguments);
+            return dispatchNode.executeDispatch(this, arguments);
         }
 
         @Override
@@ -1994,13 +1982,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (arguments.length == 0) {
                 throw ELispSignals.wrongNumberOfArguments(APPLY, 0);
             }
-            ELispExpressionNode toFunction = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(arguments[0]);
-            return FunctionDispatchNodeGen.CallNNodeGen.create(new ELispExpressionNode[]{
-                    toFunction,
-                    arguments.length == 1
-                            ? ELispInterpretedNode.literal(new Object[0])
-                            : new ApplyArgsToArrayNode(Arrays.copyOfRange(arguments, 1, arguments.length))
-            });
+            return FuncallDispatchNodeGen.CallNNodeGen.create(new ApplyArgsToArrayNode(arguments));
         }
 
         public static final class ApplyArgsToArrayNode extends ELispExpressionNode {
@@ -2021,10 +2003,7 @@ public class BuiltInEval extends ELispBuiltIns {
             public Object[] executeGeneric(VirtualFrame frame) {
                 if (nodes.length == 1) {
                     Object o = nodes[0].executeGeneric(frame);
-                    if (isNil(o)) {
-                        return new Object[0];
-                    }
-                    return asCons(o).toArray();
+                    return new Object[]{o};
                 }
                 ArrayList<Object> objects = new ArrayList<>(nodes.length);
                 for (int i = 0; i < nodes.length - 1; i++) {
@@ -2104,11 +2083,11 @@ public class BuiltInEval extends ELispBuiltIns {
             Object value = hook.getValue();
             if (!isNil(value)) {
                 if (FFunctionp.functionp(value)) {
-                    dispatchNode.executeDispatch(this, value, args);
+                    dispatchNode.dispatchArgs(this, value, args);
                 } else {
                     // TODO: Handle buffer-local hooks
                     for (Object function : asCons(value)) {
-                        dispatchNode.executeDispatch(this, function, args);
+                        dispatchNode.dispatchArgs(this, function, args);
                     }
                 }
             }
@@ -2248,40 +2227,7 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static Object funcall(@Nullable Node node, Object function, Object... arguments) {
-            return getFunctionObject(function).callTarget().call(node, arguments);
-        }
-
-        public static ELispFunctionObject getFunctionObject(Object function) {
-            Object original = function;
-            ELispSymbol symbol;
-            if (toSym(function) instanceof ELispSymbol sym) {
-                symbol = sym;
-                function = sym.getIndirectFunction();
-            } else {
-                symbol = null;
-            }
-            if (isNil(function)) {
-                throw ELispSignals.voidFunction(original);
-            }
-            return switch (function) {
-                case ELispSubroutine subroutine when !subroutine.specialForm() ->
-                    subroutine.body();
-                case AbstractELispClosure closure -> closure.getFunction();
-                case ELispCons cons when cons.car() == LAMBDA -> getLambda(cons);
-                case ELispCons cons when cons.car() == AUTOLOAD && symbol != null -> getAutoload(symbol, cons);
-                default -> throw ELispSignals.invalidFunction(original);
-            };
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private static ELispFunctionObject getAutoload(ELispSymbol symbol, ELispCons cons) {
-            FAutoloadDoLoad.autoloadDoLoad(cons, symbol, false);
-            return getFunctionObject(symbol);
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private static ELispFunctionObject getLambda(ELispCons cons) {
-            return getFunctionObject(FFunction.getFunction(cons));
+            return FuncallDispatchNode.dispatchArgsUncached(node, function, arguments);
         }
 
         @Override
@@ -2289,8 +2235,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (arguments.length == 0) {
                 throw ELispSignals.wrongNumberOfArguments(FUNCALL, 0);
             }
-            arguments[0] = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(arguments[0]);
-            return FunctionDispatchNode.createSpecializedCallNode(arguments);
+            return FuncallDispatchNode.createSpecializedCallNode(arguments);
         }
     }
 

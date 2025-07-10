@@ -1,4 +1,4 @@
-package party.iroiro.juicemacs.elisp.nodes;
+package party.iroiro.juicemacs.elisp.nodes.funcall;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -6,6 +6,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
@@ -16,8 +17,9 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
 
     protected final int index;
 
-    public ReadFunctionArgNode(int index) {
-        this.index = index;
+    public ReadFunctionArgNode(int argIndex) {
+        // arg[0] stores the function object and real args start from index 1
+        this.index = argIndex + 1;
     }
 
     @Override
@@ -64,7 +66,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            int length = frame.getArguments().length;
+            int length = frame.getArguments().length - 1;
             if (CompilerDirectives.injectBranchProbability(
                     CompilerDirectives.SLOWPATH_PROBABILITY,
                     length < minArgs || (0 <= maxArgs && maxArgs < length)

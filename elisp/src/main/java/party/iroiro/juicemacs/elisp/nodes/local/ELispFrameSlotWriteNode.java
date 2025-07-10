@@ -3,8 +3,6 @@ package party.iroiro.juicemacs.elisp.nodes.local;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
@@ -37,15 +35,14 @@ public abstract class ELispFrameSlotWriteNode extends ELispExpressionNode {
     public static ELispExpressionNode createWrite(ELispLexical.LexicalReference ref, ELispExpressionNode inner) {
         int level = ref.level();
         int slot = ref.index();
-        MaterializedFrame parentFrame = ref.frame();
-        return createWrite(level, slot, parentFrame, inner);
+        return createWrite(level, slot, inner);
     }
 
-    public static ELispExpressionNode createWrite(int level, int slot, @Nullable MaterializedFrame parentFrame, ELispExpressionNode inner) {
+    public static ELispExpressionNode createWrite(int level, int slot, ELispExpressionNode inner) {
         if (slot < ELispLexical.FRAME_SLOT_START) {
             throw ELispSignals.fatal("invalid frame slot");
         }
-        GetFrameNode framer = GetFrameNode.create(level, parentFrame);
+        GetFrameNode framer = GetFrameNode.create(level);
         return ELispFrameSlotWriteNodeGen.create(slot, framer, inner);
     }
 

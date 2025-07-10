@@ -61,6 +61,7 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
     }
 
     protected abstract FunctionRootNode getFunctionRootNode();
+
     public final ELispFunctionObject getFunction() {
         ELispFunctionObject f = function;
         if (f == null) {
@@ -90,7 +91,9 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
     public static AbstractELispClosure create(List<?> inner, @Nullable RootNode root) {
         return create(inner, getRootNodeSource(root)); // NOPMD: not recursion
     }
+    @CompilerDirectives.TruffleBoundary
     public static AbstractELispClosure create(List<?> inner, @Nullable Source rootSource) {
+        @Nullable AbstractELispClosure closure = null;
         Object[] array = inner.toArray();
         int size = array.length;
         if (size >= CLOSURE_STACK_DEPTH && size <= CLOSURE_INTERACTIVE + 1) {
@@ -102,13 +105,20 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
                 if (code instanceof ELispString s && !isMultibyte(s.value())
                         && constants instanceof ELispVector
                         && size > CLOSURE_STACK_DEPTH && array[CLOSURE_STACK_DEPTH] instanceof Long) {
-                    return new ELispBytecode(array, rootSource);
+                    closure = new ELispBytecode(array, rootSource);
                 }
                 // interpreted closure
                 if (BuiltInData.FListp.listp(argList) && code instanceof ELispCons && BuiltInData.FListp.listp(constants)) {
-                    return new ELispInterpretedClosure(array, rootSource);
+                    closure = new ELispInterpretedClosure(array, rootSource);
                 }
             }
+        }
+        if (closure != null) {
+            if (inner instanceof AbstractELispClosure original) {
+                closure.function = original.getFunction();
+                closure.functionRootNode = original.functionRootNode;
+            }
+            return closure;
         }
         throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
     }

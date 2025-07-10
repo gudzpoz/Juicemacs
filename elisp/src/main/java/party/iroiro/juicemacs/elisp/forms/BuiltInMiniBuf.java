@@ -9,7 +9,7 @@ import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
-import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
+import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -55,7 +55,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         }
 
         @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-        public boolean forEachInCollection(Object collection, FunctionDispatchNode dispatchNode, Node node) {
+        public boolean forEachInCollection(Object collection, FuncallDispatchNode dispatchNode, Node node) {
             Iterator<CompletionItem> i = getIterator(collection);
             while (i.hasNext()) {
                 CompletionItem item = i.next();
@@ -93,7 +93,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
 
         public void tryMatch(
                 @Nullable MuleString s, Object key, Object value,
-                FunctionDispatchNode dispatchNode, Node node
+                FuncallDispatchNode dispatchNode, Node node
         ) {
             if (s == null) {
                 return;
@@ -114,7 +114,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                 }
             }
             if (!isNil(predicate)) {
-                if (isNil(dispatchNode.executeDispatch(node, predicate, new Object[]{key, value}))) {
+                if (isNil(dispatchNode.dispatch(node, predicate, key, value))) {
                     return;
                 }
             }
@@ -506,7 +506,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     public abstract static class FTryCompletion extends ELispBuiltInBaseNode {
         @Specialization
         public Object tryCompletion(ELispString string, Object collection, Object predicate,
-                                    @Cached FunctionDispatchNode dispatchNode) {
+                                    @Cached(inline = true) FuncallDispatchNode dispatchNode) {
             if (isNil(collection)) {
                 return false;
             }
@@ -612,7 +612,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     public abstract static class FAllCompletions extends ELispBuiltInBaseNode {
         @Specialization
         public Object allCompletions(ELispString string, Object collection, Object predicate, Object hideSpaces,
-                                     @Cached FunctionDispatchNode dispatchNode) {
+                                     @Cached(inline = true) FuncallDispatchNode dispatchNode) {
             if (!isNil(hideSpaces)) {
                 throw new UnsupportedOperationException("all-completions: HIDE-SPACES is not supported");
             }
@@ -740,7 +740,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     public abstract static class FTestCompletion extends ELispBuiltInBaseNode {
         @Specialization
         public Object testCompletion(ELispString string, Object collection, Object predicate,
-                                     @Cached FunctionDispatchNode dispatchNode) {
+                                     @Cached(inline = true) FuncallDispatchNode dispatchNode) {
             if (isNil(collection)) {
                 return false;
             }

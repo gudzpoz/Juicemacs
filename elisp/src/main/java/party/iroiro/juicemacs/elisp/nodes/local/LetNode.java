@@ -94,7 +94,7 @@ public class LetNode extends ELispExpressionNode {
                     block.markAsDynamic(symbol);
                 } else {
                     int slot = i + ELispLexical.FRAME_SLOT_START;
-                    clause = ELispFrameSlotWriteNode.createWrite(0, slot, null, clause);
+                    clause = ELispFrameSlotWriteNode.createWrite(0, slot, clause);
                 }
                 clause = new BuiltInEval.ScopeWrapperNode(clause, block.newScope(letx ? i : 0));
             }

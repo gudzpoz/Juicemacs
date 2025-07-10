@@ -10,19 +10,21 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
 
-/// Represents an AST node that introduces a new sub-framee
+/// Represents a new sub-frame introduced by some AST nodes like `let` or `condition-case`
 ///
 /// A lexical block is introduced at every `let/let*` node,
 /// where a new [VirtualFrame] is allocated and requires
 /// a new tracker for variables introduced in this scope.
+///
+/// For `let*` nodes, though, each statement in it may have different variable access scopes,
+/// which is why [Scope] exists.
 public final class ELispLexical {
     /// Placeholder to mark a symbol "dynamic"
-    public static final LexicalReference DYNAMIC = new ELispLexical.LexicalReference(null, 0, -1);
+    public static final LexicalReference DYNAMIC = new ELispLexical.LexicalReference(0, -1);
     public static final int UPPER_FRAME_SLOT = 0;
     public static final int FRAME_SLOT_START = 1;
     public static final int DYNAMIC_VARIABLE_SLOT = -1;
@@ -56,8 +58,11 @@ public final class ELispLexical {
         return fastCast(o);
     }
 
-    @Nullable
-    private final MaterializedFrame parentFrame;
+    public static <T> T getCallee(Frame frame) {
+        Object o = frame.getArguments()[0];
+        return fastCast(o);
+    }
+
     @Nullable
     private final Scope upperScope;
 
@@ -71,8 +76,7 @@ public final class ELispLexical {
     /// By default, all symbols are marked as lexical. And
     /// the caller is responsible for calling [#markAsDynamic(ELispSymbol)]
     /// for any dynamic symbols.
-    private ELispLexical(@Nullable MaterializedFrame parentFrame, @Nullable Scope upperScope, ELispSymbol[] symbols) {
-        this.parentFrame = parentFrame;
+    private ELispLexical(@Nullable Scope upperScope, ELispSymbol[] symbols) {
         this.upperScope = upperScope;
         this.symbols = new ArrayList<>(List.of(symbols));
         this.frameSlots = new int[symbols.length];
@@ -88,11 +92,6 @@ public final class ELispLexical {
     @Nullable
     public Scope upperScope() {
         return upperScope;
-    }
-
-    @Nullable
-    public MaterializedFrame parentFrame() {
-        return parentFrame;
     }
 
     public ELispSymbol getSymbol(int i) {
@@ -140,7 +139,7 @@ public final class ELispLexical {
     }
 
     public static ELispLexical newRoot() {
-        return new ELispLexical(null, null, new ELispSymbol[0]);
+        return new ELispLexical(null, new ELispSymbol[0]);
     }
 
     @Nullable
@@ -149,11 +148,11 @@ public final class ELispLexical {
         if (scope == null) {
             return null;
         }
-        return new ELispLexical(null, scope, symbols);
+        return new ELispLexical(scope, symbols);
     }
 
-    public static ELispLexical newBlock(@Nullable MaterializedFrame frame, @Nullable Scope scope, ELispSymbol[] symbols) {
-        return new ELispLexical(frame, scope, symbols);
+    public static ELispLexical newBlock(@Nullable Scope scope, ELispSymbol[] symbols) {
+        return new ELispLexical(scope, symbols);
     }
 
     /// Add variables from a list in reversed direction
@@ -179,7 +178,7 @@ public final class ELispLexical {
         for (int i = 0, count = cons.size(); i < count; i++) {
             symbols.add(NIL);
         }
-        ELispLexical block = new ELispLexical(null, null, symbols.toArray(new ELispSymbol[0]));
+        ELispLexical block = new ELispLexical(null, symbols.toArray(new ELispSymbol[0]));
         ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
         int index = block.frameSlots.length - 1;
         while (i.hasNext()) {
@@ -285,7 +284,6 @@ public final class ELispLexical {
 
         @Nullable
         private synchronized LexicalReference getRawReference(ELispSymbol symbol) {
-            MaterializedFrame frame = null;
             int level = 0;
             Scope scope = this;
             while (scope != null) {
@@ -297,17 +295,10 @@ public final class ELispLexical {
                 }
                 if (i != -1 && i < limit) {
                     int slot = block.frameSlots[i];
-                    return slot == DYNAMIC_VARIABLE_SLOT ? DYNAMIC : new ELispLexical.LexicalReference(frame, level, slot);
+                    return slot == DYNAMIC_VARIABLE_SLOT ? DYNAMIC : new ELispLexical.LexicalReference(level, slot);
                 }
                 scope = block.upperScope;
-                if (block.parentFrame != null) {
-                    frame = block.parentFrame;
-                    level = 0;
-                } else if (frame != null) {
-                    frame = getFrameSlot(frame);
-                } else {
-                    level++;
-                }
+                level++;
             }
             return null;
         }
@@ -318,7 +309,7 @@ public final class ELispLexical {
 
         public Scope getRootScope() {
             Scope scope = this;
-            while (scope.block.upperScope != null && scope.block.parentFrame == null) {
+            while (scope.block.upperScope != null) {
                 scope = scope.block.upperScope;
             }
             return scope;
@@ -341,11 +332,11 @@ public final class ELispLexical {
             @Nullable Scope upperScope = block.upperScope;
             return lb.buildWithCdr(upperScope == null
                     ? false
-                    : upperScope.toAssocList(Objects.requireNonNullElse(block.parentFrame, getFrameSlot(frame))));
+                    : upperScope.toAssocList(getFrameSlot(frame)));
         }
     }
 
-    public record LexicalReference(@Nullable MaterializedFrame frame, int level, int index) {
+    public record LexicalReference(int level, int index) {
     }
 
     public record Captured(Scope scope, MaterializedFrame frame) {

@@ -6,6 +6,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 
 public class FunctionRootNode extends RootNode {
 

@@ -11,9 +11,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -27,10 +27,42 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public final class ELispInterpretedClosure extends AbstractELispClosure {
     @Nullable
-    private Object pseudoEnvironment = null;
+    private transient MaterializedFrame upperFrame;
+    private transient ELispLexical.@Nullable Scope upperScope;
 
     ELispInterpretedClosure(Object[] array, @Nullable Source source) {
         super(array, source);
+        updateEnv(array[CLOSURE_CONSTANTS]);
+    }
+
+    @Override
+    public Object set(int index, Object element) {
+        Object set = super.set(index, element);
+        if (index == CLOSURE_CONSTANTS) {
+            updateEnv(element);
+        }
+        return set;
+    }
+
+    private void updateEnv(Object element) {
+        switch (element) {
+            case ELispLexical.Captured(ELispLexical.Scope scope, MaterializedFrame frame) -> {
+                this.upperFrame = frame;
+                this.upperScope = scope;
+            }
+            case ELispCons cons -> {
+                CompilerDirectives.transferToInterpreter();
+                this.upperFrame = Truffle.getRuntime().createMaterializedFrame(
+                        new Object[0],
+                        ELispLexical.rootFrameDescriptor(cons.size(), true)
+                );
+                this.upperScope = ELispLexical.newBlockFromAlist(upperFrame, cons);
+            }
+            default -> {
+                upperFrame = null;
+                upperScope = null;
+            }
+        };
     }
 
     @Override
@@ -42,41 +74,21 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         if (!(envObject instanceof ELispLexical.Captured(ELispLexical.Scope scope, MaterializedFrame frame))) {
             return envObject;
         }
-        if (pseudoEnvironment != null) {
-            return pseudoEnvironment;
-        }
         Object list = scope.toAssocList(frame);
         if (isNil(list)) {
-            return new ELispCons(true);
+            list = new ELispCons(true);
         }
-        Object envTrim;
-        try {
-            envTrim = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
-        } catch (Throwable ignored) {
-            // Called from graal compiler thread.
-            envTrim = false;
-        }
-        if (isNil(envTrim)) {
-            return list;
-        }
-        Object closure = BuiltInEval.FFuncall.funcall(
-                null,
-                envTrim,
-                getArgs(),
-                getBody(),
-                list,
-                inner[CLOSURE_DOC_STRING],
-                inner[CLOSURE_INTERACTIVE]
-        );
-        return pseudoEnvironment = BuiltInData.FAref.aref(closure, CLOSURE_CONSTANTS);
+        inner[CLOSURE_CONSTANTS] = list;
+        return list;
     }
 
     private ELispCons getBody() {
         return (ELispCons) inner[CLOSURE_CODE];
     }
 
-    private Object getEnv() {
-        return inner[CLOSURE_CONSTANTS];
+    @Nullable
+    private MaterializedFrame getUpperFrame() {
+        return upperFrame;
     }
 
     @Override
@@ -91,7 +103,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
                 ELispLanguage.get(node),
                 this.name == null ? this : this.name,
                 wrapper,
-                ELispLexical.rootFrameDescriptor(argCount, !isNil(getEnv()))
+                ELispLexical.rootFrameDescriptor(argCount, getUpperFrame() != null)
         );
     }
 
@@ -114,8 +126,8 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         private final ELispLexical.@Nullable Scope argScope;
 
         public ELispClosureCallNode() {
-            Object env = getEnv();
-            isLexical = !isNil(env);
+            ELispLexical.@Nullable Scope env = ELispInterpretedClosure.this.upperScope;
+            isLexical = env != null;
             args = ClosureArgs.parse(getArgs());
             body = BuiltInEval.FProgn.progn(getBody().toArray());
 
@@ -134,13 +146,13 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
             this.readArgNodes = argNodes.toArray(new ELispExpressionNode[0]);
             ELispSymbol[] argSymbols = args.argSymbols();
             if (isLexical) {
-                argScope = initializeLexical(env, argSymbols);
+                argScope = ELispLexical.newBlock(env, argSymbols).newScope(argSymbols.length);
                 this.argSymbols = new ELispSymbol[0];
                 int[] slots = argScope.block().slots();
                 for (int i = 0; i < this.readArgNodes.length; i++) {
                     ELispExpressionNode read = readArgNodes[i];
                     int slot = slots[i];
-                    readArgNodes[i] = ELispFrameSlotWriteNode.createWrite(0, slot, null, read);
+                    readArgNodes[i] = ELispFrameSlotWriteNode.createWrite(0, slot, read);
                 }
             } else {
                 argScope = null;
@@ -148,34 +160,11 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
             }
         }
 
-        @CompilerDirectives.TruffleBoundary
-        private static ELispLexical.Scope initializeLexical(Object env, ELispSymbol[] argSymbols) {
-            @Nullable MaterializedFrame frame;
-            ELispLexical.@Nullable Scope scope;
-            switch (env) {
-                case ELispLexical.Captured(ELispLexical.Scope s, MaterializedFrame f) -> {
-                    frame = f;
-                    scope = s;
-                }
-                case ELispCons cons -> {
-                    CompilerDirectives.transferToInterpreter();
-                    frame = Truffle.getRuntime().createMaterializedFrame(
-                            new Object[0],
-                            ELispLexical.rootFrameDescriptor(cons.size(), true)
-                    );
-                    scope = ELispLexical.newBlockFromAlist(frame, cons);
-                }
-                default -> {
-                    frame = null;
-                    scope = null;
-                }
-            }
-            return ELispLexical.newBlock(frame, scope, argSymbols).newScope(argSymbols.length);
-        }
-
         @ExplodeLoop
         public @Nullable Dynamic pushScope(VirtualFrame frame) {
             if (isLexical) {
+                ELispInterpretedClosure closure = ELispLexical.getCallee(frame);
+                frame.setObject(ELispLexical.UPPER_FRAME_SLOT, closure.getUpperFrame());
                 for (ELispExpressionNode arg : readArgNodes) {
                     arg.executeVoid(frame);
                 }

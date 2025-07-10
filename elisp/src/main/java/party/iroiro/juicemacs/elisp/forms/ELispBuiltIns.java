@@ -6,7 +6,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
-import party.iroiro.juicemacs.elisp.nodes.ReadFunctionArgNode;
+import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.mule.MuleString;

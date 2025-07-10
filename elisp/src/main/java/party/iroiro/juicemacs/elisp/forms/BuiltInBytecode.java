@@ -1,10 +1,10 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import party.iroiro.juicemacs.elisp.nodes.FunctionDispatchNode;
+import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBytecode;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
@@ -33,16 +33,14 @@ public class BuiltInBytecode extends ELispBuiltIns {
     @ELispBuiltIn(name = "byte-code", minArgs = 3, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FByteCode extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public Object byteCode(
-                ELispString bytestr, ELispVector vector, long maxdepth,
-                @Cached FunctionDispatchNode dispatchNode
-        ) {
+        public Object byteCode(ELispString bytestr, ELispVector vector, long maxdepth) {
             if (isMultibyte(bytestr.value())) {
                 throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, bytestr);
             }
             ELispBytecode f = BuiltInAlloc.FMakeByteCode.makeByteCode(false, bytestr, vector, maxdepth, new Object[0]);
-            return dispatchNode.executeDispatch(this, f.getFunction(), new Object[0]);
+            return FuncallDispatchNode.dispatchArgsUncached(this, f);
         }
     }
 

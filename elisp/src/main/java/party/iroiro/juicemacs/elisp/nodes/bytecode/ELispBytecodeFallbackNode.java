@@ -13,6 +13,7 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode;
 import party.iroiro.juicemacs.elisp.runtime.*;
@@ -49,13 +50,10 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 ///    Again, this cannot be compiled and might require complex analysis to support.
 public class ELispBytecodeFallbackNode extends ELispExpressionNode implements BytecodeOSRNode {
 
-    private final ELispBytecode object;
     private final int startStackTop;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     final byte[] bytecode;
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    final Object[] constants;
 
     /// Metadata index for each bytecode instruction
     ///
@@ -79,6 +77,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     @CompilerDirectives.CompilationFinal(dimensions = 2)
     final int[][] switchJumpTables;
 
+    final int[] stackTops;
+
     /// Jump table for exception (catch/condition-case) handlers
     ///
     /// If `null`, the function has no handlers.
@@ -94,11 +94,13 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
 
     public ELispBytecodeFallbackNode(ELispBytecode bytecode, int argsOnStack) {
         CompilerAsserts.neverPartOfCompilation();
-        this.object = bytecode;
         this.startStackTop = argsOnStack - 1;
         byte[] bytes = bytecode.getBytecode();
         this.bytecode = bytes;
-        this.constants = bytecode.getConstants();
+        // Lambdas that share code may have different constant vectors.
+        // However, typically these vectors only differ in captured variables,
+        // and we just assume anything else is actually "constant" across lambdas.
+        Object[] constants = bytecode.getConstants();
 
         indices = new int[bytes.length];
         // stackTops is used to check if each PC in the function
@@ -120,7 +122,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 if (stackTop == Integer.MIN_VALUE) {
                     stackTop = otherBranchTop;
                 } else if (otherBranchTop != stackTop) {
-                    throw ELispSignals.invalidFunction(object);
+                    throw ELispSignals.invalidFunction(bytecode);
                 }
             }
             byte op = bytes[i];
@@ -314,7 +316,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 case SWITCH:                       // 0267
                 {
                     if (lastConstantI == Integer.MIN_VALUE) {
-                        throw ELispSignals.invalidFunction(object);
+                        throw ELispSignals.invalidFunction(bytecode);
                     }
                     int targetStackTop = stackTop == Integer.MIN_VALUE ? Integer.MIN_VALUE : stackTop - 2;
                     ELispHashtable jumpTable = asHashtable(constants[lastConstantI]);
@@ -327,7 +329,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             if (targetTrackedTop == Integer.MIN_VALUE) {
                                 stackTops[target] = targetStackTop;
                             } else if (targetTrackedTop != targetStackTop) {
-                                throw ELispSignals.invalidFunction(object);
+                                throw ELispSignals.invalidFunction(bytecode);
                             }
                         }
                     });
@@ -354,7 +356,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 if (tracked == Integer.MIN_VALUE) {
                     stackTops[jumpTarget] = jumpTargetTop;
                 } else if (tracked != jumpTargetTop) {
-                    throw ELispSignals.invalidFunction(object);
+                    throw ELispSignals.invalidFunction(bytecode);
                 }
             }
             lastConstantI = newConstantI;
@@ -372,7 +374,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             for (int i = 0; i < this.exceptionJumps.length; i++) {
                 stackTop = stackTops[this.exceptionJumps[i]];
                 if (stackTop == Integer.MIN_VALUE) {
-                    throw ELispSignals.invalidFunction(object);
+                    throw ELispSignals.invalidFunction(bytecode);
                 }
                 this.exceptionJumpsStackTop[i] = stackTop;
             }
@@ -397,7 +399,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try (Bindings bindings = new Bindings()) {
-            return executeBodyFromBci(frame, 0, startStackTop, bindings); // NOPMD
+            Object[] constants = ((ELispBytecode) frame.getArguments()[0]).getConstants();
+            return executeBodyFromBci(frame, 0, startStackTop, constants, bindings); // NOPMD
         } catch (OsrResultException result) {
             return result.result;
         }
@@ -406,17 +409,17 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         InterpreterState state = (InterpreterState) interpreterState;
-        return executeBodyFromBci(osrFrame, target, state.stackTop, state.bindings);
+        return executeBodyFromBci(osrFrame, target, state.stackTop, state.constants, state.bindings);
     }
 
     @HostCompilerDirectives.BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    private Object executeBodyFromBci(VirtualFrame frame, int startBci, int startTop, Bindings bindings) {
+    private Object executeBodyFromBci(VirtualFrame frame, int startBci, int startTop, Object[] constants, Bindings bindings) {
         CompilerAsserts.partialEvaluationConstant(startBci);
         CompilerAsserts.partialEvaluationConstant(startTop);
         int bci = startBci;
         int top = startTop;
-        ELispContext context = getContext();
+        final ELispContext context = getContext();
         loop:
         while (bci < bytecode.length) {
             try {
@@ -433,7 +436,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 Object value;
                 switch (op) {
                     case STACK_REF:                    // 0
-                        throw ELispSignals.invalidFunction(object);
+                        throw invalidFunction(frame);
                     case STACK_REF1:                   // 1
                     case STACK_REF2:                   // 2
                     case STACK_REF3:                   // 3
@@ -764,26 +767,26 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         break;
                     case GOTO:                         // 0202
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
-                        bci = backEdgePoll(frame, bci, ref, top, bindings);
+                        bci = backEdgePoll(frame, bci, ref, top, constants, bindings);
                         continue;
                     case GOTOIFNIL:                    // 0203
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         if (isNil(frame.getObject(oldTop))) {
-                            bci = backEdgePoll(frame, bci, ref, top, bindings);
+                            bci = backEdgePoll(frame, bci, ref, top, constants, bindings);
                             continue;
                         }
                         break;
                     case GOTOIFNONNIL:                 // 0204
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         if (!isNil(frame.getObject(oldTop))) {
-                            bci = backEdgePoll(frame, bci, ref, top, bindings);
+                            bci = backEdgePoll(frame, bci, ref, top, constants, bindings);
                             continue;
                         }
                         break;
                     case GOTOIFNILELSEPOP:             // 0205
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         if (isNil(frame.getObject(oldTop))) {
-                            bci = backEdgePoll(frame, bci, ref, top, bindings);
+                            bci = backEdgePoll(frame, bci, ref, top, constants, bindings);
                             continue;
                         }
                         top--;
@@ -792,7 +795,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case GOTOIFNONNILELSEPOP:          // 0206
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         if (!isNil(frame.getObject(oldTop))) {
-                            bci = backEdgePoll(frame, bci, ref, top, bindings);
+                            bci = backEdgePoll(frame, bci, ref, top, constants, bindings);
                             continue;
                         }
                         top--;
@@ -984,7 +987,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             ref = op & (~CONSTANT);
                             frame.setObject(top, constants[ref]);
                         } else {
-                            throw ELispSignals.invalidFunction(object);
+                            throw invalidFunction(frame);
                         }
                         break;
                 }
@@ -1019,7 +1022,12 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 throw CompilerDirectives.shouldNotReachHere();
             }
         }
-        throw ELispSignals.invalidFunction(object);
+        throw invalidFunction(frame);
+    }
+
+    private static ELispSignals.ELispSignalException invalidFunction(VirtualFrame frame) {
+        ELispBytecode function = (ELispBytecode) frame.getArguments()[0];
+        return ELispSignals.invalidFunction(function);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -1049,12 +1057,12 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
     }
 
-    private int backEdgePoll(VirtualFrame frame, int bci, int nextBci, int stackTop, Bindings bindings) {
+    private int backEdgePoll(VirtualFrame frame, int bci, int nextBci, int stackTop, Object[] constants, Bindings bindings) {
         CompilerAsserts.partialEvaluationConstant(nextBci);
         CompilerAsserts.partialEvaluationConstant(stackTop);
         if (nextBci < bci) {
             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
-                InterpreterState newState = new InterpreterState(stackTop, bindings);
+                InterpreterState newState = new InterpreterState(stackTop, constants, bindings);
                 Object result = BytecodeOSRNode.tryOSR(this, nextBci, newState, null, frame);
                 if (result != null) {
                     throw new OsrResultException(result);
@@ -1221,11 +1229,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     static ELispExpressionNode createCallSomeNode(int base, int n) {
         int argBase = base + 1;
         ELispExpressionNode[] args = new ELispExpressionNode[n + 1];
-        args[0] = FuncallDispatchNodeGen.ToFunctionObjectNodeGen.create(new ReadStackSlotNode(base));
+        args[0] = new ReadStackSlotNode(base);
         for (int i = 0; i < n; i++) {
             args[i + 1] = new ReadStackSlotNode(argBase + i);
         }
-        return FunctionDispatchNode.createSpecializedCallNode(args);
+        return FuncallDispatchNode.createSpecializedCallNode(args);
     }
 
     /// Reads values from [VirtualFrame]
@@ -1235,8 +1243,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     /// In node-based Lisp interpreter ([ELispInterpretedNode]), we rely on two nodes
     /// ([ELispFrameSlotReadNode] and
     /// [ELispFrameSlotWriteNode])
-    /// to read from/write to stack frames. They wrap primitive
-    /// in mutable containers to reduce GC pressure (reducing primitive boxing costs).
+    /// to read from/write to stack frames. They speculate about stack slot types
+    /// (long or double) to reduce GC pressure (reducing primitive boxing costs).
     ///
     /// However, we choose to differ in this bytecode interpreter because a primitive
     /// container will not save too much boxing in this case: bytecodes reuse stack
@@ -1273,7 +1281,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
     }
 
-    private record InterpreterState(int stackTop, Bindings bindings) {
+    private record InterpreterState(int stackTop, Object[] constants, Bindings bindings) {
     }
 
     private static final class OsrResultException extends ControlFlowException {
