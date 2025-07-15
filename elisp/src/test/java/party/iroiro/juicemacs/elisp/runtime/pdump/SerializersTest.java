@@ -5,6 +5,7 @@ import org.apache.fury.Fury;
 import org.apache.fury.config.Language;
 import org.apache.fury.memory.MemoryBuffer;
 import org.junit.jupiter.api.Test;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.EQ;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 
 public class SerializersTest {
     private Fury getFury() {
@@ -54,15 +56,16 @@ public class SerializersTest {
                 .buildWithCdr(1.0);
         ELispCons restored = roundTrip(simple);
         assertTrue(simple.lispEquals(restored));
+        assertEquals(simple.toString(), restored.toString());
 
-        ELispCons cyclic = new ELispCons(false, false);
+        ELispCons cyclic = ELispCons.cons(false, false);
         cyclic.setCar(cyclic);
         cyclic.setCdr(cyclic);
         restored = roundTrip(cyclic);
         assertSame(restored, restored.car());
         assertSame(restored, restored.cdr());
 
-        ELispCons referred = new ELispCons(1.0, 2.0);
+        ELispCons referred = ELispCons.cons(1.0, 2.0);
         ELispCons tailRef = (ELispCons) new ELispCons.ListBuilder()
                 .add(referred)
                 .add(referred)
@@ -71,12 +74,16 @@ public class SerializersTest {
         restored = roundTrip(tailRef);
         assertTrue(tailRef.lispEquals(restored));
         assertSame(restored.car(), restored.get(1));
-        assertSame(restored.car(), restored.getCons(2).cdr());
+        assertSame(restored.car(), restored.listIterator(2).nextCons().cdr());
+
+        ELispCons nested = ELispCons.cons(3L, ELispCons.listOf(1L, 2L).cdr());
+        ELispCons restoredNested = roundTrip(nested);
+        assertTrue(nested.lispEquals(restoredNested));
     }
 
     @Test
     public void testConsWithDebug() {
-        ELispCons simple = new ELispCons(true, true);
+        ELispCons simple = ELispCons.cons(true, true);
         simple.setSourceLocation(1, 2, 3, 4);
         ELispCons restored = roundTrip(simple);
         assertTrue(restored.lispEquals(simple));
@@ -89,14 +96,14 @@ public class SerializersTest {
         for (int i = 0; i < 10; i++) {
             builder.add((long) i);
         }
-        ELispCons list = (ELispCons) builder.build();
-        ELispCons.ConsIterator i = list.consIterator(0);
+        ELispCons list = asCons(builder.build());
+        ELispCons.ConsIterator i = list.listIterator(0);
         while (i.hasNextCons()) {
             i.nextCons().setSourceLocation(1, 2, 3, 4);
         }
         ELispCons listRestored = roundTrip(list);
         assertTrue(listRestored.lispEquals(list));
-        i = listRestored.consIterator(0);
+        i = listRestored.listIterator(0);
         while (i.hasNextCons()) {
             ELispCons cons = i.nextCons();
             assertEquals(1, cons.getStartLine());

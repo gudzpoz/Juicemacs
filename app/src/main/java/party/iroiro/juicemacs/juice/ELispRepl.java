@@ -113,6 +113,9 @@ public class ELispRepl implements Callable<Integer> {
                 .build()) {
             LineReader lineReader = getLineReader(context);
             try {
+                if ("pbootstrap".equals(dumpEmacs)) {
+                    context.eval("elisp", "(setq load-suffixes '(\".el\"))");
+                }
                 context.eval("elisp", """
                         (setq noninteractive t)
                         """);

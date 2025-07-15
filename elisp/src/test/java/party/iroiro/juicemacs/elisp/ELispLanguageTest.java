@@ -30,6 +30,9 @@ public class ELispLanguageTest {
         }
         Context.Builder builder = TestingUtils.getContextBuilder(out).option("elisp.portableDump", dumpMode);
         try (Context context = builder.build()) {
+            if (bootstrap) {
+                context.eval("elisp", "(setq load-suffixes '(\".el\"))");
+            }
             // Loads until an error
             context.eval("elisp", "(load \"loadup\")");
         } catch (PolyglotException e) {
