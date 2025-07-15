@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -24,6 +25,7 @@ import java.math.BigInteger;
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 
 /**
  * A ELisp parser and reader
@@ -153,31 +155,29 @@ public class ELispParser {
                     read();
                     yield false;
                 }
-                ELispCons object = new ELispCons(nextObject());
-                token.attachLocation(object);
-                ELispCons.ListBuilder builder = new ELispCons.ListBuilder(object);
+                ArrayList<Object> elements = new ArrayList<>();
+                elements.add(nextObject());
                 while (!(peek() instanceof ParenClose)) {
                     if (peek() instanceof Dot) {
                         // (a b . ???
-                        LocatedToken location = read();
+                        read();
                         if (peek() instanceof ParenClose) {
                             // (a b .) -> (a b \.)
-                            location.attachLocation(builder.addTail(context.intern(".")));
+                            elements.add(context.intern("."));
                             break;
                         }
                         // (a b . c)
-                        builder.buildWithCdr(nextObject());
-                        location = read();
-                        if (!(location.token() instanceof ParenClose)) {
+                        Object cdr = nextObject();
+                        if (!(read().token() instanceof ParenClose)) {
                             throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
-                        yield fixSourceLocation(object, location);
+                        yield irregularList(elements, cdr);
                     }
-                    LocatedToken nextLocation = Objects.requireNonNull(peekedToken);
-                    nextLocation.attachLocation(builder.addTail(nextObject()));
+                    elements.add(nextObject());
                 }
-                yield fixSourceLocation(object, read());
+                LocatedToken endLocation = read();
+                yield arrayConsList(elements.toArray(), token, endLocation);
             }
             case RecordOpen() -> {
                 List<Object> list = readList();
@@ -199,7 +199,7 @@ public class ELispParser {
             case SubCharTableOpen() -> ELispCharTable.SubTable.create(readVector());
             case CircularRef(long i) -> Objects.requireNonNull(cyclicReferences.get(i));
             case CircularDef(long i) -> {
-                ELispCons placeholder = new ELispCons(NIL);
+                ELispCons placeholder = ELispCons.listOf(NIL);
                 cyclicReferences.put(i, placeholder);
                 Object def = nextObject();
                 if (def == placeholder) {
@@ -226,6 +226,21 @@ public class ELispParser {
         };
     }
 
+    private Object arrayConsList(Object[] elements, LocatedToken startLocation, LocatedToken endLocation) {
+        ELispCons list = asCons(ELispCons.listOf(elements));
+        list.setSourceLocation(
+                startLocation.startLine(), startLocation.startColumn(),
+                endLocation.endLine(), endLocation.endColumn()
+        );
+        return list;
+    }
+
+    private Object irregularList(ArrayList<Object> elements, Object cdr) {
+        ELispCons list = asCons(ELispCons.listOf(elements.toArray()));
+        list.setCdr(cdr);
+        return list;
+    }
+
     private ELispCons quote(ELispSymbol quote, LocatedToken start) throws IOException {
         ELispCons cons = ELispCons.listOf(quote, nextObject());
         LocatedToken end = Objects.requireNonNull(lastRead);
@@ -249,19 +264,6 @@ public class ELispParser {
         }
         read();
         return vector;
-    }
-
-    private ELispCons fixSourceLocation(ELispCons cons, LocatedToken location) {
-        ELispCons.ConsIterator i = cons.consIterator(0);
-        try {
-            while (i.hasNextCons()) {
-                ELispCons next = i.nextCons();
-                next.setSourceLocation(next.getStartLine(), next.getStartColumn(), location.endLine(), location.endColumn());
-            }
-        } catch (ELispSignals.ELispSignalException ignored) {
-            // Ignore circular lists
-        }
-        return cons;
     }
 
     private SourceSection getWholeSection(Source source) {

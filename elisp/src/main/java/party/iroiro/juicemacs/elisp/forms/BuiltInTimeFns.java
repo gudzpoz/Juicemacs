@@ -6,8 +6,8 @@ import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -117,13 +117,13 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             long seconds = instant.getEpochSecond();
             long nanos = instant.getNano();
             if (seconds < Long.MAX_VALUE / hz / 2) {
-                return new ELispCons(seconds * hz + nanos * hz / 1_000_000_000L, hz);
+                return ELispCons.cons(seconds * hz + nanos * hz / 1_000_000_000L, hz);
             }
             return toBigNumCons(seconds, nanos, BigInteger.valueOf(hz)); // NOPMD: valueOf(long) is fine
         }
         @CompilerDirectives.TruffleBoundary
         public static Object toBigNumCons(long seconds, long nanos, BigInteger hz) {
-            return new ELispCons(
+            return ELispCons.cons(
                     ELispBigNum.wrap(
                             BigInteger.valueOf(seconds)
                                     .multiply(hz)
@@ -495,7 +495,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     public abstract static class FCurrentCpuTime extends ELispTimeFnsNode {
         @Specialization
         public static ELispCons currentCpuTime() {
-            return new ELispCons(System.nanoTime(), 1_000_000_000L);
+            return ELispCons.cons(System.nanoTime(), 1_000_000_000L);
         }
     }
 

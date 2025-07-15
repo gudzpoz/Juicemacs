@@ -9,9 +9,11 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.List;
+import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInData.isMultibyte;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
@@ -56,6 +58,17 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         }
     }
 
+    public ClosureCommons saveCommons() {
+        ELispFunctionObject function = getFunction();
+        return new ClosureCommons(Objects.requireNonNull(functionRootNode), function, rootSource);
+    }
+
+    public void loadCommons(ClosureCommons commons) {
+        this.functionRootNode = commons.rootNode;
+        this.function = commons.functionObject;
+        setRootSource(commons.rootSource);
+    }
+
     protected Object getArgs() {
         return get(CLOSURE_ARGLIST);
     }
@@ -65,7 +78,7 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
     public final ELispFunctionObject getFunction() {
         ELispFunctionObject f = function;
         if (f == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerDirectives.transferToInterpreter();
             FunctionRootNode root = getFunctionRootNode();
             f = new ELispFunctionObject(root.getCallTarget());
             functionRootNode = root; // NOPMD
@@ -105,21 +118,21 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
                 if (code instanceof ELispString s && !isMultibyte(s.value())
                         && constants instanceof ELispVector
                         && size > CLOSURE_STACK_DEPTH && array[CLOSURE_STACK_DEPTH] instanceof Long) {
-                    closure = new ELispBytecode(array, rootSource);
+                    return new ELispBytecode(array, rootSource);
                 }
                 // interpreted closure
                 if (BuiltInData.FListp.listp(argList) && code instanceof ELispCons && BuiltInData.FListp.listp(constants)) {
-                    closure = new ELispInterpretedClosure(array, rootSource);
+                    return new ELispInterpretedClosure(array, rootSource);
                 }
             }
         }
-        if (closure != null) {
-            if (inner instanceof AbstractELispClosure original) {
-                closure.function = original.getFunction();
-                closure.functionRootNode = original.functionRootNode;
-            }
-            return closure;
-        }
         throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
+    }
+
+    public record ClosureCommons(
+            FunctionRootNode rootNode,
+            ELispFunctionObject functionObject,
+            @Nullable Source rootSource
+    ) {
     }
 }

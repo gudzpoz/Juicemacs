@@ -7,11 +7,13 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -1418,17 +1420,18 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object carCons(ELispCons cons) {
-            return cons.car();
+        public Object carCons(
+                ELispCons list,
+                @Cached ELispConsAccess.ConsCarNode carNode
+        ) {
+            return carNode.executeCar(this, list);
         }
         @Specialization
         public static Object car(Object list) {
-            return switch (list) {
-                case ELispCons cons -> cons.car();
-                case Boolean b when !b -> false;
-                case ELispSymbol sym when sym == NIL -> false;
-                default -> throw ELispSignals.wrongTypeArgument(LISTP, list);
-            };
+            if (isNil(list)) {
+                return false;
+            }
+            return asCons(list).car();
         }
     }
 
@@ -1466,17 +1469,18 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object cdrCons(ELispCons cons) {
-            return cons.cdr();
+        public Object cdrCons(
+                ELispCons list,
+                @Cached ELispConsAccess.ConsCdrNode cdrNode
+        ) {
+            return cdrNode.executeCdr(this, list);
         }
         @Specialization
         public static Object cdr(Object list) {
-            return switch (list) {
-                case ELispCons cons -> cons.cdr();
-                case Boolean b when !b -> false;
-                case ELispSymbol sym when sym == NIL -> false;
-                default -> throw ELispSignals.wrongTypeArgument(LISTP, list);
-            };
+            if (isNil(list)) {
+                return false;
+            }
+            return asCons(list).cdr();
         }
     }
 
@@ -1510,9 +1514,18 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetcar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object setcar(ELispCons cell, Object newcar) {
-            cell.setCar(newcar);
+        public Object setcar(
+                ELispCons cell,
+                Object newcar,
+                @Cached ELispConsAccess.ConsSetCarNode setCarNode
+        ) {
+            setCarNode.executeSetCar(this, cell, newcar);
             return newcar;
+        }
+
+        public static Object setcar(ELispCons cons, Object object) {
+            cons.setCar(object);
+            return object;
         }
     }
 
@@ -1525,9 +1538,18 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetcdr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object setcdr(ELispCons cell, Object newcdr) {
-            cell.setCdr(newcdr);
+        public Object setcdr(
+                ELispCons cell,
+                Object newcdr,
+                @Cached ELispConsAccess.ConsSetCdrNode setCdrNode
+        ) {
+            setCdrNode.executeSetCdr(this, cell, newcdr);
             return newcdr;
+        }
+
+        public static Object setcdr(ELispCons cons, Object object) {
+            cons.setCdr(object);
+            return object;
         }
     }
 
@@ -1817,7 +1839,7 @@ public class BuiltInData extends ELispBuiltIns {
             ELispBuiltIn info = subr.info();
             long min = info.minArgs();
             long max = info.maxArgs();
-            return new ELispCons(
+            return ELispCons.cons(
                     min,
                     info.rawArg() ? UNEVALLED : (info.varArgs() ? MANY : max)
             );

@@ -16,6 +16,7 @@ module party.iroiro.juicemacs.elisp {
     requires java.logging;
     requires jdk.unsupported;
     requires org.apache.commons.compress;
+    requires org.apache.commons.lang3;
     requires org.apache.commons.text;
     requires org.apache.fury.core;
     requires org.eclipse.jdt.annotation;

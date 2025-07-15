@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;

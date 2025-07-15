@@ -12,6 +12,8 @@ import org.apache.fury.serializer.ExternalizableSerializer;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsSerializer;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;

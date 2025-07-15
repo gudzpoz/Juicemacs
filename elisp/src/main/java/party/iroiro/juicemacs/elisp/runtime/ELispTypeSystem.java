@@ -2,11 +2,11 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.util.Collections;
-import java.util.NoSuchElementException;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -255,19 +255,9 @@ public abstract class ELispTypeSystem {
 
     public static ELispCons.ConsIterator asConsIter(Object value) {
         if (isNil(value)) {
-            return new ELispCons.ConsIterator() {
-                @Override
-                public boolean hasNextCons() {
-                    return false;
-                }
-
-                @Override
-                public ELispCons nextCons() {
-                    throw new NoSuchElementException();
-                }
-            };
+            return ELispCons.emptyIterator();
         }
-        return asCons(value).consIterator(0);
+        return asCons(value).listIterator(0);
     }
 
     public static Object asList(Object value) {

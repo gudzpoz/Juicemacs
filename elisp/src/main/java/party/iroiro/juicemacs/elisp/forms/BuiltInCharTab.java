@@ -7,6 +7,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -54,7 +55,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
                     if (prevChar == codepoint - 1) {
                         callback.accept(prevChar, value);
                     } else {
-                        callback.accept(new ELispCons(prevChar, (long) codepoint - 1), value);
+                        callback.accept(ELispCons.cons(prevChar, (long) codepoint - 1), value);
                     }
                 }
                 prevChar = codepoint;

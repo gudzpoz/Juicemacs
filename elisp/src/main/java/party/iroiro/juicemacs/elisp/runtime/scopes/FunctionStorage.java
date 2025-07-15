@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.runtime.scopes;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.MACRO;

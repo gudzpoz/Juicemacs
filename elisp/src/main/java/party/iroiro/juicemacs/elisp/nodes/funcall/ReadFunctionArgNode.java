@@ -8,7 +8,7 @@ import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispSignals.remapException;
@@ -116,13 +116,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             if (arguments.length == 0) {
                 return false;
             }
-            ELispCons cons = new ELispCons(arguments[0]);
-            ELispCons tail = cons;
-            for (int i = 1; i < arguments.length; i++) {
-                tail.setCdr(new ELispCons(arguments[i]));
-                tail = (ELispCons) tail.cdr();
-            }
-            return cons;
+            return ELispCons.listOf(arguments);
         }
     }
 }

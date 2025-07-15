@@ -2,7 +2,7 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
@@ -41,13 +41,13 @@ public final class CodingSystemCharset implements ELispCodingSystemType {
                     }
                 } else {
                     @Nullable ELispCons prevCons = null;
-                    ELispCons.ConsIterator iterator = asCons(idSlot).consIterator(0);
+                    ELispCons.ConsIterator iterator = asCons(idSlot).listIterator(0);
                     while (iterator.hasNextCons()) {
                         ELispCons current = iterator.nextCons();
                         int currentDim = BuiltInCharSet.getCharsetFromId(asInt(current.car())).dimension;
                         if (dim < currentDim) {
                             if (prevCons == null) {
-                                idSlot = new ELispCons(charsetIdObject, idSlot);
+                                idSlot = ELispCons.cons(charsetIdObject, idSlot);
                             } else {
                                 prevCons.insertAfter(charsetIdObject);
                             }

@@ -21,6 +21,9 @@ import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccessFactory;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
@@ -28,6 +31,7 @@ import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 /**
  * Built-in functions from {@code src/eval.c}
@@ -290,7 +294,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     ELispCons cons = asCons(clause);
                     conditionNodes.add(ELispInterpretedNode.create(cons.car()));
                     List<Object> body = new ArrayList<>();
-                    ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(1);
+                    ELispCons.ConsIterator iterator = cons.listIterator(1);
                     while (iterator.hasNext()) {
                         body.add(iterator.next());
                     }
@@ -352,17 +356,16 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static ELispExpressionNode progn(Object[] body) {
-            if (body.length == 0) {
-                return ELispInterpretedNode.literal(false);
-            }
-            if (body.length == 1) {
-                return ELispInterpretedNode.create(body[0]);
-            }
-            ELispExpressionNode[] nodes = ELispInterpretedNode.create(body);
-            return prognNode(nodes);
+            return prognNode(ELispInterpretedNode.create(body));
         }
 
         public static ELispExpressionNode prognNode(ELispExpressionNode[] nodes) {
+            if (nodes.length == 0) {
+                return ELispInterpretedNode.literal(false);
+            }
+            if (nodes.length == 1) {
+                return nodes[0];
+            }
             return new PrognBlockNode(nodes);
         }
 
@@ -681,7 +684,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         private static ELispExpressionNode getDefinition(ELispCons def) {
             CompilerDirectives.transferToInterpreter();
-            ELispCons.BrentTortoiseHareIterator iterator = def.listIterator(1);
+            ELispCons.ConsIterator iterator = def.listIterator(1);
             Object args = iterator.next();
             ELispExpressionNode docString = null;
             if (iterator.hasNext()) {
@@ -704,7 +707,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     iterator.next();
                 }
             }
-            ELispCons body = iterator.hasNext() ? iterator.currentCons() : new ELispCons(false);
+            ELispCons body = iterator.hasNext() ? iterator.currentCons() : ELispCons.listOf(false);
             body.fillDebugInfo(def);
             ELispExpressionNode finalDocString = docString;
             Object finalInteractive = interactive;
@@ -713,8 +716,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Child
                 ELispExpressionNode doc = finalDocString;
 
-                @Nullable
-                private ELispInterpretedClosure constructed = null;
+                private AbstractELispClosure.@Nullable ClosureCommons constructed = null;
 
                 @Override
                 public void executeVoid(VirtualFrame frame) {
@@ -727,31 +729,28 @@ public class BuiltInEval extends ELispBuiltIns {
                     Object env = scope == null || frame == null
                             ? false
                             : new ELispLexical.Captured(scope, frame.materialize());
-                    @Nullable ELispInterpretedClosure prev = constructed;
-                    if (prev != null) {
-                        AbstractELispClosure newClosure = ELispInterpretedClosure.create(prev, (RootNode) null);
-                        newClosure.set(CLOSURE_CONSTANTS, env);
-                        return newClosure;
-                    }
-
                     Object doc = this.doc.executeGeneric(frame);
                     return createClosure(scope, doc, env);
                 }
 
-                @CompilerDirectives.TruffleBoundary
                 private AbstractELispClosure createClosure(ELispLexical.@Nullable Scope scope, Object doc, Object env) {
                     body.fillDebugInfo(getParent());
                     // TODO: make use of INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION to clean up frames
                     ELispInterpretedClosure scopeHolder = FMakeInterpretedClosure.makeClosure(
                             args,
                             body,
-                            scope == null ? false : new ELispCons(true),
+                            scope == null ? false : ELispCons.listOf(true),
                             doc,
                             finalInteractive,
                             getRootNode()
                     );
                     scopeHolder.set(CLOSURE_CONSTANTS, env);
-                    constructed = scopeHolder;
+                    AbstractELispClosure.@Nullable ClosureCommons commons = constructed;
+                    if (commons == null) {
+                        constructed = scopeHolder.saveCommons();
+                    } else {
+                        scopeHolder.loadCommons(commons);
+                    }
                     return scopeHolder;
                 }
             };
@@ -1118,7 +1117,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return new WhileNode(arguments[0], Arrays.copyOfRange(arguments, 1, arguments.length));
         }
 
-        public final static class RepeatingBodyNode extends Node implements RepeatingNode {
+        public static final class RepeatingBodyNode extends Node implements RepeatingNode {
             @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode condition;
@@ -1126,17 +1125,21 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode bodyNode;
 
+            @Child
+            ELispConsAccess.IsNilNode isNilNode;
             final LoopConditionProfile loopConditionProfile;
 
-            public RepeatingBodyNode(Object test, Object[] body, Assumption hasNoClosureCreation) {
+            public RepeatingBodyNode(Object test, Object[] body) {
                 condition = ELispInterpretedNode.create(test);
                 bodyNode = FProgn.progn(body);
+                isNilNode = ELispConsAccessFactory.IsNilNodeGen.create();
                 loopConditionProfile = LoopConditionProfile.create();
             }
 
             @Override
             public boolean executeRepeating(VirtualFrame frame) {
-                if (loopConditionProfile.profile(!isNil(condition.executeGeneric(frame)))) {
+                Object cond = condition.executeGeneric(frame);
+                if (loopConditionProfile.profile(!isNilNode.executeIsNil(this, cond))) {
                     bodyNode.executeVoid(frame);
                     return true;
                 } else {
@@ -1150,11 +1153,9 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             LoopNode loopNode;
 
-            final Assumption hasNoClosureCreation;
-
             public WhileNode(Object test, Object[] body) {
-                hasNoClosureCreation = Truffle.getRuntime().createAssumption();
-                loopNode = Truffle.getRuntime().createLoopNode(new RepeatingBodyNode(test, body, hasNoClosureCreation));
+                RepeatingBodyNode bodyNode = new RepeatingBodyNode(test, body);
+                loopNode = Truffle.getRuntime().createLoopNode(bodyNode);
             }
 
             @Override
@@ -1572,7 +1573,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         boolean shouldHandle = shouldHandle(tag, conditionName);
                         if (shouldHandle) {
                             ELispExpressionNode handler = handlers[i];
-                            ELispCons error = new ELispCons(tag, e.getData());
+                            ELispCons error = ELispCons.cons(tag, e.getData());
                             return handle(frame, e, error, handler, i);
                         }
                     }
@@ -1672,7 +1673,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object tag = signal.getTag();
                 for (int i = 0; i < args.length; i += 2) {
                     if (FConditionCase.shouldHandle(tag, args[i])) {
-                        FFuncall.funcall(this, args[i + 1], new ELispCons(tag, signal.getData()));
+                        FFuncall.funcall(this, args[i + 1], ELispCons.cons(tag, signal.getData()));
                         // search continues
                     }
                 }
@@ -2096,7 +2097,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (value instanceof ELispCons cons) {
                 hooks = cons;
             } else {
-                hooks = new ELispCons(value);
+                hooks = ELispCons.listOf(value);
             }
             for (Object callable : hooks) {
                 // TODO: Handle buffer-local hooks
@@ -2237,12 +2238,12 @@ public class BuiltInEval extends ELispBuiltIns {
                 case ELispSubroutine s -> {
                     ELispBuiltIn info = s.info();
                     if (s.specialForm()) {
-                        return new ELispCons((long) info.minArgs(), UNEVALLED);
+                        return ELispCons.cons((long) info.minArgs(), UNEVALLED);
                     }
                     if (info.varArgs()) {
-                        return new ELispCons((long) info.minArgs(), MANY);
+                        return ELispCons.cons((long) info.minArgs(), MANY);
                     }
-                    return new ELispCons((long) info.minArgs(), (long) info.maxArgs());
+                    return ELispCons.cons((long) info.minArgs(), (long) info.maxArgs());
                 }
                 case ELispCons cons when cons.car() == LAMBDA ->
                         argList = cons.get(1); // fallthrough
@@ -2253,7 +2254,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 default -> throw ELispSignals.invalidFunction(function);
             }
             ELispInterpretedClosure.ClosureArgs args = ELispInterpretedClosure.ClosureArgs.parse(argList);
-            return new ELispCons(
+            return ELispCons.cons(
                     (long) args.requiredArgCount(),
                     args.rest() == null ? (long) args.maxArgCount() : MANY
             );

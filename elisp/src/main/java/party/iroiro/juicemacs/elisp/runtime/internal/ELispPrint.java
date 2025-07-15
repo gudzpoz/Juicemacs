@@ -5,6 +5,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -138,7 +139,7 @@ public final class ELispPrint {
                     print(',').print('@').print(comma.car());
             default -> {
                 print('(').print(car);
-                ELispCons.ConsIterator i = cons.consIterator(1);
+                ELispCons.ConsIterator i = cons.listIterator(1);
                 while (true) {
                     if (i.hasNextCons()) {
                         cons = i.nextCons();

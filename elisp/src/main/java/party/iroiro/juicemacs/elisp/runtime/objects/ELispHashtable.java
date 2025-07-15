@@ -8,6 +8,7 @@ import org.graalvm.collections.MapCursor;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.lang.ref.Reference;

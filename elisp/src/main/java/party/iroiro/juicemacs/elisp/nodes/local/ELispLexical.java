@@ -5,7 +5,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.ArrayList;
@@ -179,7 +179,7 @@ public final class ELispLexical {
             symbols.add(NIL);
         }
         ELispLexical block = new ELispLexical(null, symbols.toArray(new ELispSymbol[0]));
-        ELispCons.BrentTortoiseHareIterator i = cons.listIterator(0);
+        ELispCons.ConsIterator i = cons.listIterator(0);
         int index = block.frameSlots.length - 1;
         while (i.hasNext()) {
             if (i.next() instanceof ELispCons binding) {
@@ -327,7 +327,7 @@ public final class ELispLexical {
                     continue;
                 }
                 Object value = frame.getValue(slot);
-                lb.add(new ELispCons(symbol, value));
+                lb.add(ELispCons.cons(symbol, value));
             }
             @Nullable Scope upperScope = block.upperScope;
             return lb.buildWithCdr(upperScope == null

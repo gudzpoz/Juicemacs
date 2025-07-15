@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 
 import java.util.*;
 
@@ -27,8 +28,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public final class ELispInterpretedClosure extends AbstractELispClosure {
     @Nullable
-    private transient MaterializedFrame upperFrame;
-    private transient ELispLexical.@Nullable Scope upperScope;
+    private MaterializedFrame upperFrame;
+    private ELispLexical.@Nullable Scope upperScope;
 
     ELispInterpretedClosure(Object[] array, @Nullable Source source) {
         super(array, source);
@@ -62,7 +63,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
                 upperFrame = null;
                 upperScope = null;
             }
-        };
+        }
     }
 
     @Override
@@ -76,7 +77,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         }
         Object list = scope.toAssocList(frame);
         if (isNil(list)) {
-            list = new ELispCons(true);
+            list = ELispCons.listOf(true);
         }
         inner[CLOSURE_CONSTANTS] = list;
         return list;

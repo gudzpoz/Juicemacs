@@ -5,8 +5,8 @@ import com.oracle.truffle.api.dsl.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -381,7 +381,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
         public static ELispCons frexp(double x) {
             int exponent = Math.getExponent(x);
             double significand = Math.scalb(x, -exponent);
-            return new ELispCons(significand, (long) exponent);
+            return ELispCons.cons(significand, (long) exponent);
         }
     }
 

@@ -4,7 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
@@ -123,12 +123,12 @@ public final class ELispCodings {
         ELispCodingSystemType type = Objects.requireNonNull(getCodingSystemType(codingType));
         codingSpecTable.put(name, createCodingSystem(spec, type));
 
-        CODING_SYSTEM_LIST.setValue(new ELispCons(name, CODING_SYSTEM_LIST.getValue()));
+        CODING_SYSTEM_LIST.setValue(ELispCons.cons(name, CODING_SYSTEM_LIST.getValue()));
         ELispString nameString = new ELispString(name.name());
         Object assoc = BuiltInFns.FAssoc.assocEqual(nameString, CODING_SYSTEM_ALIST.getValue());
         if (isNil(assoc)) {
-            CODING_SYSTEM_ALIST.setValue(new ELispCons(
-                    new ELispCons(nameString),
+            CODING_SYSTEM_ALIST.setValue(ELispCons.cons(
+                    ELispCons.listOf(nameString),
                     CODING_SYSTEM_ALIST.getValue()
             ));
         }

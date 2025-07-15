@@ -6,8 +6,8 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
@@ -104,7 +104,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
     private record SparseKeymap(ELispCons cons) implements Keymap {
         @Override
         public Object get(Object key, boolean parentLookup) {
-            ELispCons.ConsIterator i = cons.consIterator(1);
+            ELispCons.ConsIterator i = cons.listIterator(1);
             @Nullable ELispCons parent = null;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -123,7 +123,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         }
 
         private void remove(Object key) {
-            ELispCons.ConsIterator i = cons.consIterator(1);
+            ELispCons.ConsIterator i = cons.listIterator(1);
             ELispCons prev = cons;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -146,7 +146,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                 remove(key);
             } else {
                 Object newList;
-                ELispCons.ConsIterator i = cons.consIterator(1);
+                ELispCons.ConsIterator i = cons.listIterator(1);
                 @Nullable ELispCons pair = null;
                 while (i.hasNextCons()) {
                     ELispCons current = i.nextCons();
@@ -164,7 +164,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                     pair.setCdr(value);
                     newList = cons.cdr();
                 } else {
-                    newList = new ELispCons(new ELispCons(key, value), cons.cdr());
+                    newList = ELispCons.cons(ELispCons.cons(key, value), cons.cdr());
                 }
                 cons.setCdr(newList);
             }
@@ -172,7 +172,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
 
         @Override
         public Object map(Object function) {
-            ELispCons.ConsIterator i = cons.consIterator(1);
+            ELispCons.ConsIterator i = cons.listIterator(1);
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
                 Object car = current.car();
@@ -225,12 +225,12 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FMakeKeymap extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispCons makeKeymap(Object string) {
-            return new ELispCons(
+            ELispCharTable charTable = BuiltInCharTab.FMakeCharTable.makeCharTable(KEYMAP, false);
+            return ELispCons.cons(
                     KEYMAP,
-                    new ELispCons(
-                            BuiltInCharTab.FMakeCharTable.makeCharTable(KEYMAP, false),
-                            isNil(string) ? false : new ELispCons(string)
-                    )
+                    isNil(string)
+                            ? ELispCons.listOf(charTable)
+                            : ELispCons.listOf(charTable, string)
             );
         }
     }
@@ -252,9 +252,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FMakeSparseKeymap extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispCons makeSparseKeymap(Object string) {
-            return new ELispCons(
+            return ELispCons.cons(
                     KEYMAP,
-                    isNil(string) ? false : new ELispCons(string)
+                    isNil(string) ? false : ELispCons.listOf(string)
             );
         }
     }

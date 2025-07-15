@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
@@ -573,7 +574,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         ));
                         break;
                     case LIST1:                        // 0103
-                        frame.setObject(top, new ELispCons(frame.getObject(top), false));
+                        frame.setObject(top, ELispCons.listOf(frame.getObject(top)));
                         break;
                     case LIST2:                        // 0104
                         frame.setObject(top, ELispCons.listOf(
@@ -1051,7 +1052,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     @CompilerDirectives.TruffleBoundary
     private static Object getExceptionData(AbstractTruffleException e) {
         if (e instanceof ELispSignals.ELispSignalException signal) {
-            return new ELispCons(signal.getTag(), signal.getData());
+            return ELispCons.cons(signal.getTag(), signal.getData());
         } else {
             return ((ELispSignals.ELispCatchException) e).getData();
         }

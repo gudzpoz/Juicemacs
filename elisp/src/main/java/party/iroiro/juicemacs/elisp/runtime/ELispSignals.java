@@ -16,7 +16,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Value;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEditFns;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -54,7 +54,7 @@ public abstract class ELispSignals {
 
         @Override
         public String getMessage() {
-            return new ELispCons(tag, data).toString();
+            return ELispCons.cons(tag, data).toString();
         }
 
         @ExportMessage
@@ -108,11 +108,12 @@ public abstract class ELispSignals {
 
     private static ELispSignalException signal(ELispSymbol error, Object... data) {
         CompilerDirectives.transferToInterpreter();
-        ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-        for (Object datum : data) {
-            builder.add(datum instanceof String s ? new ELispString(s) : datum);
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] instanceof String s) {
+                data[i] = new ELispString(s);
+            }
         }
-        return new ELispSignalException(error, builder.build());
+        return new ELispSignalException(error, ELispCons.listOf(data));
     }
 
     public static ELispSignalException error(String message) {

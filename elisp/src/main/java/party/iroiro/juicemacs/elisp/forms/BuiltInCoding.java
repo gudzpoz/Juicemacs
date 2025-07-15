@@ -14,6 +14,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
@@ -709,14 +710,14 @@ public class BuiltInCoding extends ELispBuiltIns {
                 throw ELispSignals.error("Invalid eol-type");
             }
 
-            ELispCons aliases = new ELispCons(name);
+            ELispCons aliases = ELispCons.listOf(name);
             ELispSymbol[] eolTypes;
             if (isNil(eolType)) {
                 ELispSymbol[] subsidiaries = makeSubsidiaries(name);
                 eolTypes = subsidiaries;
                 for (int i = 0; i < subsidiaries.length; i++) {
                     ELispSymbol subsidiary = subsidiaries[i];
-                    ELispCons currentAliases = new ELispCons(subsidiary);
+                    ELispCons currentAliases = ELispCons.listOf(subsidiary);
                     ELispSymbol currentEolType = switch (i) {
                         case 0 -> UNIX;
                         case 1 -> DOS;
@@ -775,7 +776,7 @@ public class BuiltInCoding extends ELispBuiltIns {
                 maxCharsetId = list.stream().mapToInt(ELispTypeSystem::asInt).max().orElse(0);
             } else {
                 list = BuiltInFns.FCopySequence.copySequenceList(asCons(arg));
-                ELispCons.ConsIterator iterator = list.consIterator(0);
+                ELispCons.ConsIterator iterator = list.listIterator(0);
                 while (iterator.hasNextCons()){
                     ELispCons current = iterator.nextCons();
                     Object charset = current.car();

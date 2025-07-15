@@ -2,9 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.internal;
 
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBoolVector;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
-
-import java.util.BitSet;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,10 +14,10 @@ public class ELispPrintTest {
     @Test
     public void testConsPrint() {
         assertEquals("(nil)", print(ELispCons.listOf(false)));
-        assertEquals("(nil)", print(new ELispCons(false, false)));
+        assertEquals("(nil)", print(ELispCons.cons(false, false)));
         assertEquals("(1 2 3)", print(ELispCons.listOf(1L, 2L, 3L)));
-        assertEquals("(1 . 2)", print(new ELispCons(1L, 2L)));
-        assertEquals("(1 2 . 3)", print(new ELispCons(1L, new ELispCons(2L, 3L))));
+        assertEquals("(1 . 2)", print(ELispCons.cons(1L, 2L)));
+        assertEquals("(1 2 . 3)", print(ELispCons.cons(1L, ELispCons.cons(2L, 3L))));
     }
 
     @Test

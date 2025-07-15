@@ -15,7 +15,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBoolVector;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 
 import java.util.ArrayList;
 

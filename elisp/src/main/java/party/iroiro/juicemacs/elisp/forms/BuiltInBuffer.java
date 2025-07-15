@@ -9,8 +9,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -50,11 +50,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
 
     @CompilerDirectives.TruffleBoundary
     private static Object getBufferList() {
-        ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-        for (ELispBuffer buffer : getBuffers(null).values()) {
-            builder.add(buffer);
-        }
-        return builder.build();
+        return ELispCons.listOf(getBuffers(null).values().toArray());
     }
 
     public static int downCase(int c, ELispBuffer buffer) {
@@ -76,7 +72,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
         ValueStorage.Forwarded miniBuffers = ELispContext.get(null).globals().builtInBuffer.minibufferList;
         Object tail = BuiltInFns.FNthcdr.nthcdr(depth, miniBuffers.getValue());
         if (isNil(tail)) {
-            tail = new ELispCons(false);
+            tail = ELispCons.listOf(false);
             miniBuffers.setValue(BuiltInFns.FNconc.nconc(new Object[]{miniBuffers.getValue(), tail}));
         }
         Object buffer = BuiltInData.FCar.car(tail);
@@ -86,7 +82,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
             return buf;
         } else {
             ELispBuffer newBuffer = FGetBufferCreate.getBufferCreate(new ELispString(" *Minibuf-" + depth + "*"), false);
-            BuiltInData.FSetcar.setcar(asCons(tail), newBuffer);
+            asCons(tail).setCar(newBuffer);
             FBufferEnableUndo.bufferEnableUndo(newBuffer);
             return newBuffer;
         }

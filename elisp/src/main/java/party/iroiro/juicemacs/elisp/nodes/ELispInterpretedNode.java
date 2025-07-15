@@ -23,6 +23,7 @@ import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.DebuggerScopeObject;
 
@@ -446,7 +447,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         protected static ELispExpressionNode[] initChildren(ELispCons cons, int reserved) {
             // Trade time for allocation amount. Hopefully most conses are short.
             ELispExpressionNode[] children = new ELispExpressionNode[cons.size() - 1 + reserved];
-            ELispCons.BrentTortoiseHareIterator argIterator = cons.listIterator(1);
+            ELispCons.ConsIterator argIterator = cons.listIterator(1);
             for (int i = reserved; argIterator.hasNext(); i++) {
                 Object arg = argIterator.next();
                 children[i] = ELispInterpretedNode.create(arg);
@@ -569,7 +570,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             List<ELispExpressionNode> nodes = new ArrayList<>();
             List<ELispExpressionNode> restNodes = new ArrayList<>();
-            ELispCons.BrentTortoiseHareIterator argIterator = cons.listIterator(1);
+            ELispCons.ConsIterator argIterator = cons.listIterator(1);
             while (argIterator.hasNext()) {
                 ELispExpressionNode node = ELispInterpretedNode.create(argIterator.next());
                 if (nodes.size() < info.maxArgs()) {

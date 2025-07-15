@@ -44,7 +44,7 @@ public class ELispPortableDumperTest {
             Value value = context.eval("elisp", """
                     (rx (? "bootstrap-") "emacs" (? ".pdmp"))
                     """);
-            System.out.println(value);
+            assertEquals("\\(?:bootstrap-\\)?emacs\\(?:\\.pdmp\\)?", value.asString());
         }
     }
 }

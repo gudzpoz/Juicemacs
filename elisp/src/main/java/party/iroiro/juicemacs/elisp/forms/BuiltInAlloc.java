@@ -1,14 +1,11 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.source.Source;
-import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -104,8 +101,16 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCons extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispCons cons(Object car, Object cdr) {
-            return new ELispCons(car, cdr);
+        public ELispCons consArray(
+                Object car,
+                Object cdr,
+                @Cached ELispConsAccess.ConsPrependConsNode consNode
+        ) {
+            return consNode.executeCons(this, car, cdr);
+        }
+
+        public static Object cons(Object car, Object cdr) {
+            return ELispCons.cons(car, cdr);
         }
     }
 
@@ -118,46 +123,10 @@ public class BuiltInAlloc extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "list", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FList extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+    public abstract static class FList extends ELispBuiltInBaseNode {
         @Specialization
         public static Object list(Object[] objects) {
-            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            for (Object arg : objects) {
-                builder.add(arg);
-            }
-            return builder.build();
-        }
-
-        @Override
-        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
-            return new ListNode(arguments);
-        }
-
-        private static final class ListNode extends ELispBuiltInBaseNode {
-            @Children
-            final ELispExpressionNode[] elements;
-
-            private ListNode(ELispExpressionNode[] elements) {
-                this.elements = elements;
-            }
-
-            @ExplodeLoop
-            @Override
-            public void executeVoid(VirtualFrame frame) {
-                for (ELispExpressionNode element : elements) {
-                    element.executeVoid(frame);
-                }
-            }
-
-            @ExplodeLoop
-            @Override
-            public Object executeGeneric(VirtualFrame frame) {
-                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-                for (ELispExpressionNode element : elements) {
-                    builder.add(element.executeGeneric(frame));
-                }
-                return builder.build();
-            }
+            return ELispCons.listOf(objects);
         }
     }
 
@@ -171,11 +140,9 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FMakeList extends ELispBuiltInBaseNode {
         @Specialization
         public static Object makeList(long length, Object init) {
-            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            for (long i = 0; i < length; i++) {
-                builder.add(init);
-            }
-            return builder.build();
+            Object[] objects = new Object[Math.toIntExact(length)];
+            Arrays.fill(objects, init);
+            return ELispCons.listOf(objects);
         }
     }
 
@@ -408,7 +375,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
         public static ELispCons garbageCollect() {
             Runtime.getRuntime().gc();
             // TODO: Return info
-            return new ELispCons(false);
+            return ELispCons.listOf(false);
         }
     }
 

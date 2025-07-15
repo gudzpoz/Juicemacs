@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset.CharsetMethod;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
@@ -334,7 +335,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                     parentCharset = getCharset(elt);
                     offset = 0;
                 }
-                list.add(new ELispCons((long) parentCharset.id, (long) offset));
+                list.add(ELispCons.cons((long) parentCharset.id, (long) offset));
                 minChar = Math.min(minChar, parentCharset.minChar);
                 maxChar = Math.max(maxChar, parentCharset.maxChar);
                 for (int i = 0; i < parentCharset.fastMap.length; i++) {
@@ -409,7 +410,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             // TODO
             if (newDefinitionP) {
                 iso2022CharsetList.setValue(BuiltInFns.FNconc.nconc(
-                        new Object[]{iso2022CharsetList.getValue(), new ELispCons((long) id)}
+                        new Object[]{iso2022CharsetList.getValue(), ELispCons.listOf((long) id)}
                 ));
             }
         }
@@ -418,18 +419,18 @@ public class BuiltInCharSet extends ELispBuiltIns {
             // TODO
             if (newDefinitionP) {
                 emacsMuleCharsetList.setValue(BuiltInFns.FNconc.nconc(
-                        new Object[]{emacsMuleCharsetList.getValue(), new ELispCons((long) id)}
+                        new Object[]{emacsMuleCharsetList.getValue(), ELispCons.listOf((long) id)}
                 ));
             }
         }
 
         if (newDefinitionP) {
-            context.setValue(CHARSET_LIST, new ELispCons(name, context.getValue(CHARSET_LIST)));
+            context.setValue(CHARSET_LIST, ELispCons.cons(name, context.getValue(CHARSET_LIST)));
             Object charsetOrderedList = this.charsetOrderedList.getValue();
             if (charset.supplementaryP) {
                 this.charsetOrderedList.setValue(BuiltInFns.FNconc.nconc(new Object[]{
                         charsetOrderedList,
-                        new ELispCons((long) id),
+                        ELispCons.listOf((long) id),
                 }));
             } else {
                 @Nullable ELispCons prev = null;
@@ -443,7 +444,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                     prev = cons;
                 }
                 if (prev == null) {
-                    this.charsetOrderedList.setValue(new ELispCons((long) id, charsetOrderedList));
+                    this.charsetOrderedList.setValue(ELispCons.cons((long) id, charsetOrderedList));
                 } else {
                     prev.insertAfter((long) id);
                 }
@@ -530,7 +531,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             ELispVector attr = getCharsetAttr(charset);
             getThis(this).charsetHashTable.put(alias, attr);
             ELispContext context = getContext();
-            context.setValue(CHARSET_LIST, new ELispCons(alias, context.getValue(CHARSET_LIST)));
+            context.setValue(CHARSET_LIST, ELispCons.cons(alias, context.getValue(CHARSET_LIST)));
             return false;
         }
     }

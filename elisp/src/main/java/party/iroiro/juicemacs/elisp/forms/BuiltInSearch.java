@@ -10,6 +10,7 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -636,9 +637,9 @@ public class BuiltInSearch extends ELispBuiltIns {
             // TODO: fixedcase, literal...
             long subexpN = notNilOr(subexp, 0);
             ELispString s = asStr(isNil(string) ? matchStr(this) : string);
-            ELispCons cons = asCons(matchData(this)).getCons((int) (subexpN * 2));
-            long start = asLong(cons.car());
-            long end = asLong(asCons(cons.cdr()).car());
+            ELispCons.ConsIterator cons = asCons(matchData(this)).listIterator((int) (subexpN * 2));
+            long start = asLong(cons.next());
+            long end = asLong(cons.next());
             MuleString before = s.value().subSequence(0, start);
             MuleString after = s.value().subSequence(end, s.value().length());
             MuleString result = new MuleStringBuffer()
@@ -801,7 +802,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public Object matchDataTranslate(long n) {
             Object value = matchData(this);
             if (value instanceof ELispCons cons) {
-                ELispCons.ConsIterator i = cons.consIterator(0);
+                ELispCons.ConsIterator i = cons.listIterator(0);
                 while (i.hasNextCons()) {
                     ELispCons current = i.nextCons();
                     if (current.car() instanceof Long l) {

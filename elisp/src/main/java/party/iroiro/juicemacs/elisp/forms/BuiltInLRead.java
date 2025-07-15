@@ -13,6 +13,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -99,8 +100,8 @@ public class BuiltInLRead extends ELispBuiltIns {
         boolean absolute = completeFilenameP(name);
         ELispString original = name;
         @Nullable ELispString result = null;
-        ELispCons pathList = paths instanceof ELispCons cons ? cons : new ELispCons(new ELispString("."));
-        ELispCons suffixList = new ELispCons(new ELispString(""), suffixes);
+        ELispCons pathList = paths instanceof ELispCons cons ? cons : ELispCons.listOf(new ELispString("."));
+        ELispCons suffixList = ELispCons.cons(new ELispString(""), suffixes);
         ELispContext context = ELispContext.get(null);
         for (Object path : pathList) {
             ELispString directory = asStr(path);
@@ -211,7 +212,8 @@ public class BuiltInLRead extends ELispBuiltIns {
                 target = directory.resolve(stem);
             } else {
                 target = directory.resolve(stem + ".elc");
-                if (!target.isRegularFile()) {
+                if (!target.isRegularFile()
+                        || isNil(BuiltInFns.FMember.member(new ELispString(".elc"), LOAD_SUFFIXES.getValue()))) {
                     target = directory.resolve(stem + ".el");
                 }
             }
@@ -267,7 +269,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                     }
                     yield switch (tree) {
                         case ELispCons cons -> {
-                            ELispCons.ConsIterator iterator = cons.consIterator(0);
+                            ELispCons.ConsIterator iterator = cons.listIterator(0);
                             ELispCons last = cons;
                             while (iterator.hasNextCons()) {
                                 last = iterator.nextCons();
@@ -690,7 +692,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
                 ELispParser parser = new ELispParser(getContext(), elisp);
                 Object o = parser.nextLisp();
-                return new ELispCons(o, from + parser.getCodepointOffset());
+                return ELispCons.cons(o, from + parser.getCodepointOffset());
             } catch (IOException e) {
                 throw ELispSignals.endOfFile();
             }

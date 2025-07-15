@@ -11,6 +11,9 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccessFactory;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -161,7 +164,7 @@ public class BuiltInFns extends ELispBuiltIns {
         private static long safeLengthCons(ELispCons cons) {
             HashSet<ELispCons> distinct = new HashSet<>();
             long count = 0;
-            ELispCons.ConsIterator i = cons.consIterator(0);
+            ELispCons.ConsIterator i = cons.listIterator(0);
             while (i.hasNextCons()) {
                 try {
                     ELispCons next = i.nextCons();
@@ -808,7 +811,7 @@ public class BuiltInFns extends ELispBuiltIns {
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             for (Object element : asCons(alist)) {
                 if (element instanceof ELispCons cons) {
-                    builder.add(new ELispCons(cons.car(), cons.cdr()));
+                    builder.add(ELispCons.cons(cons.car(), cons.cdr()));
                 } else {
                     builder.add(element);
                 }
@@ -913,7 +916,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            ELispCons.BrentTortoiseHareIterator iterator = asCons(list).listIterator(0);
+            Iterator<?> iterator = asCons(list).listIterator(0);
             for (int i = 0, limit = Math.toIntExact(n); i < limit; i++) {
                 if (!iterator.hasNext()) {
                     break;
@@ -977,7 +980,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             try {
                 return asCons(list).get(Math.toIntExact(n));
-            } catch (IndexOutOfBoundsException ignored) {
+            } catch (NoSuchElementException ignored) {
                 return false;
             }
         }
@@ -1029,7 +1032,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = asCons(list).consIterator(0);
+            ELispCons.ConsIterator iterator = asCons(list).listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons next = iterator.nextCons();
                 if (FEqual.equal(next.car(), elt)) {
@@ -1055,7 +1058,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = asCons(list).consIterator(0);
+            ELispCons.ConsIterator iterator = asCons(list).listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons next = iterator.nextCons();
                 if (BuiltInData.FEq.eq(next.car(), elt)) {
@@ -1081,7 +1084,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons.ConsIterator i = asCons(list).consIterator(0);
+            ELispCons.ConsIterator i = asCons(list).listIterator(0);
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
                 if (FEql.eql(current.car(), elt)) {
@@ -1225,31 +1228,23 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "delq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDelq extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
         @Specialization
+        public Object delq(
+                Object elt, Object list,
+                @Cached ELispConsAccess.ConsFilterNode filterNode
+        ) {
+            if (isNil(list)) {
+                return false;
+            }
+            return filterNode.executeFilter(this, list, (o) -> !BuiltInData.FEq.eq(elt, o));
+        }
+
         public static Object delq(Object elt, Object list) {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons cons = asCons(list);
-            while (BuiltInData.FEq.eq(cons.car(), elt)) {
-                Object cdr = cons.cdr();
-                if (isNil(cdr)) {
-                    return false;
-                }
-                cons = asCons(cdr);
-            }
-            ELispCons.ConsIterator i = cons.consIterator(1);
-            ELispCons prev = cons;
-            while (i.hasNextCons()) {
-                ELispCons current = i.nextCons();
-                if (BuiltInData.FEq.eq(current.car(), elt)) {
-                    prev.setCdr(current.cdr());
-                } else {
-                    prev = current;
-                }
-            }
-            return cons;
+            return ELispConsAccessFactory.ConsFilterNodeGen.getUncached()
+                    .executeFilter(null, list, (o) -> !BuiltInData.FEq.eq(elt, o));
         }
     }
 
@@ -1278,27 +1273,12 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean deleteNil(Object elt, ELispSymbol seq) {
             return expectNil(seq);
         }
-        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static Object deleteList(Object elt, ELispCons seq) {
-            while (FEqual.equal(elt, seq.car())) {
-                Object cdr = seq.cdr();
-                if (isNil(cdr)) {
-                    return false;
-                }
-                seq = asCons(cdr);
-            }
-            ELispCons.ConsIterator i = seq.consIterator(1);
-            ELispCons prev = seq;
-            while (i.hasNextCons()) {
-                ELispCons current = i.nextCons();
-                if (FEqual.equal(elt, current.car())) {
-                    prev.setCdr(current.cdr());
-                } else {
-                    prev = current;
-                }
-            }
-            return seq;
+        public Object deleteList(
+                Object elt, ELispCons seq,
+                @Cached ELispConsAccess.ConsFilterNode filterNode
+        ) {
+            return filterNode.executeFilter(this, seq, (o) -> !FEqual.equal(elt, o));
         }
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
@@ -1358,19 +1338,12 @@ public class BuiltInFns extends ELispBuiltIns {
             return new ELispString(builder.build());
         }
 
-        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public static ELispCons nreverseList(ELispCons seq) {
-            ELispCons head = new ELispCons(seq.car());
-            if (isNil(seq.cdr())) {
-                return head;
-            }
-            for (Object e : asCons(seq.cdr())) {
-                ELispCons cons = new ELispCons(e);
-                cons.setCdr(head);
-                head = cons;
-            }
-            return head;
+        public ELispCons nreverseList(
+                ELispCons seq,
+                @Cached ELispConsAccess.ConsNReverseNode nReverseNode
+        ) {
+            return nReverseNode.executeNReverse(this, seq);
         }
     }
 
@@ -1400,8 +1373,11 @@ public class BuiltInFns extends ELispBuiltIns {
             return FNreverse.nreverseString(seq);
         }
         @Specialization
-        public static ELispCons reverseList(ELispCons seq) {
-            return FNreverse.nreverseList(seq);
+        public ELispCons reverseList(
+                ELispCons seq,
+                @Cached ELispConsAccess.ConsReverseNode nReverseNode
+        ) {
+            return nReverseNode.executeReverse(this, seq);
         }
     }
 
@@ -1453,13 +1429,11 @@ public class BuiltInFns extends ELispBuiltIns {
             SortParameters params = SortParameters.parse(args);
             Stream<Object> sorted = seq.stream().sorted(params);
             if (params.inPlace) {
-                ELispCons.ConsIterator iterator = seq.consIterator(0);
+                ELispCons.ConsIterator iterator = seq.listIterator(0);
                 sorted.forEachOrdered((o) -> iterator.nextCons().setCar(o));
                 return seq;
             } else {
-                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-                sorted.forEachOrdered(builder::add);
-                return builder.build();
+                return ELispCons.listOf(sorted.toArray());
             }
         }
 
@@ -1544,7 +1518,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
             }
-            ELispCons.BrentTortoiseHareIterator iterator = cons.listIterator(0);
+            ELispCons.ConsIterator iterator = cons.listIterator(0);
             try {
                 while (iterator.hasNext()) {
                     Object key = iterator.next();
@@ -1654,7 +1628,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return ELispCons.listOf(prop, val);
             }
             ELispCons list = asCons(plist);
-            ELispCons.BrentTortoiseHareIterator i = list.listIterator(0);
+            ELispCons.ConsIterator i = list.listIterator(0);
             ELispCons tail;
             do {
                 Object key = i.next();
@@ -1712,7 +1686,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(predicate)) {
                 return plistMemberEq(cons, prop);
             }
-            ELispCons.ConsIterator iterator = cons.consIterator(0);
+            ELispCons.ConsIterator iterator = cons.listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons current = iterator.nextCons();
                 if (!isNil(BuiltInEval.FFuncall.funcall(this, predicate, current.car(), prop))) {
@@ -1726,7 +1700,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(plist)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = asCons(plist).consIterator(0);
+            ELispCons.ConsIterator iterator = asCons(plist).listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons current = iterator.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), prop)) {
@@ -1799,6 +1773,9 @@ public class BuiltInFns extends ELispBuiltIns {
             if (o1 == o2) {
                 // This is both a fast path and a workaround to stack overflow due to recursion
                 return true;
+            }
+            if (isNil(o1)) {
+                return isNil(o2);
             }
             // TODO: Recursive objects?
             return switch (o1) {
@@ -1905,7 +1882,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 if (prev == null) {
                     result = arg;
                 } else {
-                    asCons(prev).tail().setCdr(arg);
+                    tail(asCons(prev)).setCdr(arg);
                 }
                 prev = arg;
             }
@@ -1919,8 +1896,17 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(list1)) {
                 return list2;
             }
-            asCons(list1).tail().setCdr(list2);
+            tail(asCons(list1)).setCdr(list2);
             return list1;
+        }
+
+        private static ELispCons tail(ELispCons cons) {
+            ELispCons.ConsIterator i = cons.listIterator(0);
+            ELispCons tail = cons;
+            while (i.hasNextCons()) {
+                tail = i.nextCons();
+            }
+            return tail;
         }
     }
 
@@ -2134,7 +2120,7 @@ public class BuiltInFns extends ELispBuiltIns {
             ELispSymbol features = FEATURES;
             Object isMem = FMemq.memq(feature, features.getValue());
             if (isNil(isMem)) {
-                features.setValue(new ELispCons(feature, features.getValue()));
+                features.setValue(ELispCons.cons(feature, features.getValue()));
             }
             if (!isNil(subfeatures)) {
                 feature.putProperty(SUBFEATURES, subfeatures);
@@ -2723,7 +2709,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefineHashTableTest extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defineHashTableTest(Object name, Object test, Object hash) {
+        public static Void defineHashTableTest(ELispSymbol name, Object test, Object hash) {
             throw new UnsupportedOperationException();
         }
     }

@@ -10,6 +10,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
@@ -28,7 +29,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 public class BuiltInSyntax extends ELispBuiltIns {
     public void initSyntaxOnce(ELispContext context) {
         for (int i = 0; i < SMAX; i++) {
-            syntaxCodeObject.set(i, new ELispCons((long) i));
+            syntaxCodeObject.set(i, ELispCons.listOf((long) i));
         }
         BuiltInFns.FPut.put(SYNTAX_TABLE, CHAR_TABLE_EXTRA_SLOTS, 0L);
         //noinspection SequencedCollectionMethodCanBeUsed
@@ -64,14 +65,14 @@ public class BuiltInSyntax extends ELispBuiltIns {
         standardSyntaxTable.setChar('$', word);
         standardSyntaxTable.setChar('%', word);
 
-        standardSyntaxTable.setChar('(', new ELispCons((long) SOPEN, (long) ')'));
-        standardSyntaxTable.setChar(')', new ELispCons((long) SCLOSE, (long) '('));
-        standardSyntaxTable.setChar('[', new ELispCons((long) SOPEN, (long) ']'));
-        standardSyntaxTable.setChar(']', new ELispCons((long) SCLOSE, (long) '['));
-        standardSyntaxTable.setChar('{', new ELispCons((long) SOPEN, (long) '}'));
-        standardSyntaxTable.setChar('}', new ELispCons((long) SCLOSE, (long) '{'));
-        standardSyntaxTable.setChar('"', new ELispCons((long) SSTRING));
-        standardSyntaxTable.setChar('\\', new ELispCons((long) SESCAPE));
+        standardSyntaxTable.setChar('(', ELispCons.cons((long) SOPEN, (long) ')'));
+        standardSyntaxTable.setChar(')', ELispCons.cons((long) SCLOSE, (long) '('));
+        standardSyntaxTable.setChar('[', ELispCons.cons((long) SOPEN, (long) ']'));
+        standardSyntaxTable.setChar(']', ELispCons.cons((long) SCLOSE, (long) '['));
+        standardSyntaxTable.setChar('{', ELispCons.cons((long) SOPEN, (long) '}'));
+        standardSyntaxTable.setChar('}', ELispCons.cons((long) SCLOSE, (long) '{'));
+        standardSyntaxTable.setChar('"', ELispCons.listOf((long) SSTRING));
+        standardSyntaxTable.setChar('\\', ELispCons.listOf((long) SESCAPE));
 
         Object symbol = syntaxCodeObject.get(SSYMBOL);
         String symbols = "_-+*/&|<>=";
@@ -293,7 +294,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
                     syntax |= 1 << shift;
                 }
             }
-            return new ELispCons(syntax, match == -1 ? false : match);
+            return ELispCons.cons(syntax, match == -1 ? false : match);
         }
     }
 

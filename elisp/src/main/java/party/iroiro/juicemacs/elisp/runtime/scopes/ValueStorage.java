@@ -12,6 +12,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
 import java.io.Externalizable;

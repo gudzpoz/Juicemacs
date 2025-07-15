@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.nodes.bytecode.ELispBytecodeFallbackNode;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
 
 import java.util.ArrayList;

@@ -7,7 +7,7 @@ import org.apache.fury.serializer.collection.AbstractCollectionSerializer;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispRecord;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;

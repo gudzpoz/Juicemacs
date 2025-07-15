@@ -9,6 +9,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInData.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInKeymap.*;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispKboard;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -83,12 +84,12 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private void defineError(ELispSymbol errorType, String errorMessage, ELispSymbol parentType) {
         Object parentConditions = ctx.getStorage(parentType).getProperty(ERROR_CONDITIONS);
         ValueStorage storage = ctx.getStorage(errorType);
-        storage.putProperty(ERROR_CONDITIONS, new ELispCons(errorType, parentConditions));
+        storage.putProperty(ERROR_CONDITIONS, ELispCons.cons(errorType, parentConditions));
         storage.putProperty(ERROR_MESSAGE, new ELispString(errorMessage));
     }
     private static ELispCons loadPathDefault() {
         // TODO
-        return new ELispCons(new ELispString(Paths.get("").toAbsolutePath().toString()));
+        return ELispCons.listOf(new ELispString(Paths.get("").toAbsolutePath().toString()));
     }
     private static void loadPathCheck(ELispCons cons) {
         for (Object dir : cons) {
@@ -144,7 +145,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         if (!(dir.isDirectory() && dir.canRead())) {
             throw ELispSignals.fatal("cannot read charsets directory " + dir);
         }
-        charsetMapPath.setValue(new ELispCons(path));
+        charsetMapPath.setValue(ELispCons.listOf(path));
     }
 
     private void makeInitialWindowFrame() {

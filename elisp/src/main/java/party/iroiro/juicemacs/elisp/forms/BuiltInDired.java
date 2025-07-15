@@ -11,7 +11,7 @@ import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;

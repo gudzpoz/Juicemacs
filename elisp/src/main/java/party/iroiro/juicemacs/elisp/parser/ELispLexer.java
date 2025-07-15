@@ -11,7 +11,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 

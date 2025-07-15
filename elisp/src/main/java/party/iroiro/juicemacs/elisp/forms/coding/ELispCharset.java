@@ -8,8 +8,8 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInCharTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -184,7 +184,7 @@ public final class ELispCharset {
                     ELispCharTable deunifier = asCharTable(attributes.get(CHARSET_DEUNIFIER));
                     mapCharTable(deunifier, callback);
                 }
-                ELispCons range = new ELispCons(fromChar, toChar);
+                ELispCons range = ELispCons.cons(fromChar, toChar);
                 callback.accept(range);
             }
             case MAP -> {
@@ -231,7 +231,7 @@ public final class ELispCharset {
                 callback.accept(cons);
             } else {
                 long c = asLong(range);
-                callback.accept(new ELispCons(c, c));
+                callback.accept(ELispCons.cons(c, c));
             }
         });
     }

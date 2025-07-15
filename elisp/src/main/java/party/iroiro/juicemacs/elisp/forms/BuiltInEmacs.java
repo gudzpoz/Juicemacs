@@ -6,11 +6,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -36,7 +37,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
                 envVarName == null ? null : ELispContext.get(null).getEnv(envVarName),
                 defaultValue
         );
-        ELispCons.ListBuilder paths = new ELispCons.ListBuilder();
+        ArrayList<Object> paths = new ArrayList<>(1);
         for (String element : path.split(File.pathSeparator)) {
             ELispString current = element.isEmpty() ? emptyElement : new ELispString(element);
             if (current != null) {
@@ -52,7 +53,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
             }
             paths.add(Objects.requireNonNullElse(current, false));
         }
-        return asCons(paths.build());
+        return asCons(ELispCons.listOf(paths.toArray()));
     }
 
     /**
