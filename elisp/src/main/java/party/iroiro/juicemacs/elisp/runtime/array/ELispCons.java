@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.runtime.array;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -270,13 +269,18 @@ public final class ELispCons implements ListIteratorList, ELispValue {
     }
 
     public static Object listOf(Object... elements) {
+        return listWithCdrOf(elements, false);
+    }
+    public static Object listWithCdrOf(Object[] elements, Object cdr) {
         if (elements.length == 0) {
-            return false;
+            return cdr;
         }
         if (elements.length > 1) {
             ArrayUtils.reverse(elements);
         }
-        return ObjectArrayStrategy.INSTANCE.create(elements);
+        ELispCons cons = ObjectArrayStrategy.INSTANCE.create(elements);
+        cons.array.cdr = cdr;
+        return cons;
     }
     public static ELispCons listOfReversed(Object[] elements) {
         return ObjectArrayStrategy.INSTANCE.create(elements);

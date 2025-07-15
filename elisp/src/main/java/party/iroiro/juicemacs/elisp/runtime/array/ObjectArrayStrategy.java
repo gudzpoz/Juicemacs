@@ -66,22 +66,18 @@ final class ObjectArrayStrategy extends ArrayStrategy {
 
     private ELispConsArray deoptToForwardStrategy(ELispConsArray object, int split) {
         Object[] elements = getArray(object);
-        ELispConsArray restCons = new ELispConsArray(Arrays.copyOf(elements, split), split, this);
-        restCons.cdr = object.cdr;
+        ELispConsArray restCons = new ELispConsArray(elements, split, this);
         copyHashCode(object, restCons, 0);
-        Object[] leading = Arrays.copyOfRange(elements, split, object.size);
-        ELispConsArray leadingCons = new ELispConsArray(leading, leading.length, this);
-        copyHashCode(object, restCons, split);
+        restCons.cdr = object.cdr;
 
-        ELispCons[] forward = new ELispCons[object.size];
-        for (int i = 0; i < split; i++) {
-            forward[i] = new ELispCons(restCons, i);
-        }
-        for (int i = 0; i < leading.length; i++) {
-            forward[i + split] = new ELispCons(leadingCons, i);
-        }
-        object.array = forward;
+        Object[] leading = Arrays.copyOfRange(elements, split, object.size);
+        Arrays.fill(elements, split, object.size, null);
+        ELispConsArray leadingCons = new ELispConsArray(leading, leading.length, ObjectArrayStrategy.INSTANCE);
+        copyHashCode(object, restCons, split);
+        leadingCons.cdr = new ELispCons(restCons, split - 1);
+
         object.strategy = ForwardArrayStrategy.INSTANCE;
+        object.array = new ForwardArrayStrategy.ForwardInfo(leadingCons, restCons, split);
 
         return leadingCons;
     }
@@ -92,7 +88,10 @@ final class ObjectArrayStrategy extends ArrayStrategy {
             addLast(array, car);
             return new ELispCons(array, index + 1);
         }
-        return new ELispCons(car, new ELispCons(array, index));
+        // We always deopt (split the array in halves)
+        // so that any dangling heads are garbage collected.
+        ELispConsArray head = deoptToForwardStrategy(array, index + 1);
+        return new ELispCons(car, head.cdr);
     }
 
     private void addLast(ELispConsArray array, Object car) {

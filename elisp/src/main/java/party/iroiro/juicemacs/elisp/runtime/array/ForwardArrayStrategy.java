@@ -6,18 +6,18 @@ final class ForwardArrayStrategy extends ArrayStrategy {
     static ForwardArrayStrategy INSTANCE = new ForwardArrayStrategy();
     private ForwardArrayStrategy() {}
 
-    private ELispCons[] getArray(ELispConsArray array) {
-        return (ELispCons[]) array.array;
-    }
-
     public ELispCons forwarded(ELispConsArray array, int index) {
         while (true) {
-            ELispCons cons = getArray(array)[index];
-            array = cons.array;
-            if (array.strategy != this) {
-                return cons;
+            ForwardInfo forward = (ForwardInfo) array.array;
+            if (index < forward.split) {
+                array = forward.tail;
+            } else {
+                array = forward.head;
+                index -= forward.split;
             }
-            index = cons.index;
+            if (array.strategy != this) {
+                return new ELispCons(array, index);
+            }
         }
     }
 
@@ -85,5 +85,8 @@ final class ForwardArrayStrategy extends ArrayStrategy {
     public int hashCode(ELispConsArray array, int index) {
         ELispCons forwarded = forwarded(array, index);
         return ObjectArrayStrategy.INSTANCE.hashCode(forwarded.array, forwarded.index);
+    }
+
+    record ForwardInfo(ELispConsArray head, ELispConsArray tail, int split) {
     }
 }

@@ -236,9 +236,7 @@ public class ELispParser {
     }
 
     private Object irregularList(ArrayList<Object> elements, Object cdr) {
-        ELispCons list = asCons(ELispCons.listOf(elements.toArray()));
-        list.setCdr(cdr);
-        return list;
+        return asCons(ELispCons.listWithCdrOf(elements.toArray(), cdr));
     }
 
     private ELispCons quote(ELispSymbol quote, LocatedToken start) throws IOException {
