@@ -24,7 +24,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispCons implements ListIteratorList, ELispValue {
@@ -34,11 +33,6 @@ public final class ELispCons implements ListIteratorList, ELispValue {
     ELispCons(ELispConsArray array, int index) {
         this.array = array;
         this.index = index;
-    }
-    ELispCons(Object car, Object cdr) {
-        this.array = new ELispConsArray(new Object[]{car}, 1, ObjectArrayStrategy.INSTANCE);
-        this.index = 0;
-        this.array.cdr = cdr;
     }
 
     @NeverDefault
@@ -73,8 +67,8 @@ public final class ELispCons implements ListIteratorList, ELispValue {
 
     @Override
     public Object[] toArray() {
-        if (isNil(array.cdr) && strategy() instanceof ObjectArrayStrategy strategy) {
-            Object[] inner = strategy.getArray(array);
+        if (strategy() == SingleArrayStrategy.INSTANCE) {
+            Object[] inner = SingleArrayStrategy.INSTANCE.getArray(array);
             Object[] objects = Arrays.copyOf(inner, index + 1);
             ArrayUtils.reverse(objects);
             return objects;
@@ -84,16 +78,16 @@ public final class ELispCons implements ListIteratorList, ELispValue {
 
     @Override
     public Object get(int index) {
-        if (isNil(array.cdr) && strategy() instanceof ObjectArrayStrategy strategy) {
-            return strategy.car(array, this.index - index);
+        if (strategy() == SingleArrayStrategy.INSTANCE) {
+            return SingleArrayStrategy.INSTANCE.car(array, this.index - index);
         }
         return ListIteratorList.super.get(index);
     }
 
     @Override
     public Object set(int index, Object element) {
-        if (isNil(array.cdr) && strategy() instanceof ObjectArrayStrategy strategy) {
-            strategy.setCar(array, this.index - index, element);
+        if (strategy() == SingleArrayStrategy.INSTANCE) {
+            SingleArrayStrategy.INSTANCE.setCar(array, this.index - index, element);
             return element;
         }
         return ListIteratorList.super.set(index, element);
@@ -261,15 +255,21 @@ public final class ELispCons implements ListIteratorList, ELispValue {
     }
 
     public static ELispCons listOf(Object element1) {
-        return ObjectArrayStrategy.INSTANCE.create(element1);
+        return SingleArrayStrategy.INSTANCE.create(element1);
     }
 
     public static ELispCons listOf(Object element1, Object element2) {
-        return ObjectArrayStrategy.INSTANCE.create(element2, element1);
+        return SingleArrayStrategy.INSTANCE.create(element2, element1);
     }
 
     public static Object listOf(Object... elements) {
-        return listWithCdrOf(elements, false);
+        if (elements.length == 0) {
+            return false;
+        }
+        if (elements.length > 1) {
+            ArrayUtils.reverse(elements);
+        }
+        return SingleArrayStrategy.INSTANCE.create(elements);
     }
     public static Object listWithCdrOf(Object[] elements, Object cdr) {
         if (elements.length == 0) {
@@ -278,12 +278,10 @@ public final class ELispCons implements ListIteratorList, ELispValue {
         if (elements.length > 1) {
             ArrayUtils.reverse(elements);
         }
-        ELispCons cons = ObjectArrayStrategy.INSTANCE.create(elements);
-        cons.array.cdr = cdr;
-        return cons;
+        return SingleArrayStrategy.INSTANCE.createWithCdr(elements, cdr);
     }
     public static ELispCons listOfReversed(Object[] elements) {
-        return ObjectArrayStrategy.INSTANCE.create(elements);
+        return SingleArrayStrategy.INSTANCE.create(elements);
     }
 
     public static Iterable<Object> iterate(Object sequence) {
@@ -294,8 +292,8 @@ public final class ELispCons implements ListIteratorList, ELispValue {
     }
 
     public static ConsIterator emptyIterator() {
-        return new ObjectArrayStrategy.ConsArrayIterator(
-                new ELispConsArray(false, 0, ObjectArrayStrategy.INSTANCE), 0, 1);
+        return new WithCdrStrategy.ConsArrayIterator(
+                new ELispConsArray(false, 0, SingleArrayStrategy.INSTANCE), 0, 1);
     }
 
     public static final class ListBuilder {
@@ -317,9 +315,7 @@ public final class ELispCons implements ListIteratorList, ELispValue {
             if (elements.isEmpty()) {
                 return cdr;
             }
-            ELispCons cons = (ELispCons) listOf(elements.toArray());
-            cons.array.cdr = cdr;
-            return cons;
+            return listWithCdrOf(elements.toArray(), cdr);
         }
 
         public static Collector<Object, ?, Object> collector() {

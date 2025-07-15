@@ -100,7 +100,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         }
 
         int size = buffer.readVarUint32();
-        ELispConsArray array = new ELispConsArray(false, size, ObjectArrayStrategy.INSTANCE);
+        ELispConsArray array = new ELispConsArray(false, size, SingleArrayStrategy.INSTANCE);
         ELispCons cons = new ELispCons(array, index);
         resolver.setReadObject(consRef, cons);
         resolver.preserveRefId();
@@ -111,6 +111,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         int extra = buffer.readByte();
         if ((extra & 0x1) != 0) {
             array.cdr = fury.readRef(buffer);
+            array.strategy = WithCdrStrategy.INSTANCE;
         }
         if ((extra & 0x4) != 0) {
             int startLine = buffer.readVarUint32();
@@ -120,6 +121,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
             array.setSourceLocation(startLine, startColumn, endLine, endColumn);
         }
         if ((extra & 0x2) != 0) {
+            array.strategy = WithCdrStrategy.INSTANCE;
             if (resolver.readRefOrNull(buffer) != Fury.REF_FLAG) {
                 resolver.preserveRefId();
                 return true;

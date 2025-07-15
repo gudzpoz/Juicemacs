@@ -10,7 +10,7 @@ final class ELispConsArray {
 
     /// Metadata (source location and hash code)
     ///
-    /// Used by [ObjectArrayStrategy].
+    /// Used by [WithCdrStrategy].
     int @Nullable [] metadata = null;
     static final int METADATA_HAS_SOURCE_LOCATION = 0x10;
 

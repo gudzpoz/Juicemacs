@@ -115,11 +115,16 @@ public abstract class ELispConsAccess {
             return strategy.cons(iter.array, iter.index, car);
         }
         @Specialization(replaces = "consArrayCons")
-        static ELispCons consConsPair(Object car, Object pair) {
-            if (isNil(pair)) {
+        static ELispCons consConsPair(Object car, Object cdr) {
+            if (isNil(cdr)) {
                 return ELispCons.listOf(car);
             }
-            return new ELispCons(car, pair);
+            if (cdr instanceof ELispCons cons) {
+                return cons.strategy().cons(cons.array, cons.index, car);
+            }
+            ELispCons cons = ELispCons.listOf(car);
+            cons.setCdr(cdr);
+            return cons;
         }
     }
 

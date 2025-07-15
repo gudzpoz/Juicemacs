@@ -4,15 +4,6 @@ import java.util.*;
 
 public interface ListIteratorList extends List<Object> {
     @Override
-    default int size() {
-        int count = 0;
-        for (Object _ : this) {
-            count++;
-        }
-        return count;
-    }
-
-    @Override
     default boolean isEmpty() {
         return !listIterator().hasNext();
     }

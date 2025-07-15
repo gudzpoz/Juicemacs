@@ -5,7 +5,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
-import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
@@ -13,25 +12,9 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
-final class ObjectArrayStrategy extends ArrayStrategy {
-    static ObjectArrayStrategy INSTANCE = new ObjectArrayStrategy();
-    private ObjectArrayStrategy() {}
-
-    public Object[] getArray(ELispConsArray object) {
-        return (Object[]) object.array;
-    }
-
-    private void checkIndex(ELispConsArray object, int index) {
-        if (index < 0 || index >= object.size) {
-            throw new NoSuchElementException();
-        }
-    }
-
-    @Override
-    public Object car(ELispConsArray object, int index) {
-        checkIndex(object, index);
-        return getArray(object)[index];
-    }
+final class WithCdrStrategy extends SingleArrayStrategy {
+    static WithCdrStrategy INSTANCE = new WithCdrStrategy();
+    private WithCdrStrategy() {}
 
     @Override
     public Object cdr(ELispConsArray object, int index) {
@@ -39,73 +22,6 @@ final class ObjectArrayStrategy extends ArrayStrategy {
             return object.cdr;
         }
         return new ELispCons(object, index - 1);
-    }
-
-    @Override
-    public void setCar(ELispConsArray object, int index, Object element) {
-        checkIndex(object, index);
-        getArray(object)[index] = element;
-    }
-
-    @Override
-    public void setCdr(ELispConsArray object, int index, Object element) {
-        if (index == 0) {
-            object.cdr = element;
-            return;
-        }
-        ELispConsArray leading = deoptToForwardStrategy(object, index);
-        leading.cdr = element;
-    }
-
-    private void copyHashCode(ELispConsArray from, ELispConsArray to, int offset) {
-        if (from.metadata != null) {
-            to.metadata = from.metadata.clone();
-            to.metadata[to.metadata.length - 1] += offset;
-        }
-    }
-
-    private ELispConsArray deoptToForwardStrategy(ELispConsArray object, int split) {
-        Object[] elements = getArray(object);
-        ELispConsArray restCons = new ELispConsArray(elements, split, this);
-        copyHashCode(object, restCons, 0);
-        restCons.cdr = object.cdr;
-
-        Object[] leading = Arrays.copyOfRange(elements, split, object.size);
-        Arrays.fill(elements, split, object.size, null);
-        ELispConsArray leadingCons = new ELispConsArray(leading, leading.length, ObjectArrayStrategy.INSTANCE);
-        copyHashCode(object, restCons, split);
-        leadingCons.cdr = new ELispCons(restCons, split - 1);
-
-        object.strategy = ForwardArrayStrategy.INSTANCE;
-        object.array = new ForwardArrayStrategy.ForwardInfo(leadingCons, restCons, split);
-
-        return leadingCons;
-    }
-
-    @Override
-    public ELispCons cons(ELispConsArray array, int index, Object car) {
-        if (index == array.size - 1) {
-            addLast(array, car);
-            return new ELispCons(array, index + 1);
-        }
-        // We always deopt (split the array in halves)
-        // so that any dangling heads are garbage collected.
-        ELispConsArray head = deoptToForwardStrategy(array, index + 1);
-        return new ELispCons(car, head.cdr);
-    }
-
-    private void addLast(ELispConsArray array, Object car) {
-        Object[] elements = getArray(array);
-        int target = array.size++;
-        int current = elements.length;
-        if (current > target) {
-            elements[target] = car;
-        } else {
-            Object[] extended = new Object[target < 8 ? target + 1 : current + (current >> 1)];
-            System.arraycopy(elements, 0, extended, 0, elements.length);
-            extended[target] = car;
-            array.array = extended;
-        }
     }
 
     @Override
@@ -165,29 +81,6 @@ final class ObjectArrayStrategy extends ArrayStrategy {
         }
     }
 
-    private int filterStep(ELispConsArray object, int index, Predicate<Object> predicate) {
-        Object[] array = getArray(object);
-        int reader = 0;
-        while (reader <= index && predicate.test(array[reader])) {
-            reader++;
-        }
-        int writer = reader++;
-        if (reader <= index) {
-            while (reader <= index) {
-                Object current = array[reader++];
-                if (predicate.test(current)) {
-                    array[writer++] = current;
-                }
-            }
-            Arrays.fill(array, writer, index, false);
-        }
-        if (index == object.size - 1) {
-            object.size = writer;
-        }
-        // new index
-        return writer - 1;
-    }
-
     @CompilerDirectives.TruffleBoundary
     @Override
     public ELispCons nReverse(ELispConsArray array, int index) {
@@ -212,33 +105,6 @@ final class ObjectArrayStrategy extends ArrayStrategy {
             array = next.array;
         }
         return (ELispCons) ELispCons.listOf(reversed);
-    }
-
-    @Override
-    public int hashCode(ELispConsArray array, int index) {
-        int @Nullable [] metadata = array.metadata;
-        int offset = 1;
-        if (metadata != null) {
-            if ((metadata[0] & ELispConsArray.METADATA_HAS_SOURCE_LOCATION) != 0) {
-                offset = 5;
-            }
-            if (offset < metadata.length) {
-                return metadata[offset] + index;
-            }
-        }
-        int newHash = System.identityHashCode(array);
-        array.metadata = ArrayUtils.add(metadata == null ? new int[1] : metadata, newHash);
-        return newHash;
-    }
-
-    @Override
-    public ELispCons.ConsIterator listIterator(ELispConsArray array, int from, int index) {
-        return new ConsArrayIterator(array, from, index);
-    }
-
-    public ELispCons create(Object... elements) {
-        ELispConsArray array = new ELispConsArray(elements, elements.length, this);
-        return new ELispCons(array, elements.length - 1);
     }
 
     static final class ConsArrayIterator implements ELispCons.ConsIterator {

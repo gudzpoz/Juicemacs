@@ -2,7 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.array;
 
 import java.util.function.Predicate;
 
-sealed abstract class ArrayStrategy permits ForwardArrayStrategy, ObjectArrayStrategy {
+sealed abstract class ArrayStrategy permits ForwardArrayStrategy, SingleArrayStrategy {
 
     public abstract Object car(ELispConsArray object, int index);
     public abstract Object cdr(ELispConsArray object, int index);
@@ -18,4 +18,5 @@ sealed abstract class ArrayStrategy permits ForwardArrayStrategy, ObjectArrayStr
     public abstract ELispCons nReverse(ELispConsArray array, int index);
 
     public abstract int hashCode(ELispConsArray array, int index);
+
 }
