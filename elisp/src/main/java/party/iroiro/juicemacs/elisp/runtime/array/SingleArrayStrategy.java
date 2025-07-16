@@ -11,7 +11,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
-    static SingleArrayStrategy INSTANCE = new SingleArrayStrategy();
+    static final SingleArrayStrategy INSTANCE = new SingleArrayStrategy();
     protected SingleArrayStrategy() {}
 
     public Object[] getArray(ELispConsArray object) {
@@ -66,7 +66,8 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
 
     protected ELispConsArray deoptToForwardStrategy(ELispConsArray object, int split) {
         Object[] elements = getArray(object);
-        ELispConsArray restCons = new ELispConsArray(elements, split, this);
+        ArrayStrategy strategy = isNil(object.cdr) ? SingleArrayStrategy.INSTANCE : WithCdrStrategy.INSTANCE;
+        ELispConsArray restCons = new ELispConsArray(elements, split, strategy);
         copyHashCode(object, restCons, 0);
         restCons.cdr = object.cdr;
 
@@ -176,9 +177,25 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
 
     @Override
     public ELispCons nReverse(ELispConsArray array, int index) {
+        if (index == 0) {
+            return new ELispCons(array, index);
+        }
+        return reverse(array, index);
+        /*
+         * So ideally we can implement nreverse with the following,
+         * saving us an extra array allocation:
+
         Object[] elements = getArray(array);
         ArrayUtils.reverse(elements, 0, index + 1);
         return new ELispCons(array, index);
+
+         * Except that this breaks Emacs, because GNU Emacs *is* the language specification
+         * and although the manual says it "may destructively modify SEQ
+         * to produce the value", `cl-copy-list` depends on its *not* modifying
+         * the CAR of the cons.
+         *
+         * What can I say? This is the Lispy way with every implementation detail exposed.
+         */
     }
 
     public ELispCons create(Object... elements) {

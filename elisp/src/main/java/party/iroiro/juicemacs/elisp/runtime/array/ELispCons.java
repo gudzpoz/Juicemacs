@@ -137,7 +137,11 @@ public final class ELispCons implements ListIteratorList, ELispValue {
         if (getStartLine() == 0) {
             return null;
         }
-        return rootSource.createSection(getStartLine(), getStartColumn(), getEndLine(), getEndColumn());
+        try {
+            return rootSource.createSection(getStartLine(), getStartColumn(), getEndLine(), getEndColumn());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
 
