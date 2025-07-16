@@ -6,6 +6,8 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -127,5 +129,181 @@ public class ELispConsTest {
         o = ELispConsAccessFactory.ConsFilterNodeGen.getUncached()
                 .executeFilter(null, o, (i) -> i != (Long) 3L);
         assertEquals("(1 5)", o.toString());
+    }
+
+    @Test
+    public void testFuzz() {
+        Random random = new Random(0);
+        Random randomCons = new Random(0);
+        Random randomList = new Random(0);
+        FuzzOperations[] operations = FuzzOperations.values();
+
+        ArrayList<Object> list = new ArrayList<>(IntStreams.range(100).mapToObj(i -> (long) i).toList());
+        Object cons = ELispCons.listOf(list.toArray());
+        for (int i = 0; i < 10000; i++) {
+            FuzzOperations operation = operations[random.nextInt(operations.length)];
+            cons = operation.fuzzCons(cons, list, randomCons);
+            list = operation.fuzzList(list, randomList);
+            assertEquals(randomCons.nextInt(), randomList.nextInt(), operation::name);
+            assertEquals(
+                    "(" + list.stream().map(Object::toString)
+                            .collect(Collectors.joining(" ")) + ")",
+                    isNil(cons) ? "()" : cons.toString(),
+                    operation.name() + i
+            );
+        }
+        System.out.println(cons);
+    }
+
+    interface FuzzOperation {
+        Object fuzzCons(Object cons, ArrayList<Object> list, Random random);
+        ArrayList<Object> fuzzList(ArrayList<Object> list, Random random);
+    }
+    enum FuzzOperations implements FuzzOperation {
+        CONS {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                return ELispCons.cons(random.nextLong(1000), cons);
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                list.add(0, random.nextLong(1000));
+                return list;
+            }
+        },
+        SET {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return cons;
+                }
+                int index = random.nextInt(list.size());
+                asCons(BuiltInFns.FNthcdr.nthcdr(index, cons)).setCar(random.nextLong(1000));
+                return cons;
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return list;
+                }
+                int index = random.nextInt(list.size());
+                list.set(index, random.nextLong(1000));
+                return list;
+            }
+        },
+        INSERT {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                int count = random.nextInt(20);
+                for (int i = 0; i < count; i++) {
+                    int index = isNil(cons) ? 0 : random.nextInt(list.size() + i);
+                    long value = random.nextLong(1000);
+                    if (index == 0) {
+                        cons = ELispCons.cons(value, cons);
+                    } else {
+                        ELispCons before = asCons(BuiltInFns.FNthcdr.nthcdr(index - 1, cons));
+                        Object after = before.cdr();
+                        before.setCdr(ELispCons.cons(value, after));
+                    }
+                }
+                return cons;
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                int count = random.nextInt(20);
+                for (int i = 0; i < count; i++) {
+                    int index = list.isEmpty() ? 0 : random.nextInt(list.size());
+                    list.add(index, random.nextLong(1000));
+                }
+                return list;
+            }
+        },
+        REMOVE {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return cons;
+                }
+                int index = random.nextInt(list.size());
+                if (index == 0) {
+                    return BuiltInData.FCdr.cdr(cons);
+                }
+                ELispCons before = asCons(BuiltInFns.FNthcdr.nthcdr(index - 1, cons));
+                before.setCdr(asCons(before.cdr()).cdr());
+                return cons;
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return list;
+                }
+                int index = random.nextInt(list.size());
+                list.remove(index);
+                return list;
+            }
+        },
+        DELQ {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return cons;
+                }
+                long member = (long) list.get(random.nextInt(list.size()));
+                return BuiltInFns.FDelq.delq(member, cons);
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return list;
+                }
+                long member = (long) list.get(random.nextInt(list.size()));
+                list.removeIf(o -> o.equals(member));
+                return list;
+            }
+        },
+        REVERSE {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return cons;
+                }
+                ELispCons consList = asCons(cons);
+                if (random.nextBoolean()) {
+                    return consList.strategy().nReverse(consList.array, consList.index);
+                } else {
+                    return consList.strategy().reverse(consList.array, consList.index);
+                }
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return list;
+                }
+                random.nextBoolean();
+                return new ArrayList<>(list.reversed());
+            }
+        },
+        FILTER {
+            @Override
+            public Object fuzzCons(Object cons, ArrayList<Object> list, Random random) {
+                if (list.isEmpty()) {
+                    return cons;
+                }
+                ELispCons consList = asCons(cons);
+                return consList.strategy().filter(consList.array, consList.index, (o) -> 600 >= (long) o);
+            }
+
+            @Override
+            public ArrayList<Object> fuzzList(ArrayList<Object> list, Random random) {
+                list.removeIf((o) -> 600 < (long) o);
+                return list;
+            }
+        }
     }
 }

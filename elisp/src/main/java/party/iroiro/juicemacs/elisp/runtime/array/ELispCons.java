@@ -280,9 +280,6 @@ public final class ELispCons implements ListIteratorList, ELispValue {
         }
         return SingleArrayStrategy.INSTANCE.createWithCdr(elements, cdr);
     }
-    public static ELispCons listOfReversed(Object[] elements) {
-        return SingleArrayStrategy.INSTANCE.create(elements);
-    }
 
     public static Iterable<Object> iterate(Object sequence) {
         if (ELispTypeSystem.isNil(sequence)) {

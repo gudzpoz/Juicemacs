@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
@@ -89,10 +90,10 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
         }
         // We always deopt (split the array in halves)
         // so that any dangling heads are garbage collected.
-        ELispConsArray head = deoptToForwardStrategy(array, index + 1);
-        ELispCons cons = ELispCons.listOf(car);
-        setCdr(cons.array, cons.index, head.cdr);
-        return cons;
+        ELispCons tail = asCons(deoptToForwardStrategy(array, index + 1).cdr);
+        assert index == tail.array.size - 1;
+        addLast(tail.array, car);
+        return new ELispCons(tail.array, index + 1);
     }
 
     private void addLast(ELispConsArray array, Object car) {
@@ -103,7 +104,7 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
             elements[target] = car;
         } else {
             Object[] extended = new Object[target < 8 ? target + 1 : current + (current >> 1)];
-            System.arraycopy(elements, 0, extended, 0, elements.length);
+            System.arraycopy(elements, 0, extended, 0, target);
             extended[target] = car;
             array.array = extended;
         }
@@ -169,8 +170,8 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
     public ELispCons reverse(ELispConsArray array, int index) {
         Object[] elements = getArray(array);
         Object[] reversed = new Object[index + 1];
-        System.arraycopy(elements, 0, reversed, 0, elements.length);
-        return ELispCons.listOfReversed(reversed);
+        System.arraycopy(elements, 0, reversed, 0, index + 1);
+        return (ELispCons) ELispCons.listOf(reversed);
     }
 
     @Override

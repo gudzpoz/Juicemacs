@@ -122,9 +122,7 @@ public abstract class ELispConsAccess {
             if (cdr instanceof ELispCons cons) {
                 return cons.strategy().cons(cons.array, cons.index, car);
             }
-            ELispCons cons = ELispCons.listOf(car);
-            cons.setCdr(cdr);
-            return cons;
+            return (ELispCons) ELispCons.listWithCdrOf(new Object[]{car}, cdr);
         }
     }
 

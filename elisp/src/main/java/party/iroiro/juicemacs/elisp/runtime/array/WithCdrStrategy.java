@@ -63,6 +63,7 @@ final class WithCdrStrategy extends SingleArrayStrategy {
                 previous = current;
             }
             if (current.cdr instanceof ELispCons next) {
+                next = next.forwarded();
                 current = next.array;
                 index = next.index;
             } else {
@@ -99,7 +100,7 @@ final class WithCdrStrategy extends SingleArrayStrategy {
         System.arraycopy(getArray(array), 0, reversed, end, index + 1);
         while (!isNil(array.cdr)) {
             // this.size(...) already normalizes all forwarded cdr pointers
-            ELispCons next = asCons(array.cdr);
+            ELispCons next = asCons(array.cdr).forwarded();
             end -= next.index + 1;
             System.arraycopy(getArray(next.array), 0, reversed, end, next.index + 1);
             array = next.array;
