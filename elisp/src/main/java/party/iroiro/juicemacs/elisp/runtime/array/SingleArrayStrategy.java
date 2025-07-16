@@ -4,7 +4,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.util.Arrays;
-import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
@@ -18,15 +17,8 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
         return (Object[]) object.array;
     }
 
-    private void checkIndex(ELispConsArray object, int index) {
-        if (index < 0 || index >= object.size) {
-            throw new NoSuchElementException();
-        }
-    }
-
     @Override
     public Object car(ELispConsArray object, int index) {
-        checkIndex(object, index);
         return getArray(object)[index];
     }
 
@@ -40,7 +32,6 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
 
     @Override
     public void setCar(ELispConsArray object, int index, Object element) {
-        checkIndex(object, index);
         getArray(object)[index] = element;
     }
 
@@ -159,6 +150,14 @@ sealed class SingleArrayStrategy extends ArrayStrategy permits WithCdrStrategy {
     @Override
     public int size(ELispConsArray array, int index) {
         return index + 1;
+    }
+
+    @Override
+    public ELispCons copy(ELispConsArray array, int index) {
+        Object[] elements = getArray(array);
+        Object[] reversed = new Object[index + 1];
+        System.arraycopy(elements, 0, reversed, 0, index + 1);
+        return (ELispCons) ELispCons.listOfReversed(reversed);
     }
 
     @Override

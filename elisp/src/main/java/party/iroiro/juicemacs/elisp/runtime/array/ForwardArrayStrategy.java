@@ -64,6 +64,12 @@ final class ForwardArrayStrategy extends ArrayStrategy {
     }
 
     @Override
+    public ELispCons copy(ELispConsArray array, int index) {
+        ELispCons forwarded = forwarded(array, index);
+        return WithCdrStrategy.INSTANCE.copy(forwarded.array, forwarded.index);
+    }
+
+    @Override
     public Object filter(ELispConsArray array, int index, Predicate<Object> predicate) {
         ELispCons forwarded = forwarded(array, index);
         return WithCdrStrategy.INSTANCE.filter(forwarded.array, forwarded.index, predicate);

@@ -13,6 +13,7 @@ sealed abstract class ArrayStrategy permits ForwardArrayStrategy, SingleArrayStr
     public abstract ELispCons.ConsIterator listIterator(ELispConsArray array, int from, int index);
     public abstract int size(ELispConsArray array, int index);
 
+    public abstract ELispCons copy(ELispConsArray array, int index);
     public abstract Object filter(ELispConsArray array, int index, Predicate<Object> predicate);
     public abstract ELispCons reverse(ELispConsArray array, int index);
     public abstract ELispCons nReverse(ELispConsArray array, int index);

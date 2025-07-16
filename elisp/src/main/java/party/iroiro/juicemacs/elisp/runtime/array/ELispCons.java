@@ -247,6 +247,10 @@ public final class ELispCons implements ListIteratorList, ELispValue {
         return result;
     }
 
+    public ELispCons copy() {
+        return strategy().copy(array, index);
+    }
+
     public interface ConsIterator extends ListIterator<Object> {
         boolean hasNextCons();
         ELispCons currentCons();
@@ -283,6 +287,9 @@ public final class ELispCons implements ListIteratorList, ELispValue {
             ArrayUtils.reverse(elements);
         }
         return SingleArrayStrategy.INSTANCE.createWithCdr(elements, cdr);
+    }
+    public static Object listOfReversed(Object[] elements) {
+        return SingleArrayStrategy.INSTANCE.create(elements);
     }
 
     public static Iterable<Object> iterate(Object sequence) {

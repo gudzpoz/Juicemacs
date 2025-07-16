@@ -637,11 +637,7 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispCons copySequenceList(ELispCons arg) {
-            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            for (Object e : arg) {
-                builder.add(e);
-            }
-            return asCons(builder.build());
+            return arg.copy();
         }
 
         @Specialization

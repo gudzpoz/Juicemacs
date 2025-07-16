@@ -38,6 +38,11 @@ final class WithCdrStrategy extends SingleArrayStrategy {
         return size;
     }
 
+    @Override
+    public ELispCons copy(ELispConsArray array, int index) {
+        return (ELispCons) ELispCons.listOfReversed(copyNewArray(array, index));
+    }
+
     @CompilerDirectives.TruffleBoundary
     @Override
     public Object filter(ELispConsArray object, int index, Predicate<Object> predicate) {
@@ -95,17 +100,22 @@ final class WithCdrStrategy extends SingleArrayStrategy {
     @CompilerDirectives.TruffleBoundary
     @Override
     public ELispCons reverse(ELispConsArray array, int index) {
-        Object[] reversed = new Object[size(array, index)];
-        int end = reversed.length - index - 1;
-        System.arraycopy(getArray(array), 0, reversed, end, index + 1);
+        Object[] reversed = copyNewArray(array, index);
+        return (ELispCons) ELispCons.listOf(reversed);
+    }
+
+    private Object[] copyNewArray(ELispConsArray array, int index) {
+        Object[] copy = new Object[size(array, index)];
+        int end = copy.length - index - 1;
+        System.arraycopy(getArray(array), 0, copy, end, index + 1);
         while (!isNil(array.cdr)) {
             // this.size(...) already normalizes all forwarded cdr pointers
             ELispCons next = asCons(array.cdr).forwarded();
             end -= next.index + 1;
-            System.arraycopy(getArray(next.array), 0, reversed, end, next.index + 1);
+            System.arraycopy(getArray(next.array), 0, copy, end, next.index + 1);
             array = next.array;
         }
-        return (ELispCons) ELispCons.listOf(reversed);
+        return copy;
     }
 
     static final class ConsArrayIterator implements ELispCons.ConsIterator {
