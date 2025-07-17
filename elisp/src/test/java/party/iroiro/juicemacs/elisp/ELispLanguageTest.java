@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ELispLanguageTest {
     public static boolean hasDump(boolean bootstrap) {
@@ -30,16 +31,34 @@ public class ELispLanguageTest {
         }
         Context.Builder builder = TestingUtils.getContextBuilder(out).option("elisp.portableDump", dumpMode);
         try (Context context = builder.build()) {
+            if (bootstrap) {
+                // During pbootstrap, Emacs expects to be in interpreted (*not bytecode*) mode.
+                // Also, it should load ldef-boot.el instead of loaddefs.el[c], because emacs-bootstrap
+                // is the one that will generate these files.
+                // Instead of deleting these files (*.elc & loaddefs.el) every single time we test things,
+                // we override some code to handle this automatically.
+                context.eval("elisp", """
+                        (setq load-suffixes '(".el"))
+                        (defalias 'juicemacs---load (symbol-function 'load))
+                        (defalias 'load #'(lambda (file &rest rest)
+                          (if (equal "loaddefs" file)
+                              (signal 'file-error nil)
+                            (apply #'juicemacs---load file rest))))
+                        """);
+            }
             // Loads until an error
             context.eval("elisp", "(load \"loadup\")");
         } catch (PolyglotException e) {
             // loadup.el calls (kill-emacs) after dumping
             String message = e.getMessage();
-            String expected = "(fatal kill-emacs nil)";
-            if (!message.equals(expected)) {
-                e.printStackTrace(Objects.requireNonNullElse(out, System.err));
+            if (bootstrap) {
+                assertEquals("(fatal kill-emacs nil)", message);
+            } else {
+                // During pdump, Emacs also renames the emacs binary,
+                // which, of course, our Juicemacs does not provide.
+                assertTrue(message.startsWith("(file-error "), message);
+                assertTrue(message.endsWith("/emacs\")"), message);
             }
-            assertEquals(expected, message);
         }
     }
 

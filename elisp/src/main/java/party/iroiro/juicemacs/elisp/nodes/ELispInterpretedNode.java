@@ -58,7 +58,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
 
     public static ELispExpressionNode createWithLocation(Object expression, ELispCons original) {
         ELispExpressionNode node = create(expression);
-        if (original.getStartLine() != 0) {
+        if (original.hasLocation()) {
             if (expression instanceof ELispCons cons) {
                 cons.fillDebugInfo(original);
             } else {

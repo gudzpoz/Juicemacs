@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -12,6 +13,7 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
             .internal(true)
             .build();
 
+    @CompilerDirectives.TruffleBoundary
     @Override
     public SourceSection getSourceSection() {
         Class<?> enclosingClass = this.getClass();

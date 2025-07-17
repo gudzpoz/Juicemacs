@@ -11,7 +11,6 @@ import java.nio.file.Path;
 public abstract class TestingUtils {
     private TestingUtils() {}
 
-
     public static PrintStream createOut(File file) throws FileNotFoundException {
         return createOut(new FileOutputStream(file));
     }

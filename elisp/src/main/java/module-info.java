@@ -13,8 +13,11 @@
 /// So basically when I am working in IDEA, I just delete this file (without commiting it)
 /// and go on.
 module party.iroiro.juicemacs.elisp {
+    // Java
     requires java.logging;
     requires jdk.unsupported;
+
+    // Utilities
     requires org.apache.commons.compress;
     requires org.apache.commons.lang3;
     requires org.apache.commons.text;
@@ -22,11 +25,16 @@ module party.iroiro.juicemacs.elisp {
     requires org.eclipse.jdt.annotation;
     requires org.eclipse.collections.impl;
     requires org.graalvm.collections;
+    requires com.github.albfernandez.juniversalchardet;
+    requires com.google.common;
+
+    // GraalVM/Truffle
     requires org.graalvm.truffle;
     requires org.graalvm.polyglot;
+
+    // Juicemacs
     requires party.iroiro.juicemacs.mule;
     requires party.iroiro.juicemacs.piecetree;
-    requires com.github.albfernandez.juniversalchardet;
 
     provides com.oracle.truffle.api.provider.TruffleLanguageProvider
             with party.iroiro.juicemacs.elisp.ELispLanguageProvider;

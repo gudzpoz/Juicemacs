@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.source.Source;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -101,14 +100,6 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCons extends ELispBuiltInBaseNode {
         @Specialization
-        public ELispCons consArray(
-                Object car,
-                Object cdr,
-                @Cached ELispConsAccess.ConsPrependConsNode consNode
-        ) {
-            return consNode.executeCons(this, car, cdr);
-        }
-
         public static Object cons(Object car, Object cdr) {
             return ELispCons.cons(car, cdr);
         }

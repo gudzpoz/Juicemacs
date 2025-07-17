@@ -22,8 +22,6 @@ import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccessFactory;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
@@ -1125,21 +1123,18 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode bodyNode;
 
-            @Child
-            ELispConsAccess.IsNilNode isNilNode;
             final LoopConditionProfile loopConditionProfile;
 
             public RepeatingBodyNode(Object test, Object[] body) {
                 condition = ELispInterpretedNode.create(test);
                 bodyNode = FProgn.progn(body);
-                isNilNode = ELispConsAccessFactory.IsNilNodeGen.create();
                 loopConditionProfile = LoopConditionProfile.create();
             }
 
             @Override
             public boolean executeRepeating(VirtualFrame frame) {
                 Object cond = condition.executeGeneric(frame);
-                if (loopConditionProfile.profile(!isNilNode.executeIsNil(this, cond))) {
+                if (loopConditionProfile.profile(!isNil(cond))) {
                     bodyNode.executeVoid(frame);
                     return true;
                 } else {
@@ -1242,14 +1237,9 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static Object copySourceLocation(Object form, Object oldForm) {
-            if (oldForm instanceof ELispCons original && original.getStartLine() != 0) {
-                if (form instanceof ELispCons expanded && expanded.getStartLine() == 0) {
-                    expanded.setSourceLocation(
-                            original.getStartLine(),
-                            original.getStartColumn(),
-                            original.getEndLine(),
-                            original.getEndColumn()
-                    );
+            if (oldForm instanceof ELispCons original && original.hasLocation()) {
+                if (form instanceof ELispCons expanded && !original.hasLocation()) {
+                    expanded.fillDebugInfo(original);
                 }
             }
             return form;
@@ -1899,10 +1889,10 @@ public class BuiltInEval extends ELispBuiltIns {
                 SourceSection evalSection = getParent().getSourceSection();
                 SourceSection formSection = null;
                 if (form instanceof ELispCons cons) {
-                    if (cons.getStartLine() == 0) {
+                    if (!cons.hasLocation()) {
                         cons.fillDebugInfo(getParent());
                     }
-                    if (cons.getStartLine() != 0 && evalSection != null) {
+                    if (cons.hasLocation() && evalSection != null) {
                         formSection = cons.getSourceSection(evalSection.getSource());
                     }
                 }

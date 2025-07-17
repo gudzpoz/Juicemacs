@@ -7,7 +7,6 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -1420,18 +1419,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCar extends ELispBuiltInBaseNode {
         @Specialization
-        public Object carCons(
-                ELispCons list,
-                @Cached ELispConsAccess.ConsCarNode carNode
-        ) {
-            return carNode.executeCar(this, list);
+        public Object carCons(ELispCons list) {
+            return list.car();
         }
         @Specialization
         public static Object car(Object list) {
-            if (isNil(list)) {
-                return false;
-            }
-            return asCons(list).car();
+            return isNil(list) ? false : asCons(list).car();
         }
     }
 
@@ -1469,18 +1462,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdr extends ELispBuiltInBaseNode {
         @Specialization
-        public Object cdrCons(
-                ELispCons list,
-                @Cached ELispConsAccess.ConsCdrNode cdrNode
-        ) {
-            return cdrNode.executeCdr(this, list);
+        public Object cdrCons(ELispCons list) {
+            return list.cdr();
         }
         @Specialization
         public static Object cdr(Object list) {
-            if (isNil(list)) {
-                return false;
-            }
-            return asCons(list).cdr();
+            return isNil(list) ? false : asCons(list).cdr();
         }
     }
 
@@ -1514,15 +1501,6 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetcar extends ELispBuiltInBaseNode {
         @Specialization
-        public Object setcar(
-                ELispCons cell,
-                Object newcar,
-                @Cached ELispConsAccess.ConsSetCarNode setCarNode
-        ) {
-            setCarNode.executeSetCar(this, cell, newcar);
-            return newcar;
-        }
-
         public static Object setcar(ELispCons cons, Object object) {
             cons.setCar(object);
             return object;
@@ -1538,15 +1516,6 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetcdr extends ELispBuiltInBaseNode {
         @Specialization
-        public Object setcdr(
-                ELispCons cell,
-                Object newcdr,
-                @Cached ELispConsAccess.ConsSetCdrNode setCdrNode
-        ) {
-            setCdrNode.executeSetCdr(this, cell, newcdr);
-            return newcdr;
-        }
-
         public static Object setcdr(ELispCons cons, Object object) {
             cons.setCdr(object);
             return object;

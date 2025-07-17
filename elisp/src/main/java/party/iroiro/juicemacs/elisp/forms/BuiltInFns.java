@@ -12,8 +12,6 @@ import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccess;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsAccessFactory;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -1228,23 +1226,31 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "delq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDelq extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public Object delq(
-                Object elt, Object list,
-                @Cached ELispConsAccess.ConsFilterNode filterNode
-        ) {
-            if (isNil(list)) {
-                return false;
-            }
-            return filterNode.executeFilter(this, list, (o) -> !BuiltInData.FEq.eq(elt, o));
-        }
-
         public static Object delq(Object elt, Object list) {
             if (isNil(list)) {
                 return false;
             }
-            return ELispConsAccessFactory.ConsFilterNodeGen.getUncached()
-                    .executeFilter(null, list, (o) -> !BuiltInData.FEq.eq(elt, o));
+            ELispCons cons = asCons(list);
+            while (BuiltInData.FEq.eq(cons.car(), elt)) {
+                Object cdr = cons.cdr();
+                if (isNil(cdr)) {
+                    return false;
+                }
+                cons = asCons(cdr);
+            }
+            ELispCons.ConsIterator i = cons.listIterator(1);
+            ELispCons prev = cons;
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (BuiltInData.FEq.eq(current.car(), elt)) {
+                    prev.setCdr(current.cdr());
+                } else {
+                    prev = current;
+                }
+            }
+            return cons;
         }
     }
 
@@ -1273,12 +1279,27 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean deleteNil(Object elt, ELispSymbol seq) {
             return expectNil(seq);
         }
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public Object deleteList(
-                Object elt, ELispCons seq,
-                @Cached ELispConsAccess.ConsFilterNode filterNode
-        ) {
-            return filterNode.executeFilter(this, seq, (o) -> !FEqual.equal(elt, o));
+        public static Object deleteList(Object elt, ELispCons seq) {
+            while (FEqual.equal(elt, seq.car())) {
+                Object cdr = seq.cdr();
+                if (isNil(cdr)) {
+                    return false;
+                }
+                seq = asCons(cdr);
+            }
+            ELispCons.ConsIterator i = seq.listIterator(1);
+            ELispCons prev = seq;
+            while (i.hasNextCons()) {
+                ELispCons current = i.nextCons();
+                if (FEqual.equal(elt, current.car())) {
+                    prev.setCdr(current.cdr());
+                } else {
+                    prev = current;
+                }
+            }
+            return seq;
         }
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
@@ -1338,12 +1359,10 @@ public class BuiltInFns extends ELispBuiltIns {
             return new ELispString(builder.build());
         }
 
+        @CompilerDirectives.TruffleBoundary
         @Specialization
-        public ELispCons nreverseList(
-                ELispCons seq,
-                @Cached ELispConsAccess.ConsNReverseNode nReverseNode
-        ) {
-            return nReverseNode.executeNReverse(this, seq);
+        public static ELispCons nreverseList(ELispCons seq) {
+            return FReverse.reverseList(seq);
         }
     }
 
@@ -1373,11 +1392,15 @@ public class BuiltInFns extends ELispBuiltIns {
             return FNreverse.nreverseString(seq);
         }
         @Specialization
-        public ELispCons reverseList(
-                ELispCons seq,
-                @Cached ELispConsAccess.ConsReverseNode nReverseNode
-        ) {
-            return nReverseNode.executeReverse(this, seq);
+        public static ELispCons reverseList(ELispCons seq) {
+            ELispCons head = ELispCons.listOf(seq.car());
+            if (isNil(seq.cdr())) {
+                return head;
+            }
+            for (Object e : asCons(seq.cdr())) {
+                head = ELispCons.cons(e, head);
+            }
+            return head;
         }
     }
 
@@ -1988,7 +2011,10 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapc extends ELispBuiltInBaseNode {
         @Specialization
-        public Object mapc(Object function, Object sequence, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
+        public Object mapc(
+                Object function, Object sequence,
+                @Cached(inline = true) FuncallDispatchNode dispatchNode
+        ) {
             Iterator<?> i = iterateSequence(sequence);
             while (i.hasNext()) {
                 dispatchNode.dispatch(this, function, i.next());

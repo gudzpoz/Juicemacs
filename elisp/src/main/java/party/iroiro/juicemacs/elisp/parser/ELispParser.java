@@ -155,15 +155,16 @@ public class ELispParser {
                     read();
                     yield false;
                 }
-                ArrayList<Object> elements = new ArrayList<>();
-                elements.add(nextObject());
+                ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+                builder.add(nextObject());
+                int i = 1;
                 while (!(peek() instanceof ParenClose)) {
                     if (peek() instanceof Dot) {
                         // (a b . ???
                         read();
                         if (peek() instanceof ParenClose) {
                             // (a b .) -> (a b \.)
-                            elements.add(context.intern("."));
+                            builder.add(context.intern("."));
                             break;
                         }
                         // (a b . c)
@@ -172,12 +173,15 @@ public class ELispParser {
                             throw ELispSignals.invalidReadSyntax("Expected ')'");
                         }
                         // TODO: Understand what Emacs does for (#$ . FIXNUM)
-                        yield irregularList(elements, cdr);
+                        // Irregular lists are most likely not source snippets,
+                        // so we don't bother storing location info.
+                        yield builder.buildWithCdr(cdr);
                     }
-                    elements.add(nextObject());
+                    builder.add(nextObject());
+                    i++;
                 }
                 LocatedToken endLocation = read();
-                yield arrayConsList(elements.toArray(), token, endLocation);
+                yield arrayConsList(builder, i, token, endLocation);
             }
             case RecordOpen() -> {
                 List<Object> list = readList();
@@ -226,18 +230,18 @@ public class ELispParser {
         };
     }
 
-    private Object arrayConsList(Object[] elements, LocatedToken startLocation, LocatedToken endLocation) {
-        ELispCons list = asCons(ELispCons.listOf(elements));
+    private Object arrayConsList(ELispCons.ListBuilder builder, int count, LocatedToken startLocation, LocatedToken endLocation) {
+        ELispCons list = asCons(builder.build());
         list.setSourceLocation(
                 startLocation.startLine(), startLocation.startColumn(),
                 endLocation.endLine(), endLocation.endColumn()
         );
-        return list;
-    }
-
-    private Object irregularList(ArrayList<Object> elements, Object cdr) {
-        ELispCons list = asCons(ELispCons.listOf(elements.toArray()));
-        list.setCdr(cdr);
+        ELispCons cons = list;
+        for (int i = 1; i < count; i++) {
+            ELispCons next = asCons(cons.cdr());
+            next.fillDebugInfo(list);
+            cons = next;
+        }
         return list;
     }
 

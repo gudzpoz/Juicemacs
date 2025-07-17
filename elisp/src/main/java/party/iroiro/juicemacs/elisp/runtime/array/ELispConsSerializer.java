@@ -1,10 +1,9 @@
-package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
+package party.iroiro.juicemacs.elisp.runtime.array;
 
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.resolver.RefResolver;
 import org.apache.fury.serializer.collection.AbstractCollectionSerializer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 
 import java.util.Collection;
@@ -37,13 +36,9 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
 
     private void writeCons(MemoryBuffer buffer, ELispCons value) {
         byte state = 0;
-        boolean hasDebug = value.getStartLine() != 0;
+        boolean hasDebug = value.hasLocation();
         if (hasDebug) {
             state |= 0x01;
-        }
-        boolean debugSameLine = value.getStartLine() == value.getEndLine();
-        if (debugSameLine) {
-            state |= 0x02;
         }
         boolean cdrNil = isNil(value.cdr());
         if (cdrNil) {
@@ -61,21 +56,15 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
             fury.writeRef(buffer, value.cdr());
         }
         if (hasDebug) {
-            buffer.writeVarUint32(value.getStartLine());
-            buffer.writeVarUint32(value.getStartColumn());
-            if (!debugSameLine) {
-                buffer.writeVarUint32(value.getEndLine());
-            }
-            buffer.writeVarUint32(value.getEndColumn());
+            buffer.writeInt64(value.encodedLocation);
         }
     }
 
     private ELispCons readCons(MemoryBuffer buffer, byte state) {
         boolean hasDebug = (state & 0x01) != 0;
-        boolean debugSameLine = (state & 0x02) != 0;
         boolean cdrNil = (state & 0x04) != 0;
         boolean carNil = (state & 0x08) != 0;
-        ELispCons cons = new ELispCons(false, false);
+        ELispCons cons = ELispCons.cons(false, false);
         fury.getRefResolver().reference(cons);
         if (!carNil) {
             cons.setCar(fury.readRef(buffer));
@@ -84,11 +73,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
             cons.setCdr(fury.readRef(buffer));
         }
         if (hasDebug) {
-            int startLine = buffer.readVarUint32();
-            int startColumn = buffer.readVarUint32();
-            int endLine = debugSameLine ? startLine : buffer.readVarUint32();
-            int endColumn = buffer.readVarUint32();
-            cons.setSourceLocation(startLine, startColumn, endLine, endColumn);
+            cons.encodedLocation = buffer.readInt64();
         }
         return cons;
     }
@@ -110,10 +95,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
             ELispCons current = value;
             while (true) {
                 fury.writeRef(buffer, current.car());
-                buffer.writeVarUint32(current.getStartLine());
-                buffer.writeVarUint32(current.getStartColumn());
-                buffer.writeVarUint32(current.getEndLine());
-                buffer.writeVarUint32(current.getEndColumn());
+                buffer.writeInt64(current.encodedLocation);
                 slot.inc();
                 if (!resolver.writeRefValueFlag(buffer, current.cdr())) {
                     return;
@@ -137,22 +119,18 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         // - obj3 = readRef() + location
         // - tail = readRef()
         int count = buffer.readInt32();
-        ELispCons head = new ELispCons(false, false);
+        ELispCons head = ELispCons.cons(false, false);
         resolver.reference(head);
         ELispCons current = head;
         for (int i = 0; ; i++) {
             Object car = fury.readRef(buffer);
             current.setCar(car);
-            int startLine = buffer.readVarUint32();
-            int startColumn = buffer.readVarUint32();
-            int endLine = buffer.readVarUint32();
-            int endColumn = buffer.readVarUint32();
-            current.setSourceLocation(startLine, startColumn, endLine, endColumn);
+            current.encodedLocation = buffer.readInt64();
             if (i == count - 1) {
                 current.setCdr(fury.readRef(buffer));
                 break;
             }
-            ELispCons next = new ELispCons(false, false);
+            ELispCons next = ELispCons.cons(false, false);
             resolver.preserveRefId();
             resolver.reference(next);
             current.setCdr(next);
