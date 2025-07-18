@@ -18,8 +18,11 @@ repositories {
     mavenCentral()
 }
 
+boolean isGraalVM() {
+    return file("${System.getProperty("java.home")}/lib/graalvm").exists()
+}
 List<String> getGraalVMArgs() {
-    boolean isGraalVM = file("${System.getProperty("java.home")}/lib/graalvm").exists()
+    boolean isGraalVM = isGraalVM()
     List<String> graalArgs = []
     if (!isGraalVM) {
         var classpath = configurations.create('compilerClasspath') {
@@ -37,12 +40,22 @@ List<String> getGraalVMArgs() {
     }
     return graalArgs
 }
+int preferredJvmVersion() {
+    if (!isGraalVM()) {
+        // org.graalvm.compiler:compiler does not seem to support JDK 24 yet.
+        return 23
+    }
+    String version = System.getProperty("java.version")
+    String major = version.split("\\.")[0]
+    return Math.max(Integer.parseInt(major), 23)
+}
 
 ext {
     eclipseCollectionsVersion = '11.1.0'
     pmdVersion = '7.7.0'
-    truffleVersion = '24.2.1'
+    truffleVersion = '24.2.2'
     graalArgs = getGraalVMArgs()
+    preferredJvmVersion = preferredJvmVersion()
 }
 
 dependencies {
@@ -59,6 +72,11 @@ testing {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(preferredJvmVersion)
     }
 }
+
+//test {
+//    // Always generate JaCoCo report after tests run
+//    finalizedBy jacocoTestReport
+//}

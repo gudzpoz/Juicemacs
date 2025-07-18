@@ -31,7 +31,7 @@ public class ELispBenchmarksTest {
             Files.walkFileTree(glob, new SimpleFileVisitor<>() {
                 @SuppressWarnings("NullableProblems")
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     if (file.getFileName().toString().equals("elisp-benchmarks.el")) {
                         found[0] = file;
                         return FileVisitResult.TERMINATE;
@@ -47,7 +47,16 @@ public class ELispBenchmarksTest {
     }
 
     @Test
-    public void testELispBenchmarks() throws IOException {
+    public void testELispAstBenchmarks() throws IOException {
+        testELispBenchmarks(false);
+    }
+
+    @Test
+    public void testELispBytecodeBenchmarks() throws IOException {
+        testELispBenchmarks(true);
+    }
+
+    public void testELispBenchmarks(boolean byteCompile) throws IOException {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream();
              Context context = getContextBuilder(createOut(out))
                      .option("elisp.dumpFile", "emacs.pdmp")
@@ -60,7 +69,6 @@ public class ELispBenchmarksTest {
                             + "\"))"
             );
             context.eval("elisp", """
-                    
                     ;; Placeholders for unimplemented functions/semantics
                     (setq noninteractive t)
                     (defun commandp (_) nil)
@@ -73,6 +81,8 @@ public class ELispBenchmarksTest {
                     
                     ;; Do not native-compile
                     (defalias 'native-compile #'identity)
+                    """);
+            context.eval("elisp", """
                     (defalias 'comp-el-to-eln-filename nil)
                     ;; Do not use org-mode for output
                     (defun pop-to-buffer (&rest _))
@@ -81,17 +91,24 @@ public class ELispBenchmarksTest {
             String[] benchmarks = new String[]{
                     "bubble-no-cons",
                     "bubble",
-                    // "dhrystone",
+                    "dhrystone",
                     // "elb-bytecomp",
                     // "elb-eieio",
                     "elb-pcase",
                     // "elb-scroll",
                     // "elb-smie",
+                    // > The fibn benchmarks arguably do not test anything besides pure function removal.
+                    // > To test basic arithmetic and function call costs, you are advised to modify fibn.el
+                    // > and make the input arguments non-constant (by introducing a global variable).
                     "fibn",
                     "flet",
                     "inclist-type-hints",
                     "inclist",
                     // "listlen-tc",
+                    // > The elisp-benchmarks package does not provide the mandelbrot benchmark.
+                    // > To run this, copy resources/mandelbrot.el into elisp-benchmarks/benchmarks,
+                    // > byte-compile the file before running the benchmarks.
+                    "mandelbrot",
                     "map-closure",
                     "nbody",
                     // "pack-unpack",
@@ -100,8 +117,10 @@ public class ELispBenchmarksTest {
             String selector = String.join("\\\\|", benchmarks);
             String benchmarkRun = "(elisp-benchmarks-run \"" + selector + "\")";
             System.out.println(benchmarkRun);
-            context.eval("elisp", """
-                    (setq load-suffixes '(".el"))""");
+            if (!byteCompile) {
+                context.eval("elisp", """
+                        (setq load-suffixes '(".el"))""");
+            }
             context.eval("elisp", benchmarkRun);
         }
     }

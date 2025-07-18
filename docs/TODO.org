@@ -119,6 +119,11 @@ way.
 2. Text properties are mutable, and we hope to get an immutable tree for
    concurrent redisplay.
 
+3. Performant regexps mandates quick access to buffer texts and string
+   characters. Since we are hoping to JIT-compile regexps, we should also
+   provide inlinable nodes for string/buffer access. Currently there is none and
+   the thing is highly polymorphic and inefficient.
+
 ** Thoughts
 
 - Maybe use UTF-8 after all.
@@ -134,36 +139,30 @@ way.
     =buffer-undo-list=: nothing can save you if you are fully exposing your undo
     data.
 
-* TODO [#B] CDR coding or alternatives
+** TODO [#B] Regexp redesign
 
-I am quite envious about [[https://v8.dev/blog/elements-kinds][how JS gets to optimize their internal array
-representations]]. In Lisp dialects that expose =cons= structure, I don't think it
-is possible without tons of workarounds. But... yes, let's see if we can work
-around that.
+So Emacs regexps can change depending on their contexts (e.g., the case tables
+and syntax tables of the current buffer), which makes it a no-go for NFA or DFA
+based implementations... Or does it?
 
-The basic idea is to use an [[https://en.wikipedia.org/wiki/Unrolled_linked_list][unrolled linked list]], treating conses as mere
-list iterators.
+The TRegex library from Truffle has a DFA implementation and falls back to a
+backtracking one for certain regexps. We do not use it because we need to
+support buffers, while TRegex requires =TruffleString=, but we can follow what
+it does and have two regexp engines.
 
-** Workarounds
+However, if we are to handle more than some simple regexps, we might have some
+problems. The main problem is that regexps depends on (at least?) three char
+tables and an external variable:
 
-| Function          | Cons Operation            | Deque Operation        | Frequent |
-| =cons=            | =(cons item nil)=         | =List.of(item)=        | 🟢      |
-|                   | =(cons item list)=        | =list.push(item)=      | 🟢      |
-|                   | =(cons obj1 obj2)=        | /invalid/              | 🟢      |
-| =car=             | =(car list)=              | =list.get(0)=          | 🟢      |
-| =cdr=             | =(cdr list)=              | =list.subList(1)=      | 🟢      |
-| =setcar=          | =(setcar list item)=      | =list.set(0, item)=    | 🟢      |
-| =setcdr=          | =(setcdr list nil)=       | =list.split()?=        | ❓       |
-|                   | =(setcdr list-end list2)= | =list.extend(list2)=   | 🟢      |
-|                   | =(setcdr list obj)=       | /invalid/              | ❓       |
-| =append=          |                           |                        | 🟢      |
-| =nconc=           |                           |                        | 🟢      |
-| =memq=            |                           |                        | 🟢      |
-| =remq=            |                           |                        | 🟢      |
-| =assq=            |                           |                        | 🟢      |
-| =assq-delete-all= |                           |                        | ❓       |
-| =sort=            | =(sort list)=             | =list.stream().sort()= | 🟢      |
-| =nreverse=        |                           |                        | 🟢      |
+- Syntax tables
+- Category tables
+- Case tables and =case-fold-search=
+
+For =case-fold-search=, Emacs has a =canon= table to normalize chars and we
+might do that beforehand and use an =Assumption= to track table changes. But for
+other char tables, I don't know... maybe we should just declare defeat?
+(Otherwise we need a way to include char-table-based state changes in NFAs and
+find a way to convert them into DFAs.)
 
 * TODO [#A] Use =ert.el=
 
@@ -406,6 +405,57 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** CANCELLED [#B] CDR coding or alternatives
+
+*** Cancelled
+
+So I had a =ELispConsArray= implemented, and the performance is quite bad. It is
+probably due to:
+
+1. polymorphism: you rarely get a "pure array"-like cons list. A single =setcdr=
+   is enough to kill the performance.
+2. Graal/Truffle is not brave enough to treat an array-cons as a real array,
+   incurring indirection costs. Judging from IGV graphs, the compiled code
+   dereferences the =ELispConsArray= container and checks the type of the inner
+   array every single time, which is not very efficient. It turns out to be
+   the correct thing to do: any inner function call may call =setcdr= and deopt
+   the whole thing, and what else can we do?
+
+In conclusion, no, /I/ cannot produce an efficient implementation (but maybe
+some Truffle expert can?). The code is committed and then reverted to leave
+traces in git logs in case anyone is interested.
+
+*** Thoughts
+
+I am quite envious about [[https://v8.dev/blog/elements-kinds][how JS gets to optimize their internal array
+representations]]. In Lisp dialects that expose =cons= structure, I don't think it
+is possible without tons of workarounds. But... yes, let's see if we can work
+around that.
+
+The basic idea is to use an [[https://en.wikipedia.org/wiki/Unrolled_linked_list][unrolled linked list]], treating conses as mere
+list iterators.
+
+*** Workarounds
+
+| Function          | Cons Operation            | Deque Operation        | Frequent |
+| =cons=            | =(cons item nil)=         | =List.of(item)=        | 🟢      |
+|                   | =(cons item list)=        | =list.push(item)=      | 🟢      |
+|                   | =(cons obj1 obj2)=        | /invalid/              | 🟢      |
+| =car=             | =(car list)=              | =list.get(0)=          | 🟢      |
+| =cdr=             | =(cdr list)=              | =list.subList(1)=      | 🟢      |
+| =setcar=          | =(setcar list item)=      | =list.set(0, item)=    | 🟢      |
+| =setcdr=          | =(setcdr list nil)=       | =list.split()?=        | ❓       |
+|                   | =(setcdr list-end list2)= | =list.extend(list2)=   | 🟢      |
+|                   | =(setcdr list obj)=       | /invalid/              | ❓       |
+| =append=          |                           |                        | 🟢      |
+| =nconc=           |                           |                        | 🟢      |
+| =memq=            |                           |                        | 🟢      |
+| =remq=            |                           |                        | 🟢      |
+| =assq=            |                           |                        | 🟢      |
+| =assq-delete-all= |                           |                        | ❓       |
+| =sort=            | =(sort list)=             | =list.stream().sort()= | 🟢      |
+| =nreverse=        |                           |                        | 🟢      |
 
 ** DONE [#A] Bytecode Interpreter & Bootstrapping
 
@@ -1143,6 +1193,21 @@ top-level).
 
 Mind-boggling. No idea. (And why? Is it just fun to change the whole semantics
 depending on a single missing parameter?)
+
+**** Semantics
+
+Uhh. So I have always used the =*scratch*= buffer to test elisp semantics. So
+when I first eval =(setq var 1)= and then =(defvar var nil)=, =var= turns =nil=,
+so that means =defvar= always sets the value of the variable, right?
+
+Turns out it is not. It is because =elisp--eval-defun-1= does extra work to
+reset variables for =defvar= statements and =defvar= as is described by the
+manual does not:
+
+#+begin_quote
+But if symbol is not void, defvar does not evaluate value, and leaves symbol’s
+value unchanged.
+#+end_quote
 
 *** DONE =let= and =let*=
 

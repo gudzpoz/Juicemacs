@@ -460,6 +460,23 @@ comments and discussions.
 
 - [[http://www.finseth.com/craft/][The Craft of Text Editing --or-- Emacs for the Modern World]]
 
+** Regular Expressions
+
+- The must-read series by Russ Cox
+
+  - [[https://swtch.com/~rsc/regexp/regexp1.html][Regular Expression Matching Can Be Simple And Fast (but is slow in Java,
+    Perl, PHP, Python, Ruby, ...)]]
+
+  - [[https://swtch.com/~rsc/regexp/regexp2.html][Regular Expression Matching: the Virtual Machine Approach]] (this is what
+    Juicemacs uses currently)
+
+  - [[https://swtch.com/~rsc/regexp/regexp3.html][Regular Expression Matching in the Wild]]
+
+- [[https://dl.acm.org/doi/10.1145/3656431][Linear Matching of JavaScript Regular Expressions]]
+
+- [[https://epub.jku.at/download/pdf/3053075.pdf][An ECMAScript 2015-Compliant Automata-based Regular Expression Engine for
+  Graal.js (PDF)]] (the TRegex engine provided by Truffle)
+
 ** GraalVM / Truffle
 
 [[https://www.graalvm.org/][GraalVM]]: “An advanced JDK with ahead-of-time Native Image compilation”
