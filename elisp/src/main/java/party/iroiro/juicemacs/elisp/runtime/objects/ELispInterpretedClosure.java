@@ -31,8 +31,8 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
     private MaterializedFrame upperFrame;
     private ELispLexical.@Nullable Scope upperScope;
 
-    ELispInterpretedClosure(Object[] array, @Nullable Source source) {
-        super(array, source);
+    ELispInterpretedClosure(Object[] array, ClosureCommons commons) {
+        super(array, commons);
         updateEnv(array[CLOSURE_CONSTANTS]);
     }
 
@@ -203,6 +203,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         @Nullable
         @Override
         public SourceSection getSourceSection() {
+            @Nullable Source rootSource = commons.source;
             if (rootSource == null) {
                 return null;
             }

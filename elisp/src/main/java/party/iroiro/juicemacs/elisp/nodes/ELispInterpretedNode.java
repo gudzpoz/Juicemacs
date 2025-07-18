@@ -673,8 +673,8 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
     }
 
-    private static final class LazyConsExpressionNode extends ELispInterpretedNode implements InstrumentableNode {
-        private final ELispCons cons;
+    public static final class LazyConsExpressionNode extends ELispInterpretedNode implements InstrumentableNode {
+        public final ELispCons cons;
 
         public LazyConsExpressionNode(ELispCons cons) {
             this.cons = cons;

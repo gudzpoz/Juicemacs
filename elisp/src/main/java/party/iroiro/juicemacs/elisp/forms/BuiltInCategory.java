@@ -40,7 +40,7 @@ public class BuiltInCategory extends ELispBuiltIns {
     }
 
     private static void setCategoryDocstring(ELispCharTable table, long category, Object docstring) {
-        BuiltInData.FAset.aset(asVector(table.getExtra(0)), category - ' ', docstring);
+        asVector(table.getExtra(0)).set((int) (category - ' '), docstring);
     }
 
     private static ELispBoolVector hashGetCategorySet(ELispCharTable table, ELispBoolVector categorySet) {

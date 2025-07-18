@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.source.Source;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -236,7 +235,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             ArrayList<Object> list = new ArrayList<>();
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
-            return (ELispBytecode) AbstractELispClosure.create(list, (Source) null); // NOPMD
+            return (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
         }
     }
 
@@ -262,7 +261,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             }
             ELispVector copyConstants = BuiltInFns.FCopySequence.copySequenceVector(constants);
             copyConstants.fillFrom(closureVars);
-            ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getRootSource()); // NOPMD
+            ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getCommons()); // NOPMD
             copy.set(CLOSURE_CONSTANTS, copyConstants);
             return copy;
         }

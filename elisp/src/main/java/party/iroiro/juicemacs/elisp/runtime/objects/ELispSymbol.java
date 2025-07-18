@@ -103,8 +103,11 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     }
 
     public Object getDefaultValue() {
-        Object value = tryGetStorage().map(ValueStorage::getDefaultValue).orElse(UNBOUND);
-        return checkUnbound(value);
+        return checkUnbound(getAnyDefaultValue());
+    }
+
+    public Object getAnyDefaultValue() {
+        return tryGetStorage().map(ValueStorage::getDefaultValue).orElse(UNBOUND);
     }
 
     public void setDefaultValue(Object value) {

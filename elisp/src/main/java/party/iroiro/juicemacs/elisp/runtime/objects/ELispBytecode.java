@@ -26,8 +26,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asLong;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public final class ELispBytecode extends AbstractELispClosure {
-    ELispBytecode(Object[] inner, @Nullable Source source) {
-        super(inner, source);
+    ELispBytecode(Object[] inner, ClosureCommons commons) {
+        super(inner, commons);
     }
 
     public byte[] getBytecode() {
@@ -151,6 +151,7 @@ public final class ELispBytecode extends AbstractELispClosure {
         @Nullable
         @Override
         public SourceSection getSourceSection() {
+            @Nullable Source rootSource = commons.source;
             if (rootSource == null) {
                 return null;
             }

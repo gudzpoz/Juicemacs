@@ -608,13 +608,44 @@ public class BuiltInEval extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "make-interpreted-closure", minArgs = 3, maxArgs = 5)
     @GenerateNodeFactory
-    public abstract static class FMakeInterpretedClosure extends ELispBuiltInBaseNode {
+    public abstract static class FMakeInterpretedClosure extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
-        public static ELispInterpretedClosure makeInterpretedClosure(Object args, ELispCons body, Object env, Object docstring, Object iform) {
-            return makeClosure(args, body, env, docstring, iform, null);
+        public static ELispInterpretedClosure makeInterpretedClosure(
+                Object args, ELispCons body, Object env, Object docstring, Object iform
+        ) {
+            AbstractELispClosure.ClosureCommons commons;
+            if (args instanceof ELispInterpretedClosure closure) {
+                // This branch is only executed when created via createNode, which see.
+                commons = closure.getCommons();
+                args = closure.get(CLOSURE_ARGLIST);
+            } else {
+                commons = new AbstractELispClosure.ClosureCommons();
+            }
+            return makeClosure(
+                    args, body, env, docstring, iform,
+                    commons
+            );
         }
 
-        public static ELispInterpretedClosure makeClosure(Object args, ELispCons body, Object env, Object docstring, Object iform, @Nullable RootNode root) {
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            if (arguments[0] instanceof ELispInterpretedNode.LazyConsExpressionNode cons) {
+                // `oclosure--copy` cannot preserve lambda root nodes, because it "destructures"
+                // the closure, when root nodes are stored within closure objects.
+                // This is a hack to get the real closure object.
+                if (cons.cons.car() == AREF && cons.cons.cdr() instanceof ELispCons cdr
+                        && cons.cons.cdr() instanceof ELispCons cddr
+                        && cddr.car() instanceof Long l && l == CLOSURE_ARGLIST) {
+                    arguments[0] = ELispInterpretedNode.create(cddr.car());
+                }
+            }
+            return BuiltInEvalFactory.FMakeInterpretedClosureFactory.create(arguments);
+        }
+
+        public static ELispInterpretedClosure makeClosure(
+                Object args, ELispCons body, Object env, Object docstring, Object iform,
+                AbstractELispClosure.ClosureCommons commons
+        ) {
             List<Object> inner = new ArrayList<>(CLOSURE_INTERACTIVE + 1);
             inner.add(args);
             inner.add(body);
@@ -639,7 +670,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     inner.add(iform);
                 }
             }
-            return (ELispInterpretedClosure) AbstractELispClosure.create(inner, root);
+            return (ELispInterpretedClosure) AbstractELispClosure.create(inner, commons);
         }
     }
 
@@ -714,7 +745,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 @Child
                 ELispExpressionNode doc = finalDocString;
 
-                private AbstractELispClosure.@Nullable ClosureCommons constructed = null;
+                private AbstractELispClosure.@Nullable ClosureCommons commons = null;
 
                 @Override
                 public void executeVoid(VirtualFrame frame) {
@@ -733,6 +764,9 @@ public class BuiltInEval extends ELispBuiltIns {
 
                 private AbstractELispClosure createClosure(ELispLexical.@Nullable Scope scope, Object doc, Object env) {
                     body.fillDebugInfo(getParent());
+                    if (commons == null) {
+                        commons = new AbstractELispClosure.ClosureCommons(getRootNode());
+                    }
                     // TODO: make use of INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION to clean up frames
                     ELispInterpretedClosure scopeHolder = FMakeInterpretedClosure.makeClosure(
                             args,
@@ -740,15 +774,9 @@ public class BuiltInEval extends ELispBuiltIns {
                             scope == null ? false : ELispCons.listOf(true),
                             doc,
                             finalInteractive,
-                            getRootNode()
+                            commons
                     );
                     scopeHolder.set(CLOSURE_CONSTANTS, env);
-                    AbstractELispClosure.@Nullable ClosureCommons commons = constructed;
-                    if (commons == null) {
-                        constructed = scopeHolder.saveCommons();
-                    } else {
-                        scopeHolder.loadCommons(commons);
-                    }
                     return scopeHolder;
                 }
             };

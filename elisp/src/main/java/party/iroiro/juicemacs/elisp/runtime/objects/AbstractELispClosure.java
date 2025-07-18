@@ -13,7 +13,6 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.List;
-import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInData.isMultibyte;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
@@ -21,18 +20,13 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_S
 
 public sealed abstract class AbstractELispClosure extends AbstractELispVector
         permits ELispInterpretedClosure, ELispBytecode {
-    @Nullable
-    protected Source rootSource;
-    @Nullable
-    protected transient volatile FunctionRootNode functionRootNode = null;
-    @Nullable
-    protected transient volatile ELispFunctionObject function = null;
+    protected final ClosureCommons commons;
     @Nullable
     protected Object name = null;
 
-    AbstractELispClosure(Object[] inner, @Nullable Source rootSource) {
+    AbstractELispClosure(Object[] inner, ClosureCommons commons) {
         super(inner);
-        this.rootSource = rootSource;
+        this.commons = commons;
     }
 
     public Object getName() {
@@ -41,32 +35,14 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
 
     public void setName(Object name) {
         this.name = name;
-        FunctionRootNode f = functionRootNode;
+        FunctionRootNode f = commons.rootNode;
         if (f != null) {
             f.setLispFunction(name);
         }
     }
 
-    @Nullable
-    public Source getRootSource() {
-        return rootSource;
-    }
-
-    public void setRootSource(@Nullable Source rootSource) {
-        if (rootSource != null) {
-            this.rootSource = rootSource;
-        }
-    }
-
-    public ClosureCommons saveCommons() {
-        ELispFunctionObject function = getFunction();
-        return new ClosureCommons(Objects.requireNonNull(functionRootNode), function, rootSource);
-    }
-
-    public void loadCommons(ClosureCommons commons) {
-        this.functionRootNode = commons.rootNode;
-        this.function = commons.functionObject;
-        setRootSource(commons.rootSource);
+    public ClosureCommons getCommons() {
+        return commons;
     }
 
     protected Object getArgs() {
@@ -76,13 +52,13 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
     protected abstract FunctionRootNode getFunctionRootNode();
 
     public final ELispFunctionObject getFunction() {
-        ELispFunctionObject f = function;
+        ELispFunctionObject f = commons.function;
         if (f == null) {
             CompilerDirectives.transferToInterpreter();
             FunctionRootNode root = getFunctionRootNode();
             f = new ELispFunctionObject(root.getCallTarget());
-            functionRootNode = root; // NOPMD
-            function = f;
+            commons.rootNode = root; // NOPMD
+            commons.function = f;
         }
         return f;
     }
@@ -101,12 +77,8 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         return source == null ? null : source.getSource();
     }
 
-    public static AbstractELispClosure create(List<?> inner, @Nullable RootNode root) {
-        return create(inner, getRootNodeSource(root)); // NOPMD: not recursion
-    }
     @CompilerDirectives.TruffleBoundary
-    public static AbstractELispClosure create(List<?> inner, @Nullable Source rootSource) {
-        @Nullable AbstractELispClosure closure = null;
+    public static AbstractELispClosure create(List<?> inner, ClosureCommons rootSource) {
         Object[] array = inner.toArray();
         int size = array.length;
         if (size >= CLOSURE_STACK_DEPTH && size <= CLOSURE_INTERACTIVE + 1) {
@@ -129,10 +101,26 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         throw ELispSignals.invalidReadSyntax("Invalid byte-code object");
     }
 
-    public record ClosureCommons(
-            FunctionRootNode rootNode,
-            ELispFunctionObject functionObject,
-            @Nullable Source rootSource
-    ) {
+    public static final class ClosureCommons {
+        @Nullable
+        transient FunctionRootNode rootNode = null;
+        @Nullable
+        transient ELispFunctionObject function = null;
+        @Nullable
+        Source source;
+
+        public @Nullable Source getSource() {
+            return source;
+        }
+
+        public ClosureCommons() {
+            this.source = null;
+        }
+        public ClosureCommons(@Nullable Source source) {
+            this.source = source;
+        }
+        public ClosureCommons(@Nullable RootNode parent) {
+            this.source = parent == null ? null : getRootNodeSource(parent);
+        }
     }
 }

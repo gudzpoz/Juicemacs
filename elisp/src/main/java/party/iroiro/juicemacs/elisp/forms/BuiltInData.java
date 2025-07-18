@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -776,7 +775,7 @@ public class BuiltInData extends ELispBuiltIns {
      * </pre>
      */
     @ELispBuiltIn(name = "eq", minArgs = 2, maxArgs = 2)
-    @TypeSystemReference(ELispTypeSystem.None.class)
+    @TypeSystemReference(None.class)
     @GenerateNodeFactory
     public abstract static class FEq extends ELispBuiltInBaseNode {
         @Specialization
@@ -2279,14 +2278,35 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "aref", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FAref extends ELispBuiltInBaseNode {
+        @Nullable
+        static MuleByteArrayString stringBytes(MuleString array) {
+            return array instanceof MuleByteArrayString s ? s : null;
+        }
+        @Specialization(guards = "value != null")
+        public static long arefStringByte(
+                ELispString array, long idx,
+                @Bind("stringBytes(array.value())") MuleByteArrayString value
+        ) {
+            return value.bytes()[(int) idx];
+        }
         @Specialization
-        public static Object arefVec(ELispVectorLike<?> array, long idx) {
+        public static long arefStr(ELispString array, long idx) {
+            return array.codePointAt(idx);
+        }
+
+        @Specialization
+        public static Object arefVec(ELispVector array, long idx) {
             return array.get((int) idx);
         }
         @Specialization
-        public static Object arefStr(ELispString array, long idx) {
-            return array.codePointAt(idx);
+        public static Object arefRecord(ELispRecord array, long idx) {
+            return array.get((int) idx);
         }
+        @Specialization
+        public static Object arefVecVirtual(ELispVectorLike<?> array, long idx) {
+            return array.get((int) idx);
+        }
+
         @Specialization
         public static Object aref(Object array, long idx) {
             return switch (array) {
@@ -2307,8 +2327,26 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "aset", minArgs = 3, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FAset extends ELispBuiltInBaseNode {
+        @Nullable
+        static MuleByteArrayString stringBytes(MuleString array) {
+            return array instanceof MuleByteArrayString s ? s : null;
+        }
+        @Specialization(guards = "value != null")
+        public static long asetString(
+                ELispString array, long idx, long newelt,
+                @Bind("stringBytes(array.value())") MuleByteArrayString value
+        ) {
+            value.bytes()[(int) idx] = (byte) newelt;
+            return newelt;
+        }
+
         @Specialization
-        public static Object aset(AbstractELispVector array, long idx, Object newelt) {
+        public static Object asetVec(ELispVector array, long idx, Object newelt) {
+            array.set((int) idx, newelt);
+            return newelt;
+        }
+        @Specialization
+        public static Object asetRecord(ELispRecord array, long idx, Object newelt) {
             array.set((int) idx, newelt);
             return newelt;
         }
@@ -2317,6 +2355,11 @@ public class BuiltInData extends ELispBuiltIns {
             boolean elt = !isNil(newelt);
             array.set((int) idx, elt);
             return elt;
+        }
+        @Specialization
+        public static Object aset(AbstractELispVector array, long idx, Object newelt) {
+            array.set((int) idx, newelt);
+            return newelt;
         }
     }
 
