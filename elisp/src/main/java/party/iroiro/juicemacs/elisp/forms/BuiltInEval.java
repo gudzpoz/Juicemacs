@@ -940,7 +940,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     ELispLexical.markAsDynamic(this, sym);
                 } else {
                     sym.setSpecial(true);
-                    if (!initValueMissing) {
+                    if (!initValueMissing && sym.getAnyDefaultValue() == ValueStorage.UNBOUND) {
                         sym.setDefaultValue(init.executeGeneric(frame));
                     }
                 }
