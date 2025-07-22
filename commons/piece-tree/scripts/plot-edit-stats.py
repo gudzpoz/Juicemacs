@@ -9,12 +9,14 @@ parser.add_argument('--piece-tree-csv', type=str, required=True)
 parser.add_argument('--gap-buffer-csv', type=str, required=True)
 parser.add_argument('--ropes-csv', type=str, required=True)
 parser.add_argument('--string-csv', type=str, required=True)
+parser.add_argument('--truffle-string-csv', type=str, required=True)
 args = parser.parse_args()
 
 csv = pd.read_csv(args.piece_tree_csv)
 gap_csv = pd.read_csv(args.gap_buffer_csv)
 ropes_csv = pd.read_csv(args.ropes_csv)
 string_csv = pd.read_csv(args.string_csv)
+truffle_csv = pd.read_csv(args.truffle_string_csv)
 
 
 def plot_latency(csvs: list[pd.DataFrame], names: list[str]):
@@ -45,7 +47,7 @@ def plot_latency(csvs: list[pd.DataFrame], names: list[str]):
 
 
 plot_latency(
-    [csv, gap_csv, ropes_csv, string_csv],
-    ['Piece Tree', 'Gap Buffer', 'Ropes', 'Strings'],
+    [csv, gap_csv, ropes_csv, string_csv, truffle_csv],
+    ['Piece Tree', 'Gap Buffer', 'Ropes', 'Strings', 'TString'],
 )
 plt.show()
