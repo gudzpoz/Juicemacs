@@ -164,6 +164,66 @@ other char tables, I don't know... maybe we should just declare defeat?
 (Otherwise we need a way to include char-table-based state changes in NFAs and
 find a way to convert them into DFAs.)
 
+** Static Backtracking
+
+PCRE-sljit seems to use a technique called [[https://dl.acm.org/doi/abs/10.1145/2544137.2544146]["static backtracking"]]. The basic idea
+is to represent success/failures with control flows instead of boolean values,
+which is only achievable under JIT with unstructured control flow. (For example,
+the patten =/p/= checks the current char, if it matches =p=, it jumps to some
+=ACCEPT= path or otherwise a =BACKTRACK= path.)
+
+I tried to re-implement the engine this way, but find the performance quite bad.
+One explanation may be: Graal/Truffle does not have very good support for
+unstructured control flow. Quoting from GraalVM Slack:
+
+#+begin_quote
+Josef Haider (on Dec 2019): MERGE_EXPLODE supports unstructured control flow by
+falling back to an explicit state machine in the compiled code.
+
+Chris Seaton (on Oct 2022): I wrote a blog post about irreducible loops, and yes
+Graal only supports them with a custom duplication phase, purely for the reason
+of supporting Kotlin's co-routines.
+
+David Leopoldseder (on Oct 2022): ... The optimizer is written based on our
+structured loop representation in loop closed SSA form, really supporting only
+reducible CF. ... We do a limited form of support for detecting some common
+irreducible loops during PE and rewrite them to a switch pattern...
+#+end_quote
+
+The quotes above explains several things in the IGV graphs of the static
+backtracking implementation:
+
+- There are several huge =IntegerSwitch= nodes.
+- The graph contains many =Loop= nodes.
+- The whole graph is just super complicated.
+
+And I guess it also explains the performance. Anyway, I guess we will need to
+base our engine on boolean values and proper loops then. (The implementation is
+in the git logs in case any one is interested.)
+
+** Backtracking Regexps
+
+- pcomplete.el
+
+  #+begin_src elisp
+    "\\(?:.\\|\n\\)*?\\(\\(?:.\\|\n\\)*\\)\x3FFF7F\\(?:.\\|\n\\)*\\1\\'"
+  #+end_src
+
+- dirtrack.el
+
+  #+begin_src elisp
+    "\\`\\(.*\\)\\(?:/.*\\)?\n\\(.*/\\)\\1\\(?:/.*\\)?\\'"
+  #+end_src
+
+- diff-mode.el
+
+  #+begin_src elisp
+    (concat
+     "\\`\\(.*?\\)\\(.*\\)\\(.*\\)\n"
+     "\\1\\(.*\\)\\3\n"
+     "\\(.*\\(\\2\\).*\\)\\'")
+  #+end_src
+
 * TODO [#A] Use =ert.el=
 
 I have stopped writing tests for newly implemented subroutines. We should

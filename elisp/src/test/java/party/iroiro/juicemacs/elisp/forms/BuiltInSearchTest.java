@@ -163,9 +163,23 @@ public class BuiltInSearchTest extends BaseFormTest {
     public void versionRegExpTest() throws IOException {
         BuiltInSearchTest test = new BuiltInSearchTest();
         test.setup();
-        for (int i = 0; i < 1000; i++) {
+        long start = System.nanoTime();
+        for (int i = 0; i < 1000000; i++) {
             assertEquals("some-package-0.1.0beta1".length(), test.versionRegExp());
         }
+        System.out.println((System.nanoTime() - start) / 1_000_000.);
+        test.tearDown();
+    }
+
+    @Test
+    public void versionRegExpJavaTest() throws IOException {
+        BuiltInSearchTest test = new BuiltInSearchTest();
+        test.setup();
+        long start = System.nanoTime();
+        for (int i = 0; i < 1000000; i++) {
+            assertEquals("some-package-0.1.0beta1".length(), test.versionRegExpJava());
+        }
+        System.out.println((System.nanoTime() - start) / 1_000_000.);
         test.tearDown();
     }
 
@@ -183,7 +197,7 @@ public class BuiltInSearchTest extends BaseFormTest {
     }
     @Benchmark
     public long versionRegExpJava() {
-        Matcher match = LONG_REGEXP_PATTERN.matcher("some-package-0.1.0beta1");
+        Matcher match = VERSION_REGEXP_PATTERN.matcher("some-package-0.1.0beta1");
         return match.matches() ? match.end() : 0;
     }
 }

@@ -1,8 +1,6 @@
 package party.iroiro.juicemacs.elisp.benchmarks;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.HostCompilerDirectives;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -13,6 +11,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
@@ -222,6 +222,41 @@ public class TruffleLanguageTest {
             Object argument = frame.getArguments()[0];
             frame.setInt(1, (Integer) argument);
             return argument;
+        }
+    }
+
+    @Test
+    public void testEnumInlining() {
+        EnumTestRootNode rootNode = new EnumTestRootNode();
+        RootCallTarget callTarget = rootNode.getCallTarget();
+        for (int i = 0; i < 1000000; i++) {
+            assertEquals(i, callTarget.call(i));
+        }
+    }
+
+    static final class EnumTestRootNode extends RootNode {
+        EnumTestRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object input = frame.getArguments()[0];
+            return TestEnum.MINUS1.apply(TestEnum.PLUS1.apply(input));
+        }
+    }
+    enum TestEnum implements Function<Object, Object> {
+        PLUS1 {
+            @Override
+            public Object apply(Object object) {
+                return 1 + (Integer) object;
+            }
+        },
+        MINUS1 {
+            @Override
+            public Object apply(Object object) {
+                return (Integer) object - 1;
+            }
         }
     }
 }

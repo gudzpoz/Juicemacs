@@ -477,6 +477,9 @@ comments and discussions.
 - [[https://epub.jku.at/download/pdf/3053075.pdf][An ECMAScript 2015-Compliant Automata-based Regular Expression Engine for
   Graal.js (PDF)]] (the TRegex engine provided by Truffle)
 
+- [[https://dl.acm.org/doi/abs/10.1145/2544137.2544146][Extending the PCRE Library with Static Backtracking Based Just-in-Time
+  Compilation Support]]
+
 ** GraalVM / Truffle
 
 [[https://www.graalvm.org/][GraalVM]]: “An advanced JDK with ahead-of-time Native Image compilation”

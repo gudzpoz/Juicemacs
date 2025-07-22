@@ -126,7 +126,10 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
             encodedLocation = original.encodedLocation;
         }
     }
-    public void fillDebugInfo(Node parent) {
+    public void fillDebugInfo(@Nullable Node parent) {
+        if (parent == null) {
+            return;
+        }
         SourceSection source = parent.getSourceSection();
         if (source != null && source.isAvailable()) {
             setSourceLocation(

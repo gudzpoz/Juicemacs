@@ -21,8 +21,6 @@ final class ELispRegExpParser {
     @Nullable
     private ELispRegExpLexer parentLexer;
 
-    private int quantifierLookaheadChar;
-
     private int groupIndex;
     private final IntArrayList processingGroupIndices;
     private final IntArrayList availableGroupIndices;
@@ -32,7 +30,6 @@ final class ELispRegExpParser {
         this.whitespaceRegExp = whitespaceRegExp;
         lexer = new ELispRegExpLexer(regExp);
         stack = new ArrayList<>();
-        quantifierLookaheadChar = -1;
         groupIndex = 0;
         processingGroupIndices = new IntArrayList();
         availableGroupIndices = new IntArrayList();
@@ -140,9 +137,6 @@ final class ELispRegExpParser {
                         stack.removeLast();
                         chars.add(prev);
                     } else {
-                        if (stack.getLast() instanceof Quantifier) {
-                            quantifierLookaheadChar = chars.getLast();
-                        }
                         break;
                     }
                 }
@@ -158,17 +152,11 @@ final class ELispRegExpParser {
                  CharClass _,
                  SyntaxChar _,
                  CategoryChar _ -> new REAst.Atom(top);
-            case Quantifier quantifier -> lookaheadQuantifier(quantifier);
+            case Quantifier quantifier -> new REAst.Quantified(processStackTop(false), quantifier);
             case GroupEnd() -> collectGroup();
             case GroupStart ignored -> throw ELispSignals.error("Unmatched ( or \\(");
             case Alternation() -> throw CompilerDirectives.shouldNotReachHere(); // Processed by collectGroup
         };
-    }
-
-    private REAst lookaheadQuantifier(Quantifier quantifier) {
-        int lookahead = quantifierLookaheadChar;
-        quantifierLookaheadChar = -1;
-        return new REAst.Quantified(processStackTop(false), quantifier, lookahead);
     }
 
     private REAst collectGroup() {
@@ -185,7 +173,7 @@ final class ELispRegExpParser {
                     alternations.add(branch);
                     REAst[][] children = new REAst[alternations.size()][];
                     for (int i = 0; i < alternations.size(); i++) {
-                        children[i] = alternations.get(i).reversed().toArray(REAst[]::new);
+                        children[children.length - 1 - i] = alternations.get(i).reversed().toArray(REAst[]::new);
                     }
                     return new REAst.Group(index, children);
                 }
@@ -255,7 +243,7 @@ final class ELispRegExpParser {
                 return builder.append("]}").toString();
             }
         }
-        record Quantified(REAst child, Quantifier quantifier, int lookahead) implements REAst {
+        record Quantified(REAst child, Quantifier quantifier) implements REAst {
             @Override
             public int minLength() {
                 return child.minLength() * quantifier.min();

@@ -187,7 +187,7 @@ public abstract class ReadFunctionObjectNodes {
         @Specialization(replaces = "checkCons")
         public Object checkConsUncached(ELispCons cons) {
             if (cons.car() == LAMBDA) {
-                return BuiltInEval.FFunction.getFunction(cons);
+                return BuiltInEval.FFunction.getFunction(cons, this);
             }
             // cons.car() == MACRO and others
             return cons;

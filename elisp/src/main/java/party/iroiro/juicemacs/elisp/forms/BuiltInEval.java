@@ -705,9 +705,12 @@ public class BuiltInEval extends ELispBuiltIns {
             return ELispInterpretedNode.literal(arg);
         }
 
-        public static Object getFunction(ELispCons def) {
+        public static Object getFunction(ELispCons def, @Nullable Node node) {
             CompilerDirectives.transferToInterpreter();
             ELispExpressionNode definition = getDefinition(def);
+            if (node != null) {
+                node.insert(definition);
+            }
             return definition.executeGeneric(null);
         }
 

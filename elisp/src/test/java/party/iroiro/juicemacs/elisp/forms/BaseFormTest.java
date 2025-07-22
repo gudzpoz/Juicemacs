@@ -8,6 +8,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 
 public abstract class BaseFormTest {
 
@@ -17,23 +18,15 @@ public abstract class BaseFormTest {
     /// Usage: Set [#WARM_UP] to `true` to warm up the test and enable
     /// `-Dpolyglot.engine.TraceCompilation=true` to see if there are any
     /// compilation errors (e.g. Truffle bailing out).
-    private final static boolean WARM_UP = true;
+    private final static boolean WARM_UP = false;
     private final static int WARM_UP_COUNT = 10000;
 
     public static Context.Builder getTestingContextBuilder() {
-        return Context.newBuilder("elisp")
-                .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
-                .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
-                .allowIO(IOAccess.ALL);
+        return getContextBuilder(null);
     }
 
     public static Context getTestingContext() {
-        return Context.newBuilder("elisp")
-                .allowExperimentalOptions(true)
-                .environment("EMACSLOADPATH", Path.of("emacs", "lisp").toAbsolutePath().toString())
-                .environment("EMACSDATA", Path.of("emacs", "etc").toAbsolutePath().toString())
-                .allowIO(IOAccess.ALL)
-                .build();
+        return getContextBuilder(null).build();
     }
 
     @Test
