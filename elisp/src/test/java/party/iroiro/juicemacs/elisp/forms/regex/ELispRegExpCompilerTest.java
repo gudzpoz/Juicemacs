@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.graalvm.collections.Pair;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -46,7 +47,7 @@ class ELispRegExpCompilerTest {
             String pattern = testCase[0];
             Pair<ELispRegExpCompiler.Compiled, ELispRegExp.CompiledRegExp> compiled = compile(pattern);
             if (print) {
-                System.out.println(ELispRegExpCompiler.disassemble(compiled.getLeft().opcodes()));
+                System.out.println(ELispRegExpCompiler.disassemble(IntArrayList.newListWith(compiled.getLeft().opcodes())));
             }
             for (int i = 1; i < testCase.length; i += 2) {
                 String input = testCase[i];
@@ -59,7 +60,7 @@ class ELispRegExpCompilerTest {
                 assertEquals(
                         testCase[i + 1], result.toString(),
                         () -> pattern + ": " + input + "\n"
-                                + ELispRegExpCompiler.disassemble(compiled.getLeft().opcodes()));
+                                + ELispRegExpCompiler.disassemble(IntArrayList.newListWith(compiled.getLeft().opcodes())));
             }
         }
     }

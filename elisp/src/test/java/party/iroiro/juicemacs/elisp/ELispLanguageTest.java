@@ -52,7 +52,10 @@ public class ELispLanguageTest {
             // loadup.el calls (kill-emacs) after dumping
             String message = e.getMessage();
             if (bootstrap) {
-                assertEquals("(fatal kill-emacs nil)", message);
+                assertEquals("(fatal kill-emacs nil)", message, () -> {
+                    e.printStackTrace(System.err);
+                    return e.getMessage();
+                });
             } else {
                 // During pdump, Emacs also renames the emacs binary,
                 // which, of course, our Juicemacs does not provide.

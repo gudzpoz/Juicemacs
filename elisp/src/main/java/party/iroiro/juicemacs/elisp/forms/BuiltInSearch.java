@@ -339,7 +339,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
             long from = notNilOr(start, 0);
-            Object result = pattern.call(string.value(), false, from, -1, getLanguage().currentBuffer().getValue());
+            Object result = pattern.call(string.value(), true, from, -1, getLanguage().currentBuffer().getValue());
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
                     setMatch(this, result, string);
