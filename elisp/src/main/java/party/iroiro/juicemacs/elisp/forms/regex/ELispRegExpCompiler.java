@@ -5,8 +5,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import org.apache.commons.lang3.Strings;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
@@ -20,10 +18,8 @@ import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
 
 @SuppressWarnings({"PMD.NoBoxedPrimitivesRule", "PMD.ShortMethodName"})
 final class ELispRegExpCompiler {
-    public static final int SP_SLOT = 0;
-    public static final int STACK_TOP_SLOT = 1;
-    public static final int STACK_ARRAY_SLOT = 2;
-    public static final int ALLOC_SLOT_START = 3;
+    public static final int SP_REG = 0;
+    public static final int ALLOC_SLOT_START = 1;
 
     public static Compiled compile(
             ELispRegExpParser.REAst ast, int maxGroup,
@@ -38,7 +34,7 @@ final class ELispRegExpCompiler {
             int slot = entry.getValue();
             groups[group] = slot;
         }
-        return new Compiled(body, groups, compiler.frameBuilder.build());
+        return new Compiled(body, groups, compiler.slotTop);
     }
 
     @Nullable
@@ -46,18 +42,20 @@ final class ELispRegExpCompiler {
 
     private final IntArrayList code = new IntArrayList();
     private final HashMap<Integer, Integer> groupSlotMap = new HashMap<>();
-    private final FrameDescriptor.Builder frameBuilder = FrameDescriptor.newBuilder();
+    private int slotTop = ALLOC_SLOT_START;
 
     private ELispRegExpCompiler(@Nullable ELispCharTable canon) {
         this.canon = canon;
-        frameBuilder.addSlots(1, FrameSlotKind.Long);
-        frameBuilder.addSlots(1, FrameSlotKind.Int);
-        frameBuilder.addSlots(1, FrameSlotKind.Object);
     }
 
+    private int allocateSlots(int count) {
+        int slot = slotTop;
+        slotTop += count;
+        return slot;
+    }
     private int allocateGroupPositionSlots(int groupIndex) {
         // start position slot and end position slot
-        int slot = frameBuilder.addSlots(2, FrameSlotKind.Long);
+        int slot = allocateSlots(2);
         groupSlotMap.put(groupIndex, slot);
         return slot;
     }
@@ -133,7 +131,7 @@ final class ELispRegExpCompiler {
             ELispRegExpParser.REAst child, REToken.Quantifier quantifier,
             int backtrackJump
     ) {
-        int slot = frameBuilder.addSlots(2, FrameSlotKind.Long);
+        int slot = allocateSlots(2);
         code.add(packSingleArgOpcode(OP_QUANT_PRE, slot));
         boolean greedy = quantifier.greedy();
         code.add(packSingleArgOpcode(greedy ? OP_QUANT$PRE : OP_QUANT$PRE_LAZY, backtrackJump - 1));
@@ -174,7 +172,7 @@ final class ELispRegExpCompiler {
                 }
             }
         }
-        int slot = frameBuilder.addSlots(1, FrameSlotKind.Long);
+        int slot = allocateSlots(1);
         // start+0:
         code.add(packSingleArgOpcode(OP_UNION_PRE, slot));
         // start+1: to-be-filled #1
@@ -434,7 +432,7 @@ final class ELispRegExpCompiler {
     record Compiled(
             @CompilerDirectives.CompilationFinal(dimensions = 1) int[] opcodes,
             @CompilerDirectives.CompilationFinal(dimensions = 1) int[] groupSlotMap,
-            FrameDescriptor frame
+            int slots
     ) {
     }
 }

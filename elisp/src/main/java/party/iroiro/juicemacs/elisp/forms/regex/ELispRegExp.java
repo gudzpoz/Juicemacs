@@ -24,7 +24,7 @@ public abstract class ELispRegExp {
         private final String regexp;
 
         RegExpFunctionNode(@Nullable TruffleLanguage<?> language, ELispRegExpNode node, String regexp) {
-            super(language, node.frame);
+            super(language);
             this.node = node;
             this.regexp = regexp;
         }
