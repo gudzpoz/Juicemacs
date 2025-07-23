@@ -23,7 +23,7 @@ final class ELispRegExpCompiler {
                                    @Nullable ELispCharTable canon) {
         ELispRegExpCompiler compiler = new ELispRegExpCompiler(canon);
         HalfCompiled searcher = compiler.compileAst(new ELispRegExpParser.REAst.Quantified(
-                new ELispRegExpParser.REAst.Atom(new REToken.AnyChar()),
+                new ELispRegExpParser.REAst.Atom(new REToken.ReallyAnyChar()),
                 new REToken.Quantifier(0, Integer.MAX_VALUE, false),
                 -1
         ));
@@ -131,6 +131,18 @@ final class ELispRegExpCompiler {
     }
 
     private HalfCompiled compileAlternations(ELispRegExpParser.REAst[][] alternations) {
+        if (alternations.length == 2 && alternations[0].length == 1 && alternations[1].length == 1) {
+            if (alternations[0][0] instanceof ELispRegExpParser.REAst.Atom(REToken.AnyChar())
+                    && alternations[1][0] instanceof ELispRegExpParser.REAst.Literal(int[] chars)
+                    && chars.length == 1 && chars[0] == '\n') {
+                return HalfCompiled.of(packNoArgOpcode(OP$ANY));
+            }
+            if (alternations[1][0] instanceof ELispRegExpParser.REAst.Atom(REToken.AnyChar())
+                    && alternations[0][0] instanceof ELispRegExpParser.REAst.Literal(int[] chars)
+                    && chars.length == 1 && chars[0] == '\n') {
+                return HalfCompiled.of(packNoArgOpcode(OP$ANY));
+            }
+        }
         @Nullable HalfCompiled compiled = null;
         for (ELispRegExpParser.REAst[] alternation : alternations) {
             HalfCompiled concat = concat(Arrays.stream(alternation).map(this::compileAst).toArray(HalfCompiled[]::new));
@@ -154,6 +166,15 @@ final class ELispRegExpCompiler {
                 boolean charRangesFitInInt,
                 boolean invert
         )) {
+            if (namedClasses.length == 0) {
+                if (charRanges.length == 1 && charRanges[0].min() == charRanges[0].max()) {
+                    if (invert) {
+                        return HalfCompiled.of(packSingleArgOpcode(OP$ANY_BUT, charRanges[0].min()));
+                    } else {
+                        return HalfCompiled.of(packSingleArgOpcode(OP$CHAR, charRanges[0].min()));
+                    }
+                }
+            }
             return processCharClass(namedClasses, charRanges, charRangesFitInInt, invert);
         }
         int opcode = switch (token) {
@@ -163,6 +184,7 @@ final class ELispRegExpCompiler {
                     packSingleInvertibleArgOpcode(OP$CATEGORY_CHAR, kind, invert);
             case REToken.SyntaxChar(byte kind, boolean invert) ->
                     packSingleInvertibleArgOpcode(OP$SYNTAX_CHAR, kind, invert);
+            case REToken.AnyChar() -> packSingleArgOpcode(OP$ANY_BUT, '\n');
             case REToken.Quantifier _,
                  REToken.GroupStart _,
                  REToken.GroupEnd _,
@@ -170,7 +192,7 @@ final class ELispRegExpCompiler {
                  REToken.CharClass _,
                  REToken.Char _ -> throw CompilerDirectives.shouldNotReachHere();
             default -> packNoArgOpcode(switch (token) {
-                case REToken.AnyChar() -> OP$ANY;
+                case REToken.ReallyAnyChar() -> OP$ANY;
                 case REToken.BufferPoint() -> OP$BUFFER_POINT;
                 case REToken.StartOfLine() -> OP$LINE_START;
                 case REToken.EndOfLine() -> OP$LINE_END;
@@ -534,6 +556,7 @@ final class ELispRegExpCompiler {
                     case OP$CHAR_CLASS -> "char_ranges!";
                     case OP$CHAR_CLASS_32 -> "char_classes_32!";
                     case OP$CHAR -> "char!";
+                    case OP$ANY_BUT -> "any_but!";
                     case OP$ANY -> "any!";
                     default -> throw ELispSignals.error("Unknown opcode: " + opcode);
                 };

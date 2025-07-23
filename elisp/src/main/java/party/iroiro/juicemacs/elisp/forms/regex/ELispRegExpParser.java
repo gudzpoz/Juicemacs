@@ -148,7 +148,7 @@ final class ELispRegExpParser {
                 }
                 yield new REAst.Literal(chars.asReversed().toArray());
             }
-            case AnyChar(),
+            case AnyChar(), ReallyAnyChar(),
                  StartOfString(), EndOfString(),
                  StartOfLine(), EndOfLine(),
                  StartOfWord(), EndOfWord(), WordBoundary(_),

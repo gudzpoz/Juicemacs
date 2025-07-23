@@ -332,8 +332,12 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     success = sp < searchEnd && getCharCanon(frame, input, sp, canon) == (arg & 0xFF_FF_FF);
                     stack[SP_SLOT] = sp + 1;
                 }
+                case OP$ANY_BUT -> {
+                    success = sp < searchEnd && getChar(frame, input, sp) != arg;
+                    stack[SP_SLOT] = sp + 1;
+                }
                 case OP$ANY -> {
-                    success = sp < searchEnd && getChar(frame, input, sp) != '\n';
+                    success = sp < searchEnd;
                     stack[SP_SLOT] = sp + 1;
                 }
                 default -> throw CompilerDirectives.shouldNotReachHere();

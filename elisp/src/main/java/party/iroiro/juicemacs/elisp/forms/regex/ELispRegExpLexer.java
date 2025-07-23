@@ -393,7 +393,10 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     }
 
     sealed interface REToken {
+        /// The `.` notation, matching any char but `\n`
         record AnyChar() implements REToken {}
+        /// Literally any char, emitted by the compiler/optimizer
+        record ReallyAnyChar() implements REToken {}
         /// @param c a Unicode codepoint
         record Char(int c) implements REToken {}
         record CharClass(
