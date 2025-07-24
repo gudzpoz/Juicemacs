@@ -56,15 +56,33 @@ final class ELispRegExpCompiler {
             @Override
             public void visit(int i, HalfCompiled.Single single) {
                 int code = single.code;
-                int opcode = code >>> 24;
-                if (opcode != OP_SPLIT) {
+                int jumpTableIndex = extractJumpInfo(i, code);
+                if (jumpTableIndex == -1) {
                     return;
+                }
+                codes.set(i, packSingleArgOpcode(OP_SPLIT, jumpTableIndex));
+            }
+
+            @Override
+            public void visit(int i, HalfCompiled.Multiple multiple) {
+                int code = multiple.args[0];
+                int jumpTableIndex = extractJumpInfo(i, code);
+                if (jumpTableIndex == -1) {
+                    return;
+                }
+                codes.set(i + 1, codes.get(i + 1) | jumpTableIndex);
+            }
+
+            private int extractJumpInfo(int i, int code) {
+                int opcode = code >>> 24;
+                if (opcode != OP$TRIE && opcode != OP_SPLIT) {
+                    return -1;
                 }
                 int splitRelTarget = (code << 8) >> 8;
                 int splitAbsTarget = i + 1 + splitRelTarget;
                 int jumpTableIndex = jumpTable.size() - 1;
                 jumpTable.add(splitAbsTarget);
-                codes.set(i, packSingleArgOpcode(OP_SPLIT, jumpTableIndex));
+                return jumpTableIndex;
             }
         });
         int jumpTableEntries = jumpTable.size() - 1;
@@ -141,6 +159,12 @@ final class ELispRegExpCompiler {
                     && alternations[0][0] instanceof ELispRegExpParser.REAst.Literal(int[] chars)
                     && chars.length == 1 && chars[0] == '\n') {
                 return HalfCompiled.of(packNoArgOpcode(OP$ANY));
+            }
+        }
+        if (alternations.length >= 2 && TrieBuilder.isBranchesExact(alternations)) {
+            @Nullable HalfCompiled trie = new TrieBuilder(canon).buildTrie(alternations);
+            if (trie != null) {
+                return trie;
             }
         }
         @Nullable HalfCompiled compiled = null;
@@ -556,6 +580,7 @@ final class ELispRegExpCompiler {
                     case OP$CHAR_CLASS -> "char_ranges!";
                     case OP$CHAR_CLASS_32 -> "char_classes_32!";
                     case OP$CHAR -> "char!";
+                    case OP$TRIE -> "trie!";
                     case OP$ANY_BUT -> "any_but!";
                     case OP$ANY -> "any!";
                     default -> throw ELispSignals.error("Unknown opcode: " + opcode);
@@ -584,6 +609,32 @@ final class ELispRegExpCompiler {
                 int code = args[0];
                 int opcode = code >> 24;
                 printFirst(i, code);
+                if (opcode == OP$TRIE) {
+                    int endStates = args[1];
+                    endStates >>= 16;
+                    int index = 2 + endStates;
+                    while (index < args.length) {
+                        int stateStart = index;
+                        int stateInfo = args[index++];
+                        int transitions = stateInfo & 0xFFFF;
+                        int endState = stateInfo >> 16;
+                        indent().append(stateStart).append(": ");
+                        for (int j = 0; j < transitions; j++) {
+                            int compact = args[index++];
+                            int c = compact & 0xFFFF;
+                            int rel = compact >> 16;
+                            sb.appendCodePoint(c).append("->").append(stateStart + rel);
+                            if (j < transitions - 1) {
+                                sb.append(", ");
+                            }
+                        }
+                        if (endState != -1) {
+                            sb.append(" (").append(endState).append(":sp += ").append(args[2 + endState]).append(')');
+                        }
+                        sb.append('\n');
+                    }
+                    return;
+                }
                 if (opcode == OP$CHAR_CLASS_32) {
                     displayCharClassBitFlags(args[1]);
                     for (int j = 2; j < args.length; j += 2) {
@@ -635,8 +686,9 @@ final class ELispRegExpCompiler {
             } else {
                 int opcode = code >> 24;
                 int arg = (code << 8) >> 8;
-                // Var-length instructions
-                if (opcode == OP$CHAR_CLASS || opcode == OP$CHAR_CLASS_32 || opcode == OP_JUMP_TABLE) {
+                // Var-prevLength instructions
+                if (opcode == OP$CHAR_CLASS || opcode == OP$CHAR_CLASS_32
+                        || opcode == OP_JUMP_TABLE || opcode == OP$TRIE) {
                     int[] opcodes = new int[arg + 1];
                     opcodes[0] = code;
                     for (int j = 0; j < arg; j++) {
@@ -656,6 +708,145 @@ final class ELispRegExpCompiler {
                 // Single-int instructions
                 visitor.visit(start, new HalfCompiled.Single(code));
             }
+        }
+    }
+
+    /// Builds the [ELispRegExpOpcode#OP$TRIE] instruction
+    ///
+    /// The [ELispRegExpOpcode#OP$TRIE] instruction tries to bring
+    /// similar optimization for Perl regexps into Juicemacs.
+    private static final class TrieBuilder {
+        /// States for the tries
+        ///
+        /// Each state consists of an end marker and pairs of chars and jumping states.
+        private final ArrayList<IntArrayList> states = new ArrayList<>();
+        private final IntArrayList lengths = new IntArrayList();
+        @Nullable
+        private final ELispCharTable canon;
+
+        public TrieBuilder(@Nullable ELispCharTable canon) {
+            this.canon = canon;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Nullable
+        private HalfCompiled buildTrie(ELispRegExpParser.REAst[][] alternations) {
+            states.add(IntArrayList.newListWith(-1));
+            ArrayList<TrieBranch> branches = new ArrayList<>();
+            // `alternations` are in reverse order, so this should place the first branches
+            // on top of the stack, so that `lengths` are of correct priorities.
+            for (ELispRegExpParser.REAst[] alternation : alternations) {
+                branches.add(new TrieBranch(alternation, 0, 0, 0, null));
+            }
+            loop:
+            while (!branches.isEmpty()) {
+                TrieBranch branch = branches.removeLast();
+                int state = branch.prevState;
+                int length = branch.prevLength;
+                for (int i = branch.i; i < branch.alternations.length; i++) {
+                    ELispRegExpParser.REAst alternation = branch.alternations[i];
+                    switch (alternation) {
+                        case ELispRegExpParser.REAst.Literal(int[] chars) -> {
+                            for (int c : chars) {
+                                state = createTransfer(state, c);
+                                if (state == -1) {
+                                    return null;
+                                }
+                                length++;
+                            }
+                        }
+                        case ELispRegExpParser.REAst.Group(int _, ELispRegExpParser.REAst[][] nested) -> {
+                            for (ELispRegExpParser.REAst[] inner : nested) {
+                                branches.add(new TrieBranch(inner, 0, length, state,
+                                        new TrieBranch(branch.alternations, i + 1, -1, -1, branch.next)));
+                            }
+                            continue loop;
+                        }
+                        default -> throw new UnsupportedOperationException();
+                    }
+                }
+                @Nullable TrieBranch next = branch.next;
+                if (next == null) {
+                    int index =lengths.size();
+                    lengths.add(length);
+                    states.get(state).set(0, index);
+                } else {
+                    branches.add(new TrieBranch(next.alternations, next.i, length, state, next.next));
+                }
+            }
+            if (lengths.size() > Short.MAX_VALUE) {
+                return null;
+            }
+            return emitTrie();
+        }
+
+        private HalfCompiled emitTrie() {
+            int[] stateOffsets = new int[states.size()];
+            stateOffsets[0] = 0;
+            for (int i = 1; i < states.size(); i++) {
+                stateOffsets[i] = stateOffsets[i - 1] + (states.get(i - 1).size() / 2) + 1;
+            }
+            IntArrayList code = new IntArrayList();
+            code.add(0);
+            code.add(lengths.size() << 16);
+            code.addAll(lengths);
+            for (int i = 0; i < states.size(); i++) {
+                IntArrayList state = states.get(i);
+                int endState = state.get(0);
+                code.add((state.size() / 2) | (endState << 16));
+                for (int j = 1; j < state.size(); j += 2) {
+                    int c = state.get(j);
+                    int next = state.get(j + 1);
+                    int rel = stateOffsets[next] - stateOffsets[i];
+                    code.add(c | (rel << 16));
+                }
+            }
+            code.set(0, packSingleArgOpcode(OP$TRIE, code.size() - 1));
+            return new HalfCompiled.Multiple(code.toArray());
+        }
+
+        private int createTransfer(int state, int c) {
+            c = canon == null ? c : ELispRegExpNode.translate(c, canon);
+            IntArrayList row = states.get(state);
+            for (int i = 1; i < row.size(); i += 2) {
+                if (row.get(i) == c) {
+                    return row.get(i + 1);
+                }
+            }
+            if (c > 0xFFFF) {
+                return -1;
+            }
+            row.add(c);
+            int newState = states.size();
+            row.add(newState);
+            states.add(IntArrayList.newListWith(-1));
+            return newState;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static boolean isBranchesExact(ELispRegExpParser.REAst[][] alternations) {
+            for (ELispRegExpParser.REAst[] alternation : alternations) {
+                for (ELispRegExpParser.REAst child : alternation) {
+                    if (!(
+                            child instanceof ELispRegExpParser.REAst.Literal
+                                    || (
+                                    child instanceof ELispRegExpParser.REAst.Group(
+                                            int index, ELispRegExpParser.REAst[][] nested
+                                    ) && index == -1 && isBranchesExact(nested)
+                            )
+                    )) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        record TrieBranch(
+                ELispRegExpParser.REAst[] alternations, int i,
+                int prevLength, int prevState,
+                @Nullable TrieBranch next
+        ) {
         }
     }
 

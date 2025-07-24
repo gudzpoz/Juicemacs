@@ -140,9 +140,7 @@ final class ELispRegExpParser {
                         stack.removeLast();
                         chars.add(prev);
                     } else {
-                        if (stack.getLast() instanceof Quantifier) {
-                            quantifierLookaheadChar = chars.getLast();
-                        }
+                        quantifierLookaheadChar = chars.getLast();
                         break;
                     }
                 }
@@ -193,6 +191,7 @@ final class ELispRegExpParser {
                     stack.removeLast();
                     alternations.add(branch);
                     branch = new ArrayList<>();
+                    quantifierLookaheadChar = -1;
                 }
                 default -> branch.add(processStackTop(true));
             }
@@ -216,6 +215,10 @@ final class ELispRegExpParser {
                 };
             }
         }
+        /// A group with nested unions `(a|b)`, capturing or not
+        ///
+        /// @param index -1 if non-capturing
+        /// @param alternations the unions, note that it is in reverse order
         record Group(int index, REAst[][] alternations) implements REAst {
             @Override
             public int minLength() {

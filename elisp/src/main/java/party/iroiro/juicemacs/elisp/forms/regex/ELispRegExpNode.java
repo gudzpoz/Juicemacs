@@ -230,7 +230,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     }
                     throw CompilerDirectives.shouldNotReachHere();
                 }
-                case OP_SPLIT -> stacks.forkStack(stack, arg);
+                case OP_SPLIT -> stacks.forkStack(stack)[PC_SLOT] = arg;
                 case OP_LOOKAHEAD_CMP ->
                         cmpFlags = sp < searchEnd
                         ? Integer.compare(getCharNode.execute(input, sp), arg)
@@ -321,6 +321,16 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                     success = sp < searchEnd && getCharCanon(input, sp, canon) == (arg & 0xFF_FF_FF);
                     stack[SP_SLOT] = sp + 1;
                 }
+                case OP$TRIE -> {
+                    int deltaSp = trieLookup(bci, stacks, stack, input, sp, searchEnd, canon);
+                    if (deltaSp == -1) {
+                        success = false;
+                    } else {
+                        stack[SP_SLOT] = sp + deltaSp;
+                    }
+                    bci += arg;
+                    CompilerAsserts.partialEvaluationConstant(bci);
+                }
                 case OP$ANY_BUT -> {
                     success = sp < searchEnd && getCharNode.execute(input, sp) != arg;
                     stack[SP_SLOT] = sp + 1;
@@ -336,6 +346,62 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 return Boolean.FALSE;
             }
         }
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+    private int trieLookup(
+            int bci, LongArrayStackPool stacks, long[] stack,
+            Object input, long spStart, long searchEnd,
+            @Nullable ELispCharTable canon
+    ) {
+        CompilerAsserts.partialEvaluationConstant(bci);
+        final int paths = code[bci] >> 16;
+        final int[] pathStats = new int[paths + 2];
+        int pc = bci + 1 + paths;
+        long sp = 0;
+        loop:
+        while (true) {
+            int stateInfo = code[pc];
+            int transitions = stateInfo & 0xFFFF;
+            int endPath = stateInfo >> 16;
+            if (endPath != -1 && pathStats[2 + endPath] == 0) {
+                pathStats[0]++; // count
+                pathStats[1] = endPath; // index
+                pathStats[2 + endPath] = 1;
+            }
+            int c = spStart + sp < searchEnd ? getCharCanon(input, spStart + sp++, canon) : -1;
+            for (int i = 0; i < transitions; i++) {
+                int transition = code[pc + 1 + i];
+                int expected = transition & 0xFFFF;
+                if (c == expected) {
+                    pc += transition >> 16;
+                    continue loop;
+                }
+            }
+            break;
+        }
+        if (pathStats[0] == 0) {
+            return -1;
+        } else if (pathStats[0] == 1) {
+            return code[bci + 1 + pathStats[1]];
+        }
+        return trieCommit(bci, stacks, stack, spStart, pathStats);
+    }
+
+    private int trieCommit(int bci, LongArrayStackPool stacks, long[] stack, long spStart, int[] pathStats) {
+        int now = -1;
+        for (int i = 2; i < pathStats.length; i++) {
+            if (pathStats[i] != 0) {
+                if (now == -1) {
+                    now = code[bci + 1 + i - 2];
+                } else {
+                    long[] newStack = stacks.forkStack(stack);
+                    newStack[SP_SLOT] = spStart + code[bci + 1 + i - 2];
+                    newStack[PC_SLOT] = code[bci] & 0xFFFF;
+                }
+            }
+        }
+        return now;
     }
 
     private boolean matchCharClassBitMap(Object buffer, int c, int bits) {
@@ -458,7 +524,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
             stacks[0] = initStack;
         }
 
-        private void forkStack(long[] stack, int newPc) {
+        private long[] forkStack(long[] stack) {
             long[] copy;
             top++;
             if (top < stackCount) {
@@ -472,7 +538,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 stacks[top] = copy;
                 stackCount++;
             }
-            copy[PC_SLOT] = newPc;
+            return copy;
         }
 
         private boolean isEmpty() {

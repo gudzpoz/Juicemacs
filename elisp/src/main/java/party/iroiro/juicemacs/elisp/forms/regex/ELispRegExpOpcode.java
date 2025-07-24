@@ -44,8 +44,9 @@ abstract class ELispRegExpOpcode {
     public static final int OP$CHAR_CLASS    = 22;
     public static final int OP$CHAR_CLASS_32 = 23;
     public static final int OP$CHAR          = 24;
-    public static final int OP$ANY_BUT       = 25;
-    public static final int OP$ANY           = 26;
+    public static final int OP$TRIE          = 25;
+    public static final int OP$ANY_BUT       = 26;
+    public static final int OP$ANY           = 27;
     //#endregion Opcode: Others
 
     public static final int IN_PLACE_ARG_MASK = 0xFF_FF_FF;
