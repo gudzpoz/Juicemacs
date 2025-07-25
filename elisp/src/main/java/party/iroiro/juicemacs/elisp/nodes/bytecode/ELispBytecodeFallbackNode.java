@@ -107,6 +107,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         // stackTops is used to check if each PC in the function
         // has deterministic stack top positions.
         int[] stackTops = new int[bytes.length];
+        // TODO
+        this.stackTops = stackTops;
         Arrays.fill(stackTops, Integer.MIN_VALUE);
 
         IntArrayList exceptionJumps = new IntArrayList();
@@ -423,6 +425,9 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         final ELispContext context = getContext();
         loop:
         while (bci < bytecode.length) {
+//            if (top != this.stackTops[bci]) {
+//                throw invalidFunction(frame);
+//            }
             try {
                 CompilerAsserts.partialEvaluationConstant(bci);
                 CompilerAsserts.partialEvaluationConstant(top);

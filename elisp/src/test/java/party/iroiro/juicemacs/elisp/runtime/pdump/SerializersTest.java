@@ -73,7 +73,7 @@ public class SerializersTest {
         restored = roundTrip(tailRef);
         assertTrue(tailRef.lispEquals(restored));
         assertSame(restored.car(), restored.get(1));
-        assertSame(restored.car(), restored.listIterator(2).currentCons());
+        assertSame(restored.car(), restored.listIterator(3).currentCons());
     }
 
     @Test

@@ -529,19 +529,20 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             this.args[0] = ReadFunctionObjectNodes.createFormCardinal(cons.car());
         }
 
-        @ExplodeLoop
-        private Object[] evalArgs(VirtualFrame frame) {
-            int length = Objects.requireNonNull(this.args).length;
-            Object[] args = new Object[length];
-            for (int i = 0; i < length; i++) {
-                args[i] = this.args[i].executeGeneric(frame);
-            }
-            return args;
-        }
-
         @Specialization
         public Object call(VirtualFrame frame, @Cached(inline = true) FunctionObjectCallNode dispatchNode) {
-            return dispatchNode.executeCall(this, cons.car(), evalArgs(frame));
+            int length = Objects.requireNonNull(this.args).length;
+            Object[] args = new Object[length];
+            Object function = this.args[0].executeGeneric(frame);
+            if (function instanceof ELispCons) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return replace(new LazyConsExpressionNode(cons)).executeGeneric(frame);
+            }
+            args[0] = function;
+            for (int i = 1; i < length; i++) {
+                args[i] = this.args[i].executeGeneric(frame);
+            }
+            return dispatchNode.executeCall(this, cons.car(), args);
         }
     }
 

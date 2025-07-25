@@ -119,6 +119,31 @@ public class BuiltInSearchTest extends BaseFormTest {
         }
     }
 
+    @Test
+    void testSearchBackwards() {
+        try (Context context = getTestingContext()) {
+            Value value = context.eval("elisp", "(re-search-forward \"^\")");
+            assertEquals(1L, value.asLong());
+            value = context.eval("elisp", "(re-search-backward \"^\")");
+            assertEquals(1L, value.asLong());
+
+            value = context.eval("elisp", """
+                    (insert "aaaa")
+                    (goto-char 3)
+                    (re-search-backward "a+")
+                    (+ (* 100 (car (match-data)))
+                       (nth 1 (match-data)))
+                    """);
+            assertEquals(203L, value.asLong());
+
+            value = context.eval("elisp", """
+                    (goto-char (point-max))
+                    (re-search-backward "$")
+                    """);
+            assertEquals(5L, value.asLong());
+        }
+    }
+
     @SuppressWarnings("NotNullFieldNotInitialized")
     private Context context;
 

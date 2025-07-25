@@ -16,7 +16,7 @@ public class BuiltInBufferTest {
             File file = new File("emacs/lisp/ldefs-boot.el");
             Value value = context.eval("elisp", """
                     (set-buffer (get-buffer-create " *test*"))
-                    (insert-file-contents "emacs/lisp/ldefs-boot.el")
+                    (insert-file-contents "elisp/emacs/lisp/ldefs-boot.el")
                     (length (buffer-string))
                     """);
             assertEquals(file.length(), value.asLong());

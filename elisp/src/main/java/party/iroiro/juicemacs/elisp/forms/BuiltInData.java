@@ -1962,8 +1962,18 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIndirectVariable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void indirectVariable(Object object) {
-            throw new UnsupportedOperationException();
+        public Object indirectVariable(Object object) {
+            if (!(toSym(object) instanceof ELispSymbol symbol)) {
+                return object;
+            }
+            ELispContext context = getContext();
+            while (true) {
+                Optional<ValueStorage> storage = context.getStorageLazy(symbol);
+                if (storage.isEmpty() || !(storage.get().getAnyValue() instanceof ELispSymbol next)) {
+                    return symbol;
+                }
+                symbol = next;
+            }
         }
     }
 

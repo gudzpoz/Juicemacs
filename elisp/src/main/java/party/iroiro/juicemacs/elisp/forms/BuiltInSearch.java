@@ -129,19 +129,12 @@ public class BuiltInSearch extends ELispBuiltIns {
             repeat = Math.abs(repeat);
 
             long at = buffer.getPoint();
-            if (!forward) {
-                at--;
-                if (at < buffer.pointMin()) {
-                    return false;
-                }
-            }
-
             long startEnd, end;
             if (forward) {
                 startEnd = end = notNilOr(bound, buffer.pointMax());
             } else {
                 startEnd = notNilOr(bound, buffer.pointMin());
-                end = buffer.pointMax();
+                end = buffer.getPoint();
             }
 
             for (long i = 0; i < repeat; i++) {
@@ -237,9 +230,9 @@ public class BuiltInSearch extends ELispBuiltIns {
                 if (forward) {
                     return searchForwardOnce(buffer, start, startEnd);
                 }
-                while (start != startEnd) {
+                while (start >= startEnd) {
                     if (currentMatch(buffer, start, searchEnd)) {
-                        return start - 1;
+                        return start;
                     }
                     start--;
                 }

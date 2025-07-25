@@ -1009,7 +1009,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static Object elt(ELispCons sequence, long n) {
             try {
                 return sequence.get((int) n);
-            } catch (IndexOutOfBoundsException ignored) {
+            } catch (IndexOutOfBoundsException | NoSuchElementException ignored) {
                 return false;
             }
         }

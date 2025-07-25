@@ -9,6 +9,8 @@ import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.parser.CodePointReader;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -45,6 +47,18 @@ public class BuiltInLRead extends ELispBuiltIns {
             Object stream, Object start, Object end, boolean locateSymbols
     ) {
         // TODO: Handle stream instanceof ELispBuffer, ELispCons
+        if (stream instanceof ELispBuffer buffer) {
+            long point = buffer.getPoint();
+            ELispLexer lexer = new ELispLexer(CodePointReader.from(buffer, point));
+            ELispParser parser = new ELispParser(ELispContext.get(null), lexer);
+            try {
+                Object lisp = parser.nextLisp();
+                buffer.setPoint(point + lexer.getCodePointOffset());
+                return lisp;
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, stream);
+            }
+        }
         ELispString s = asStr(stream);
         Source source = Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
         try {

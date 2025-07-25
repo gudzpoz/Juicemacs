@@ -39,7 +39,13 @@ public class BuiltInEvalTest extends BaseFormTest {
             "(setq aaa 1)", 1L,
             "(eq 'aaa #'aaa)", true,
             "(progn (setq aaa 42) (defvaralias 'aaaa 'aaa) aaaa)", 42L,
-            "(progn (defvar aaa (1+ 11)) aaa)", 12L,
+            "(progn (defvar aaa-new-var (1+ 11)) aaa-new-var)", 12L,
+            """
+            (progn
+              (setq new-var-before-defvar 1)
+              (defvar new-var-before-defvar 0)
+              new-var-before-defvar)
+            """, 1L,
             "(progn (defconst aaaconst (1+ 11)) aaaconst) ;; no-warm-up-test", 12L,
             "(let ((a 1)) (let* ((a 2) (b (+ a 1))) b))", 3L,
             "(let ((a 1)) (let  ((a 2) (b (+ a 1))) b))", 2L,

@@ -91,8 +91,8 @@ public sealed abstract class CodePointReader implements AutoCloseable {
         return new ByteReader(reader);
     }
 
-    public static CodePointReader from(ELispBuffer buffer) {
-        return new IteratorReader(buffer.iterator(buffer.pointMin(), buffer.pointMax()));
+    public static CodePointReader from(ELispBuffer buffer, long point) {
+        return new IteratorReader(buffer.iterator(point, buffer.pointMax()));
     }
 
     public static CodePointReader from(ELispBuffer buffer, long start, boolean invert) {

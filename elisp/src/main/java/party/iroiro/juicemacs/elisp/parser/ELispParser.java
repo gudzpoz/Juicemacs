@@ -316,7 +316,7 @@ public class ELispParser {
     @CompilerDirectives.TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source, ELispBuffer buffer)
             throws IOException {
-        ELispParser parser = new ELispParser(context, new ELispLexer(CodePointReader.from(buffer)));
+        ELispParser parser = new ELispParser(context, new ELispLexer(CodePointReader.from(buffer, buffer.pointMin())));
         boolean debug = context instanceof ELispContext c && c.options().debug();
         return parse(language, parser, source, debug);
     }
