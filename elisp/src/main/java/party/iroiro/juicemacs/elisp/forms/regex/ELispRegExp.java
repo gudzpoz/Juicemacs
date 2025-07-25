@@ -92,7 +92,7 @@ public abstract class ELispRegExp {
                                                     @Nullable MuleString whitespaceRegExp,
                                                     @Nullable ELispCharTable canon) {
         ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp);
-        ELispRegExpParser.REAst ast = parser.parse();
+        REAst ast = parser.parse();
         return ELispRegExpCompiler.compile(ast, parser.getMaxGroup(), canon);
     }
 

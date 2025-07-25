@@ -6,13 +6,12 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 
-final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
+final class ELispRegExpLexer implements Iterator<REToken> {
     private final MuleStringReader reader;
     private boolean hasPreviousPattern = false;
 
@@ -213,7 +212,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             CharClassContent content = namedCharClass();
             if (content != null) {
                 if (lastChar != -1) {
-                    contents.add(new CharClassContent.CharRange(lastChar));
+                    contents.add(new CharClassContent.Range(lastChar));
                     lastChar = -1;
                 }
                 contents.add(content);
@@ -225,21 +224,21 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
             int c = reader.next();
             if (c == ']') {
                 if (lastChar != -1) {
-                    contents.add(new CharClassContent.CharRange(lastChar));
+                    contents.add(new CharClassContent.Range(lastChar));
                 }
                 break;
             }
             if (c == '-') {
                 if (lastChar == -1 || reader.peek() == ']') {
-                    contents.add(new CharClassContent.CharRange('-', '-'));
+                    contents.add(new CharClassContent.Range('-', '-'));
                 } else {
-                    contents.add(new CharClassContent.CharRange(lastChar, reader.next()));
+                    contents.add(new CharClassContent.Range(lastChar, reader.next()));
                 }
                 lastChar = -1;
                 continue;
             }
             if (lastChar != -1) {
-                contents.add(new CharClassContent.CharRange(lastChar));
+                contents.add(new CharClassContent.Range(lastChar));
             }
             lastChar = c;
         }
@@ -247,13 +246,13 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
         hasPreviousPattern = true;
         return REToken.CharClass.preprocess(contents.toArray(new CharClassContent[0]), invert);
     }
-    private CharClassContent.@Nullable NamedCharClass namedCharClass() {
+    private CharClassContent.@Nullable Named namedCharClass() {
         if (reader.unexpectedNext((byte) '[', (byte) ':')) {
             return null;
         }
         long index = reader.index + 2; // skip opening "[:"
         MuleString cache = reader.string;
-        long limit = Math.min(index + CharClassContent.NamedCharClass.MAX_NAME_LENGTH, cache.length() - 2);
+        long limit = Math.min(index + CharClassContent.Named.MAX_NAME_LENGTH, cache.length() - 2);
         long end = index;
         for (; end <= limit; end++) {
             if (cache.codePointAt(end) == ':' && cache.codePointAt(end + 1) == ']') {
@@ -263,7 +262,7 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
                 }
                 reader.consume(end - reader.index + 2);
                 // TODO: Handle invalid exceptions
-                return CharClassContent.NamedCharClass.valueOf(s.toString());
+                return CharClassContent.Named.valueOf(s.toString());
             }
         }
         return null;
@@ -351,114 +350,6 @@ final class ELispRegExpLexer implements Iterator<ELispRegExpLexer.REToken> {
     private REToken normalChar(int c) {
         hasPreviousPattern = true;
         return new REToken.Char(c);
-    }
-
-    sealed interface CharClassContent {
-        @SuppressWarnings("PMD.FieldNamingConventions")
-        enum NamedCharClass implements CharClassContent {
-            alnum(0),
-            alpha(1),
-            ascii(2),
-            blank(3),
-            cntrl(4),
-            digit(5),
-            graph(6),
-            lower(7),
-            multibyte(8),
-            nonascii(9),
-            print(10),
-            punct(11),
-            space(12),
-            unibyte(13),
-            upper(14),
-            word(15),
-            xdigit(16);
-
-            static final int MAX_NAME_LENGTH = Arrays.stream(values()).mapToInt((e) -> e.name().length()).max().orElse(16);
-            public final int mask;
-
-            NamedCharClass(int i) {
-                this.mask = 1 << i;
-            }
-
-            public boolean match(int bits) {
-                return (mask & bits) != 0;
-            }
-        }
-        record CharRange(int min, int max) implements CharClassContent {
-            CharRange(int single) {
-                this(single, single);
-            }
-        }
-    }
-
-    sealed interface REToken {
-        /// The `.` notation, matching any char but `\n`
-        record AnyChar() implements REToken {}
-        /// Literally any char, emitted by the compiler/optimizer
-        record ReallyAnyChar() implements REToken {}
-        /// @param c a Unicode codepoint
-        record Char(int c) implements REToken {}
-        record CharClass(
-                CharClassContent.NamedCharClass[] namedClasses,
-                CharClassContent.CharRange[] charRanges,
-                boolean charRangesFitInInt,
-                boolean invert
-        ) implements REToken {
-            static REToken preprocess(CharClassContent[] array, boolean invert) {
-                ArrayList<CharClassContent.NamedCharClass> namedClasses = new ArrayList<>();
-                ArrayList<CharClassContent.CharRange> charRanges = new ArrayList<>();
-                boolean charRangesFitInInt = true;
-                for (CharClassContent content : array) {
-                    switch (content) {
-                        case CharClassContent.CharRange range when range.min <= range.max -> {
-                            charRangesFitInInt &= range.max <= 0xFFFF;
-                            charRanges.add(range);
-                        }
-                        case CharClassContent.NamedCharClass named -> namedClasses.add(named);
-                        default -> {}
-                    }
-                }
-                if (namedClasses.isEmpty() && charRanges.size() == 1 && !invert) {
-                    CharClassContent.CharRange first = charRanges.getFirst();
-                    if (first.min == first.max) {
-                        return new Char(first.min);
-                    }
-                }
-                return new CharClass(
-                        namedClasses.toArray(CharClassContent.NamedCharClass[]::new),
-                        charRanges.toArray(CharClassContent.CharRange[]::new),
-                        charRangesFitInInt,
-                        invert
-                );
-            }
-        }
-        record SyntaxChar(byte kind, boolean invert) implements REToken {}
-        record CategoryChar(byte kind, boolean invert) implements REToken {}
-        /// @param index the explicit group index, -1 if non-capturing, 0 if auto-numbered
-        record GroupStart(int index) implements REToken {}
-        record GroupEnd() implements REToken {}
-        /// @param min the minimum number of repetitions
-        /// @param max the maximum number of repetitions
-        /// @param greedy true if the quantifier is greedy
-        record Quantifier(int min, int max, boolean greedy) implements REToken {}
-
-        record Alternation() implements REToken {}
-
-        record StartOfString() implements REToken {}
-        record EndOfString() implements REToken {}
-        record StartOfLine() implements REToken {}
-        record EndOfLine() implements REToken {}
-        record BufferPoint() implements REToken {}
-
-        record StartOfWord() implements REToken {}
-        record EndOfWord() implements REToken {}
-        record WordBoundary(boolean invert) implements REToken {}
-
-        record StartOfSymbol() implements REToken {}
-        record EndOfSymbol() implements REToken {}
-
-        record BackReference(int index) implements REToken {}
     }
 
     private static final class MuleStringReader {

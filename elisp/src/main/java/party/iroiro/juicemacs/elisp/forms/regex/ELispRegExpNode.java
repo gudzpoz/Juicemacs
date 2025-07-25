@@ -22,7 +22,7 @@ import java.util.Arrays;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.lowerCaseP;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.upperCaseP;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
-import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.CharClassContent.NamedCharClass.*;
+import static party.iroiro.juicemacs.elisp.forms.regex.CharClassContent.Named.*;
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCharTable;
@@ -232,16 +232,19 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 }
                 case OP_SPLIT -> stacks.forkStack(stack)[PC_SLOT] = arg;
                 case OP_LOOKAHEAD_CMP ->
-                        cmpFlags = sp < searchEnd
-                        ? Integer.compare(getCharNode.execute(input, sp), arg)
-                        : -1;
+                        cmpFlags = searchEnd <= sp || getCharCanon(input, sp, canon) == arg ? 0 : -1;
+                case OP_LOOKAHEAD_BIT_HASH ->
+                        cmpFlags = searchEnd <= sp || REAst.checkCharMask(getCharCanon(input, sp, canon), arg)
+                                ? 0 : -1;
+                case OP_LOOKBEHIND_CMP ->
+                        cmpFlags = sp <= pointMin || getCharCanon(input, sp - 1, canon) == arg ? 0 : -1;
                 case OP$STR_START -> success = sp == pointMin;
                 case OP$STR_END -> success = sp == pointMax;
                 case OP$LINE_START -> success = sp == pointMin
-                        || getCharNode.execute(input, sp) == '\n';
+                        || getCharNode.execute(input, sp - 1) == '\n';
                 case OP$LINE_END -> success = sp == pointMax
                         || getCharNode.execute(input, sp) == '\n';
-                case OP$BUFFER_POINT -> success = input instanceof ELispBuffer in && in.getPoint() - 1 == sp;
+                case OP$BUFFER_POINT -> success = input instanceof ELispBuffer in && in.getPoint() == sp;
                 case OP$WORD_START, OP$WORD_END, OP$WORD_BOUND -> {
                     boolean hasWordBefore = sp != pointMin && isWord(buffer, getCharNode.execute(input, sp - 1));
                     boolean hasWordAfter = sp != pointMax && isWord(buffer, getCharNode.execute(input, sp));

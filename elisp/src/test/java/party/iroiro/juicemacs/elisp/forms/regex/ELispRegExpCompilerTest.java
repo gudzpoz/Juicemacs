@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ELispRegExpCompilerTest {
     private Pair<ELispRegExpCompiler.Compiled, ELispRegExp.CompiledRegExp> compile(String input) {
         ELispRegExpParser test = new ELispRegExpParser(MuleString.fromString(input), null);
-        ELispRegExpParser.REAst ast = test.parse();
+        REAst ast = test.parse();
         ELispRegExpCompiler.Compiled compiled = ELispRegExpCompiler.compile(ast, test.getMaxGroup(), null);
         ELispRegExp.RegExpFunctionNode node =
                 new ELispRegExp.RegExpFunctionNode(null, new ELispRegExpNode(compiled, false), input);

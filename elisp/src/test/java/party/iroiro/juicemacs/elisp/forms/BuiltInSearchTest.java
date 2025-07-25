@@ -168,6 +168,11 @@ public class BuiltInSearchTest extends BaseFormTest {
             assertEquals("some-package-0.1.0beta1".length(), test.versionRegExp());
         }
         System.out.println((System.nanoTime() - start) / 1_000_000.);
+        start = System.nanoTime();
+        for (int i = 0; i < 1000000; i++) {
+            assertEquals("some-package-0.1.0beta1".length(), test.versionRegExp());
+        }
+        System.out.println((System.nanoTime() - start) / 1_000_000.);
         test.tearDown();
     }
 

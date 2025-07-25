@@ -7,21 +7,18 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.REToken.*;
+import static party.iroiro.juicemacs.elisp.forms.regex.REToken.*;
 
 final class ELispRegExpParser {
     @Nullable
     private final MuleString whitespaceRegExp;
-    private final ArrayList<ELispRegExpLexer.REToken> stack;
+    private final ArrayList<REToken> stack;
 
     private ELispRegExpLexer lexer;
     @Nullable
     private ELispRegExpLexer parentLexer;
-
-    private int quantifierLookaheadChar;
 
     private int groupIndex;
     private final IntArrayList processingGroupIndices;
@@ -32,7 +29,6 @@ final class ELispRegExpParser {
         this.whitespaceRegExp = whitespaceRegExp;
         lexer = new ELispRegExpLexer(regExp);
         stack = new ArrayList<>();
-        quantifierLookaheadChar = -1;
         groupIndex = 0;
         processingGroupIndices = new IntArrayList();
         availableGroupIndices = new IntArrayList();
@@ -63,7 +59,7 @@ final class ELispRegExpParser {
         return root;
     }
 
-    private void handle(ELispRegExpLexer.REToken token) {
+    private void handle(REToken token) {
         switch (token) {
             case GroupStart(int index) when index == 0 -> {
                 groupIndex++;
@@ -103,7 +99,7 @@ final class ELispRegExpParser {
                 boolean asIs = false;
                 int whitespaces = 1;
                 while (lexer.hasNext()) {
-                    ELispRegExpLexer.REToken next = lexer.peek();
+                    REToken next = lexer.peek();
                     if (next instanceof Char(int space) && space == ' ') {
                         whitespaces++;
                     } else {
@@ -127,7 +123,7 @@ final class ELispRegExpParser {
     }
 
     private REAst processStackTop(boolean compact) {
-        ELispRegExpLexer.REToken top = stack.removeLast();
+        REToken top = stack.removeLast();
         return switch (top) {
             case Char(int c) -> {
                 if (!compact) {
@@ -140,7 +136,6 @@ final class ELispRegExpParser {
                         stack.removeLast();
                         chars.add(prev);
                     } else {
-                        quantifierLookaheadChar = chars.getLast();
                         break;
                     }
                 }
@@ -164,9 +159,7 @@ final class ELispRegExpParser {
     }
 
     private REAst lookaheadQuantifier(Quantifier quantifier) {
-        int lookahead = quantifierLookaheadChar;
-        quantifierLookaheadChar = -1;
-        return new REAst.Quantified(processStackTop(false), quantifier, lookahead);
+        return new REAst.Quantified(processStackTop(false), quantifier);
     }
 
     private REAst collectGroup() {
@@ -176,7 +169,7 @@ final class ELispRegExpParser {
             if (stack.isEmpty()) {
                 throw ELispSignals.invalidRegexp("Unmatched ) or \\)");
             }
-            ELispRegExpLexer.REToken peek = stack.getLast();
+            REToken peek = stack.getLast();
             switch (peek) {
                 case GroupStart(int index) -> {
                     stack.removeLast();
@@ -191,78 +184,10 @@ final class ELispRegExpParser {
                     stack.removeLast();
                     alternations.add(branch);
                     branch = new ArrayList<>();
-                    quantifierLookaheadChar = -1;
                 }
                 default -> branch.add(processStackTop(true));
             }
         }
     }
 
-    sealed interface REAst {
-        default int minLength() {
-            return 0;
-        }
-
-        record Atom(ELispRegExpLexer.REToken token) implements REAst {
-            @Override
-            public int minLength() {
-                return switch (token) {
-                    case AnyChar _,
-                         CharClass _,
-                         CategoryChar _,
-                         SyntaxChar _ -> 1;
-                    default -> 0;
-                };
-            }
-        }
-        /// A group with nested unions `(a|b)`, capturing or not
-        ///
-        /// @param index -1 if non-capturing
-        /// @param alternations the unions, note that it is in reverse order
-        record Group(int index, REAst[][] alternations) implements REAst {
-            @Override
-            public int minLength() {
-                int min = Integer.MAX_VALUE;
-                for (REAst[] alternation : alternations) {
-                    int length = 0;
-                    for (REAst child : alternation) {
-                        length += child.minLength();
-                    }
-                    min = Math.min(min, length);
-                }
-                return min;
-            }
-
-            @Override
-            public String toString() {
-                StringBuilder builder = new StringBuilder("Group{index=");
-                builder.append(index).append(", alternations=[");
-                for (REAst[] alternation : alternations) {
-                    builder.append(Arrays.toString(alternation)).append(", ");
-                }
-                return builder.append("]}").toString();
-            }
-        }
-        record Literal(int[] chars) implements REAst {
-            @Override
-            public int minLength() {
-               return chars.length;
-            }
-
-            @Override
-            public String toString() {
-                StringBuilder builder = new StringBuilder("Literal{chars=[");
-                for (int c : chars) {
-                    builder.appendCodePoint(c);
-                }
-                return builder.append("]}").toString();
-            }
-        }
-        record Quantified(REAst child, Quantifier quantifier, int lookahead) implements REAst {
-            @Override
-            public int minLength() {
-                return child.minLength() * quantifier.min();
-            }
-        }
-    }
 }

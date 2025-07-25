@@ -10,7 +10,6 @@ import org.eclipse.jdt.annotation.Nullable;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
-import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpLexer.REToken;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 
@@ -19,20 +18,22 @@ import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
 @SuppressWarnings({"PMD.NoBoxedPrimitivesRule", "PMD.ShortMethodName"})
 final class ELispRegExpCompiler {
 
-    public static Compiled compile(ELispRegExpParser.REAst ast, int maxGroup,
+    public static Compiled compile(REAst ast, int maxGroup,
                                    @Nullable ELispCharTable canon) {
         ELispRegExpCompiler compiler = new ELispRegExpCompiler(canon);
-        HalfCompiled searcher = compiler.compileAst(new ELispRegExpParser.REAst.Quantified(
-                new ELispRegExpParser.REAst.Atom(new REToken.ReallyAnyChar()),
-                new REToken.Quantifier(0, Integer.MAX_VALUE, false),
-                -1
-        ));
-        HalfCompiled body = HalfCompiled.of(
+        REAst.Quantified searcher = new REAst.Quantified(
+                new REAst.Atom(new REToken.ReallyAnyChar()),
+                new REToken.Quantifier(0, Integer.MAX_VALUE, false)
+        );
+        HalfCompiled main = compiler.compileAst(new REAst.Group( -1, new REAst[][]{{
                 searcher,
-                compiler.compileAst(ast),
+                ast,
+        }}), null);
+        HalfCompiled body = HalfCompiled.of(
+                main,
                 packNoArgOpcode(OP_MATCH)
         );
-        int[] code = compileWithJumpTable(body, searcher.length());
+        int[] code = compileWithJumpTable(body, findBodyEntry(main));
 
         int[] groups = new int[maxGroup + 1];
         Arrays.fill(groups, -1);
@@ -42,6 +43,16 @@ final class ELispRegExpCompiler {
             groups[group] = slot;
         }
         return new Compiled(code, groups, compiler.frameTop);
+    }
+
+    /// A hack to find the entry point after `.*?` prefix
+    private static int findBodyEntry(HalfCompiled main) {
+        HalfCompiled parent = main;
+        while (main instanceof HalfCompiled.Segments segments) {
+            parent = main;
+            main = segments.segments[0];
+        }
+        return parent.length();
     }
 
     private static int[] compileWithJumpTable(HalfCompiled body, int searcherLength) {
@@ -118,11 +129,11 @@ final class ELispRegExpCompiler {
         return slot;
     }
 
-    private HalfCompiled compileAst(ELispRegExpParser.REAst ast) {
+    private HalfCompiled compileAst(REAst ast, @Nullable REAst next) {
         return switch (ast) {
-            case ELispRegExpParser.REAst.Atom(REToken token) -> atom(token);
-            case ELispRegExpParser.REAst.Group(int index, ELispRegExpParser.REAst[][] alternations) -> {
-                HalfCompiled inner = compileAlternations(alternations);
+            case REAst.Atom(REToken token) -> atom(token);
+            case REAst.Group(int index, REAst[][] alternations) -> {
+                HalfCompiled inner = compileAlternations(alternations, next);
                 if (index == -1) {
                     yield inner;
                 }
@@ -133,7 +144,7 @@ final class ELispRegExpCompiler {
                         packSingleArgOpcode(OP_PROGRESS_REC, slot + 1)
                 );
             }
-            case ELispRegExpParser.REAst.Literal(int[] chars) -> {
+            case REAst.Literal(int[] chars) -> {
                 if (canon != null) {
                     for (int i = 0; i < chars.length; i++) {
                         chars[i] = ELispRegExpNode.translate(chars[i], canon);
@@ -141,22 +152,46 @@ final class ELispRegExpCompiler {
                 }
                 yield literal(chars);
             }
-            case ELispRegExpParser.REAst.Quantified(
-                    ELispRegExpParser.REAst child,
-                    REToken.Quantifier quantifier, int lookahead
-            ) -> quantified(child, quantifier, lookahead);
+            case REAst.Quantified(
+                    REAst child,
+                    REToken.Quantifier quantifier
+            ) -> {
+                @Nullable HalfCompiled lookaround = null;
+                if (next != null) {
+                    int lookahead = next.lookahead(canon);
+                    if (lookahead != -1) {
+                        if (lookahead < 0) {
+                            lookaround = HalfCompiled.of(
+                                    packSingleArgOpcode(OP_LOOKAHEAD_BIT_HASH, lookahead & 0xFF_FF_FF)
+                            );
+                        } else {
+                            lookaround = HalfCompiled.of(
+                                    packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead)
+                            );
+                        }
+                    } else {
+                        int lookbehind = next.lookbehind(canon);
+                        if (lookbehind != -1) {
+                            lookaround = HalfCompiled.of(
+                                    packSingleArgOpcode(OP_LOOKBEHIND_CMP, lookbehind)
+                            );
+                        }
+                    }
+                }
+                yield quantified(child, quantifier, lookaround);
+            }
         };
     }
 
-    private HalfCompiled compileAlternations(ELispRegExpParser.REAst[][] alternations) {
+    private HalfCompiled compileAlternations(REAst[][] alternations, @Nullable REAst next) {
         if (alternations.length == 2 && alternations[0].length == 1 && alternations[1].length == 1) {
-            if (alternations[0][0] instanceof ELispRegExpParser.REAst.Atom(REToken.AnyChar())
-                    && alternations[1][0] instanceof ELispRegExpParser.REAst.Literal(int[] chars)
+            if (alternations[0][0] instanceof REAst.Atom(REToken.AnyChar())
+                    && alternations[1][0] instanceof REAst.Literal(int[] chars)
                     && chars.length == 1 && chars[0] == '\n') {
                 return HalfCompiled.of(packNoArgOpcode(OP$ANY));
             }
-            if (alternations[1][0] instanceof ELispRegExpParser.REAst.Atom(REToken.AnyChar())
-                    && alternations[0][0] instanceof ELispRegExpParser.REAst.Literal(int[] chars)
+            if (alternations[1][0] instanceof REAst.Atom(REToken.AnyChar())
+                    && alternations[0][0] instanceof REAst.Literal(int[] chars)
                     && chars.length == 1 && chars[0] == '\n') {
                 return HalfCompiled.of(packNoArgOpcode(OP$ANY));
             }
@@ -168,16 +203,20 @@ final class ELispRegExpCompiler {
             }
         }
         @Nullable HalfCompiled compiled = null;
-        for (ELispRegExpParser.REAst[] alternation : alternations) {
-            HalfCompiled concat = concat(Arrays.stream(alternation).map(this::compileAst).toArray(HalfCompiled[]::new));
+        for (REAst[] alternation : alternations) {
+            HalfCompiled[] entries = new HalfCompiled[alternation.length];
+            for (int i = 0; i < alternation.length; i++) {
+                entries[i] = compileAst(alternation[i], i < alternation.length - 1 ? alternation[i + 1] : next);
+            }
+            HalfCompiled concat = concat(entries);
             compiled = compiled == null ? concat : union(compiled, concat);
         }
         return compiled == null ? empty() : compiled;
     }
 
-    private static int packNamedCharClassBitmap(ELispRegExpLexer.CharClassContent.NamedCharClass[] namedClasses, boolean invert) {
+    private static int packNamedCharClassBitmap(CharClassContent.Named[] namedClasses, boolean invert) {
         int bits = 0;
-        for (ELispRegExpLexer.CharClassContent.NamedCharClass namedClass : namedClasses) {
+        for (CharClassContent.Named namedClass : namedClasses) {
             bits |= namedClass.mask;
         }
         return bits | (invert ? (1 << 31) : 0);
@@ -185,8 +224,8 @@ final class ELispRegExpCompiler {
 
     private HalfCompiled atom(REToken token) {
         if (token instanceof REToken.CharClass(
-                ELispRegExpLexer.CharClassContent.NamedCharClass[] namedClasses,
-                ELispRegExpLexer.CharClassContent.CharRange[] charRanges,
+                CharClassContent.Named[] namedClasses,
+                CharClassContent.Range[] charRanges,
                 boolean charRangesFitInInt,
                 boolean invert
         )) {
@@ -233,15 +272,15 @@ final class ELispRegExpCompiler {
     }
 
     private HalfCompiled.Multiple processCharClass(
-            ELispRegExpLexer.CharClassContent.NamedCharClass[] namedClasses,
-            ELispRegExpLexer.CharClassContent.CharRange[] charRanges,
+            CharClassContent.Named[] namedClasses,
+            CharClassContent.Range[] charRanges,
             boolean charRangesFitInInt,
             boolean invert
     ) {
         if (canon != null) {
-            ArrayList<ELispRegExpLexer.CharClassContent.CharRange> newRanges = new ArrayList<>();
-            charRangesFitInInt = translateRanges(charRanges, newRanges);
-            charRanges = newRanges.toArray(ELispRegExpLexer.CharClassContent.CharRange[]::new);
+            ArrayList<CharClassContent.Range> newRanges = new ArrayList<>();
+            charRangesFitInInt = CharClassContent.translateRanges(charRanges, newRanges, canon);
+            charRanges = newRanges.toArray(CharClassContent.Range[]::new);
         }
         int extraCodes = charRanges.length * (charRangesFitInInt ? 1 : 2) + 1;
         IntArrayList opcodes = new IntArrayList(1 + extraCodes);
@@ -250,7 +289,7 @@ final class ELispRegExpCompiler {
                 extraCodes
         ));
         opcodes.add(packNamedCharClassBitmap(namedClasses, invert));
-        for (ELispRegExpLexer.CharClassContent.CharRange range : charRanges) {
+        for (CharClassContent.Range range : charRanges) {
             if (charRangesFitInInt) {
                 opcodes.add((range.min()) | (range.max() << 16));
             } else {
@@ -259,40 +298,6 @@ final class ELispRegExpCompiler {
             }
         }
         return new HalfCompiled.Multiple(opcodes.toArray());
-    }
-
-    private boolean translateRanges(
-            ELispRegExpLexer.CharClassContent.CharRange[] charRanges,
-            ArrayList<ELispRegExpLexer.CharClassContent.CharRange> newRanges
-    ) {
-        assert canon != null;
-        boolean charRangesFitInInt = true;
-        int start = -1;
-        int end = -1;
-        for (ELispRegExpLexer.CharClassContent.CharRange range : charRanges) {
-            int min = range.min();
-            int max = range.max();
-            for (int i = min; i <= max; i++) {
-                int translated = ELispRegExpNode.translate(i, canon);
-                if (start == -1) {
-                    start = end = translated;
-                    continue;
-                }
-                if (translated < start - 1 || end + 1 < translated) {
-                    charRangesFitInInt &= end <= 0xFFFF;
-                    newRanges.add(new ELispRegExpLexer.CharClassContent.CharRange(start, end));
-                    start = end = translated;
-                }
-                if (translated == start - 1) {
-                    start = translated;
-                } else if (translated == end + 1) {
-                    end = translated;
-                }
-            }
-        }
-        charRangesFitInInt &= end <= 0xFFFF;
-        newRanges.add(new ELispRegExpLexer.CharClassContent.CharRange(start, end));
-        return charRangesFitInInt;
     }
 
     private static HalfCompiled empty() {
@@ -329,7 +334,7 @@ final class ELispRegExpCompiler {
     }
 
     /// The `?` operator
-    private static HalfCompiled optional(HalfCompiled inner, boolean greedy, int lookahead) {
+    private static HalfCompiled optional(HalfCompiled inner, boolean greedy, @Nullable HalfCompiled lookahead) {
         HalfCompiled body = greedy ? HalfCompiled.of(
                 splitSingle(inner.length()),
                 inner
@@ -338,9 +343,9 @@ final class ELispRegExpCompiler {
                 uncondJmp(inner.length()),
                 inner
         );
-        if (lookahead != -1) {
+        if (lookahead != null) {
             return HalfCompiled.of(
-                    packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead),
+                    lookahead,
                     condJumpSingle(OP_FLAG_JMP_NE, greedy ? 1 : 2),
                     body
             );
@@ -348,17 +353,17 @@ final class ELispRegExpCompiler {
         return body;
     }
 
-    private HalfCompiled quantified(ELispRegExpParser.REAst innerAst, REToken.Quantifier quantifier, int lookahead) {
+    private HalfCompiled quantified(REAst innerAst, REToken.Quantifier quantifier, @Nullable HalfCompiled lookaround) {
         int min = quantifier.min();
         int max = quantifier.max();
         boolean greedy = quantifier.greedy();
-        HalfCompiled inner = compileAst(innerAst);
+        HalfCompiled inner = compileAst(innerAst, null);
         if (min == 0 && max == 1) {
-            return optional(inner, greedy, lookahead);
+            return optional(inner, greedy, lookaround);
         }
         if (innerAst.minLength() > 0) {
             // We do not need progress checking.
-            return quantifiedNoProgress(inner, min, max, greedy, lookahead);
+            return quantifiedNoProgress(inner, min, max, greedy, lookaround);
         }
         int counterSlot = allocateStackSlot();
         int progressSlot = allocateStackSlot();
@@ -405,7 +410,10 @@ final class ELispRegExpCompiler {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private HalfCompiled quantifiedNoProgress(HalfCompiled inner, int min, int max, boolean greedy, int lookahead) {
+    private HalfCompiled quantifiedNoProgress(
+            HalfCompiled inner, int min, int max, boolean greedy,
+            @Nullable HalfCompiled lookaround
+    ) {
         if (inner.length() <= 4) {
             // Rewrite regexps like `a{3}` to `aaa`.
             if (min == max) {
@@ -419,7 +427,7 @@ final class ELispRegExpCompiler {
                 for (int i = 0; i < min - 1; i++) {
                     reps[i] = inner;
                 }
-                reps[min - 1] = quantifiedNoProgress(inner, 1, Integer.MAX_VALUE, greedy, lookahead);
+                reps[min - 1] = quantifiedNoProgress(inner, 1, Integer.MAX_VALUE, greedy, lookaround);
                 return HalfCompiled.of((Object[]) reps);
             }
             // Fallthrough
@@ -427,7 +435,7 @@ final class ELispRegExpCompiler {
         if (max == Integer.MAX_VALUE) {
             if (min == 0) {
                 // (...)*
-                int headExtra = lookahead == -1 ? 0 : 2;
+                int headExtra = lookaround == null ? 0 : 2;
                 HalfCompiled body = greedy ? HalfCompiled.of(
                         splitSingle(inner.length() + 1),
                         inner,
@@ -438,9 +446,9 @@ final class ELispRegExpCompiler {
                         inner,
                         uncondJmp(-1 - inner.length() - 2 - headExtra)
                 );
-                if (lookahead != -1) {
+                if (lookaround != null) {
                     return HalfCompiled.of(
-                            packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead),
+                            lookaround,
                             condJumpSingle(OP_FLAG_JMP_NE, greedy ? 1 : 2),
                             body
                     );
@@ -448,10 +456,10 @@ final class ELispRegExpCompiler {
                 return body;
             } else if (min == 1) {
                 // (...)+
-                if (lookahead != -1) {
+                if (lookaround != null) {
                     inner = HalfCompiled.of(
                             inner,
-                            packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead),
+                            lookaround,
                             condJumpSingle(OP_FLAG_JMP_NE, -inner.length() - 2)
                     );
                 }
@@ -564,6 +572,8 @@ final class ELispRegExpCompiler {
                     case OP_JUMP_TABLE -> "jump_table";
                     case OP_SPLIT -> "~split";
                     case OP_LOOKAHEAD_CMP -> "lookahead_cmp";
+                    case OP_LOOKAHEAD_BIT_HASH -> "lookahead_bit_hash";
+                    case OP_LOOKBEHIND_CMP -> "lookbehind_cmp";
                     case OP$STR_START -> "str_start!";
                     case OP$STR_END -> "str_end!";
                     case OP$LINE_START -> "line_start!";
@@ -664,8 +674,8 @@ final class ELispRegExpCompiler {
                 } else {
                     sb.append("  ");
                 }
-                for (ELispRegExpLexer.CharClassContent.NamedCharClass value
-                        : ELispRegExpLexer.CharClassContent.NamedCharClass.values()) {
+                for (CharClassContent.Named value
+                        : CharClassContent.Named.values()) {
                     if (value.match(arg)) {
                         sb.append("[:").append(value.name()).append(":]");
                     }
@@ -730,12 +740,12 @@ final class ELispRegExpCompiler {
 
         @CompilerDirectives.TruffleBoundary
         @Nullable
-        private HalfCompiled buildTrie(ELispRegExpParser.REAst[][] alternations) {
+        private HalfCompiled buildTrie(REAst[][] alternations) {
             states.add(IntArrayList.newListWith(-1));
             ArrayList<TrieBranch> branches = new ArrayList<>();
             // `alternations` are in reverse order, so this should place the first branches
             // on top of the stack, so that `lengths` are of correct priorities.
-            for (ELispRegExpParser.REAst[] alternation : alternations) {
+            for (REAst[] alternation : alternations) {
                 branches.add(new TrieBranch(alternation, 0, 0, 0, null));
             }
             loop:
@@ -744,9 +754,9 @@ final class ELispRegExpCompiler {
                 int state = branch.prevState;
                 int length = branch.prevLength;
                 for (int i = branch.i; i < branch.alternations.length; i++) {
-                    ELispRegExpParser.REAst alternation = branch.alternations[i];
+                    REAst alternation = branch.alternations[i];
                     switch (alternation) {
-                        case ELispRegExpParser.REAst.Literal(int[] chars) -> {
+                        case REAst.Literal(int[] chars) -> {
                             for (int c : chars) {
                                 state = createTransfer(state, c);
                                 if (state == -1) {
@@ -755,8 +765,8 @@ final class ELispRegExpCompiler {
                                 length++;
                             }
                         }
-                        case ELispRegExpParser.REAst.Group(int _, ELispRegExpParser.REAst[][] nested) -> {
-                            for (ELispRegExpParser.REAst[] inner : nested) {
+                        case REAst.Group(int _, REAst[][] nested) -> {
+                            for (REAst[] inner : nested) {
                                 branches.add(new TrieBranch(inner, 0, length, state,
                                         new TrieBranch(branch.alternations, i + 1, -1, -1, branch.next)));
                             }
@@ -824,14 +834,14 @@ final class ELispRegExpCompiler {
         }
 
         @CompilerDirectives.TruffleBoundary
-        private static boolean isBranchesExact(ELispRegExpParser.REAst[][] alternations) {
-            for (ELispRegExpParser.REAst[] alternation : alternations) {
-                for (ELispRegExpParser.REAst child : alternation) {
+        private static boolean isBranchesExact(REAst[][] alternations) {
+            for (REAst[] alternation : alternations) {
+                for (REAst child : alternation) {
                     if (!(
-                            child instanceof ELispRegExpParser.REAst.Literal
+                            child instanceof REAst.Literal
                                     || (
-                                    child instanceof ELispRegExpParser.REAst.Group(
-                                            int index, ELispRegExpParser.REAst[][] nested
+                                    child instanceof REAst.Group(
+                                            int index, REAst[][] nested
                                     ) && index == -1 && isBranchesExact(nested)
                             )
                     )) {
@@ -843,7 +853,7 @@ final class ELispRegExpCompiler {
         }
 
         record TrieBranch(
-                ELispRegExpParser.REAst[] alternations, int i,
+                REAst[] alternations, int i,
                 int prevLength, int prevState,
                 @Nullable TrieBranch next
         ) {
