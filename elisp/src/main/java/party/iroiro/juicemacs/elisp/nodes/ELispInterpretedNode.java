@@ -530,6 +530,7 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
         }
 
         @Specialization
+        @ExplodeLoop
         public Object call(VirtualFrame frame, @Cached(inline = true) FunctionObjectCallNode dispatchNode) {
             int length = Objects.requireNonNull(this.args).length;
             Object[] args = new Object[length];

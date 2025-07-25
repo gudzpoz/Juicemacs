@@ -101,7 +101,7 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
             fury.writeRef(buffer, value.getListener());
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "PMD.UseDiamondOperator"})
         @Override
         public MarkerPieceTree read(MemoryBuffer buffer) {
             @SuppressWarnings("DataFlowIssue")

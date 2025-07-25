@@ -1,5 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
+
 import java.util.*;
 
 public interface ListIteratorList extends List<Object> {
@@ -20,7 +22,7 @@ public interface ListIteratorList extends List<Object> {
     @Override
     default boolean contains(Object o) {
         for (Object object : this) {
-            if (o.equals(object)) {
+            if (BuiltInData.FEq.eq(o, object)) {
                 return true;
             }
         }
@@ -56,7 +58,7 @@ public interface ListIteratorList extends List<Object> {
     default boolean remove(Object o) {
         ListIterator<Object> i = listIterator();
         while (i.hasNext()) {
-            if (o.equals(i.next())) {
+            if (BuiltInData.FEq.eq(o, i.next())) {
                 i.remove();
                 return true;
             }
@@ -67,8 +69,9 @@ public interface ListIteratorList extends List<Object> {
     @Override
     default boolean containsAll(Collection<?> c) {
         for (Object e : c) {
-            if (!contains(e))
+            if (!contains(e)) {
                 return false;
+            }
         }
         return true;
     }
@@ -144,7 +147,7 @@ public interface ListIteratorList extends List<Object> {
     default int indexOf(Object o) {
         ListIterator<Object> i = listIterator();
         while (i.hasNext()) {
-            if (o.equals(i.next())) {
+            if (BuiltInData.FEq.eq(o, i.next())) {
                 return i.previousIndex();
             }
         }
@@ -156,6 +159,7 @@ public interface ListIteratorList extends List<Object> {
         throw new UnsupportedOperationException();
     }
 
+    @SuppressWarnings("PMD.TruffleNoDirectRecursion")
     @Override
     default ListIterator<Object> listIterator() {
         return listIterator(0);

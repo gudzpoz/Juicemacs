@@ -4,7 +4,6 @@
 
 plugins {
     id 'java'
-    id 'pmd'
     // // JaCoCo transforms the bytecode, which severely impacts how
     // // Graal/Truffle JIT compile the program.
     // // (For example, it introduces concurrency constructs to pass

@@ -26,6 +26,7 @@ import party.iroiro.juicemacs.mule.MuleString;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Objects;
@@ -134,7 +135,7 @@ public final class ELispContext implements ELispParser.InternContext {
             return;
         }
         TruffleFile file = truffleEnv.getPublicTruffleFile(options.dumpFile);
-        try (var channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
+        try (SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
             ELispPortableDumper.deserializeIntoContext(channel, this);
             patchContext();
         } catch (IOException e) {

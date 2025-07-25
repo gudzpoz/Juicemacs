@@ -28,6 +28,7 @@ public abstract sealed class GetFrameNode extends Node {
             this.level = level;
         }
         @ExplodeLoop
+        @Override
         public Frame execute(VirtualFrame frame) {
             for (int i = 0; i < level; i++) {
                 frame = ELispLexical.getFrameSlot(frame);

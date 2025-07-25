@@ -122,14 +122,14 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
     public Object visit(ASTArrayInitializer node, Object data) {
         // Disallow `Object[] arr = {1, 2, 3};`
         JavaNode parent = node.getParent();
-        JTypeMirror arrayType;
-        if (parent instanceof ASTArrayAllocation allocation) {
-            arrayType = ((ASTArrayType) Objects.requireNonNull(allocation.getFirstChild())).getTypeMirror();
-        } else if (parent instanceof ASTVariableDeclarator declarator) {
-            arrayType = Objects.requireNonNull(declarator.getParent().firstChild(ASTArrayType.class)).getTypeMirror();
-        } else {
-            throw new UnsupportedOperationException("Unsupported parent type: " + parent);
-        }
+        JTypeMirror arrayType = switch (parent) {
+            case ASTArrayAllocation allocation ->
+                    ((ASTArrayType) Objects.requireNonNull(allocation.getFirstChild())).getTypeMirror();
+            case ASTVariableDeclarator declarator ->
+                    Objects.requireNonNull(declarator.getParent().firstChild(ASTArrayType.class)).getTypeMirror();
+            case ASTArrayInitializer initializer -> initializer.getTypeMirror();
+            case null, default -> throw new UnsupportedOperationException("Unsupported parent type: " + parent);
+        };
         JTypeMirror componentType = ((JArrayType) arrayType).getComponentType();
         for (ASTExpression expression : node) {
             checkType(componentType, expression, data);

@@ -159,7 +159,14 @@ final class ELispRegExpCompiler {
                 @Nullable HalfCompiled lookaround = null;
                 if (next != null) {
                     int lookahead = next.lookahead(canon);
-                    if (lookahead != -1) {
+                    if (lookahead == -1) {
+                        int lookbehind = next.lookbehind(canon);
+                        if (lookbehind != -1) {
+                            lookaround = HalfCompiled.of(
+                                    packSingleArgOpcode(OP_LOOKBEHIND_CMP, lookbehind)
+                            );
+                        }
+                    } else {
                         if (lookahead < 0) {
                             lookaround = HalfCompiled.of(
                                     packSingleArgOpcode(OP_LOOKAHEAD_BIT_HASH, lookahead & 0xFF_FF_FF)
@@ -167,13 +174,6 @@ final class ELispRegExpCompiler {
                         } else {
                             lookaround = HalfCompiled.of(
                                     packSingleArgOpcode(OP_LOOKAHEAD_CMP, lookahead)
-                            );
-                        }
-                    } else {
-                        int lookbehind = next.lookbehind(canon);
-                        if (lookbehind != -1) {
-                            lookaround = HalfCompiled.of(
-                                    packSingleArgOpcode(OP_LOOKBEHIND_CMP, lookbehind)
                             );
                         }
                     }

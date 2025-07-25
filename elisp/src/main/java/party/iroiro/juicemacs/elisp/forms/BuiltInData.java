@@ -1418,7 +1418,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCar extends ELispBuiltInBaseNode {
         @Specialization
-        public Object carCons(ELispCons list) {
+        public static Object carCons(ELispCons list) {
             return list.car();
         }
         @Specialization
@@ -1436,8 +1436,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCarSafe extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object carSafeCons(ELispCons cons) {
-            return cons.car();
+        public static Object carSafeCons(ELispCons object) {
+            return object.car();
         }
         @Specialization(replaces = "carSafeCons")
         public static Object carSafe(Object object) {
@@ -1461,7 +1461,7 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdr extends ELispBuiltInBaseNode {
         @Specialization
-        public Object cdrCons(ELispCons list) {
+        public static Object cdrCons(ELispCons list) {
             return list.cdr();
         }
         @Specialization
@@ -1479,8 +1479,8 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCdrSafe extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object cdrSafeCons(ELispCons cons) {
-            return cons.cdr();
+        public static Object cdrSafeCons(ELispCons object) {
+            return object.cdr();
         }
         @Specialization(replaces = "cdrSafeCons")
         public static Object cdrSafe(Object object) {
@@ -1500,9 +1500,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetcar extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object setcar(ELispCons cons, Object object) {
-            cons.setCar(object);
-            return object;
+        public static Object setcar(ELispCons cell, Object newcar) {
+            cell.setCar(newcar);
+            return newcar;
         }
     }
 
@@ -1515,9 +1515,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetcdr extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object setcdr(ELispCons cons, Object object) {
-            cons.setCdr(object);
-            return object;
+        public static Object setcdr(ELispCons cell, Object newcdr) {
+            cell.setCdr(newcdr);
+            return newcdr;
         }
     }
 
@@ -1969,7 +1969,7 @@ public class BuiltInData extends ELispBuiltIns {
             ELispContext context = getContext();
             while (true) {
                 Optional<ValueStorage> storage = context.getStorageLazy(symbol);
-                if (storage.isEmpty() || !(storage.get().getAnyValue() instanceof ELispSymbol next)) {
+                if (storage.isEmpty() || !(toSym(storage.get().getAnyValue()) instanceof ELispSymbol next)) {
                     return symbol;
                 }
                 symbol = next;

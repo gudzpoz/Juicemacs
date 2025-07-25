@@ -63,6 +63,7 @@ public class LetNode extends ELispExpressionNode {
         return getContext().getStorageLazy(symbol).map(ValueStorage::isSpecial).orElse(false);
     }
 
+    @SuppressWarnings("PMD.TruffleNodeUseInsertToAdoptDynamicChildren")
     private ELispExpressionNode updateClauses() {
         @Nullable ELispExpressionNode bodyNode = this.bodyNode;
         if (bodyNode != null) {
@@ -85,7 +86,8 @@ public class LetNode extends ELispExpressionNode {
             boolean isDynamic = isDynamic(block, symbol);
             if (isDynamic) {
                 if (letx) {
-                    clause = GlobalVariableWriteNodeGen.GlobalVariableDynamicSwapNodeGen.create(symbol, clause);
+                    clause = GlobalVariableWriteNodeGen
+                            .GlobalVariableDynamicSwapNodeGen.create(symbol, clause);
                 }
                 dynamicSymbols.add(symbol);
             }

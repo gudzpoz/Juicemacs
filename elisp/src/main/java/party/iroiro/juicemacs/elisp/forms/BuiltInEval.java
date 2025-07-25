@@ -529,7 +529,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 ELispLexical.@Nullable LexicalReference reference = ELispLexical.getLexicalReference(this, symbol);
                 ELispExpressionNode replace = reference == null
                         ? GlobalVariableWriteNodeGen.create(symbol, inner)
-                        : ELispFrameSlotWriteNode.createWrite(reference, inner);
+                        : ELispFrameSlotWriteNode.createWrite(reference.level(), reference.index(), inner);
                 if (value instanceof ELispCons cons) {
                     replace = new ELispInterpretedNode.SourceSectionWrapper(cons, replace); // NOPMD: replace called later
                 }

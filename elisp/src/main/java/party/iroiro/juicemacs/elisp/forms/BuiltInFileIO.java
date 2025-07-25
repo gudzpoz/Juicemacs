@@ -94,7 +94,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 if (handlerCons instanceof ELispCons cons
                         && cons.car() instanceof ELispString string) {
                     Object handler = cons.cdr();
-                    Object operations = handler instanceof ELispSymbol handlerSym
+                    Object operations = toSym(handler) instanceof ELispSymbol handlerSym
                             ? handlerSym.getProperty(OPERATIONS)
                             : false;
                     if ((!isNil(operations) && isNil(BuiltInFns.FMemq.memq(operationSym, operations)))
@@ -391,15 +391,15 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 path = Path.of(System.getProperty("user.home") + file.substring(1));
             } else if (!file.startsWith("/")) {
                 String dir;
-                if (!isNil(defaultDirectory)) {
-                    dir = defaultDirectory.toString();
-                } else {
+                if (isNil(defaultDirectory)) {
                     Object globalDir = DEFAULT_DIRECTORY.getValue();
-                    if (!isNil(globalDir)) {
-                        dir = globalDir.toString();
-                    } else {
+                    if (isNil(globalDir)) {
                         dir = System.getProperty("user.home");
+                    } else {
+                        dir = globalDir.toString();
                     }
+                } else {
+                    dir = defaultDirectory.toString();
                 }
                 if (dir.startsWith("~")) {
                     dir = System.getProperty("user.home") + dir.substring(1);

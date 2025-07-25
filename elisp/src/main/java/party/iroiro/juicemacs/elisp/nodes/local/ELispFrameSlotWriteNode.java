@@ -32,12 +32,6 @@ public abstract class ELispFrameSlotWriteNode extends ELispExpressionNode {
         this.value = value;
     }
 
-    public static ELispExpressionNode createWrite(ELispLexical.LexicalReference ref, ELispExpressionNode inner) {
-        int level = ref.level();
-        int slot = ref.index();
-        return createWrite(level, slot, inner);
-    }
-
     public static ELispExpressionNode createWrite(int level, int slot, ELispExpressionNode inner) {
         if (slot < ELispLexical.FRAME_SLOT_START) {
             throw ELispSignals.fatal("invalid frame slot");

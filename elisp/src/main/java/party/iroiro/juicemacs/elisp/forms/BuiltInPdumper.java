@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.pdump.ELispPortableDumper;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
@@ -38,7 +39,7 @@ public class BuiltInPdumper extends ELispBuiltIns {
             ELispContext context = getContext();
             Path path = BuiltInFileIO.FExpandFileName.expandFileNamePath(filename, false);
             TruffleFile file = context.truffleEnv().getPublicTruffleFile(path.toString());
-            try (var output = file.newOutputStream(StandardOpenOption.CREATE)) {
+            try (OutputStream output = file.newOutputStream(StandardOpenOption.CREATE)) {
                 ELispPortableDumper.serializeFromContext(output, context);
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, filename);

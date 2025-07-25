@@ -42,6 +42,7 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ELispCons
         return tail;
     }
 
+    @Override
     public ELispCons currentCons() {
         if (tail instanceof ELispCons cons) {
             return cons;

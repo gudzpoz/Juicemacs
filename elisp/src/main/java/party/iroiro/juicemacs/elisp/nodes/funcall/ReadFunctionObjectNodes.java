@@ -92,7 +92,7 @@ public abstract class ReadFunctionObjectNodes {
         }
         @Idempotent
         public static boolean noRedirect(Object function) {
-            return !(function instanceof ELispSymbol) && !(function instanceof ELispCons);
+            return !(toSym(function) instanceof ELispSymbol) && !(function instanceof ELispCons);
         }
     }
 
@@ -111,7 +111,7 @@ public abstract class ReadFunctionObjectNodes {
         @Specialization(replaces = "getStableSymbol")
         public static Object getRedirected(Node node, ELispSymbol symbol) {
             Object function = symbol;
-            while (function instanceof ELispSymbol sym) {
+            while (toSym(function) instanceof ELispSymbol sym) {
                 function = getFunction(node, sym);
             }
             if (function instanceof ELispCons cons && cons.car() == AUTOLOAD) {

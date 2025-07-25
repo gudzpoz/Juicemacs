@@ -4,6 +4,7 @@
 
 plugins {
     id 'buildlogic.java-library-conventions'
+    id 'pmd'
     id 'me.champeau.jmh' version '0.7.2'
 }
 

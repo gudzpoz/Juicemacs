@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -69,7 +70,7 @@ public class BuiltInDired extends ELispBuiltIns {
             TruffleFile d = getTruffleFile(node, dirname);
             Collection<TruffleFile> listing = d.list();
 
-            Object allCompletion = listing.stream().filter((entry) -> {
+            Object allCompletion = listing.stream().filter((entry) -> { // TODO: NOPMD
                         String javaName = entry.getName();
                         if (javaName.length() < file.length()) {
                             return false;
@@ -123,6 +124,7 @@ public class BuiltInDired extends ELispBuiltIns {
     @ELispBuiltIn(name = "directory-files", minArgs = 1, maxArgs = 5)
     @GenerateNodeFactory
     public abstract static class FDirectoryFiles extends ELispBuiltInBaseNode {
+        @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object directoryFiles(ELispString directory, boolean full, Object match, boolean nosort, Object count) {
             long limit = notNilOr(count, -1);
@@ -143,7 +145,7 @@ public class BuiltInDired extends ELispBuiltIns {
                 if (limit >= 0) {
                     stream = stream.limit(limit);
                 }
-                Object collect = (full
+                Object collect = (full // TODO: NOPMD
                         ? stream.map((file) -> new ELispString(file.getAbsoluteFile().toString()))
                         : stream.map((file) -> new ELispString(file.getName())))
                         .collect(ELispCons.ListBuilder.collector());
@@ -326,9 +328,9 @@ public class BuiltInDired extends ELispBuiltIns {
                         // #9: ?
                         false,
                         // #10: TODO: inode
-                        1,
+                        1L,
                         // #11: TODO: device
-                        0
+                        0L
                 );
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, filename);
