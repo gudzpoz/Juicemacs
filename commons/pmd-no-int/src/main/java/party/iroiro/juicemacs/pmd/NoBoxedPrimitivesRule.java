@@ -13,6 +13,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("unchecked")
 public class NoBoxedPrimitivesRule extends AbstractJavaRule {
@@ -27,6 +28,8 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
                     ))
                     .desc("List of primitive types to check boxing")
                     .build();
+
+    private final ConcurrentHashMap<String, Boolean> reportedLocations = new ConcurrentHashMap<>();
 
     public NoBoxedPrimitivesRule() {
         definePropertyDescriptor(PRIMITIVE_TYPES);
@@ -65,7 +68,7 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
         if (!type.isPrimitive()) {
             // Disallow `Integer -> Object`
             if (type.isBoxedPrimitive() && isSelectedPrimitives(type.unbox()) && !coercedType.equals(type.unbox())) {
-                asCtx(data).addViolation(node, type, node.getOriginalText());
+                reportViolation(node, data, type);
             }
             return;
         }
@@ -77,12 +80,19 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
         if (coercedType.isBoxedPrimitive()) {
             if (coercedType.unbox().isPrimitive(primitive.getKind())) {
                 // Disallow `int -> Integer`
-                asCtx(data).addViolation(node, primitive, node.getOriginalText());
+                reportViolation(node, data, primitive);
             }
             // else: `int -> Long` simply does not compile
         } else {
             // Disallow `int -> Object`
-            asCtx(data).addViolation(node, primitive, node.getOriginalText());
+            reportViolation(node, data, primitive);
+        }
+    }
+
+    private void reportViolation(TypeNode node, Object data, JTypeMirror type) {
+        String location = node.getTextDocument().getFileId().getUriString() + node.getBeginLine();
+        if (reportedLocations.put(location, Boolean.TRUE) == null) {
+            asCtx(data).addViolation(node, type, node.getOriginalText());
         }
     }
 

@@ -42,20 +42,31 @@ jobs:
           cd elisp/scripts/emacs-extractor
           pdm install
 
-      - run: |
-          echo "GNU_EMACS_COMMIT=$(cd elisp/emacs && git rev-parse HEAD)" >> $GITHUB_ENV
-      - name: Cache GNU Emacs Build
-        id: cache-emacs
-        uses: actions/cache@v4
-        with:
-          path: elisp/emacs
-          key: ${{ env.GNU_EMACS_COMMIT }}-primes
-      - name: Build GNU Emacs
+      - name: Install Dependencies
         run: |
-          cd elisp/emacs
+          echo "GNU_EMACS_COMMIT=$(cd elisp/emacs && git rev-parse HEAD)" >> $GITHUB_ENV
+          # Please please do not install Firefox during CI.
+          sudo apt autoremove --purge snapd firefox || true
+          sudo apt-mark hold snapd
+          # Emacs dependencies
           sudo apt-get update && sudo apt-get upgrade
           sudo apt-get install libgnutls28-dev
+      - name: Restore GNU Emacs Build Cache
+        id: cache-emacs-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: elisp/emacs
+          key: ${{ env.GNU_EMACS_COMMIT }}-gnu-emacs
+      - name: Build GNU Emacs
+        if: steps.cache-emacs-restore.outputs.cache-hit != 'true'
+        run: |
+          cd elisp/emacs
           make
+      - name: Cache GNU Emacs Build
+        uses: actions/cache/save@v4
+        with:
+          path: elisp/emacs
+          key: ${{ steps.cache-emacs-restore.outputs.cache-primary-key }}
 
       - name: Syntax Check (emacs-extractor)
         run: |
@@ -66,11 +77,15 @@ jobs:
 
       - name: Juicemacs Bootstrapping
         run: |
-          ./gradlew build
+          ./gradlew compileJava compileTestJava
           sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"
       - name: Unit Tests
-        run: |
-          ./gradlew --info --stacktrace :elisp:test
+        run: >
+          ./gradlew --info --stacktrace
+            :commons:mule-truffle:test
+            :commons:piece-tree:test
+            :commons:pmd-no-int:test
+            :elisp:test
 
       - name: Build Shadow Jar
         run: |
