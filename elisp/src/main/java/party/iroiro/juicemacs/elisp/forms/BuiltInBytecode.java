@@ -41,8 +41,7 @@ public class BuiltInBytecode extends ELispBuiltIns {
                 throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, bytestr);
             }
             ELispBytecode f = BuiltInAlloc.FMakeByteCode.makeByteCode(
-                    this,
-                    false, bytestr, vector, maxdepth, new Object[0]
+                    false, bytestr, vector, maxdepth, new Object[0], this
             );
             f.setName("byte-code@" + System.identityHashCode(f));
             return FuncallDispatchNode.dispatchArgsUncached(this, f);

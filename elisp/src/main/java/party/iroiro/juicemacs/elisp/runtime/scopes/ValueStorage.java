@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Objects;
+import java.util.Optional;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentFrame;
@@ -147,6 +148,19 @@ public final class ValueStorage implements Externalizable {
             throw ELispSignals.voidVariable(symbol);
         }
         return rawValue;
+    }
+
+    public Object getIndirectVariable(ELispContext context, ELispSymbol symbol) {
+        if (!(delegate instanceof VarAlias(ELispSymbol target))) {
+            return symbol;
+        }
+        while (true) {
+            Optional<ValueStorage> next = context.getStorageLazy(target);
+            if (next.isEmpty() || !(next.get().delegate instanceof VarAlias(ELispSymbol nextTarget))) {
+                return symbol;
+            }
+            target = nextTarget;
+        }
     }
 
     public void aliasSymbol(ELispSymbol from, ELispSymbol to) {

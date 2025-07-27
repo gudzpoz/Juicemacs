@@ -10,6 +10,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
@@ -146,7 +147,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
             return null;
         }
         ELispConsLocation location = getLocation();
-        return source.createSection(
+        return TruffleUtils.createSection(source,
                 location.startLine(), location.startColumn(),
                 location.endLine(), location.endColumn()
         );

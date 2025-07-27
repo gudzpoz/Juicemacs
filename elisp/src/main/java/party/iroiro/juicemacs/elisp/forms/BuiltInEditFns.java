@@ -1136,8 +1136,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FInsertAndInherit extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void insertAndInherit(Object[] args) {
-            throw new UnsupportedOperationException();
+        public static boolean insertAndInherit(Object[] args) {
+            // TODO
+            return FInsert.insert(args);
         }
     }
 

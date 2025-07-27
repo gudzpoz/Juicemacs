@@ -4,7 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -232,15 +232,20 @@ public class BuiltInAlloc extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "make-byte-code", minArgs = 4, maxArgs = 4, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FMakeByteCode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+    public abstract static class FMakeByteCode extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispBytecode makeByteCode(@Nullable Node node, Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
+        public static ELispBytecode makeByteCode(
+                Object arglist, Object byteCode, Object constants, Object depth, Object[] args,
+                @Bind Node node
+        ) {
             ArrayList<Object> list = new ArrayList<>();
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
-            @Nullable SourceSection section = node == null ? null : node.getSourceSection();
             ELispBytecode bytecode = (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
-            bytecode.setSourceSection(section);
+            SourceSection section = node.getSourceSection();
+            if (section != null && section.getSource().getLanguage().equals(ELispLanguage.ID)) {
+                bytecode.setSourceSection(section);
+            }
             return bytecode;
         }
     }

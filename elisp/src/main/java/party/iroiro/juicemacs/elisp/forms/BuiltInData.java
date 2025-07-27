@@ -1967,13 +1967,11 @@ public class BuiltInData extends ELispBuiltIns {
                 return object;
             }
             ELispContext context = getContext();
-            while (true) {
-                Optional<ValueStorage> storage = context.getStorageLazy(symbol);
-                if (storage.isEmpty() || !(toSym(storage.get().getAnyValue()) instanceof ELispSymbol next)) {
-                    return symbol;
-                }
-                symbol = next;
+            Optional<ValueStorage> storage = context.getStorageLazy(symbol);
+            if (storage.isEmpty()) {
+                return symbol;
             }
+            return storage.get().getIndirectVariable(context, symbol);
         }
     }
 

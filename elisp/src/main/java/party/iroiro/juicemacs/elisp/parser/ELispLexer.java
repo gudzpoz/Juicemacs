@@ -11,7 +11,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.mule.MuleStringBuffer;
 
@@ -99,9 +98,6 @@ public class ELispLexer {
     public static final int LINE_CONTINUATION = Integer.MIN_VALUE;
 
     public record LocatedToken(Token token, int startLine, int startColumn, int endLine, int endColumn) {
-        public void attachLocation(ELispCons cons) {
-            cons.setSourceLocation(startLine, startColumn, endLine, endColumn);
-        }
     }
 
     sealed interface Token {
@@ -298,7 +294,6 @@ public class ELispLexer {
     private static final Token.UnquoteSplicing UNQUOTE_SPLICING = new Token.UnquoteSplicing();
     private static final Token.LoadFileName LOAD_FILE_NAME = new Token.LoadFileName();
     static final Token.Symbol EMPTY_SYMBOL = new Token.Symbol("", true, true);
-    static final Token.Symbol NIL_SYMBOL = new Token.Symbol("nil", true, false);
 
     private static final int NO_BREAK_SPACE = 0x00A0;
     private static final Pattern LEXICAL_BINDING_PATTERN = Pattern.compile(

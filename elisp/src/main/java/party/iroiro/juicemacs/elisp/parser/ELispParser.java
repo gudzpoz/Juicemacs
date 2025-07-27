@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
@@ -204,7 +205,8 @@ public class ELispParser {
                         new AbstractELispClosure.ClosureCommons(source)
                 );
                 if (closure instanceof ELispBytecode function && source != null) {
-                    function.setSourceSection(source.createSection(
+                    function.setSourceSection(TruffleUtils.createSection(
+                            source,
                             token.startLine(), token.startColumn(),
                             token.endLine(), token.endColumn()
                     ));
@@ -284,11 +286,7 @@ public class ELispParser {
 
     private SourceSection getWholeSection(Source source) {
         LocatedToken end = Objects.requireNonNull(lastRead);
-        try {
-            return source.createSection(1, 1, end.endLine(), end.endColumn());
-        } catch (IllegalArgumentException ignored) {
-            return source.createSection(0, source.getLength());
-        }
+        return TruffleUtils.createSection(source, 1, 1, end.endLine(), end.endColumn());
     }
 
     public long getCodepointOffset() {
