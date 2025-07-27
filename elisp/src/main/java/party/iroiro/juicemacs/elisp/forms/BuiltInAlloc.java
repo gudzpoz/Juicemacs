@@ -242,10 +242,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
             ELispBytecode bytecode = (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
-            SourceSection section = node.getSourceSection();
-            if (section != null && section.getSource().getLanguage().equals(ELispLanguage.ID)) {
-                bytecode.setSourceSection(section);
-            }
+            bytecode.fillDebugInfo(node);
             return bytecode;
         }
     }
@@ -273,7 +270,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             ELispVector copyConstants = BuiltInFns.FCopySequence.copySequenceVector(constants);
             copyConstants.fillFrom(closureVars);
             ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getCommons()); // NOPMD
-            copy.setSourceSection(bytecode.getSourceSection());
+            copy.setEncodedLocation(bytecode.getEncodedLocation());
             copy.set(CLOSURE_CONSTANTS, copyConstants);
             return copy;
         }

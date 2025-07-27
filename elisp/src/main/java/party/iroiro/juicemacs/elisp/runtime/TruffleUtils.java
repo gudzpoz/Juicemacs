@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.eclipse.jdt.annotation.Nullable;
 
 public abstract class TruffleUtils {
     private TruffleUtils() {
@@ -21,7 +22,8 @@ public abstract class TruffleUtils {
     /// 3. Use [Source#newBuilder(Source)] to remove file contents so that Truffle
     ///    has no access to line number info. (Note that this might cause problems
     ///    for Truffle debug utilities.)
-    /// 4. [Source#createUnavailableSection()].
+    /// 4. `null` (because [Source#createUnavailableSection()] causes *a lot* of problems).
+    @Nullable
     public static SourceSection createSection(
             Source source,
             int startLine, int startColumn,
@@ -37,7 +39,7 @@ public abstract class TruffleUtils {
                 try {
                     return newSource.createSection(startLine, startColumn, endLine, endColumn);
                 } catch (IllegalArgumentException ignored3) {
-                    return source.createUnavailableSection();
+                    return null;
                 }
             }
         }

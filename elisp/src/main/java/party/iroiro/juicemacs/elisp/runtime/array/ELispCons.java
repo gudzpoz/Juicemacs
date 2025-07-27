@@ -28,7 +28,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)
-public final class ELispCons implements ELispValue, ListIteratorList, TruffleObject {
+public final class ELispCons implements ELispValue, ListIteratorList, TruffleObject, LocationProvider {
     Object car;
     Object cdr;
     long encodedLocation;
@@ -113,44 +113,13 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
     //#endregion Lisp object
 
     //#region Debug info
-    public boolean hasLocation() {
-        return encodedLocation != 0;
+    @Override
+    public long getEncodedLocation() {
+        return encodedLocation;
     }
-    public ELispConsLocation getLocation() {
-        return ELispConsLocation.decodeDebugInfo(encodedLocation);
-    }
-    public void setSourceLocation(int startLine, int startColumn, int endLine, int endColumn) {
-        encodedLocation = ELispConsLocation.encodeDebugInfo(startLine, startColumn, endLine, endColumn);
-    }
-    public void fillDebugInfo(ELispCons original) {
-        if (encodedLocation == 0 && original.encodedLocation != 0) {
-            encodedLocation = original.encodedLocation;
-        }
-    }
-    public void fillDebugInfo(@Nullable Node parent) {
-        if (parent == null) {
-            return;
-        }
-        SourceSection source = parent.getSourceSection();
-        if (source != null && source.isAvailable()) {
-            setSourceLocation(
-                    source.getStartLine(),
-                    source.getStartColumn(),
-                    source.getEndLine(),
-                    source.getEndColumn()
-            );
-        }
-    }
-    @Nullable
-    public SourceSection getSourceSection(Source source) {
-        if (!hasLocation()) {
-            return null;
-        }
-        ELispConsLocation location = getLocation();
-        return TruffleUtils.createSection(source,
-                location.startLine(), location.startColumn(),
-                location.endLine(), location.endColumn()
-        );
+    @Override
+    public void setEncodedLocation(long encodedLocation) {
+        this.encodedLocation = encodedLocation;
     }
     //#endregion Debug info
 

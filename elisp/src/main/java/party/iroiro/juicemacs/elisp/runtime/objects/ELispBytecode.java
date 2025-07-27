@@ -16,6 +16,7 @@ import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.nodes.bytecode.ELispBytecodeFallbackNode;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.array.LocationProvider;
 import party.iroiro.juicemacs.mule.MuleByteArrayString;
 
 import java.util.ArrayList;
@@ -25,9 +26,8 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asLong;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
-public final class ELispBytecode extends AbstractELispClosure {
-    @Nullable
-    private SourceSection sourceSection;
+public final class ELispBytecode extends AbstractELispClosure implements LocationProvider {
+    private long encodedLocation = 0;
 
     ELispBytecode(Object[] inner, ClosureCommons commons) {
         super(inner, commons);
@@ -45,12 +45,14 @@ public final class ELispBytecode extends AbstractELispClosure {
         return (Long) get(CLOSURE_STACK_DEPTH);
     }
 
-    public @Nullable SourceSection getSourceSection() {
-        return sourceSection;
+    @Override
+    public long getEncodedLocation() {
+        return encodedLocation;
     }
 
-    public void setSourceSection(@Nullable SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
+    @Override
+    public void setEncodedLocation(long encodedLocation) {
+        this.encodedLocation = encodedLocation;
     }
 
     @Override
@@ -162,15 +164,11 @@ public final class ELispBytecode extends AbstractELispClosure {
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            @Nullable SourceSection section = sourceSection;
-            if (section != null) {
-                return section;
-            }
             @Nullable Source rootSource = commons.source;
             if (rootSource == null) {
                 return null;
             }
-            return rootSource.createUnavailableSection();
+            return ELispBytecode.this.getSourceSection(rootSource); // NOPMD (not recursion)
         }
     }
 }

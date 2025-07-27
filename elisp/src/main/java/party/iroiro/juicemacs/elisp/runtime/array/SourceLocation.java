@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
-public record ELispConsLocation(int startLine, int startColumn, int endLine, int endColumn) {
+public record SourceLocation(int startLine, int startColumn, int endLine, int endColumn) {
     static final int MAX_LINE_NUMBER = (1 << 18) - 1;
     static final int MAX_LINE_DELTA = (1 << 14) - 1;
     static final int MAX_COLUMN_NUMBER = (1 << 14) - 1;
@@ -28,17 +28,17 @@ public record ELispConsLocation(int startLine, int startColumn, int endLine, int
         return startLine | ((long) endLine << 32) | (0b1000L << 60);
     }
 
-    static ELispConsLocation decodeDebugInfo(long encoded) {
+    static SourceLocation decodeDebugInfo(long encoded) {
         if ((encoded >> 63) == 0) {
             int startLine = (int) (encoded & MAX_LINE_NUMBER);
-            return new ELispConsLocation(
+            return new SourceLocation(
                     startLine,
                     (int) ((encoded >> 32) & MAX_COLUMN_NUMBER),
                     (int) (startLine + ((encoded >> 18) & MAX_LINE_DELTA)),
                     (int) ((encoded >> 46) & MAX_COLUMN_NUMBER)
             );
         }
-        return new ELispConsLocation(
+        return new SourceLocation(
                 (int) encoded, 1,
                 (int) (encoded >> 32) & Integer.MAX_VALUE, 1
         );

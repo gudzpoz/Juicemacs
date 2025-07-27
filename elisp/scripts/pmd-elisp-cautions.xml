@@ -169,6 +169,26 @@
         </properties>
     </rule>
 
+    <rule name="ELispCannotDumpSourceSection"
+          language="java"
+          message="Store encoded integers instead of SourceSection in ELisp objects."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            During pdump, we serialize lisp objects and do not (or plan to) support
+            serializing SourceSection objects. Implement LocationProvider and
+            store an encoded integer instead.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //ClassDeclaration[pmd-java:typeIs("com.oracle.truffle.api.interop.TruffleObject")]
+                //FieldDeclaration/ClassType[pmd-java:typeIs("com.oracle.truffle.api.source.SourceSection")]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <rule name="TruffleNodeMissingExecuteVoid"
           language="java"
           message="Please implement executeVoid()."

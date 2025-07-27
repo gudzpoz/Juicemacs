@@ -205,11 +205,10 @@ public class ELispParser {
                         new AbstractELispClosure.ClosureCommons(source)
                 );
                 if (closure instanceof ELispBytecode function && source != null) {
-                    function.setSourceSection(TruffleUtils.createSection(
-                            source,
+                    function.setSourceLocation(
                             token.startLine(), token.startColumn(),
                             token.endLine(), token.endColumn()
-                    ));
+                    );
                 }
                 yield closure;
             }
@@ -284,6 +283,7 @@ public class ELispParser {
         return vector;
     }
 
+    @Nullable
     private SourceSection getWholeSection(Source source) {
         LocatedToken end = Objects.requireNonNull(lastRead);
         return TruffleUtils.createSection(source, 1, 1, end.endLine(), end.endColumn());

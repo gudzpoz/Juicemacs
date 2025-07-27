@@ -7,7 +7,7 @@ import org.apache.fury.serializer.Serializer;
 
 import java.net.URI;
 
-public class SourceSerializer extends Serializer<Source> {
+public final class SourceSerializer extends Serializer<Source> {
     public SourceSerializer(Fury fury) {
         super(fury, Source.class);
     }

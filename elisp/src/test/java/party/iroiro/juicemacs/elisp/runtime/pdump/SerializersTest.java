@@ -6,7 +6,7 @@ import org.apache.fury.config.Language;
 import org.apache.fury.memory.MemoryBuffer;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispConsLocation;
+import party.iroiro.juicemacs.elisp.runtime.array.SourceLocation;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.mule.MuleString;
 
@@ -82,8 +82,8 @@ public class SerializersTest {
         simple.setSourceLocation(1, 2, 3, 4);
         ELispCons restored = roundTrip(simple);
         assertTrue(restored.lispEquals(simple));
-        ELispConsLocation expected = simple.getLocation();
-        ELispConsLocation actual = restored.getLocation();
+        SourceLocation expected = simple.getLocation();
+        SourceLocation actual = restored.getLocation();
         assertEquals(expected, actual);
 
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
@@ -101,7 +101,7 @@ public class SerializersTest {
         while (i.hasNextCons()) {
             ELispCons cons = i.nextCons();
             assertEquals(
-                    new ELispConsLocation(1, 2, 3, 4),
+                    new SourceLocation(1, 2, 3, 4),
                     cons.getLocation()
             );
         }
