@@ -198,10 +198,19 @@ public class ELispParser {
                 yield base;
             }
             case SquareOpen() -> new ELispVector(readVector());
-            case ClosureOpen() -> AbstractELispClosure.create(
-                    readVector(),
-                    new AbstractELispClosure.ClosureCommons(source)
-            );
+            case ClosureOpen() -> {
+                AbstractELispClosure closure = AbstractELispClosure.create(
+                        readVector(),
+                        new AbstractELispClosure.ClosureCommons(source)
+                );
+                if (closure instanceof ELispBytecode function && source != null) {
+                    function.setSourceSection(source.createSection(
+                            token.startLine(), token.startColumn(),
+                            token.endLine(), token.endColumn()
+                    ));
+                }
+                yield closure;
+            }
             case CharTableOpen() -> ELispCharTable.create(readVector());
             case SubCharTableOpen() -> ELispCharTable.SubTable.create(readVector());
             case CircularRef(long i) -> Objects.requireNonNull(cyclicReferences.get(i));

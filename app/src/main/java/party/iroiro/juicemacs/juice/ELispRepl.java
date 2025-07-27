@@ -109,20 +109,20 @@ public class ELispRepl implements Callable<Integer> {
         } else if (dumpFile != null) {
             builder.option("elisp.dumpFile", dumpFile.getAbsolutePath());
         }
-        try (Context context = builder
-                .build()) {
+        try (Context context = builder.build()) {
             LineReader lineReader = getLineReader(context);
             try {
-                context.eval("elisp", """
-                        (setq noninteractive t)
-                        """);
                 if (dumpEmacs == null && dumpFile != null) {
+                    context.eval("elisp", "(setq noninteractive t)");
                     context.eval("elisp", "(eval top-level)");
                 } else {
                     context.eval("elisp", "(load \"loadup\")");
                 }
             } catch (PolyglotException e) {
                 printStackTrace(e, lineReader);
+            }
+            if (dumpEmacs != null) {
+                return 0;
             }
 
             while (true) {

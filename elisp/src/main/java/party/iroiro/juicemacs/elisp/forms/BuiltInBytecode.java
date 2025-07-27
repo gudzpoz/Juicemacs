@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBytecode;
@@ -32,15 +33,24 @@ public class BuiltInBytecode extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "byte-code", minArgs = 3, maxArgs = 3)
     @GenerateNodeFactory
-    public abstract static class FByteCode extends ELispBuiltInBaseNode {
+    public abstract static class FByteCode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object byteCode(ELispString bytestr, ELispVector vector, long maxdepth) {
             if (isMultibyte(bytestr.value())) {
                 throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, bytestr);
             }
-            ELispBytecode f = BuiltInAlloc.FMakeByteCode.makeByteCode(false, bytestr, vector, maxdepth, new Object[0]);
+            ELispBytecode f = BuiltInAlloc.FMakeByteCode.makeByteCode(
+                    this,
+                    false, bytestr, vector, maxdepth, new Object[0]
+            );
+            f.setName("byte-code@" + System.identityHashCode(f));
             return FuncallDispatchNode.dispatchArgsUncached(this, f);
+        }
+
+        @Override
+        public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+            return BuiltInBytecodeFactory.FByteCodeFactory.create(arguments);
         }
     }
 

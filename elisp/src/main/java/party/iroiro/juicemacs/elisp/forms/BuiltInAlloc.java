@@ -2,6 +2,9 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -229,13 +232,16 @@ public class BuiltInAlloc extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "make-byte-code", minArgs = 4, maxArgs = 4, varArgs = true)
     @GenerateNodeFactory
-    public abstract static class FMakeByteCode extends ELispBuiltInBaseNode {
+    public abstract static class FMakeByteCode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
-        public static ELispBytecode makeByteCode(Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
+        public static ELispBytecode makeByteCode(@Nullable Node node, Object arglist, Object byteCode, Object constants, Object depth, Object[] args) {
             ArrayList<Object> list = new ArrayList<>();
             list.addAll(List.of(arglist, byteCode, constants, depth));
             list.addAll(Arrays.asList(args));
-            return (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
+            @Nullable SourceSection section = node == null ? null : node.getSourceSection();
+            ELispBytecode bytecode = (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
+            bytecode.setSourceSection(section);
+            return bytecode;
         }
     }
 
@@ -262,6 +268,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
             ELispVector copyConstants = BuiltInFns.FCopySequence.copySequenceVector(constants);
             copyConstants.fillFrom(closureVars);
             ELispBytecode copy = (ELispBytecode) ELispBytecode.create(bytecode, bytecode.getCommons()); // NOPMD
+            copy.setSourceSection(bytecode.getSourceSection());
             copy.set(CLOSURE_CONSTANTS, copyConstants);
             return copy;
         }

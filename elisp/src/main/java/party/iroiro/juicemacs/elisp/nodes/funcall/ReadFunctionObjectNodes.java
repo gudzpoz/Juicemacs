@@ -111,7 +111,7 @@ public abstract class ReadFunctionObjectNodes {
         @Specialization(replaces = "getStableSymbol")
         public static Object getRedirected(Node node, ELispSymbol symbol) {
             Object function = symbol;
-            while (toSym(function) instanceof ELispSymbol sym) {
+            while (toSym(function) instanceof ELispSymbol sym && !isNil(sym)) {
                 function = getFunction(node, sym);
             }
             if (function instanceof ELispCons cons && cons.car() == AUTOLOAD) {
