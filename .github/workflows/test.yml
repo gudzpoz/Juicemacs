@@ -10,8 +10,8 @@ on:
     tags:
       - '*'
     paths-ignore:
-      - '.github/**'
       - 'docs/**'
+      - '**/*.md'
       - '**/*.org'
     branches:
       - main
@@ -80,11 +80,11 @@ jobs:
           ./gradlew compileJava compileTestJava
           sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"
       - name: Unit Tests
-        run: >
-          ./gradlew --info --stacktrace
-            :commons:mule-truffle:test
-            :commons:piece-tree:test
-            :commons:pmd-no-int:test
+        run: |
+          ./gradlew --info --stacktrace \
+            :commons:mule-truffle:test  \
+            :commons:piece-tree:test    \
+            :commons:pmd-no-int:test    \
             :elisp:test
 
       - name: Build Shadow Jar
