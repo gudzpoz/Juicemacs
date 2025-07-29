@@ -283,17 +283,21 @@ public class BuiltInLRead extends ELispBuiltIns {
                     }
                     yield switch (tree) {
                         case ELispCons cons -> {
-                            ELispCons.ConsIterator iterator = cons.listIterator(0);
-                            ELispCons last = cons;
-                            while (iterator.hasNextCons()) {
-                                last = iterator.nextCons();
-                                last.setCar(substitute(last.car()));
-                                if (last.cdr() == placeholder) {
-                                    last.setCdr(object);
+                            while (true) {
+                                cons.setCar(substitute(cons.car()));
+                                if (cons.cdr() == placeholder) {
+                                    cons.setCdr(object);
                                     yield tree;
                                 }
+                                if (recursive.containsKey(cons.cdr())) {
+                                    yield tree;
+                                }
+                                if (!(cons.cdr() instanceof ELispCons next)) {
+                                    break;
+                                }
+                                cons = next;
                             }
-                            last.setCdr(substitute(last.cdr()));
+                            cons.setCdr(substitute(cons.cdr()));
                             yield cons;
                         }
                         case ELispString s -> {

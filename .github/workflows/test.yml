@@ -16,6 +16,10 @@ on:
     branches:
       - main
 
+permissions:
+  checks: write
+  pull-requests: write
+
 jobs:
   elisp-test:
     runs-on: ubuntu-latest
@@ -55,6 +59,8 @@ jobs:
           # Emacs dependencies
           sudo apt-get update && sudo apt-get upgrade
           sudo apt-get install libgnutls28-dev
+          # Emacs packages
+          emacs --batch --eval "(progn (package-initialize) (use-package elisp-benchmarks :ensure))"
       - name: Restore GNU Emacs Build Cache
         id: cache-emacs-restore
         uses: actions/cache/restore@v4
@@ -68,6 +74,7 @@ jobs:
           make
       - name: Cache GNU Emacs Build
         uses: actions/cache/save@v4
+        if: steps.cache-emacs-restore.outputs.cache-hit != 'true'
         with:
           path: elisp/emacs
           key: ${{ steps.cache-emacs-restore.outputs.cache-primary-key }}

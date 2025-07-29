@@ -149,6 +149,7 @@ public class ElSemiFuzzTest {
                 .directory(cwd.toFile())
                 .start();
         ArrayList<Throwable> failures = new ArrayList<>();
+        int count = 0;
         try (InputStream is = fuzzer.getInputStream()) {
             while (failures.size() < 50) {
                 int len = readInt(is);
@@ -158,6 +159,7 @@ public class ElSemiFuzzTest {
                 byte[] bytes = is.readNBytes(len);
                 ELispString expr = new ELispString(MuleString.fromRaw(bytes));
                 try {
+                    count++;
                     bindings.putMember("args", expr);
                     Value extracted = context.eval("elisp", "(fuzz-case args)");
                     String expected = extracted.getArrayElement(0).asString();
@@ -182,6 +184,7 @@ public class ElSemiFuzzTest {
                 }
             }
         } finally {
+            System.err.println("elfuzz: " + functionName + ": " + count + " tests");
             fuzzer.destroy();
             assertEquals(0, failures.size(), () -> getStackTraceString(failures.getFirst()));
         }
