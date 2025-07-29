@@ -85,11 +85,17 @@ jobs:
           sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"
       - name: Unit Tests
         run: |
-          ./gradlew --info --stacktrace \
-            :commons:mule-truffle:test  \
-            :commons:piece-tree:test    \
-            :commons:pmd-no-int:test    \
-            :elisp:test
+          ./gradlew --info --stacktrace :commons:mule-truffle:test || true
+          ./gradlew --info --stacktrace :commons:piece-tree:test   || true
+          ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true
+          ./gradlew --info --stacktrace :elisp:test                || true
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: (!cancelled())
+        with:
+          files: |
+              **/build/test-results/**/*.xml
 
       - name: Build Shadow Jar
         run: |

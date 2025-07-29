@@ -64,7 +64,7 @@ dependencies {
 testing {
     suites {
         test {
-            useJUnitJupiter('5.10.3')
+            useJUnitJupiter()
         }
     }
 }

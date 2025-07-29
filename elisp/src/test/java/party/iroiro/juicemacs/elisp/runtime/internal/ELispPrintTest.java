@@ -6,6 +6,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("CollectionAddedToSelf")
 public class ELispPrintTest {
     private String print(Object o) {
         return ELispPrint.toString(o).toString();
@@ -23,5 +24,12 @@ public class ELispPrintTest {
     @Test
     public void testBoolVecPrint() {
         assertEquals("#&10\"\\0\\0\"", print(new ELispBoolVector(new long[1], 10)));
+    }
+
+    @Test
+    public void testCyclicList() {
+        ELispCons cons = ELispCons.listOf(1L);
+        cons.setCdr(cons);
+        assertEquals("(1 #1)", print(cons));
     }
 }
