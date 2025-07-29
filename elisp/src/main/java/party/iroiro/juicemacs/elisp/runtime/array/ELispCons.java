@@ -5,12 +5,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
-import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
@@ -159,6 +155,22 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
             case "cdr" -> cdr = value;
             default -> throw UnknownIdentifierException.create(member);
         }
+    }
+    @ExportMessage
+    public boolean hasArrayElements() {
+        return true;
+    }
+    @ExportMessage
+    public long getArraySize() {
+        return BuiltInFns.FSafeLength.safeLength(this);
+    }
+    @ExportMessage
+    public boolean isArrayElementReadable(long index) {
+        return true;
+    }
+    @ExportMessage
+    public Object readArrayElement(long index) {
+        return BuiltInFns.FNth.nth(index, this);
     }
     //#endregion InteropLibrary
 

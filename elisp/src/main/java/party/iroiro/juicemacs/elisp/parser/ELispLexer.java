@@ -300,7 +300,9 @@ public class ELispLexer {
             "-\\*-(?:|.*;)[ \t]*lexical-binding:[ \t]*([^;]*[^ \t;]).*-\\*-"
     );
     public static final Pattern INTEGER_PATTERN = Pattern.compile("^([+-]?[0-9]+)\\.?$");
-    public static final Pattern FLOAT_PATTERN = Pattern.compile("^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?$");
+    public static final String FLOAT_PATTERN_STRING =
+            "^[+-]?(?:[0-9]+\\.?[0-9]*|[0-9]*\\.?[0-9]+)(?:e(?:[+-]?[0-9]+|\\+INF|\\+NaN))?";
+    public static final Pattern FLOAT_PATTERN = Pattern.compile(FLOAT_PATTERN_STRING + "$");
 
     private final CodePointReader reader;
 
@@ -723,7 +725,7 @@ public class ELispLexer {
     }
 
     private static final long SIGNIFICAND_BITS = 52;
-    private static final long SIGNIFICAND_MASK = (0x1L << (SIGNIFICAND_BITS - 1)) - 1;
+    public static final long SIGNIFICAND_MASK = (0x1L << (SIGNIFICAND_BITS - 1)) - 1;
     private static final long EXP_BITS = 11;
     private static final long NAN_EXP = (0x1 << (EXP_BITS + 1)) - 1;
 

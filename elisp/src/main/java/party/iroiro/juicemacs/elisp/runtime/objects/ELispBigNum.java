@@ -18,8 +18,6 @@ import java.math.BigInteger;
 @SuppressWarnings("PMD.ShortMethodName")
 @ExportLibrary(InteropLibrary.class)
 public final class ELispBigNum extends Number implements TruffleObject, Comparable<ELispBigNum>, ELispValue {
-    public static final ELispBigNum ONE = forceWrap(1L);
-
     private final BigInteger value;
 
     private ELispBigNum(BigInteger value) {

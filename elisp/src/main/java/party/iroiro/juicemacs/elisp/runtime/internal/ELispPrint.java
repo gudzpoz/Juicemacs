@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.internal;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -226,7 +227,7 @@ public final class ELispPrint {
             } else if (o instanceof Long l) {
                 func.print(MuleString.fromString(l.toString()));
             } else if (o instanceof Double d) {
-                func.print(MuleString.fromString(d.toString()));
+                func.print(BuiltInData.FNumberToString.numberToStringFloat(d).value());
             } else {
                 throw ELispSignals.error("unable to print: " + o + "(" + o.getClass() + ")");
             }

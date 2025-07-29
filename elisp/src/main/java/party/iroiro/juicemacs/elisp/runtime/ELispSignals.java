@@ -282,6 +282,7 @@ public abstract class ELispSignals {
                 yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
             }
             case ELispSignals.ELispSignalException signal -> ELispSignals.attachLocation(signal, location);
+            case ArithmeticException _ -> ELispSignals.arithError();
             default -> null;
         };
         return mapped == null ? e : ELispSignals.attachLocation(mapped, location);

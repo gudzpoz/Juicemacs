@@ -151,6 +151,27 @@
         </properties>
     </rule>
 
+    <rule name="ELispNaNCompareTo"
+          language="java"
+          message="Use arithCompare(a, b) with bit masks for floating point equality checking."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            The method compareTo(a, b) imposes a total ordering, which is incompatible with
+            IEEE 754 NaN values (since comparisons with NaN should always yield false).
+            Use arithCompare(a, b) for correct floating point number handling, unless
+            you are implementing sorting functions.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //MethodDeclaration//InfixExpression
+                /MethodCall[count(./ArgumentList/*)=2][@MethodName="compareTo"]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <rule name="ELispLeakedListBuilder"
           language="java"
           message="Please remember to call builder.build()."

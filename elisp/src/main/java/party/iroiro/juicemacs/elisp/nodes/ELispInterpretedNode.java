@@ -599,7 +599,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             try {
                 inlinedNode.executeVoid(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (ELispSignals.ELispSignalException
+                     | ArithmeticException
+                     | ClassCastException | UnsupportedSpecializationException e) {
                 throw rewriteException(e);
             }
         }
@@ -611,7 +613,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             try {
                 return inlinedNode.executeLong(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (ELispSignals.ELispSignalException
+                     | ArithmeticException
+                     | ClassCastException | UnsupportedSpecializationException e) {
                 throw rewriteException(e);
             }
         }
@@ -623,7 +627,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             try {
                 return inlinedNode.executeDouble(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (ELispSignals.ELispSignalException
+                     | ArithmeticException
+                     | ClassCastException | UnsupportedSpecializationException e) {
                 throw rewriteException(e);
             }
         }
@@ -635,7 +641,9 @@ public abstract class ELispInterpretedNode extends ELispExpressionNode {
             }
             try {
                 return inlinedNode.executeGeneric(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (ELispSignals.ELispSignalException
+                     | ArithmeticException
+                     | ClassCastException | UnsupportedSpecializationException e) {
                 throw rewriteException(e);
             }
         }

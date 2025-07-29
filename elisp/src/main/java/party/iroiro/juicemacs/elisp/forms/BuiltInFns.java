@@ -1843,7 +1843,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FValuelt extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean valueltNumber(Number a, Number b) {
-            return BuiltInData.compareTo(a, b) < 0;
+            return (BuiltInData.arithCompare(a, b) & BuiltInData.ARITH_COMPARE_LT) != 0;
         }
         @Specialization
         public static boolean valueltString(ELispString a, ELispString b) {

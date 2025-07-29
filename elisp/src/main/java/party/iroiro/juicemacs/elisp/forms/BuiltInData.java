@@ -2,11 +2,13 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
+import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -24,6 +26,8 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -438,7 +442,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (right instanceof Double dr && Double.isNaN(dr)) {
                 return dr;
             }
-            return FMax.convMarker(compareTo(right, left) > 0 ? right : left);
+            return FMax.convMarker(compareTo(right, left) > 0 ? right : left); // NOPMD: total ordering needed
         }
     }
 
@@ -474,7 +478,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (right instanceof Double dr && Double.isNaN(dr)) {
                 return dr;
             }
-            return FMax.convMarker(compareTo(right, left) < 0 ? right : left);
+            return FMax.convMarker(compareTo(right, left) < 0 ? right : left); // NOPMD: total ordering needed
         }
     }
 
@@ -552,6 +556,13 @@ public class BuiltInData extends ELispBuiltIns {
         return node;
     }
 
+    /// Similar to [Comparable#compareTo(Object)]
+    ///
+    /// This function imposes a total ordering, that is, it does not
+    /// respect IEEE 754 `NaN` values. Use [#arithCompare(Object, Object)]
+    /// unless you are implementing `max`, `min` or `sort`.
+    ///
+    /// @see #arithCompare(Object, Object)
     public static int compareTo(Object a, Object b) {
         if (!(a instanceof Number na)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
@@ -559,11 +570,19 @@ public class BuiltInData extends ELispBuiltIns {
         if (!(b instanceof Number nb)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, b);
         }
-        if (a instanceof Double d) {
-            return d.compareTo(nb.doubleValue());
-        }
-        if (b instanceof Double d) {
-            return -d.compareTo(na.doubleValue());
+        if (na instanceof Double || nb instanceof Double) {
+            double da = na.doubleValue();
+            double db = nb.doubleValue();
+            // We do not use Double.compare(da, db) here because we expect
+            // compareTo(0.0, -0.0) == 0, while Double.compare imposes a total order.
+            if (da < db) {
+                return -1;
+            } else if (da == db) {
+                return 0;
+            } else if (da > db) {
+                return 1;
+            }
+            return Long.compare(Double.doubleToRawLongBits(da), Double.doubleToRawLongBits(db));
         }
         if (a instanceof ELispBigNum n) {
             return n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(b));
@@ -572,6 +591,44 @@ public class BuiltInData extends ELispBuiltIns {
             return -n.compareTo(ELispTypeSystemGen.asImplicitELispBigNum(a));
         }
         return Long.compare(asLong(a), asLong(b));
+    }
+
+    public static final byte ARITH_COMPARE_LT = 0b0001;
+    public static final byte ARITH_COMPARE_EQ = 0b0010;
+    public static final byte ARITH_COMPARE_GT = 0b0100;
+    /// Returns a bit mask representing comparison results
+    ///
+    /// Unlike [#compareTo(Object, Object)], this function allows correct NaN value
+    /// handling.
+    public static byte arithCompare(Object a, Object b) {
+        if (!(a instanceof Number na)) {
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
+        }
+        if (!(b instanceof Number nb)) {
+            throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, b);
+        }
+        boolean lt, eq, gt;
+        if (na instanceof Long la && nb instanceof Long lb) {
+            lt = la < lb;
+            eq = la.longValue() == lb.longValue();
+            gt = la > lb;
+        } else if (na instanceof Double || nb instanceof Double) {
+            double da = na.doubleValue();
+            double db = nb.doubleValue();
+            lt = da < db;
+            eq = da == db;
+            gt = da > db;
+        } else {
+            ELispBigNum bigA = ELispTypeSystemGen.asImplicitELispBigNum(na);
+            ELispBigNum bigB = ELispTypeSystemGen.asImplicitELispBigNum(nb);
+            int compare = bigA.compareTo(bigB);
+            lt = compare < 0;
+            eq = compare == 0;
+            gt = compare > 0;
+        }
+        return (byte) ((lt ? ARITH_COMPARE_LT : 0)
+                       | (eq ? ARITH_COMPARE_EQ : 0)
+                       | (gt ? ARITH_COMPARE_GT : 0));
     }
 
     @ReportPolymorphism
@@ -618,7 +675,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
-            return compareTo(left, right) == 0;
+            return arithCompare(left, right) == ARITH_COMPARE_EQ;
         }
     }
 
@@ -649,7 +706,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
-            return compareTo(left, right) < 0;
+            return (arithCompare(left, right) & ARITH_COMPARE_LT) != 0;
         }
     }
 
@@ -680,7 +737,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
-            return compareTo(left, right) <= 0;
+            return (arithCompare(left, right) & (ARITH_COMPARE_LT | ARITH_COMPARE_EQ)) != 0;
         }
     }
 
@@ -711,7 +768,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
-            return compareTo(left, right) >= 0;
+            return (arithCompare(left, right) & (ARITH_COMPARE_GT | ARITH_COMPARE_EQ)) != 0;
         }
     }
 
@@ -742,7 +799,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         @Specialization(replaces = {"longs", "longDouble", "doubleLong", "doubles"})
         public boolean fallback(Object left, Object right) {
-            return compareTo(left, right) > 0;
+            return (arithCompare(left, right) & ARITH_COMPARE_GT) != 0;
         }
     }
 
@@ -2295,33 +2352,61 @@ public class BuiltInData extends ELispBuiltIns {
                 ELispString array, long idx,
                 @Bind("stringBytes(array.value())") MuleByteArrayString value
         ) {
-            return value.bytes()[(int) idx];
+            checkRange(value.length(), idx);
+            return Byte.toUnsignedInt(value.bytes()[(int) idx]);
         }
         @Specialization
         public static long arefStr(ELispString array, long idx) {
+            checkRange(array.length(), idx);
             return array.codePointAt(idx);
         }
 
         @Specialization
         public static Object arefVec(ELispVector array, long idx) {
+            checkRange(array.size(), idx);
             return array.get((int) idx);
         }
         @Specialization
         public static Object arefRecord(ELispRecord array, long idx) {
+            checkRange(array.size(), idx);
             return array.get((int) idx);
         }
         @Specialization
         public static Object arefVecVirtual(ELispVectorLike<?> array, long idx) {
+            checkRange(array.size(), idx);
             return array.get((int) idx);
         }
 
         @Specialization
         public static Object aref(Object array, long idx) {
             return switch (array) {
-                case ELispString str -> str.codePointAt(idx);
-                case ELispVectorLike<?> vec -> vec.get((int) idx);
+                case ELispString str -> {
+                    checkRange(str.length(), idx);
+                    yield str.codePointAt(idx);
+                }
+                case ELispVectorLike<?> vec -> {
+                    checkRange(vec.size(), idx);
+                    yield vec.get((int) idx);
+                }
                 default -> throw ELispSignals.wrongTypeArgument(ARRAYP, array);
             };
+        }
+
+        @Specialization
+        public static Object arefFallback(Object array, Object idx) {
+            if (idx instanceof Long index) {
+                return aref(array, index);
+            }
+            if (idx instanceof ELispBigNum) {
+                throw ELispSignals.argsOutOfRange(Long.MAX_VALUE);
+            }
+            throw ELispSignals.wrongTypeArgument(INTEGERP, idx);
+        }
+
+        private static void checkRange(long length, long index) {
+            if (index < 0 || index >= length) {
+                throw ELispSignals.argsOutOfRange(index);
+            }
         }
     }
 
@@ -2383,7 +2468,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static boolean eqlsign(Object numberOrMarker, Object[] numbersOrMarkers) {
             for (Object arg : numbersOrMarkers) {
-                if (compareTo(numberOrMarker, arg) != 0) {
+                if (arithCompare(numberOrMarker, arg) != ARITH_COMPARE_EQ) {
                     return false;
                 }
             }
@@ -2409,7 +2494,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static boolean lss(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
-                if (compareTo(prev, arg) >= 0) {
+                if ((arithCompare(prev, arg) & ARITH_COMPARE_LT) == 0) {
                     return false;
                 }
                 prev = arg;
@@ -2436,7 +2521,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static boolean gtr(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
-                if (compareTo(prev, arg) <= 0) {
+                if ((arithCompare(prev, arg) & ARITH_COMPARE_GT) == 0) {
                     return false;
                 }
                 prev = arg;
@@ -2463,7 +2548,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static boolean leq(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
-                if (compareTo(prev, arg) > 0) {
+                if ((arithCompare(prev, arg) & (ARITH_COMPARE_LT | ARITH_COMPARE_EQ)) == 0) {
                     return false;
                 }
                 prev = arg;
@@ -2490,7 +2575,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static boolean geq(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object prev = numberOrMarker;
             for (Object arg : numbersOrMarkers) {
-                if (compareTo(prev, arg) < 0) {
+                if ((arithCompare(prev, arg) & (ARITH_COMPARE_GT | ARITH_COMPARE_EQ)) == 0) {
                     return false;
                 }
                 prev = arg;
@@ -2514,7 +2599,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FNeq extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean neq(Object num1, Object num2) {
-            return compareTo(num1, num2) != 0;
+            return (arithCompare(num1, num2) & ARITH_COMPARE_EQ) == 0;
         }
     }
 
@@ -2534,7 +2619,27 @@ public class BuiltInData extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString numberToStringFloat(double number) {
-            return new ELispString(Double.toString(number));
+            if (Double.isNaN(number)) {
+                long bits = Double.doubleToRawLongBits(number);
+                boolean neg = (bits & Long.MIN_VALUE) != 0;
+                long significand = bits & ELispLexer.SIGNIFICAND_MASK;
+                return new ELispString((neg ? "-" : "") + significand + ".0e+NaN");
+            } else if (Double.isInfinite(number)) {
+                return new ELispString(number > 0 ? "1.0e+INF" : "-1.0e+INF");
+            }
+            String floatString = Double.toString(number);
+            int eIndex = floatString.indexOf('E');
+            if (eIndex != -1) {
+                StringBuilder sb = new StringBuilder()
+                        .append(floatString, 0, eIndex)
+                        .append('e');
+                if (floatString.charAt(eIndex + 1) != '-') {
+                    sb.append('+');
+                }
+                sb.append(floatString, eIndex + 1, floatString.length());
+                floatString = sb.toString();
+            }
+            return new ELispString(floatString);
         }
         @Specialization
         public static ELispString numberToStringBigNum(ELispBigNum number) {
@@ -2556,20 +2661,24 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "string-to-number", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FStringToNumber extends ELispBuiltInBaseNode {
+        private static final Pattern FLOAT_SEARCH_PATTERN = Pattern.compile(ELispLexer.FLOAT_PATTERN_STRING);
+
         @Specialization
         public Object stringToNumber(ELispString string, Object base) {
-            String s = string.toString();
-            long b = notNilOr(base, 10);
-            if (b != 10) {
-                s = s.trim();
-                s = "#" + b + "r" + s;
-            }
+            String s = StringUtils.strip(string.toString(), " \t");
+            long iBase = notNilOr(base, 10);
             try {
-                Object read = ELispParser.read(getContext(), s);
-                if (read instanceof Long || read instanceof Double || read instanceof ELispBigNum) {
-                    return read;
+                if (iBase == 10) {
+                    Matcher matcher = FLOAT_SEARCH_PATTERN.matcher(s);
+                    if (matcher.find()) {
+                        return ELispParser.read(getContext(), s.substring(0, matcher.end()));
+                    }
                 }
-            } catch (IOException ignored) {
+                if (iBase < 2 || iBase > 16) {
+                    throw ELispSignals.argsOutOfRange(iBase);
+                }
+                return ELispParser.read(getContext(), "#" + iBase + "r" + s);
+            } catch (IOException | ELispSignals.ELispSignalException ignored) {
             }
             return 0L;
         }
@@ -2898,6 +3007,9 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FRem extends ELispBuiltInBaseNode {
         @Specialization
         public static long remLong(long x, long y) {
+            if (y == 0) {
+                throw ELispSignals.arithError();
+            }
             return x % y;
         }
 
@@ -2980,7 +3092,7 @@ public class BuiltInData extends ELispBuiltIns {
                 if (hasNaN == null && isNaN(arg)) {
                     hasNaN = arg;
                 }
-                if (compareTo(result, arg) < 0) {
+                if (compareTo(result, arg) < 0) { // NOPMD: total ordering needed
                     result = convMarker(arg);
                 }
             }
@@ -3014,7 +3126,7 @@ public class BuiltInData extends ELispBuiltIns {
                 if (hasNaN == null && FMax.isNaN(arg)) {
                     hasNaN = arg;
                 }
-                if (compareTo(result, arg) > 0) {
+                if (compareTo(result, arg) > 0) { // NOPMD: total ordering needed
                     result = FMax.convMarker(arg);
                 }
             }

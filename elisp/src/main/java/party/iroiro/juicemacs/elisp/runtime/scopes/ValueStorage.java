@@ -581,16 +581,19 @@ public final class ValueStorage implements Externalizable {
                 Object range = BuiltInFns.FGet.get(predicate, RANGE);
                 if (range instanceof ELispCons cons) {
                     return (!BuiltInData.FNumberp.numberp(value)
-                            || !(
-                            BuiltInData.compareTo(cons.car(), value) <= 0
-                                    && BuiltInData.compareTo(value, cons.cdr()) <= 0
-                    ));
+                            || !inRange(cons.car(), value, cons.cdr()));
                 }
                 if (BuiltInEval.FFunctionp.functionp(predicate)) {
                     return isNil(BuiltInEval.FFuncall.funcall(null, predicate, value));
                 }
             }
             return false;
+        }
+        private static boolean inRange(Object left, Object object, Object right) {
+            byte leftComp = BuiltInData.arithCompare(left, object);
+            byte rightComp = BuiltInData.arithCompare(object, right);
+            return (leftComp & (BuiltInData.ARITH_COMPARE_LT | BuiltInData.ARITH_COMPARE_EQ)) != 0 &&
+                   (rightComp & (BuiltInData.ARITH_COMPARE_LT | BuiltInData.ARITH_COMPARE_EQ)) != 0;
         }
         @Override
         Object defaultValue() {

@@ -1229,7 +1229,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FCarLessThanCar extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean carLessThanCar(ELispCons a, ELispCons b) {
-            return BuiltInData.compareTo(a.car(), b.car()) < 0;
+            return (BuiltInData.arithCompare(a.car(), b.car()) & BuiltInData.ARITH_COMPARE_LT) != 0;
         }
     }
 

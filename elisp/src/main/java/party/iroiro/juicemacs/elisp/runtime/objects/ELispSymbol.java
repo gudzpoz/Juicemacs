@@ -251,20 +251,12 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
 
     //#region InteropLibrary
     @ExportMessage
-    public boolean isMetaObject() {
+    public boolean isString() {
         return true;
     }
     @ExportMessage
-    public Object getMetaQualifiedName() {
-        return getMetaSimpleName();
-    }
-    @ExportMessage
-    public Object getMetaSimpleName() {
-        return name;
-    }
-    @ExportMessage
-    public boolean isMetaInstance(Object ignored) {
-        return false;
+    public String asString() {
+        return name.toString();
     }
     //#endregion InteropLibrary
 
