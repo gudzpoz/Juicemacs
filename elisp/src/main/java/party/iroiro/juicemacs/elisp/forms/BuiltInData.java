@@ -2429,6 +2429,7 @@ public class BuiltInData extends ELispBuiltIns {
                 ELispString array, long idx, long newelt,
                 @Bind("stringBytes(array.value())") MuleByteArrayString value
         ) {
+            FAref.checkRange(value.length(), idx);
             value.bytes()[(int) idx] = (byte) newelt;
             return newelt;
         }
@@ -2677,7 +2678,34 @@ public class BuiltInData extends ELispBuiltIns {
                 if (iBase < 2 || iBase > 16) {
                     throw ELispSignals.argsOutOfRange(iBase);
                 }
-                return ELispParser.read(getContext(), "#" + iBase + "r" + s);
+                int i = 0;
+                while (i < s.length()) {
+                    char c = s.charAt(i);
+                    if ('0' <= c && c <= '9') {
+                        if (c < '0' + iBase) {
+                            i++;
+                        } else {
+                            break;
+                        }
+                    } else if (iBase > 10) {
+                        if ('a' <= c && c <= 'f') {
+                            if (c < 'a' + iBase - 10) {
+                                i++;
+                            } else {
+                                break;
+                            }
+                        } else if ('A' <= c && c <= 'F') {
+                            if (c < 'A' + iBase - 10) {
+                                i++;
+                            } else {
+                                break;
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                return ELispParser.read(getContext(), "#" + iBase + "r" + s.substring(0, i));
             } catch (IOException | ELispSignals.ELispSignalException ignored) {
             }
             return 0L;

@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 public abstract class AbstractELispVector extends ELispVectorLike<Object> {
     // TODO: Reduce copies in the old List API
@@ -18,11 +19,17 @@ public abstract class AbstractELispVector extends ELispVectorLike<Object> {
 
     @Override
     public Object get(int index) {
+        if (index < 0 || index >= inner.length) {
+            throw ELispSignals.argsOutOfRange(index);
+        }
         return inner[index];
     }
 
     @Override
     public Object set(int index, Object element) {
+        if (index < 0 || index >= inner.length) {
+            throw ELispSignals.argsOutOfRange(index);
+        }
         Object old = inner[index];
         inner[index] = element;
         return old;

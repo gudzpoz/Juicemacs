@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 @ExportLibrary(InteropLibrary.class)
@@ -58,7 +59,7 @@ public final class ELispString implements TruffleObject, ELispValue {
     @Nullable
     public static Long toValidChar(Object a) {
         if (a instanceof Long l) {
-            return Character.isValidCodePoint(Math.toIntExact(l)) ? l : null;
+            return 0 <= l && l <= MAX_CHAR ? l : null;
         }
         return null;
     }
