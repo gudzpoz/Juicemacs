@@ -61,6 +61,7 @@ jobs:
           sudo apt-get install libgnutls28-dev
           # Emacs packages
           emacs --batch --eval "(progn (package-initialize) (use-package elisp-benchmarks :ensure))"
+          emacs --batch -L elisp/scripts/emacs-extractor -l el-semi-fuzz
       - name: Restore GNU Emacs Build Cache
         id: cache-emacs-restore
         uses: actions/cache/restore@v4
@@ -92,6 +93,7 @@ jobs:
           sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"
       - name: Unit Tests
         run: |
+          ./gradlew cleanTest
           ./gradlew --info --stacktrace :commons:mule-truffle:test || true
           ./gradlew --info --stacktrace :commons:piece-tree:test   || true
           ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true

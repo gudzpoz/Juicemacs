@@ -74,18 +74,15 @@ var extractionFinalizer = file("${extractorDir}/extraction_java.py")
 var base = 'src/main/java/party/iroiro/juicemacs/elisp'
 
 // One huge task to generate all sources
-tasks.register("emacsGen") {
+tasks.register("emacsGen", Exec) {
     description = 'Generate symbol/function definitions from Emacs source'
-    doLast {
-        exec {
-            commandLine "${extractorDir}/.venv/bin/emacs-extractor", emacsSrc, '-o', 'extraction.json',
-                    '-c', extractionConfig, '-f', extractionFinalizer,
-                    '-g', file("${base}/runtime/ELispGlobals.java"),
-                    '--buffer', file("${base}/runtime/objects/ELispBuffer.java"),
-                    '--frame', file("${base}/runtime/internal/ELispFrame.java"),
-                    '--kboard', file("${base}/runtime/internal/ELispKboard.java"),
-                    '-C', file("${base}/forms/ELispBuiltInConstants.java"),
-                    '-d', file("${base}/forms")
-        }
-    }
+    commandLine "${extractorDir}/.venv/bin/emacs-extractor", emacsSrc,
+            '-o', "${extractorDir}/extraction.json",
+            '-c', extractionConfig, '-f', extractionFinalizer,
+            '-g', file("${base}/runtime/ELispGlobals.java"),
+            '--buffer', file("${base}/runtime/objects/ELispBuffer.java"),
+            '--frame', file("${base}/runtime/internal/ELispFrame.java"),
+            '--kboard', file("${base}/runtime/internal/ELispKboard.java"),
+            '-C', file("${base}/forms/ELispBuiltInConstants.java"),
+            '-d', file("${base}/forms")
 }

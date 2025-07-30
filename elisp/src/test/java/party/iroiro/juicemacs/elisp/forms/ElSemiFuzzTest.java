@@ -138,7 +138,8 @@ public class ElSemiFuzzTest {
     @ParameterizedTest
     @MethodSource("getFuzzableFunctions")
     public void testElSemiFuzz(String functionName) throws IOException {
-        String funcall = "(esfuzz-run-fuzz nil \"^" + functionName.replace("\"", "\\\"") + "$\" t)";
+        String lispFunctionName = "\"" + functionName.replace("\"", "\\\"") + "\"";
+        String funcall = "(esfuzz-run-fuzz nil (concat \"^\" (regexp-quote " + lispFunctionName + ") \"$\") t)";
         String[] commands = new String[] {
                 "emacs", "-Q", "-nw", "--batch",
                 "-L", ".", "-l", "el-semi-fuzz",
