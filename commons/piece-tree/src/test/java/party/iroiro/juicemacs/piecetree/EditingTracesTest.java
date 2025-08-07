@@ -28,7 +28,6 @@ import java.util.zip.GZIPInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static party.iroiro.juicemacs.mule.MuleString.fromString;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -91,8 +90,17 @@ public class EditingTracesTest {
             state.delete(edit.position, edit.numDeleted);
         }
         if (!edit.insertedContent.isEmpty()) {
-            state.insert(edit.position, fromString(edit.insertedContent), false);
+            state.insert(edit.position, fromString(edit.insertedContent));
         }
+    }
+
+    private static final TruffleString.FromJavaStringNode FROM_JAVA = TruffleString.FromJavaStringNode.create();
+    private static final TruffleString.FromCodePointNode FROM_INT = TruffleString.FromCodePointNode.create();
+    private static TruffleString fromString(String s) {
+        if (s.length() == 1) {
+            return FROM_INT.execute(s.charAt(0), TruffleString.Encoding.UTF_32);
+        }
+        return FROM_JAVA.execute(s, TruffleString.Encoding.UTF_32);
     }
 
     private void testEntry(String name, BiFunction<PieceState, long[], @Nullable String> testRunner) throws IOException {
@@ -129,11 +137,7 @@ public class EditingTracesTest {
     @Test
     public void testTraces() throws IOException {
         testEntry("editing-traces", (state, latency) -> {
-            PieceTreeBase tree = new PieceTreeBase(
-                    List.of(new StringBuffer(fromString(state.trace.start), true)),
-                    PieceTreeBase.EndOfLine.LF,
-                    !state.trace.start.contains("\r")
-            );
+            PieceTreeBase tree = new PieceTreeBase(fromString(state.trace.start));
             Edit[] edits = state.trace.edits;
             for (int i = 0; i < edits.length; i++) {
                 Edit edit = edits[i];
@@ -317,11 +321,7 @@ public class EditingTracesTest {
         @Setup(Level.Iteration)
         public void setUp() {
             trace = parseTrace(readFromGzResource(file));
-            tree = new PieceTreeBase(
-                    List.of(new StringBuffer(fromString(trace.start), true)),
-                    PieceTreeBase.EndOfLine.LF,
-                    !trace.start.contains("\r")
-            );
+            tree = new PieceTreeBase(fromString(trace.start));
             gapBuffer = new GapBuffer(trace.start);
         }
 

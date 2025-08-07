@@ -14,10 +14,10 @@ repositories {
 }
 
 dependencies {
-    api project(':commons:mule-truffle')
-
     implementation "org.eclipse.collections:eclipse-collections-api:${eclipseCollectionsVersion}"
     implementation "org.eclipse.collections:eclipse-collections:${eclipseCollectionsVersion}"
+
+    api "org.graalvm.truffle:truffle-api:${truffleVersion}"
 
     testAnnotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
     testImplementation 'org.json:json:20240303'

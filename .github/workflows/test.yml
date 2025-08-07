@@ -94,7 +94,6 @@ jobs:
       - name: Unit Tests
         run: |
           ./gradlew cleanTest
-          ./gradlew --info --stacktrace :commons:mule-truffle:test || true
           ./gradlew --info --stacktrace :commons:piece-tree:test   || true
           ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true
           ./gradlew --info --stacktrace :elisp:test                || true

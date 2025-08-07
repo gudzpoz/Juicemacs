@@ -14,7 +14,10 @@ This sub module hosts three (or maybe two) data structures for Emacs texts:
 
   Well, it was a transliteration. But we have now migrated from =java.lang.String=
   to =TruffleString= to use code point offsets instead of UTF-16 char offsets.
-  Also, the performance degraded significantly after the switch.
+  By the way, the performance degraded significantly after the switch.
+
+  Also, CR (and CR and then LF) new line handling has been removed because Emacs
+  always converts them prior to inserting them into a buffer.
 
 * Some (Probably Badly Designed) Benchmarks
 
@@ -115,7 +118,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 * Developing
 
-The Java code tries to be as close as possible to the TypeScript code, and we
-provide [[file:./scripts/normalize-for-diff.py][a simple script]] to help "diff"ing between the two implementations. The
-current version of the Java code is based on the TypeScript code from [[https://github.com/microsoft/vscode/commit/6b924c51528e663dda5091a1493229a361676aca][commit
-6b924c5]].
+We have a tiny fuzzing test. Also, the current version of the Java code is based
+on the TypeScript code from [[https://github.com/microsoft/vscode/commit/6b924c51528e663dda5091a1493229a361676aca][commit 6b924c5]], and it should be good to check if VS
+Code has pushed any fixes from time to time.

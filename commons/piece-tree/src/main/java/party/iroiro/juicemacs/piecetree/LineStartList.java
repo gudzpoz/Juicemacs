@@ -1,68 +1,25 @@
 package party.iroiro.juicemacs.piecetree;
 
-import org.eclipse.collections.api.list.primitive.LongList;
-import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 
-public sealed interface LineStartList {
-    long get(int index);
-    int size();
-
-    default long getLast() {
-        return get(size() - 1);
-    }
-
-    default long set(int index, long value) {
-        throw new UnsupportedOperationException();
-    }
-
-    default void addAll(LineStartList other, int start) {
-        throw new UnsupportedOperationException();
-    }
-
-    default void pop() {
-        throw new UnsupportedOperationException();
-    }
-
-    final class ImmutableIntList implements LineStartList {
-        private final int[] items;
-
-        private ImmutableIntList(LongList list) {
-            items = new int[list.size()];
-            for (int i = 0; i < list.size(); i++) {
-                items[i] = (int) list.get(i);
+public final class LineStartList extends IntArrayList {
+    public void appendLineStarts(AbstractTruffleString str, int offset) {
+        int length = StringNodes.length(str);
+        int last = 0;
+        while (last < length) {
+            last = StringNodes.indexOf(str, '\n', last, length);
+            if (last < 0) {
+                break;
             }
-        }
-
-        @Override
-        public long get(int index) {
-            return items[index];
-        }
-
-        @Override
-        public int size() {
-            return items.length;
+            add(++last + offset);
         }
     }
 
-    final class LongLineStarts extends LongArrayList implements LineStartList {
-        @Override
-        public void pop() {
-            removeAtIndex(size - 1);
-        }
-
-        @Override
-        public void addAll(LineStartList other, int start) {
-            long[] inner = ((LongLineStarts) other).items;
-            ensureCapacity(size + other.size() - start);
-            System.arraycopy(inner, start, items, size, other.size() - start);
-            size += other.size() - start;
-        }
-    }
-
-    static LineStartList create(LongLineStarts r, boolean readonly) {
-        if (!readonly || r.getLast() > Integer.MAX_VALUE) {
-            return r;
-        }
-        return new ImmutableIntList(r);
+    public void addAll(LineStartList other) {
+        int[] inner = other.items;
+        ensureCapacity(size + other.size());
+        System.arraycopy(inner, 0, items, size, other.size());
+        size += other.size();
     }
 }
