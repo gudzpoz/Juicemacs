@@ -24,7 +24,6 @@ dependencies {
     pmd "net.sourceforge.pmd:pmd-ant:${pmdVersion}"
     pmd "net.sourceforge.pmd:pmd-java:${pmdVersion}"
 
-    implementation project(':commons:mule-truffle')
     implementation project(':commons:piece-tree')
 
     implementation 'org.apache.commons:commons-lang3:3.18.0'

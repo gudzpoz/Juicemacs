@@ -4,7 +4,6 @@ import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.serializer.Serializer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.mule.MuleString;
 
 public final class ELispSymbolSerializer extends Serializer<ELispSymbol> {
     public ELispSymbolSerializer(Fury fury) {
@@ -19,6 +18,6 @@ public final class ELispSymbolSerializer extends Serializer<ELispSymbol> {
     @Override
     public ELispSymbol read(MemoryBuffer buffer) {
         fury.getRefResolver().reference(null);
-        return new ELispSymbol((MuleString) fury.readRef(buffer));
+        return new ELispSymbol((String) fury.readRef(buffer));
     }
 }

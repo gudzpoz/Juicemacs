@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -7,8 +8,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -74,6 +74,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCallProcess extends ELispBuiltInBaseNode {
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         public Object callProcess(ELispString program, Object[] args) {
             Object input = args.length > 0 ? args[0] : false;
             if (!isNil(input)) {
@@ -110,9 +111,9 @@ public class BuiltInCallProc extends ELispBuiltIns {
                 try (BufferedReader reader = process.inputReader()) {
                     String line;
                     // TODO: encoding & CR/LF
-                    MuleString newline = MuleString.fromString("\n");
+                    ELispString newline = new ELispString("\n");
                     while ((line = reader.readLine()) != null) {
-                        buffer.insert(MuleString.fromString(line));
+                        buffer.insert(new ELispString(line));
                         buffer.insert(newline);
                     }
                 }

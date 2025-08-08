@@ -5,6 +5,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -585,7 +586,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
 
         private SubTable decompressTable(ELispString compressed, int minChar) {
-            PrimitiveIterator.OfInt i = compressed.value().iterator(0);
+            PrimitiveIterator.OfInt i = compressed.iterator(0);
             int type = i.nextInt();
             SubTable table = new SubTable(3, minChar, false);
             if (type == 1) {

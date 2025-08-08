@@ -6,6 +6,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
@@ -22,7 +23,7 @@ import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 import party.iroiro.juicemacs.elisp.runtime.pdump.ELispPortableDumper;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -102,11 +103,11 @@ public final class ELispContext implements ELispParser.InternContext {
         return obarray().intern(name);
     }
     @Override
-    public ELispSymbol intern(MuleString name) {
+    public ELispSymbol intern(TruffleString name) {
         return obarray().intern(name);
     }
     @Override
-    public MuleString applyShorthands(MuleString symbol) {
+    public String applyShorthands(String symbol) {
         // TODO: Implementation
         return symbol;
     }

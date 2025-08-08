@@ -1,18 +1,17 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.serializer.Serializer;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
-import party.iroiro.juicemacs.mule.MuleString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
-import party.iroiro.juicemacs.piecetree.StringBuffer;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
 import java.util.HashSet;
-import java.util.List;
 
 public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
     public PieceTreeSerializer(Fury fury) {
@@ -27,12 +26,8 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
     @Override
     public PieceTreeBase read(MemoryBuffer buffer) {
         fury.getRefResolver().reference(null);
-        MuleString content = (MuleString) fury.readRef(buffer);
-        return new PieceTreeBase(
-                List.of(new StringBuffer(content, true)),
-                PieceTreeBase.EndOfLine.LF,
-                false
-        );
+        TruffleString content = (TruffleString) fury.readRef(buffer);
+        return new PieceTreeBase(content);
     }
 
     @SuppressWarnings("rawtypes")
@@ -43,6 +38,7 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
 
         @SuppressWarnings("unchecked")
         @Override
+        @CompilerDirectives.TruffleBoundary
         public void write(MemoryBuffer buffer, IntervalPieceTree value) {
             try (DumpUtils.CounterSlot slot = DumpUtils.CounterSlot.record(buffer)) {
                 value.forPropertiesIn(0, Long.MAX_VALUE, true, new IntervalPieceTree.IntervalConsumer() {

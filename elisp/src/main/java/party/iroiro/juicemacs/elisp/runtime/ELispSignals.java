@@ -17,7 +17,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Value;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEditFns;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.io.FileNotFoundException;
@@ -106,8 +106,8 @@ public abstract class ELispSignals {
         return new ELispSignalException(exception.getTag(), exception.getData(), location);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private static ELispSignalException signal(ELispSymbol error, Object... data) {
-        CompilerDirectives.transferToInterpreter();
         for (int i = 0; i < data.length; i++) {
             if (data[i] instanceof String s) {
                 data[i] = new ELispString(s);
@@ -225,7 +225,7 @@ public abstract class ELispSignals {
                 SYMBOLP,
                 "party.iroiro.juicemacs.elisp.runtime.objects.ELispCons",
                 CONSP,
-                "party.iroiro.juicemacs.elisp.runtime.objects.ELispString",
+                "party.iroiro.juicemacs.elisp.runtime.string.ELispString",
                 STRINGP,
                 "party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum",
                 INTEGERP,

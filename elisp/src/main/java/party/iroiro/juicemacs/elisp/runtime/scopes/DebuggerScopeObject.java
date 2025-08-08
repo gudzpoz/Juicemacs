@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.scopes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -13,7 +14,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ public record DebuggerScopeObject(
     }
 
     @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     public Object toDisplayString(boolean allowSideEffects) {
         return toString();
     }
@@ -77,6 +79,7 @@ public record DebuggerScopeObject(
     }
 
     @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     public Object readMember(String member) throws UnsupportedMessageException {
         ELispLexical.@Nullable LexicalReference ref = lexical.getReference(context.intern(member));
         if (ref == null) {

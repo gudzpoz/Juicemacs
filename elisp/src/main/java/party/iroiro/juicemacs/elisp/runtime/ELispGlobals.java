@@ -14,7 +14,7 @@ import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispKboard;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -55,7 +55,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
     }
 
     private void internSymbols(ELispSymbol[] symbols) {
-        HashMap<MuleString, ELispSymbol> map = globalObarray.symbols();
+        HashMap<String, ELispSymbol> map = globalObarray.symbols();
         for (ELispSymbol symbol : symbols) {
             map.put(symbol.name(), symbol);
         }

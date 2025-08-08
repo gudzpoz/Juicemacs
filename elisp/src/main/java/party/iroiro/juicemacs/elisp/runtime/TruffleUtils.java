@@ -1,7 +1,9 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 
 public abstract class TruffleUtils {
@@ -24,6 +26,7 @@ public abstract class TruffleUtils {
     ///    for Truffle debug utilities.)
     /// 4. `null` (because [Source#createUnavailableSection()] causes *a lot* of problems).
     @Nullable
+    @CompilerDirectives.TruffleBoundary
     public static SourceSection createSection(
             Source source,
             int startLine, int startColumn,
@@ -43,5 +46,18 @@ public abstract class TruffleUtils {
                 }
             }
         }
+    }
+
+    /// Workaround for [Throwable#addSuppressed(Throwable)] during native image generation
+    ///
+    /// [Throwable#addSuppressed(Throwable)] is blocklisted and should not be reachable during
+    /// runtime compilation.
+    @CompilerDirectives.TruffleBoundary
+    public static void addSuppressed(Exception e, Exception suppressed) {
+        e.addSuppressed(suppressed);
+    }
+
+    public static TruffleString string(String string) {
+        return TruffleString.fromJavaStringUncached(string, TruffleString.Encoding.UTF_32);
     }
 }

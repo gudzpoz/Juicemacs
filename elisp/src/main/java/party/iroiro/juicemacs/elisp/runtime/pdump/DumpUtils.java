@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.resolver.RefResolver;
@@ -93,6 +94,7 @@ public abstract class DumpUtils {
     }
 
     /// @see #readContextArray(Fury, MemoryBuffer, SharedIndicesMap, SharedIndicesMap.ContextArray)
+    @CompilerDirectives.TruffleBoundary
     public static <T> void writeContextArray(
             Fury fury, MemoryBuffer output,
             SharedIndicesMap indicesMap,

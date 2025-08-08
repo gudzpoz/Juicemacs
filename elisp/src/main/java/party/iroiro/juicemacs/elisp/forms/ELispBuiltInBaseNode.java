@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode;
 
 @NodeChild(value = "arguments", type = ELispExpressionNode[].class)
 public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
@@ -39,11 +40,11 @@ public abstract class ELispBuiltInBaseNode extends ELispExpressionNode {
     /// so that each node gets its own specialized implementation to speed things up.
     ///
     /// The execution of inlined nodes and special forms are defined in
-    /// [party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode].
+    /// [ELispInterpretedNode].
     ///
     /// @see BuiltInData.FPlusBinary
     /// @see BuiltInData.FPlus
-    /// @see party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode
+    /// @see ELispInterpretedNode
     public interface InlineFactory {
         ELispExpressionNode createNode(ELispExpressionNode[] arguments);
     }

@@ -3,13 +3,11 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
-import party.iroiro.juicemacs.elisp.ELispLanguage;
+import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.*;
 
@@ -36,24 +34,22 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeString extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString makeString(long length, Object init, boolean multibyte) {
+        public static ELispString makeString(
+                long length, long init, boolean multibyte,
+                @Cached TruffleString.FromCodePointNode fromCodePoint,
+                @Cached TruffleString.RepeatNode repeat
+        ) {
             if (length <= 0) {
                 return new ELispString("");
             }
             int c = asChar(init);
-            if (length > Integer.MAX_VALUE || multibyte) {
-                throw new UnsupportedOperationException();
-            }
-            if (c <= 0xFF) {
-                byte[] bytes = new byte[(int) length];
-                Arrays.fill(bytes, (byte) c);
-                return new ELispString(MuleString.fromLatin1(bytes));
-            }
-            MuleStringBuffer buffer = new MuleStringBuffer();
-            for (int i = 0; i < length; i++) {
-                buffer.appendCodePoint(c);
-            }
-            return new ELispString(buffer.build());
+            int iLength = asRanged(length, 0, Integer.MAX_VALUE / 4);
+            TruffleString inner = repeat.execute(
+                    fromCodePoint.execute(c, TruffleString.Encoding.UTF_32),
+                    iLength,
+                    TruffleString.Encoding.UTF_32
+            );
+            return new ELispString(inner);
         }
     }
 
@@ -286,8 +282,11 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeSymbol extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol makeSymbol(ELispString name) {
-            return new ELispSymbol(name.value(), false);
+        public static ELispSymbol makeSymbol(
+                ELispString name,
+                @Cached TruffleString.ToJavaStringNode asJava
+        ) {
+            return new ELispSymbol(asJava.execute(name.value()), false);
         }
     }
 

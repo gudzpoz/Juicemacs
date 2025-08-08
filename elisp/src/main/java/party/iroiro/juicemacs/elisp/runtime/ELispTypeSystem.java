@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.TypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.Collections;
 

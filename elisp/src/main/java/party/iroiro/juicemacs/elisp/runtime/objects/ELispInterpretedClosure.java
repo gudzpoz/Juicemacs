@@ -52,11 +52,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
                 this.upperScope = scope;
             }
             case ELispCons cons -> {
-                CompilerDirectives.transferToInterpreter();
-                this.upperFrame = Truffle.getRuntime().createMaterializedFrame(
-                        new Object[0],
-                        ELispLexical.rootFrameDescriptor(cons.size(), true)
-                );
+                this.upperFrame = newUpperFrameFromCons(cons);
                 this.upperScope = ELispLexical.newBlockFromAlist(upperFrame, cons);
             }
             default -> {
@@ -64,6 +60,14 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
                 upperScope = null;
             }
         }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static MaterializedFrame newUpperFrameFromCons(ELispCons cons) {
+        return Truffle.getRuntime().createMaterializedFrame(
+                new Object[0],
+                ELispLexical.rootFrameDescriptor(cons.size(), true)
+        );
     }
 
     @Override

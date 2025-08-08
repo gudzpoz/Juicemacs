@@ -1,10 +1,12 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.InternalByteArray;
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
@@ -17,9 +19,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleByteArrayString;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.IOException;
 import java.util.*;
@@ -376,14 +377,19 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDecodeCodingString extends ELispBuiltInBaseNode {
         @Specialization
-        public Object decodeCodingString(ELispString string, ELispSymbol codingSystem, Object nocopy, Object buffer) {
+        public Object decodeCodingString(
+                ELispString string, ELispSymbol codingSystem, Object nocopy, Object buffer,
+                @Cached StringSupport.GetInternalBytesNode getInternal
+        ) {
             FCheckCodingSystem.checkCodingSystem(codingSystem);
             ELispCodings codings = getThis(this);
             ELispCodingSystem coding = codings.resolveCodingSystem(codingSystem);
-            byte[] bytes = ((MuleByteArrayString) string.value()).bytes();
+            InternalByteArray bytes = getInternal.execute(this, string);
             ValueStorage.Forwarded container = new ValueStorage.Forwarded();
-            try (SeekableInMemoryByteChannel channel = new SeekableInMemoryByteChannel(bytes)) {
-                return new ELispString(codings.decode(coding, channel, 0, bytes.length, container).build());
+            try (SeekableInMemoryByteChannel channel = new SeekableInMemoryByteChannel(bytes.getArray())) {
+                return new ELispString(
+                        codings.decode(coding, channel, bytes.getOffset(), bytes.getEnd(), container).build()
+                );
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, ELispGlobals.STRING);
             }
@@ -739,16 +745,11 @@ public class BuiltInCoding extends ELispBuiltIns {
         }
 
         private static ELispSymbol[] makeSubsidiaries(ELispSymbol baseString) {
-            MuleString base = baseString.name();
+            String base = baseString.name();
             ELispSymbol[] symbols = new ELispSymbol[3];
             String[] suffixes = {"-unix", "-dos", "-mac"};
             for (int i = 0; i < suffixes.length; i++) {
-                String suffix = suffixes[i];
-                MuleString name = new MuleStringBuffer()
-                        .append(base)
-                        .append(MuleString.fromString(suffix))
-                        .build();
-                symbols[i] = ELispContext.get(null).globals().intern(name);
+                symbols[i] = ELispContext.get(null).intern(base + suffixes[i]);
             }
             return symbols;
         }

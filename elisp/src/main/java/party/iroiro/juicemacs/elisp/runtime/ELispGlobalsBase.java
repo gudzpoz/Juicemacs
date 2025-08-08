@@ -5,7 +5,6 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,7 +133,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 throw ELispSignals.fatal(builtIns[i].toString());
             }
             for (ELispBuiltIns.SemiInitializedBuiltIn subroutine : result.subroutines()) {
-                ELispSymbol symbol = intern(subroutine.symbol());
+                ELispSymbol symbol = globalObarray.intern(subroutine.symbol());
                 registerFunction(symbol, subroutine.subroutine());
                 subroutine.node().setLispFunction(symbol);
                 subroutines.add(subroutine.subroutine());
@@ -161,10 +160,6 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 }
             }
         });
-    }
-
-    public ELispSymbol intern(MuleString name) {
-        return globalObarray.intern(name);
     }
 
     public abstract void patchGlobals();

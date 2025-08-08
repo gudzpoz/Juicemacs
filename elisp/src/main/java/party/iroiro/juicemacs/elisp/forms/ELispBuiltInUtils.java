@@ -3,7 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;

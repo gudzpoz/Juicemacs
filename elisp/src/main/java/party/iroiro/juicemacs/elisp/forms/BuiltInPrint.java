@@ -8,7 +8,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.util.List;
 
@@ -110,7 +111,7 @@ public class BuiltInPrint extends ELispBuiltIns {
                 printcharfun = ELispContext.get(null).currentBuffer();
             }
             // TODO
-            @Nullable MuleStringBuffer output = isT(printcharfun) ? new MuleStringBuffer() : null;
+            @Nullable MuleStringBuilder output = isT(printcharfun) ? new MuleStringBuilder() : null;
             return switch (printcharfun) {
                 case ELispBuffer buffer -> ELispPrint.fromBuffer(buffer);
                 case ELispMarker marker -> ELispPrint.fromMarker(marker);
@@ -284,7 +285,7 @@ public class BuiltInPrint extends ELispBuiltIns {
             if (isNil(message) && error == ERROR) {
                 message = asCons(obj.cdr()).car();
             }
-            MuleStringBuffer buffer = new MuleStringBuffer();
+            MuleStringBuilder buffer = new MuleStringBuilder();
             ELispPrint print = ELispPrint.fromBuilder(buffer);
             if (isNil(message)) {
                 print.print("peculiar error");

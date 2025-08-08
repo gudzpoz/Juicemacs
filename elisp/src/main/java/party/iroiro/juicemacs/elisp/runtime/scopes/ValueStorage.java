@@ -174,6 +174,7 @@ public final class ValueStorage implements Externalizable {
         noLongerAssumeConstant();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object swapThreadLocalValue(Object value, ELispSymbol symbol) {
         if (isConstant()) {
             throw ELispSignals.settingConstant(symbol);

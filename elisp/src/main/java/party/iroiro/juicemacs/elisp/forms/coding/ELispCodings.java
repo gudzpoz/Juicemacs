@@ -5,11 +5,11 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
@@ -167,14 +167,14 @@ public final class ELispCodings {
         return CODING_SYSTEM_TYPES.get(name);
     }
 
-    public MuleStringBuffer decode(
+    public MuleStringBuilder decode(
             ELispCodingSystem coding,
             SeekableByteChannel channel,
-            long start, long limit,
+            long start, long end,
             ValueStorage.@Nullable Forwarded codingStorage) throws IOException {
         while (true) {
             try {
-                return coding.decode(this, new ByteIterator(channel, start, limit));
+                return coding.decode(this, new ByteIterator(channel, start, end));
             } catch (ELispCodingSystem.OtherCodingDetectedException other) {
                 coding = Objects.requireNonNull(getCodingSystem(other.getCoding()));
             } finally {

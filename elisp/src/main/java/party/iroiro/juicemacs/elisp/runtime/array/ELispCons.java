@@ -11,7 +11,6 @@ import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
-import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -126,7 +125,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
     }
     @ExportMessage
     public Object getMembers(boolean ignored) {
-        return new ELispVector(List.of("car", "cdr"));
+        return new ELispVector(new Object[]{"car", "cdr"});
     }
     @ExportMessage
     public boolean isMemberReadable(String member) {

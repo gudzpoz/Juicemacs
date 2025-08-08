@@ -9,7 +9,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.math.BigInteger;
 
@@ -26,7 +26,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
 
     @Override
     public void display(ELispPrint print) {
-        print.print(MuleString.fromString(value.toString()));
+        print.print(new ELispString(value.toString()));
     }
 
     /// Wrap a BigInteger into an ELispBigNum or a long if it fits.
@@ -46,6 +46,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     ///
     /// @param value the long value
     /// @return the wrapped BigDecimal
+    @TruffleBoundary
     public static ELispBigNum forceWrap(long value) {
         return new ELispBigNum(BigInteger.valueOf(value));
     }
@@ -93,30 +94,37 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
         return wrap(value.divide(implicitELispBigNum.value));
     }
 
+    @TruffleBoundary
     public Number abs() {
         return wrap(value.abs());
     }
 
+    @TruffleBoundary
     public Number xor(ELispBigNum other) {
         return wrap(value.xor(other.value));
     }
 
+    @TruffleBoundary
     public Number and(ELispBigNum other) {
         return wrap(value.and(other.value));
     }
 
+    @TruffleBoundary
     public Number or(ELispBigNum other) {
         return wrap(value.or(other.value));
     }
 
+    @TruffleBoundary
     public Number reciprocal() {
         return BigInteger.ONE.divide(value);
     }
 
+    @TruffleBoundary
     public Number not() {
         return wrap(value.not());
     }
 
+    @TruffleBoundary
     public Number negate() {
         return wrap(value.negate());
     }
@@ -228,6 +236,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     }
 
     @ExportMessage
+    @TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
     }

@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.parser.CodePointReader;
@@ -12,8 +13,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -263,7 +264,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
     public abstract static class FStringToSyntax extends ELispBuiltInBaseNode {
         @Specialization
         public static Object stringToSyntax(ELispString string) {
-            PrimitiveIterator.OfInt iterator = string.value().iterator(0);
+            PrimitiveIterator.OfInt iterator = string.iterator(0);
             // char 1: syntax char
             long syntax = checkSyntaxChar(iterator.nextInt());
             if (syntax == SINHERIT) {
@@ -425,11 +426,12 @@ public class BuiltInSyntax extends ELispBuiltIns {
             // TODO: Better escape
             ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
                     language,
-                    new ELispString(new MuleStringBuffer()
+                    new MuleStringBuilder()
                             .appendCodePoint('[')
-                            .append(string.value())
+                            .appendString(string)
                             .appendCodePoint(']')
-                            .appendCodePoint('+')),
+                            .appendCodePoint('+')
+                            .buildString(),
                     null
             );
             long oldPoint = buffer.getPoint();
@@ -465,10 +467,11 @@ public class BuiltInSyntax extends ELispBuiltIns {
             // TODO: Better escape
             ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
                     language,
-                    new ELispString(new MuleStringBuffer()
+                    new MuleStringBuilder()
                             .appendCodePoint('[')
-                            .append(string.value())
-                            .appendCodePoint(']')),
+                            .appendString(string)
+                            .appendCodePoint(']')
+                            .buildString(),
                     null
             );
             long oldPoint = buffer.getPoint();
@@ -501,7 +504,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
         public long skipSyntaxForward(ELispString syntax, Object lim) {
             int mask = 0;
             boolean invert = false;
-            PrimitiveIterator.OfInt iterator = syntax.value().iterator(0);
+            PrimitiveIterator.OfInt iterator = syntax.iterator(0);
             while (iterator.hasNext()) {
                 int c = iterator.nextInt();
                 if (c == '^' && mask == 0) {
@@ -627,12 +630,14 @@ public class BuiltInSyntax extends ELispBuiltIns {
             public ELispSymbol intern(String name) {
                 return NIL;
             }
+
             @Override
-            public ELispSymbol intern(MuleString name) {
+            public ELispSymbol intern(TruffleString name) {
                 return NIL;
             }
+
             @Override
-            public MuleString applyShorthands(MuleString symbol) {
+            public String applyShorthands(String symbol) {
                 return symbol;
             }
         };

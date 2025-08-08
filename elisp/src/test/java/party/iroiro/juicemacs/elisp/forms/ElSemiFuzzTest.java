@@ -7,8 +7,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,6 +31,7 @@ public class ElSemiFuzzTest {
                     "symbol-value",
                     "symbol-function",
                     "default-boundp",
+                    "boundp",
                     "default-value",
                     // non-pure
                     ".*-variable-watcher",
@@ -158,7 +158,7 @@ public class ElSemiFuzzTest {
                     break;
                 }
                 byte[] bytes = is.readNBytes(len);
-                ELispString expr = new ELispString(MuleString.fromRaw(bytes));
+                ELispString expr = new ELispString(bytes);
                 try {
                     count++;
                     bindings.putMember("args", expr);

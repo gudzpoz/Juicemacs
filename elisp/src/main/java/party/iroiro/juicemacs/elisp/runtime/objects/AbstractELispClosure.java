@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.List;
 
@@ -87,7 +88,7 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
             Object constants = array[CLOSURE_CONSTANTS];
             if (argList instanceof Long || BuiltInData.FListp.listp(argList)) {
                 // bytecode
-                if (code instanceof ELispString s && !isMultibyte(s.value())
+                if (code instanceof ELispString s && !isMultibyte(s)
                         && constants instanceof ELispVector
                         && size > CLOSURE_STACK_DEPTH && array[CLOSURE_STACK_DEPTH] instanceof Long) {
                     return new ELispBytecode(array, rootSource);

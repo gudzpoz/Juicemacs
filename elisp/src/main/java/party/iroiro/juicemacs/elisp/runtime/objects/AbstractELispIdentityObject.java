@@ -1,7 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.Objects;
 
@@ -20,7 +20,7 @@ public abstract class AbstractELispIdentityObject implements ELispValue {
     @Override
     public void display(ELispPrint print) {
         print.print('#').print('<')
-                .print(MuleString.fromString(Objects.toIdentityString(this)))
+                .print(new ELispString(Objects.toIdentityString(this)))
                 .print('>');
     }
 

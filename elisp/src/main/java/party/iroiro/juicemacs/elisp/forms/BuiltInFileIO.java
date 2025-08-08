@@ -17,11 +17,11 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -103,7 +103,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                     }
                     ELispRegExp.CompiledRegExp regexp =
                             BuiltInSearch.compileRegExp(language, string, null);
-                    Object match = regexp.call(filename.value(), true, 0, -1, buffer);
+                    Object match = regexp.call(filename, true, 0, -1, buffer);
                     if (!isNil(match)) {
                         long newPos = asLong(asCons(match).car());
                         if (newPos > pos) {
@@ -210,10 +210,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileNameAsDirectory extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString fileNameAsDirectory(Object file) {
-            return new ELispString(new MuleStringBuffer()
-                    .append(asStr(file).value())
-                    .append(MuleString.fromString(File.separator))
-                    .build());
+            return new MuleStringBuilder()
+                    .appendString(asStr(file))
+                    .appendCodePoint(File.separatorChar)
+                    .buildString();
         }
     }
 
@@ -268,6 +268,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeTempFileInternal extends ELispBuiltInBaseNode {
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         public ELispString makeTempFileInternal(ELispString prefix, Object dirFlag, Object suffix, Object text) {
             TruffleLanguage.Env env = getContext().truffleEnv();
             TruffleFile file = env.getPublicTruffleFile(prefix.toString()).getAbsoluteFile();
@@ -379,9 +380,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public static ELispString expandFileName(ELispString name, Object defaultDirectory) {
-            return new ELispString(MuleString.fromString(
-                    expandFileNamePath(name, defaultDirectory).toString()
-            ));
+            return new ELispString(expandFileNamePath(name, defaultDirectory).toString());
         }
 
         public static Path expandFileNamePath(ELispString name, Object defaultDirectory) {
@@ -1106,7 +1105,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 ELispCodingSystem coding = codings.resolveCodingSystem(asSym(codingSystem));
 
                 ValueStorage.Forwarded container = new ValueStorage.Forwarded();
-                buffer.insert(codings.decode(coding, channel, start, limit, container));
+                buffer.insert(codings.decode(coding, channel, start, limit, container).buildString());
                 if (visit) {
                     BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
                     BUFFER_FILE_NAME.setValue(new ELispString(file.getName()));
@@ -1135,6 +1134,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             return codingSystem;
         }
 
+        @CompilerDirectives.TruffleBoundary
         private Object callSetAutoCodingSystem(ELispContext context, ELispString filename,
                                                SeekableByteChannel file, long size)
                 throws IOException {
@@ -1157,7 +1157,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             try (CurrentBufferScope current = withInternalBufferReset(" *code-conversion-work*")) {
                 ELispBuffer buffer = current.current();
                 buffer.setEnableMultibyteCharacters(false);
-                buffer.insert(MuleString.fromRaw(headAndTail));
+                buffer.insert(new ELispString(StringSupport.fromRaw(headAndTail), StringSupport.STATE_BYTES));
                 buffer.setPoint(1);
                 return BuiltInEval.FFuncall.funcall(this, autoCodingFunction, filename, read);
             }

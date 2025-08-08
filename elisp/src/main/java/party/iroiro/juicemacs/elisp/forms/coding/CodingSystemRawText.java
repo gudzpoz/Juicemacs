@@ -2,8 +2,8 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,16 +43,16 @@ final class CodingSystemRawText implements ELispCodingSystemType {
         }
 
         @Override
-        MuleStringBuffer decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
-            MuleStringBuffer output = new MuleStringBuffer();
-            ByteBuffer buffer = ByteBuffer.allocate(4 * 0x400);
+        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+            MuleStringBuilder output = new MuleStringBuilder();
+            ByteBuffer buffer = ByteBuffer.allocate(4096);
             long limit = input.end - input.start;
             input.input.position(input.start);
             while (limit > 0) {
                 buffer.clear();
                 int c = fillTilLimit(buffer, input.input, limit);
                 buffer.flip();
-                output.append(MuleString.fromRaw(buffer));
+                output.append(StringSupport.fromRaw(buffer), StringSupport.STATE_BYTES);
                 if (c <= 0) {
                     break;
                 }

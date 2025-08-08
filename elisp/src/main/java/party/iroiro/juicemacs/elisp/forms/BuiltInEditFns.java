@@ -14,7 +14,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.net.InetAddress;
@@ -45,7 +46,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FCharToString extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString charToString(long char_) {
-            return new ELispString(new MuleStringBuffer().append(Math.toIntExact(char_)).build());
+            return new MuleStringBuilder().appendCodePoint(asChar(char_)).buildString();
         }
     }
 
@@ -379,8 +380,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
             int nextLine = Math.clamp(target, 1, maxLine);
             return buffer.getPoint(new PieceTreeBase.Position(
                     nextLine,
-                    nextLine == target ? (beginning ? 1 : Long.MAX_VALUE)
-                            : (line < 0 ? 1 : Long.MAX_VALUE)
+                    nextLine == target ? (beginning ? 1 : Integer.MAX_VALUE)
+                            : (line < 0 ? 1 : Integer.MAX_VALUE)
             ));
         }
     }
@@ -1108,9 +1109,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
             ELispBuffer buffer = currentBuffer();
             for (Object arg : args) {
                 if (arg instanceof ELispString s) {
-                    buffer.insert(s.value());
+                    buffer.insert(s);
                 } else {
-                    buffer.insert(new MuleStringBuffer().append(asInt(arg)));
+                    buffer.insert(new MuleStringBuilder().appendCodePoint(asInt(arg)).buildString());
                 }
             }
             return false;
@@ -1269,11 +1270,11 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public ELispString bufferSubstring(long start, long end) {
             // TODO
-            return new ELispString(getContext().currentBuffer().subString(start, end));
+            return getContext().currentBuffer().subString(start, end);
         }
 
         public static ELispString bufferSubstringBuffer(long start, long end, ELispBuffer buffer) {
-            return new ELispString(buffer.subString(start, end));
+            return buffer.subString(start, end);
         }
     }
 
@@ -1289,7 +1290,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FBufferSubstringNoProperties extends ELispBuiltInBaseNode {
         @Specialization
         public ELispString bufferSubstringNoProperties(long start, long end) {
-            return new ELispString(getContext().currentBuffer().subString(start, end));
+            return getContext().currentBuffer().subString(start, end);
         }
     }
 
@@ -1426,7 +1427,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FSubstCharInRegion extends ELispBuiltInBaseNode {
         @Specialization
         public boolean substCharInRegion(long start, long end, long fromchar, long tochar, Object noundo) {
-            MuleStringBuffer builder = new MuleStringBuffer();
+            MuleStringBuilder builder = new MuleStringBuilder();
             ELispBuffer buffer = getContext().currentBuffer();
             PrimitiveIterator.OfInt i = buffer.iterator(start, end);
             boolean changed = false;
@@ -1437,7 +1438,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 builder.appendCodePoint(c == from ? to : c);
             }
             if (changed) {
-                buffer.replace(start, builder.build());
+                buffer.replace(start, builder.buildString());
             }
             return false;
         }
@@ -1674,6 +1675,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             return formatted;
         }
 
+        @CompilerDirectives.TruffleBoundary
         public static void message(ELispContext context, String s) {
             context.out().println(s);
         }

@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.Arrays;
@@ -23,6 +24,7 @@ public final class ELispVector extends AbstractELispVector {
         this(Collections.nCopies(count, value));
     }
 
+    @CompilerDirectives.TruffleBoundary
     public ELispVector reverse() {
         return new ELispVector(Arrays.asList(inner).reversed());
     }

@@ -62,7 +62,7 @@ and loosely follows how language implementations structure their code.
 - [[file:src/main/java/party/iroiro/juicemacs/elisp/nodes/][=party.iroiro.juicemacs.elisp.nodes=]] and several classes in
   [[file:src/main/java/party/iroiro/juicemacs/elisp/runtime/][=party.iroiro.juicemacs.elisp.runtime=]] implements logic to run ELisp code with
   Truffle. One may start from
-  [[file:src/main/java/party/iroiro/juicemacs/elisp/nodes/ELispInterpretedNode.java][=party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode=]] to see how we
+  [[file:src/main/java/party/iroiro/juicemacs/elisp/nodes/ast/ELispInterpretedNode.java][=party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode=]] to see how we
   transform a Lisp object into a dynamic AST.
 
 - [[file:src/main/java/party/iroiro/juicemacs/elisp/nodes/bytecode/][=party.iroiro.juicemacs.elisp.nodes.bytecode=]] (and the [[file:src/main/java/party/iroiro/juicemacs/elisp/runtime/objects/ELispBytecode.java][=ELispBytecode=]] class)

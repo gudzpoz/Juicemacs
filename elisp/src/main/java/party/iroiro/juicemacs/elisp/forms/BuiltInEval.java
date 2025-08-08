@@ -18,12 +18,17 @@ import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispLiteralNodes;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispRootNodes;
+import party.iroiro.juicemacs.elisp.nodes.ast.LazyConsExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInLRead.loadFile;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
@@ -359,7 +364,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         public static ELispExpressionNode prognNode(ELispExpressionNode[] nodes) {
             if (nodes.length == 0) {
-                return ELispInterpretedNode.literal(false);
+                return ELispLiteralNodes.of(false);
             }
             if (nodes.length == 1) {
                 return nodes[0];
@@ -558,7 +563,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 };
             }
             if (arguments.length == 0) {
-                return ELispInterpretedNode.literal(false);
+                return ELispLiteralNodes.of(false);
             }
             int half = arguments.length / 2;
             ELispExpressionNode[] assignments = new ELispExpressionNode[half];
@@ -593,7 +598,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         @Override
         public ELispExpressionNode createNode(Object[] arguments) {
-            return ELispInterpretedNode.literal(arguments[0]);
+            return ELispLiteralNodes.of(arguments[0]);
         }
     }
 
@@ -629,7 +634,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
-            if (arguments[0] instanceof ELispInterpretedNode.LazyConsExpressionNode cons) {
+            if (arguments[0] instanceof LazyConsExpressionNode cons) {
                 // `oclosure--copy` cannot preserve lambda root nodes, because it "destructures"
                 // the closure, when root nodes are stored within closure objects.
                 // This is a hack to get the real closure object.
@@ -702,11 +707,10 @@ public class BuiltInEval extends ELispBuiltIns {
             if (arg instanceof ELispCons def && def.car() == LAMBDA) {
                 return getDefinition(def);
             }
-            return ELispInterpretedNode.literal(arg);
+            return ELispLiteralNodes.of(arg);
         }
 
         public static Object getFunction(ELispCons def, @Nullable Node node) {
-            CompilerDirectives.transferToInterpreter();
             ELispExpressionNode definition = getDefinition(def);
             if (node != null) {
                 node.insert(definition);
@@ -947,7 +951,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         sym.setDefaultValue(init.executeGeneric(frame));
                     }
                 }
-                return replace(ELispInterpretedNode.literal(symbol)).executeGeneric(frame);
+                return replace(ELispLiteralNodes.of(symbol)).executeGeneric(frame);
             }
         }
     }
@@ -1409,7 +1413,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     if (rethrow == null) {
                         rethrow = unwindEx;
                     } else {
-                        rethrow.addSuppressed(unwindEx);
+                        TruffleUtils.addSuppressed(rethrow, unwindEx);
                     }
                 }
                 if (rethrow != null) {
@@ -1658,7 +1662,7 @@ public class BuiltInEval extends ELispBuiltIns {
                     return handler.executeGeneric(frame);
                 } catch (ELispSignals.ELispSignalException newException) {
                     if (e != null) {
-                        newException.addSuppressed(e);
+                        TruffleUtils.addSuppressed(newException, e);
                     }
                     throw newException;
                 }
@@ -1791,13 +1795,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (!isNil(function.getFunction())) {
                 return false;
             }
-            function.setFunction(new ELispCons.ListBuilder()
-                    .add(AUTOLOAD)
-                    .add(file)
-                    .add(docstring)
-                    .add(interactive)
-                    .add(type)
-                    .build());
+            function.setFunction(ELispCons.listOf(AUTOLOAD, file, docstring, interactive, type));
             return function;
         }
     }
@@ -1877,7 +1875,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object form,
                 boolean lexical
         ) {
-            ELispExpressionNode expr = ELispInterpretedNode.createRoot(new Object[]{form}, lexical);
+            ELispExpressionNode expr = ELispRootNodes.createRoot(new Object[]{form}, lexical);
             return new ELispRootNode(
                     ELispLanguage.get(node),
                     expr,
@@ -1911,7 +1909,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @CompilerDirectives.TruffleBoundary(transferToInterpreterOnException = false)
             public ELispFunctionObject getRootCallTarget(Object form, Object lexical) {
-                ELispExpressionNode expr = ELispInterpretedNode.createRoot(new Object[]{form}, !isNil(lexical));
+                ELispExpressionNode expr = ELispRootNodes.createRoot(new Object[]{form}, !isNil(lexical));
                 ELispRootNode root = new ELispRootNode(ELispLanguage.get(this), expr, getEvalSourceSection(form));
                 return new ELispFunctionObject(root.getCallTarget());
             }

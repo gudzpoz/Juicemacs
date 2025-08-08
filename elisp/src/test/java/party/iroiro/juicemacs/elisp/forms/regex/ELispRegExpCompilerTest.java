@@ -3,13 +3,13 @@ package party.iroiro.juicemacs.elisp.forms.regex;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.graalvm.collections.Pair;
 import org.junit.jupiter.api.Test;
-import party.iroiro.juicemacs.mule.MuleString;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.fromString;
 
 class ELispRegExpCompilerTest {
     private Pair<ELispRegExpCompiler.Compiled, ELispRegExp.CompiledRegExp> compile(String input) {
-        ELispRegExpParser test = new ELispRegExpParser(MuleString.fromString(input), null);
+        ELispRegExpParser test = new ELispRegExpParser(fromString(input), null);
         REAst ast = test.parse();
         ELispRegExpCompiler.Compiled compiled = ELispRegExpCompiler.compile(ast, test.getMaxGroup(), null);
         ELispRegExp.RegExpFunctionNode node =
@@ -23,12 +23,12 @@ class ELispRegExpCompilerTest {
         assertEquals(
                 false,
                 compile("test").getRight()
-                        .call(MuleString.fromString("1test"),
+                        .call(fromString("1test"),
                                 false, 0, -1, false));
         assertNotEquals(
                 false,
                 compile("test").getRight()
-                        .call(MuleString.fromString("1test"),
+                        .call(fromString("1test"),
                                 true, 0, -1, false));
     }
 
@@ -52,7 +52,7 @@ class ELispRegExpCompilerTest {
             for (int i = 1; i < testCase.length; i += 2) {
                 String input = testCase[i];
                 Object result = compiled.getRight().call(
-                        MuleString.fromString(input), true, 0, -1, false
+                        fromString(input), true, 0, -1, false
                 );
                 if (print) {
                     System.out.println(result);

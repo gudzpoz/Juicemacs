@@ -9,10 +9,10 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
@@ -250,7 +250,7 @@ public class ELispLexer {
         record Char(int value) implements Token {
         }
 
-        record Str(MuleString value) implements Token {
+        record Str(TruffleString value, int state) implements Token {
         }
 
         record FixNum(long value) implements Token {
@@ -262,16 +262,13 @@ public class ELispLexer {
         record FloatNum(double value) implements Token {
         }
 
-        record Symbol(MuleString value, boolean intern, boolean shorthand) implements Token {
-            public Symbol(String value, boolean intern, boolean shorthand) {
-                this(MuleString.fromString(value), intern, shorthand);
-            }
+        record Symbol(String value, boolean intern, boolean shorthand) implements Token {
         }
 
         /**
          * Bool vector as is in {@code #&10"value"}
          */
-        record BoolVec(long length, MuleString value) implements Token {
+        record BoolVec(long length, TruffleString value) implements Token {
         }
     }
 
@@ -609,14 +606,14 @@ public class ELispLexer {
     /**
      * Read the remaining ELisp string after the initial {@code "} character.
      */
-    private MuleString readStr() throws IOException {
-        MuleStringBuffer sb = new MuleStringBuffer();
+    private Token.Str readStr() throws IOException {
+        MuleStringBuilder sb = new MuleStringBuilder();
         while (true) {
             int c = noEOF(reader.peek());
             switch (c) {
                 case '"' -> {
                     reader.read();
-                    return sb.build();
+                    return new Token.Str(sb.build(), sb.getState());
                 }
                 case '\\' -> {
                     c = readChar(true);
@@ -680,7 +677,7 @@ public class ELispLexer {
     private Token readSymbolOrNumber(int alreadyRead, boolean uninterned, boolean noShorthand)
             throws IOException {
         boolean symbolOnly = uninterned || noShorthand;
-        MuleStringBuffer sb = new MuleStringBuffer();
+        StringBuilder sb = new StringBuilder();
         boolean escaped = false;
         boolean nonNumber = false;
         int c = alreadyRead;
@@ -701,10 +698,9 @@ public class ELispLexer {
             nonNumber |= codePoint > 'e';
             c = reader.peek();
         }
-        MuleString symbol = sb.build();
+        String symbol = sb.toString();
         if (!symbolOnly && !escaped && !nonNumber) {
-            String number = symbol.toString();
-            Matcher integer = INTEGER_PATTERN.matcher(number);
+            Matcher integer = INTEGER_PATTERN.matcher(symbol);
             if (integer.matches()) {
                 String text = integer.group(1);
                 if (text.length() <= 18) {
@@ -717,8 +713,8 @@ public class ELispLexer {
                 }
                 return new Token.BigNum(new BigInteger(text));
             }
-            if (FLOAT_PATTERN.matcher(number).matches()) {
-                return new Token.FloatNum(parseFloat(number));
+            if (FLOAT_PATTERN.matcher(symbol).matches()) {
+                return new Token.FloatNum(parseFloat(symbol));
             }
         }
         return new Token.Symbol(symbol, !uninterned, !noShorthand);
@@ -813,7 +809,8 @@ public class ELispLexer {
                         if (reader.read() != '\"') {
                             throw ELispSignals.invalidReadSyntax("Expected '\"'");
                         }
-                        yield new Token.BoolVec(length, readStr());
+                        Token.Str str = readStr();
+                        yield new Token.BoolVec(length, str.value);
                     }
                     case '!' -> {
                         skipLine();
@@ -858,7 +855,7 @@ public class ELispLexer {
                 assertNoSymbolBehindChar();
                 yield new Token.Char(value);
             }
-            case '"' -> new Token.Str(readStr());
+            case '"' -> readStr();
             case '\'' -> QUOTE;
             case '`' -> BACK_QUOTE;
             case ',' -> {

@@ -1,10 +1,12 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
@@ -13,8 +15,10 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.util.*;
 
@@ -46,7 +50,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         builtInSearch.matchedStr.setValue(str);
     }
 
-    private record RegExpKey(MuleString regExp, @Nullable MuleString whitespaceRegExp, @Nullable ELispCharTable canon) {
+    private record RegExpKey(ELispString regExp, @Nullable ELispString whitespaceRegExp, @Nullable ELispCharTable canon) {
     }
 
     private static class RegexpCache extends LinkedHashMap<RegExpKey, ELispRegExp.CompiledRegExp> {
@@ -92,13 +96,13 @@ public class BuiltInSearch extends ELispBuiltIns {
     public static ELispRegExp.CompiledRegExp compileRegExp(
             ELispLanguage language,
             ELispString regexp,
-            @Nullable MuleString whitespaceRegExp
+            @Nullable ELispString whitespaceRegExp
     ) {
         ELispContext context = ELispContext.get(null);
         boolean caseSensitive = isNil(context.getValue(CASE_FOLD_SEARCH));
         ELispCharTable canon = caseSensitive ? null : asCharTable(context.currentBuffer().getCaseCanonTable());
         RegExpKey key = new RegExpKey(
-                regexp.value(),
+                regexp,
                 whitespaceRegExp,
                 canon
         );
@@ -106,7 +110,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         if (pattern == null) {
             pattern = ELispRegExp.compile(
                     language,
-                    regexp.value(),
+                    regexp,
                     whitespaceRegExp,
                     canon
             );
@@ -164,11 +168,11 @@ public class BuiltInSearch extends ELispBuiltIns {
 
         abstract void setMatch(Node node);
 
-        static final class StringSearch extends SearchConvention<MuleString> {
+        static final class StringSearch extends SearchConvention<ELispString> {
             private final boolean caseFold;
             long matchStart = -1;
 
-            private StringSearch(MuleString pattern, boolean caseFold) {
+            private StringSearch(ELispString pattern, boolean caseFold) {
                 super(pattern);
                 this.caseFold = caseFold;
             }
@@ -332,7 +336,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
             long from = notNilOr(start, 0);
-            Object result = pattern.call(string.value(), true, from, -1, getLanguage().currentBuffer().getValue());
+            Object result = pattern.call(string, true, from, -1, getLanguage().currentBuffer().getValue());
             if (result instanceof ELispCons cons) {
                 if (!inhibitModify) {
                     setMatch(this, result, string);
@@ -434,7 +438,7 @@ public class BuiltInSearch extends ELispBuiltIns {
 
         public static Object searchForward(Node node, ELispString string, Object bound, Object noerror, Object count) {
             SearchConvention.StringSearch s =
-                    new SearchConvention.StringSearch(string.value(), !isNil(CASE_FOLD_SEARCH.getValue()));
+                    new SearchConvention.StringSearch(string, !isNil(CASE_FOLD_SEARCH.getValue()));
             ELispBuffer buffer = currentBuffer();
             Object result = s.search(buffer, bound, noerror, count);
             s.setMatch(node);
@@ -626,20 +630,24 @@ public class BuiltInSearch extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FReplaceMatch extends ELispBuiltInBaseNode {
         @Specialization
-        public ELispString replaceMatch(ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp) {
+        public ELispString replaceMatch(
+                ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp,
+                @Cached TruffleString.SubstringNode substring
+        ) {
             // TODO: fixedcase, literal...
             long subexpN = notNilOr(subexp, 0);
             ELispString s = asStr(isNil(string) ? matchStr(this) : string);
             ELispCons.ConsIterator cons = asCons(matchData(this)).listIterator((int) (subexpN * 2));
-            long start = asLong(cons.next());
-            long end = asLong(cons.next());
-            MuleString before = s.value().subSequence(0, start);
-            MuleString after = s.value().subSequence(end, s.value().length());
-            MuleString result = new MuleStringBuffer()
-                    .append(before)
-                    .append(newtext.value())
-                    .append(after).build();
-            return new ELispString(result);
+            int start = asInt(cons.next());
+            int end = asInt(cons.next());
+            int length = StringNodes.length(s.value());
+            TruffleString before = substring.execute(s.value(), 0, start, StringSupport.UTF_32, true);
+            TruffleString after = substring.execute(s.value(), end, length - end, StringSupport.UTF_32, true);
+            return new MuleStringBuilder()
+                    .append(before, s.state())
+                    .appendString(newtext)
+                    .append(after, s.state())
+                    .buildString();
         }
     }
 
@@ -817,7 +825,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FRegexpQuote extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString regexpQuote(ELispString string) {
-            return ELispRegExp.quote(string.value());
+            return ELispRegExp.quote(string);
         }
     }
 

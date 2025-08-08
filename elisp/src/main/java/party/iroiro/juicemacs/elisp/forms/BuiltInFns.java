@@ -1,5 +1,8 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -7,15 +10,19 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -40,7 +47,7 @@ public class BuiltInFns extends ELispBuiltIns {
         return switch (sequence) {
             case ELispCons cons -> cons.iterator();
             case ELispVector vector -> vector.iterator();
-            case ELispString string -> string.iterator();
+            case ELispString string -> string.iteratorUncached();
             case ELispBoolVector boolVector -> boolVector.iterator();
             default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         };
@@ -82,19 +89,58 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "random", minArgs = 0, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FRandom extends ELispBuiltInBaseNode {
+        private static final Random RANDOM = new Random();
+        @Nullable
+        private static final SecureRandom SECURE_RANDOM;
+
+        static {
+            SecureRandom instance;
+            try {
+                instance = SecureRandom.getInstanceStrong();
+            } catch (NoSuchAlgorithmException _) {
+                try {
+                    instance = SecureRandom.getInstance("NativePRNGNonBlocking");
+                } catch (NoSuchAlgorithmException _) {
+                    instance = null;
+                }
+            }
+            SECURE_RANDOM = instance;
+        }
+
         @Specialization
         public static Object random(Object limit) {
-            Random r = new Random();
             if (isT(limit)) {
-                // TODO
+                RANDOM.setSeed(secureSeed());
             }
             if (limit instanceof Long l) {
-                return r.nextLong(l);
+                return RANDOM.nextLong(l);
             }
             if (limit instanceof ELispBigNum big) {
-                throw new UnsupportedOperationException();
+                return randomBigInteger(big);
             }
-            return r.nextLong();
+            return RANDOM.nextLong();
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static Object randomBigInteger(ELispBigNum bigNum) {
+            BigInteger bigInteger = bigNum.asBigInteger();
+            if (bigInteger.signum() != 1) {
+                throw ELispSignals.wrongTypeArgument(NATNUMP, bigNum);
+            }
+            int bits = bigInteger.bitLength();
+            BigInteger random;
+            do {
+                random = new BigInteger(bits, RANDOM);
+            } while (random.compareTo(bigInteger) >= 0);
+            return random;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static long secureSeed() {
+            if (SECURE_RANDOM == null) {
+                return System.nanoTime() * 31 + System.identityHashCode(SecureRandom.class);
+            }
+            return SECURE_RANDOM.nextLong();
         }
     }
 
@@ -299,12 +345,12 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FStringEqual extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean stringEqual(Object s1, Object s2) {
-            return getInner(s1).equals(getInner(s2));
+            return getInner(s1).equalsUncached(getInner(s2), StringSupport.UTF_32);
         }
 
-        private static MuleString getInner(Object object) {
+        private static AbstractTruffleString getInner(Object object) {
             if (toSym(object) instanceof ELispSymbol symbol) {
-                return symbol.name();
+                return TruffleUtils.string(symbol.name());
             }
             return asStr(object).value();
         }
@@ -344,9 +390,9 @@ public class BuiltInFns extends ELispBuiltIns {
                 boolean ignoreCase
         ) {
             long start1Int = notNilOr(start1, 0L);
-            PrimitiveIterator.OfInt chars1 = str1.value().iterator(start1Int);
+            PrimitiveIterator.OfInt chars1 = str1.iterator(asInt(start1Int));
             long start2Int = notNilOr(start2, 0L);
-            PrimitiveIterator.OfInt chars2 = str2.value().iterator(start2Int);
+            PrimitiveIterator.OfInt chars2 = str2.iterator(asInt(start2Int));
             long end1Int = Math.min(notNilOr(end1, str1.length()), str1.length());
             long end2Int = Math.min(notNilOr(end2, str2.length()), str2.length());
             long len1 = end1Int - start1Int;
@@ -399,20 +445,25 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringLessp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean stringLessp(Object string1, Object string2) {
-            MuleString value1;
+        public static boolean stringLesspCached(
+                Object string1, Object string2,
+                @Cached TruffleString.CompareIntsUTF32Node compare
+        ) {
+            AbstractTruffleString value1 = asTruffleString(string1);
+            AbstractTruffleString value2 = asTruffleString(string2);
+            return compare.execute(value1, value2) < 0;
+        }
+
+        private static AbstractTruffleString asTruffleString(Object string1) {
             if (string1 instanceof ELispString s) {
-                value1 = s.value();
+                return s.value();
             } else {
-                value1 = asSym(string1).name();
+                return TruffleUtils.string(asSym(string1).name());
             }
-            MuleString value2;
-            if (string2 instanceof ELispString s) {
-                value2 = s.value();
-            } else {
-                value2 = asSym(string2).name();
-            }
-            return value1.compareTo(value2) < 0;
+        }
+
+        public static boolean stringLessp(Object string1, Object string2) {
+            return stringLesspCached(string1, string2, TruffleString.CompareIntsUTF32Node.getUncached());
         }
     }
 
@@ -571,22 +622,22 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FConcat extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString concat(Object[] sequences) {
-            MuleStringBuffer builder = new MuleStringBuffer();
+            MuleStringBuilder builder = new MuleStringBuilder();
             for (Object arg : sequences) {
                 if (arg instanceof ELispString s) {
-                    builder.append(s.value());
+                    builder.appendString(s);
                 } else {
                     appendSequence(builder, arg);
                 }
             }
-            return new ELispString(builder.build());
+            return builder.buildString();
         }
 
         @CompilerDirectives.TruffleBoundary
-        public static void appendSequence(MuleStringBuffer builder, Object sequence) {
+        public static void appendSequence(MuleStringBuilder builder, Object sequence) {
             Iterator<?> i = iterateSequence(sequence);
             while (i.hasNext()) {
-                builder.append(asInt(i.next()));
+                builder.appendCodePoint(asInt(i.next()));
             }
         }
     }
@@ -844,27 +895,30 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString substring(ELispString string, Object from, Object to) {
-            MuleString s = string.value();
-            long length = s.length();
-            long start;
+            AbstractTruffleString s = string.value();
+            int length = s.codePointLengthUncached(StringSupport.UTF_32);
+            int start;
             if (isNil(from)) {
                 start = 0;
             } else {
-                start = asLong(from);
+                start = asInt(from);
                 if (start < 0) {
                     start = length + start;
                 }
             }
-            long end;
+            int end;
             if (isNil(to)) {
                 end = length;
             } else {
-                end = asLong(to);
+                end = asInt(to);
                 if (end < 0) {
                     end = length + end;
                 }
             }
-            return new ELispString(s.substring(start, end));
+            return new ELispString(
+                    s.substringUncached(start, end - start, StringSupport.UTF_32, true),
+                    string.state()
+            );
         }
     }
 
@@ -883,8 +937,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSubstringNoProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString substringNoProperties(ELispString string, Object from, Object to) {
-            long length = string.value().length();
+        public static ELispString substringNoProperties(
+                ELispString string, Object from, Object to,
+                @Cached TruffleString.CodePointLengthNode lengthNode,
+                @Cached TruffleString.SubstringNode substringNode
+        ) {
+            long length = lengthNode.execute(string.value(), StringSupport.UTF_32);
             long start = notNilOr(from, 0);
             long end = notNilOr(to, length);
             if (start < 0) {
@@ -893,7 +951,10 @@ public class BuiltInFns extends ELispBuiltIns {
             if (end < 0) {
                 end = length + end;
             }
-            return new ELispString(string.value().subSequence(start, end));
+            return new ELispString(
+                    substringNode.execute(string.value(), asInt(start), asInt(end - start), StringSupport.UTF_32, true),
+                    string.state()
+            );
         }
     }
 
@@ -1303,7 +1364,7 @@ public class BuiltInFns extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
-            PrimitiveIterator.OfInt i = seq.codePointIterator();
+            PrimitiveIterator.OfInt i = seq.iterator(0);
             StringBuilder builder = new StringBuilder();
             while (i.hasNext()) {
                 int codepoint = i.nextInt();
@@ -1352,9 +1413,9 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString nreverseString(ELispString seq) {
-            MuleStringBuffer builder = new MuleStringBuffer();
-            for (long i = (seq.length() - 1); i >= 0; i--) {
-                builder.appendCodePoint((int) seq.codePointAt(i));
+            MuleStringBuilder builder = new MuleStringBuilder();
+            for (int i = (seq.length() - 1); i >= 0; i--) {
+                builder.appendCodePoint(seq.codePointAt(i));
             }
             return new ELispString(builder.build());
         }
@@ -1958,21 +2019,21 @@ public class BuiltInFns extends ELispBuiltIns {
                 @Cached(inline = true) FuncallDispatchNode dispatchNode
         ) {
             Iterator<?> i = iterateSequence(sequence);
-            MuleStringBuffer builder = new MuleStringBuffer();
+            MuleStringBuilder builder = new MuleStringBuilder();
             while (i.hasNext()) {
                 Object result = dispatchNode.dispatch(this, function, i.next());
                 if (!isNil(result)) {
                     if (result instanceof ELispString s) {
-                        builder.append(s.value());
+                        builder.appendString(s);
                     } else {
                         Iterator<?> chars = iterateSequence(result);
                         while (chars.hasNext()) {
-                            builder.append(asInt(chars.next()));
+                            builder.appendCodePoint(asInt(chars.next()));
                         }
                     }
                 }
                 if (!isNil(separator) && i.hasNext()) {
-                    builder.append(asStr(separator).value());
+                    builder.appendString(asStr(separator));
                 }
             }
             return new ELispString(builder.build());
@@ -2941,32 +3002,17 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringSearch extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object stringSearch(ELispString needle, ELispString haystack, Object startPos) {
+        public static Object stringSearch(
+                ELispString needle, ELispString haystack, Object startPos,
+                @Cached TruffleString.IndexOfStringNode indexOf
+        ) {
             // TODO: This is slow.
-            MuleString needleS = needle.value();
-            MuleString haystackS = haystack.value();
-            long start = notNilOr(startPos, 0);
-            long end = haystack.length();
-            long needleLength = needleS.length();
-            if (needleLength == 0) {
-                return isNil(startPos) ? 0L : startPos;
-            }
-
-            int startChar = needleS.codePointAt(0);
-            next:
-            for (long i = start; i < end - needleLength + 1; i++) {
-                int current = haystackS.codePointAt(i);
-                if (current != startChar) {
-                    continue;
-                }
-                for (int j = 1; j < needleLength; j++) {
-                    if (needleS.charAt(j) != haystackS.charAt(i + j)) {
-                        continue next;
-                    }
-                }
-                return i;
-            }
-            return false;
+            AbstractTruffleString needleS = needle.value();
+            AbstractTruffleString haystackS = haystack.value();
+            int start = asInt(notNilOr(startPos, 0));
+            int end = haystack.length();
+            int index = indexOf.execute(haystackS, needleS, start, end, StringSupport.UTF_32);
+            return index < 0 ? false : (long) index;
         }
     }
 

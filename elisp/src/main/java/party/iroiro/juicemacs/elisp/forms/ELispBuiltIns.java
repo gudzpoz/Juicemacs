@@ -9,7 +9,6 @@ import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispFunctionObject;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
-import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +81,10 @@ public abstract class ELispBuiltIns {
                         builtIn.minArgs(),
                         varArgs ? -1 : builtIn.maxArgs()
                 );
-                MuleString symbol = MuleString.fromString(builtIn.name());
+                String symbol = builtIn.name();
+                // Pre-calculate hash since built-in symbols are always interned and kept in a hash table.
+                //noinspection ResultOfMethodCallIgnored
+                symbol.hashCode();
                 FunctionRootNode rootNode = new FunctionRootNode(language, false, wrapper, null); // NOPMD
                 @Nullable Object inlineInfo = switch (function) {
                     case ELispBuiltInBaseNode.InlineFactory _, ELispBuiltInBaseNode.SpecialFactory _ -> function;
@@ -113,6 +115,6 @@ public abstract class ELispBuiltIns {
     /// 1. Intern the symbol
     /// 2. Set the function value of the symbol to the subroutine
     /// 3. Set the [FunctionRootNode#lispFunction] of the node to the interned symbol
-    public record SemiInitializedBuiltIn(FunctionRootNode node, MuleString symbol, ELispSubroutine subroutine) {
+    public record SemiInitializedBuiltIn(FunctionRootNode node, String symbol, ELispSubroutine subroutine) {
     }
 }

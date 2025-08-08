@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -26,6 +27,7 @@ public interface LocationProvider {
             setEncodedLocation(original.getEncodedLocation());
         }
     }
+    @CompilerDirectives.TruffleBoundary
     default void fillDebugInfo(@Nullable Node parent) {
         if (parent == null) {
             return;

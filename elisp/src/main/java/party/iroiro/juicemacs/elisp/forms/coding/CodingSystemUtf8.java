@@ -3,7 +3,7 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.io.IOException;
 
@@ -58,7 +58,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         }
 
         @Override
-        MuleStringBuffer decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
             if (input.hasNext() && input.next() == (byte) UTF_8_BOM_1) {
                 if (input.hasNext() && input.next() == (byte) UTF_8_BOM_2) {
                     if (input.hasNext() && input.next() == (byte) UTF_8_BOM_3) {
@@ -76,7 +76,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         }
 
         @Override
-        MuleStringBuffer decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
             // TODO: BOM, etc.
             EolAwareStringBuilder output = newStringBuilder();
             byte[] nonAsciiSequence = new byte[5];

@@ -1,12 +1,15 @@
 package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 import org.mozilla.universalchardet.UniversalDetector;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.*;
 import java.math.BigInteger;
@@ -25,33 +28,37 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
 
 public class ELispParserTest {
+    private static TruffleString fromString(String input) {
+        return TruffleString.fromJavaStringUncached(input, StringSupport.UTF_32);
+    }
+
     private static final ELispParser.InternContext context = new ELispParser.InternContext() {
-        final Map<MuleString, ELispSymbol> symbolMap = new HashMap<>(Map.of(
-                MuleString.fromString("t"), T,
-                MuleString.fromString("nil"), NIL,
-                MuleString.fromString("float"), FLOAT,
-                MuleString.fromString("hash-table"), HASH_TABLE,
-                MuleString.fromString("data"), DATA,
-                MuleString.fromString("key"), KEY
+        final Map<TruffleString, ELispSymbol> symbolMap = new HashMap<>(Map.of(
+                fromString("t"), T,
+                fromString("nil"), NIL,
+                fromString("float"), FLOAT,
+                fromString("hash-table"), HASH_TABLE,
+                fromString("data"), DATA,
+                fromString("key"), KEY
         ));
 
         @Override
         public ELispSymbol intern(String name) {
-            return intern(MuleString.fromString(name));
+            return intern(fromString(name));
         }
 
         @Override
-        public ELispSymbol intern(MuleString name) {
+        public ELispSymbol intern(TruffleString name) {
             ELispSymbol symbol = symbolMap.get(name);
             if (symbol == null) {
-                symbol = new ELispSymbol(name);
+                symbol = new ELispSymbol(name.toString());
                 symbolMap.put(name, symbol);
             }
             return symbol;
         }
 
         @Override
-        public MuleString applyShorthands(MuleString symbol) {
+        public String applyShorthands(String symbol) {
             return symbol;
         }
     };

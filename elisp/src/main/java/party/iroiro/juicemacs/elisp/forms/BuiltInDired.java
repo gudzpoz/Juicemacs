@@ -5,7 +5,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
@@ -13,9 +12,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.io.IOException;
 import java.nio.file.attribute.PosixFilePermission;
@@ -33,8 +31,8 @@ public class BuiltInDired extends ELispBuiltIns {
         return BuiltInDiredFactory.getFactories();
     }
 
-    public static TruffleFile getTruffleFile(@Nullable Node node, ELispString file) {
-        return ELispContext.get(node).truffleEnv().getPublicTruffleFile(
+    public static TruffleFile getTruffleFile(ELispContext context, ELispString file) {
+        return context.truffleEnv().getPublicTruffleFile(
                 BuiltInFileIO.FExpandFileName.expandFileNamePath(file, false).toString()
         );
     }
@@ -57,17 +55,17 @@ public class BuiltInDired extends ELispBuiltIns {
         public boolean test(TruffleFile truffleFile) {
             ELispString name = new ELispString(truffleFile.getName());
             return regexps.stream().noneMatch((regexp) ->
-                    isNil(regexp.call(name.value(), false, 0, Long.MAX_VALUE, context.currentBuffer())));
+                    isNil(regexp.call(name, false, 0, Long.MAX_VALUE, context.currentBuffer())));
         }
     }
 
-    public static Object fileNameCompletion(Node node, ELispString file, ELispString dirname, boolean all, Object predicate) {
+    @CompilerDirectives.TruffleBoundary
+    public static Object fileNameCompletion(ELispContext context, ELispString file, ELispString dirname, boolean all, Object predicate) {
         boolean ignoreCase = !isNil(COMPLETION_IGNORE_CASE.getValue());
         try (Dynamic _ = Dynamic.pushDynamic(DEFAULT_DIRECTORY, dirname);
              Dynamic _ = Dynamic.pushDynamic(CASE_FOLD_SEARCH, ignoreCase)) {
             // TODO: encode file names
-            ELispContext context = ELispContext.get(node);
-            TruffleFile d = getTruffleFile(node, dirname);
+            TruffleFile d = getTruffleFile(context, dirname);
             Collection<TruffleFile> listing = d.list();
 
             Object allCompletion = listing.stream().filter((entry) -> { // TODO: NOPMD
@@ -77,8 +75,8 @@ public class BuiltInDired extends ELispBuiltIns {
                         }
                         ELispString name = new ELispString(javaName);
                         if (!isT(BuiltInFns.FCompareStrings.compareStrings(
-                                name, 0L, file.length(),
-                                file, 0L, file.length(),
+                                name, 0L, (long) file.length(),
+                                file, 0L, (long) file.length(),
                                 ignoreCase
                         ))) {
                             return false;
@@ -90,10 +88,10 @@ public class BuiltInDired extends ELispBuiltIns {
                     }).filter(CompletionRegexpFilter.create(context))
                     .map((entry) -> {
                         if (entry.isDirectory()) {
-                            return new ELispString(new MuleStringBuffer()
-                                    .append(MuleString.fromString(entry.getName()))
-                                    .append('/')
-                                    .build());
+                            return new MuleStringBuilder()
+                                    .appendString(new ELispString(entry.getName()))
+                                    .appendCodePoint('/')
+                                    .buildString();
                         } else {
                             return new ELispString(entry.getPath());
                         }
@@ -131,13 +129,13 @@ public class BuiltInDired extends ELispBuiltIns {
             ELispRegExp.@Nullable CompiledRegExp matcher = isNil(match)
                     ? null
                     : BuiltInSearch.compileRegExp(getLanguage(), asStr(match), null);
-            TruffleFile dir = getTruffleFile(this, directory);
+            TruffleFile dir = getTruffleFile(getContext(), directory);
             try {
                 Stream<TruffleFile> stream = dir.list().stream();
                 if (matcher != null) {
                     ELispBuffer buffer = currentBuffer();
                     stream = stream.filter((file) ->
-                            !isNil(matcher.call(MuleString.fromString(file.getName()), true, 0, -1, buffer)));
+                            !isNil(matcher.call(new ELispString(file.getName()), true, 0, -1, buffer)));
                 }
                 if (!nosort) {
                     stream = stream.sorted(Comparator.comparing(TruffleFile::getName));
@@ -239,7 +237,7 @@ public class BuiltInDired extends ELispBuiltIns {
             if (!isNil(handler)) {
                 return BuiltInEval.FFuncall.funcall(this, handler, FILE_NAME_ALL_COMPLETIONS, file, directory);
             }
-            return fileNameCompletion(this, file, directory, true, false);
+            return fileNameCompletion(getContext(), file, directory, true, false);
         }
     }
 
@@ -297,7 +295,7 @@ public class BuiltInDired extends ELispBuiltIns {
         @Specialization
         public Object fileAttributes(ELispString filename, Object idFormat) {
             // TODO: id-format
-            TruffleFile file = getTruffleFile(this, filename);
+            TruffleFile file = getTruffleFile(getContext(), filename);
             if (!file.exists()) {
                 return false;
             }

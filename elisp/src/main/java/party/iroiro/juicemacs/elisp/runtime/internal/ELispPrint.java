@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.internal;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
@@ -8,9 +9,9 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleByteArrayString;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.lang.constant.Constable;
 import java.util.ArrayList;
@@ -99,7 +100,7 @@ public final class ELispPrint {
     }
 
     public ELispPrint print(String s) {
-        func.print(MuleString.fromString(s));
+        func.print(new ELispString(s));
         return this;
     }
 
@@ -120,7 +121,7 @@ public final class ELispPrint {
     }
 
     public ELispPrint printInt(int i) {
-        print(MuleString.fromString(Integer.toString(i)));
+        print(new ELispString(Integer.toString(i)).asTruffleStringUncached());
         return this;
     }
 
@@ -168,12 +169,8 @@ public final class ELispPrint {
         return '0' <= c && c <= '9';
     }
 
-    private boolean isNumber(MuleString s) {
-        if (s instanceof MuleByteArrayString unibyte && unibyte.getState() == MuleByteArrayString.STATE_ASCII) {
-            String str = unibyte.toString();
-            return ELispLexer.INTEGER_PATTERN.matcher(str).matches() || ELispLexer.FLOAT_PATTERN.matcher(str).matches();
-        }
-        return false;
+    private boolean isNumber(String str) {
+        return ELispLexer.INTEGER_PATTERN.matcher(str).matches() || ELispLexer.FLOAT_PATTERN.matcher(str).matches();
     }
 
     private boolean isSpecialChar(int c) {
@@ -186,8 +183,9 @@ public final class ELispPrint {
 
     public void printSymbol(ELispSymbol symbol) {
         // TODO: symbol interned -> #: prefix
-        MuleString name = symbol.name();
-        if (name.length() == 0) {
+        String name = symbol.name();
+        int length = name.length();
+        if (length == 0) {
             print('#').print('#');
             return;
         }
@@ -199,7 +197,7 @@ public final class ELispPrint {
             print('\\');
         }
 
-        PrimitiveIterator.OfInt iterator = name.iterator(0);
+        PrimitiveIterator.OfInt iterator = name.codePoints().iterator();
         while (iterator.hasNext()) {
             int c = iterator.nextInt();
             if (isSpecialChar(c)) {
@@ -209,7 +207,7 @@ public final class ELispPrint {
         }
     }
 
-    public ELispPrint print(MuleString s) {
+    public ELispPrint print(ELispString s) {
         func.print(s);
         return this;
     }
@@ -228,13 +226,15 @@ public final class ELispPrint {
     public ELispPrint print(Object o) {
         if (o instanceof Constable) {
             if (o == Boolean.FALSE) {
-                func.print(NIL.name());
+                print("nil");
             } else if (o == Boolean.TRUE) {
-                func.print(T.name());
+                print("t");
             } else if (o instanceof Long l) {
-                func.print(MuleString.fromString(l.toString()));
+                TruffleString s = TruffleString.FromLongNode.getUncached().execute(l, TruffleString.Encoding.UTF_32, false);
+                func.print(new ELispString(s, StringSupport.STATE_ASCII));
             } else if (o instanceof Double d) {
-                func.print(BuiltInData.FNumberToString.numberToStringFloat(d).value());
+                TruffleString s = BuiltInData.FNumberToString.numberToStringFloat(d).asTruffleStringUncached();
+                func.print(new ELispString(s, StringSupport.STATE_ASCII));
             } else {
                 throw ELispSignals.error("unable to print: " + o + "(" + o.getClass() + ")");
             }
@@ -247,7 +247,7 @@ public final class ELispPrint {
         }
         switch (o) {
             case ELispValue v -> v.display(this);
-            case MuleString s -> func.print(s);
+            case TruffleString s -> func.print(new ELispString(s));
             default -> throw ELispSignals.error("unable to print: " + o + "(" + o.getClass() + ")");
         }
         return this;
@@ -269,12 +269,12 @@ public final class ELispPrint {
         return new ELispPrint(new FuncPrintFunc(func));
     }
 
-    public static ELispPrint fromBuilder(MuleStringBuffer buffer) {
+    public static ELispPrint fromBuilder(MuleStringBuilder buffer) {
         return new ELispPrint(new StringPrintFunc(buffer));
     }
 
-    public static MuleString toString(Object o) {
-        MuleStringBuffer buffer = new MuleStringBuffer();
+    public static TruffleString toString(Object o) {
+        MuleStringBuilder buffer = new MuleStringBuilder();
         fromBuilder(buffer).print(o).flush();
         return buffer.build();
     }
@@ -284,7 +284,7 @@ public final class ELispPrint {
         void flush();
 
         @CompilerDirectives.TruffleBoundary
-        default void print(MuleString s) {
+        default void print(ELispString s) {
             PrimitiveIterator.OfInt iterator = s.iterator(0);
             while (iterator.hasNext()) {
                 print(iterator.nextInt());
@@ -293,13 +293,13 @@ public final class ELispPrint {
     }
 
     private static abstract class BufferedPrintFunc implements PrintFunc {
-        protected final MuleStringBuffer buffer;
+        protected final MuleStringBuilder buffer;
 
         protected BufferedPrintFunc() {
-            this(new MuleStringBuffer());
+            this(new MuleStringBuilder());
         }
 
-        protected BufferedPrintFunc(MuleStringBuffer buffer) {
+        protected BufferedPrintFunc(MuleStringBuilder buffer) {
             this.buffer = buffer;
         }
 
@@ -309,13 +309,13 @@ public final class ELispPrint {
         }
 
         @Override
-        public void print(MuleString s) {
-            buffer.append(s);
+        public void print(ELispString s) {
+            buffer.appendString(s);
         }
     }
 
     private static final class StringPrintFunc extends BufferedPrintFunc {
-        StringPrintFunc(MuleStringBuffer buffer) {
+        StringPrintFunc(MuleStringBuilder buffer) {
             super(buffer);
         }
 
@@ -332,7 +332,7 @@ public final class ELispPrint {
 
         @Override
         public void flush() {
-            buffer.insert(super.buffer.build());
+            buffer.insert(super.buffer.buildString());
         }
     }
 
@@ -353,7 +353,7 @@ public final class ELispPrint {
             ELispBuffer b = getBuffer();
             // TODO: Restore?
             b.setPoint(marker.point());
-            b.insert(super.buffer.build());
+            b.insert(super.buffer.buildString());
         }
     }
 

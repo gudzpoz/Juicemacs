@@ -2,12 +2,14 @@ package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.strings.MutableTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispLiteralNodes;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -17,8 +19,8 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleByteArrayString;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -45,12 +47,8 @@ public class BuiltInData extends ELispBuiltIns {
         return BuiltInDataFactory.getFactories();
     }
 
-    public static boolean isMultibyte(MuleString value) {
-        if (value instanceof MuleByteArrayString s) {
-            int state = s.getState();
-            return state == MuleByteArrayString.STATE_LATIN_1;
-        }
-        return true;
+    public static boolean isMultibyte(ELispString value) {
+        return value.state() > StringSupport.STATE_BYTES;
     }
 
     @ReportPolymorphism
@@ -211,6 +209,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
+        @CompilerDirectives.TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
@@ -272,6 +271,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
+        @CompilerDirectives.TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
@@ -333,6 +333,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
+        @CompilerDirectives.TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
@@ -394,6 +395,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
+        @CompilerDirectives.TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE) {
@@ -563,6 +565,7 @@ public class BuiltInData extends ELispBuiltIns {
     /// unless you are implementing `max`, `min` or `sort`.
     ///
     /// @see #arithCompare(Object, Object)
+    @CompilerDirectives.TruffleBoundary
     public static int compareTo(Object a, Object b) {
         if (!(a instanceof Number na)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
@@ -600,6 +603,7 @@ public class BuiltInData extends ELispBuiltIns {
     ///
     /// Unlike [#compareTo(Object, Object)], this function allows correct NaN value
     /// handling.
+    @CompilerDirectives.TruffleBoundary
     public static byte arithCompare(Object a, Object b) {
         if (!(a instanceof Number na)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
@@ -817,7 +821,7 @@ public class BuiltInData extends ELispBuiltIns {
             BiFunction<ELispExpressionNode, ELispExpressionNode, ELispExpressionNode> factory
     ) {
         if (args.length == 1) {
-            return ELispInterpretedNode.literal(true);
+            return ELispLiteralNodes.of(true);
         }
         ELispExpressionNode node = factory.apply(args[0], args[1]);
         for (int i = 2; i < args.length; i++) {
@@ -1126,7 +1130,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FMultibyteStringP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean multibyteStringP(Object object) {
-            return object instanceof ELispString s && isMultibyte(s.value());
+            return object instanceof ELispString s && isMultibyte(s);
         }
     }
 
@@ -1328,7 +1332,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static boolean charOrStringP(Object object) {
             return object instanceof ELispString
-                    || ELispString.toValidChar(object) != null;
+                    || (object instanceof Long c && StringSupport.isValidChar(c));
         }
     }
 
@@ -2343,22 +2347,13 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "aref", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FAref extends ELispBuiltInBaseNode {
-        @Nullable
-        static MuleByteArrayString stringBytes(MuleString array) {
-            return array instanceof MuleByteArrayString s ? s : null;
-        }
-        @Specialization(guards = "value != null")
+        @Specialization
         public static long arefStringByte(
                 ELispString array, long idx,
-                @Bind("stringBytes(array.value())") MuleByteArrayString value
+                @Cached TruffleString.CodePointAtIndexNode charAt
         ) {
-            checkRange(value.length(), idx);
-            return Byte.toUnsignedInt(value.bytes()[(int) idx]);
-        }
-        @Specialization
-        public static long arefStr(ELispString array, long idx) {
             checkRange(array.length(), idx);
-            return array.codePointAt(idx);
+            return charAt.execute(array.value(), (int) idx, StringSupport.UTF_32);
         }
 
         @Specialization
@@ -2382,7 +2377,7 @@ public class BuiltInData extends ELispBuiltIns {
             return switch (array) {
                 case ELispString str -> {
                     checkRange(str.length(), idx);
-                    yield str.codePointAt(idx);
+                    yield str.codePointAt((int) idx);
                 }
                 case ELispVectorLike<?> vec -> {
                     checkRange(vec.size(), idx);
@@ -2420,17 +2415,19 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "aset", minArgs = 3, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FAset extends ELispBuiltInBaseNode {
-        @Nullable
-        static MuleByteArrayString stringBytes(MuleString array) {
-            return array instanceof MuleByteArrayString s ? s : null;
-        }
-        @Specialization(guards = "value != null")
+        @Specialization(guards = "array.state() <= 1")
         public static long asetString(
                 ELispString array, long idx, long newelt,
-                @Bind("stringBytes(array.value())") MuleByteArrayString value
+                @Cached MutableTruffleString.AsMutableTruffleStringNode convert,
+                @Cached MutableTruffleString.WriteByteNode write
         ) {
-            FAref.checkRange(value.length(), idx);
-            value.bytes()[(int) idx] = (byte) newelt;
+            FAref.checkRange(array.length(), idx);
+            write.execute(
+                    array.asMutableTruffleString(convert),
+                    (int) idx,
+                    (byte) newelt,
+                    StringSupport.UTF_32
+            );
             return newelt;
         }
 
@@ -2772,7 +2769,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
             if (arguments.length == 0) {
-                return ELispInterpretedNode.literal(0L);
+                return ELispLiteralNodes.of(0L);
             }
             if (arguments.length == 1) {
                 return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
@@ -2863,7 +2860,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
             if (arguments.length == 0) {
-                return ELispInterpretedNode.literal(0L);
+                return ELispLiteralNodes.of(0L);
             }
             if (arguments.length == 1) {
                 return BuiltInDataFactory.FMinusUnaryNodeGen.create(arguments[0]);
@@ -2932,7 +2929,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Override
         public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
             if (arguments.length == 0) {
-                return ELispInterpretedNode.literal(1L);
+                return ELispLiteralNodes.of(1L);
             }
             if (arguments.length == 1) {
                 return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
@@ -3208,7 +3205,7 @@ public class BuiltInData extends ELispBuiltIns {
                 BiFunction<ELispExpressionNode,ELispExpressionNode, ELispExpressionNode> factory
         ) {
             if (arguments.length == 0) {
-                return ELispInterpretedNode.literal(defaultValue);
+                return ELispLiteralNodes.of(defaultValue);
             }
             if (arguments.length == 1) {
                 return BuiltInDataFactory.BitAsIsUnaryNodeGen.create(arguments[0]);

@@ -4,9 +4,6 @@ import com.oracle.truffle.api.*;
 
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.*;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
@@ -18,18 +15,10 @@ import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
-import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.scopes.TopLevelScope;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Optional;
 
 @TruffleLanguage.Registration(
     id = ELispLanguage.ID,
@@ -129,7 +118,7 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     @Override
     protected Object getScope(ELispContext context) {
-        return new TopLevelScope(context);
+        return new TopLevelScope(this, context);
     }
 
     public int tryGetGlobalVariableIndex(ELispSymbol symbol) {
@@ -158,109 +147,5 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
 
     public static ELispLanguage get(@Nullable Node node) {
         return REFERENCE.get(node);
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    final class TopLevelScope implements TruffleObject {
-        private final ELispContext context;
-        private final HashMap<String, ELispSymbol> symbolCache;
-        private final HashMap<String, ValueStorage> cache;
-
-        TopLevelScope(ELispContext context) {
-            this.context = context;
-            this.symbolCache = new HashMap<>();
-            this.cache = new HashMap<>();
-        }
-
-        @ExportMessage
-        boolean isScope() {
-            return true;
-        }
-        @ExportMessage
-        String toDisplayString(boolean allowSideEffects) {
-            return toString();
-        }
-
-        @ExportMessage
-        boolean hasLanguage() {
-            return true;
-        }
-        @ExportMessage
-        Class<ELispLanguage> getLanguage() {
-            return ELispLanguage.class;
-        }
-
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-        @CompilerDirectives.TruffleBoundary
-        @ExportMessage
-        public Object getMembers(boolean includeInternal) {
-            ArrayList<ELispString> members = new ArrayList<>();
-            globalVariablesMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
-            globalFunctionsMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
-            return new ELispVector(members.toArray());
-        }
-        @ExportMessage
-        boolean isMemberReadable(String member) {
-            @Nullable ValueStorage storage = cache.get(member);
-            if (storage == null) {
-                @Nullable ELispSymbol symbol = context.obarray().internSoft(MuleString.fromString(member));
-                if (symbol == null) {
-                    return false;
-                }
-                symbolCache.put(member, symbol);
-                Optional<ValueStorage> valueStorage = context.getStorageLazy(symbol);
-                if (valueStorage.isPresent()) {
-                    storage = valueStorage.get();
-                    cache.put(member, storage);
-                } else {
-                    return false;
-                }
-            }
-            return storage.isBound();
-        }
-        @ExportMessage
-        Object readMember(String member) throws UnknownIdentifierException {
-            if (!isMemberReadable(member)) {
-                throw UnknownIdentifierException.create(member);
-            }
-            try {
-                Object v = cache.get(member).getValue(symbolCache.get(member));
-                if (InteropLibrary.isValidValue(v)) {
-                    return v;
-                }
-            } catch (ELispSignals.ELispSignalException ignored) {
-            }
-            return ELispGlobals.NIL;
-        }
-        @ExportMessage
-        boolean isMemberInsertable(String member) {
-            return !isMemberReadable(member);
-        }
-        @ExportMessage
-        boolean isMemberModifiable(String member) {
-            return isMemberReadable(member) && !cache.get(member).isConstant();
-        }
-        @ExportMessage
-        void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
-            ELispSymbol symbol = symbolCache.get(member);
-            ValueStorage storage = cache.get(member);
-            if (storage == null) {
-                symbol = context.obarray().intern(member);
-                storage = context.getStorage(symbol);
-                symbolCache.put(member, symbol);
-                cache.put(member, storage);
-            }
-            if (storage.isConstant()) {
-                throw UnknownIdentifierException.create(member);
-            }
-            if (InteropLibrary.isValidValue(value)) {
-                storage.setValue(value, symbol, context);
-            } else {
-                throw UnsupportedTypeException.create(new Object[]{value});
-            }
-        }
     }
 }

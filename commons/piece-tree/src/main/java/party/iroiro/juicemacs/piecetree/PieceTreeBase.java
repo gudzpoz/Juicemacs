@@ -100,6 +100,10 @@ public final class PieceTreeBase {
     private int lastVisitedLine;
     private TruffleString lastVisitedLineValue = EMPTY_STRING;
 
+    public PieceTreeBase() {
+        this(new StringBuffer[0]);
+    }
+
     public PieceTreeBase(TruffleString string) {
         this(new StringBuffer(string));
     }
@@ -208,7 +212,7 @@ public final class PieceTreeBase {
             if (x.size_left != 0 && x.size_left >= offset) {
                 x = x.left;
             } else if (x.size_left + x.piece.length() >= offset) {
-                Index out = getIndexOf(x, Math.toIntExact(offset - x.size_left));
+                Index out = getIndexOf(x, (int) (offset - x.size_left));
                 lfCnt += x.lf_left + out.index;
                 if (out.index == 0) {
                     long lineStartOffset = getOffsetAt(lfCnt + 1, 1);
@@ -1020,7 +1024,7 @@ public final class PieceTreeBase {
         public CharIterator(long start, long end) {
             NodePosition startPosition = nodeAt(start);
             currentNode = startPosition.node;
-            cachedStartOffset = 0;
+            cachedStartOffset = -1;
             current = startPosition.remainder;
             remainder = end - start;
         }

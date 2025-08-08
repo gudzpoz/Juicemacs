@@ -8,11 +8,12 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
-import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispLiteralNodes;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -72,7 +73,7 @@ public abstract class ReadFunctionObjectNodes {
         } else if (toSym(car) instanceof ELispSymbol symbol) {
             return ReadFunctionObjectNodesFactory.ReadFormSymbolCardinalFunctionNodeGen.create(symbol);
         }
-        return ReadFunctionObjectNodesFactory.ReadDynamicSymbolNodeGen.create(ELispInterpretedNode.literal(car));
+        return ReadFunctionObjectNodesFactory.ReadDynamicSymbolNodeGen.create(ELispLiteralNodes.of(car));
     }
 
     public abstract static class GetSymbolFunctionNode extends Node {
@@ -185,6 +186,7 @@ public abstract class ReadFunctionObjectNodes {
         }
 
         @Specialization(replaces = "checkCons")
+        @CompilerDirectives.TruffleBoundary
         public Object checkConsUncached(ELispCons cons) {
             if (cons.car() == LAMBDA) {
                 return BuiltInEval.FFunction.getFunction(cons, this);

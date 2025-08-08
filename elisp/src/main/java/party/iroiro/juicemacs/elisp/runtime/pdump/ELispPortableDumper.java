@@ -3,6 +3,8 @@ package party.iroiro.juicemacs.elisp.runtime.pdump;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.strings.MutableTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.apache.fury.Fury;
 import org.apache.fury.config.Language;
@@ -19,7 +21,7 @@ import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.*;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
@@ -61,11 +63,8 @@ public final class ELispPortableDumper {
 
     static void registerSerializers(Fury fury) {
         // Symbols
-        MuleStringSerializer serializer = new MuleStringSerializer(fury);
-        fury.registerSerializer(MuleByteArrayString.class, serializer);
-        fury.registerSerializer(MuleTruffleString.class, serializer);
-        fury.registerSerializer(MuleIntArrayString.class, serializer);
-        fury.registerSerializer(MuleStringBuffer.class, serializer);
+        fury.register(TruffleString.class);
+        fury.register(MutableTruffleString.class);
         fury.registerSerializer(ELispObarray.class, new ELispObarraySerializer(fury));
         fury.registerSerializer(ELispSymbol.class, new ELispSymbolSerializer(fury));
         // Symbol values

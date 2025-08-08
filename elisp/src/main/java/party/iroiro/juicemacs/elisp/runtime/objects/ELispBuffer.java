@@ -1,6 +1,8 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.io.File;
@@ -14,8 +16,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
@@ -51,7 +53,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         // TODO: Should not be public
         this(
                 bufferLocalFields,
-                new PieceTreeBase(List.of(), PieceTreeBase.EndOfLine.LF, true),
+                new PieceTreeBase(),
                 true
         );
     }
@@ -59,7 +61,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public ELispBuffer(ELispBuffer defaults, boolean inhibitBufferHooks) {
         this(
                 Arrays.copyOf(defaults.bufferLocalFields, defaults.bufferLocalFields.length),
-                new PieceTreeBase(List.of(), PieceTreeBase.EndOfLine.LF, true),
+                new PieceTreeBase(),
                 inhibitBufferHooks
         );
     }
@@ -112,12 +114,22 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return content.getCharCode(point - 1);
     }
 
-    public MuleString subString(long start, long end) {
+    private ELispString wrap(AbstractTruffleString string) {
+        if (isNil(getEnableMultibyteCharacters())) {
+            return new ELispString(
+                    string.switchEncodingUncached(TruffleString.Encoding.BYTES),
+                    StringSupport.STATE_BYTES
+            );
+        }
+        return new ELispString(string);
+    }
+
+    public ELispString subString(long start, long end) {
         PieceTreeBase.Position left = getPosition(start);
         PieceTreeBase.Position right = getPosition(end);
-        return content.getValueInRange(new PieceTreeBase.Range(
+        return wrap(content.getValueInRange(new PieceTreeBase.Range(
                 left.line(), left.column(), right.line(), right.column()
-        ), PieceTreeBase.EndOfLine.LF);
+        )));
     }
 
     public PrimitiveIterator.OfInt iterator(long start, long end) {
@@ -158,25 +170,19 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public void insert(MuleString text) {
+    public void insert(ELispString text) {
         insert(getPoint(), text);
     }
 
-    public void insert(long point, MuleString text) {
+    public void insert(long point, ELispString text) {
         if (text.length() == 0) {
             return;
         }
         if (isNil(getEnableMultibyteCharacters()) && BuiltInData.isMultibyte(text)) {
-            MuleStringBuffer buffer = new MuleStringBuffer();
-            // TODO
-            PrimitiveIterator.OfInt iterator = text.iterator(0);
-            while (iterator.hasNext()) {
-                buffer.appendRawByte((byte) iterator.nextInt());
-            }
-            text = buffer;
+            text = wrap(text.value());
         }
         long position = point - 1;
-        content.insert(position, text, true);
+        content.insert(position, text.value());
         intervals.insert(position, text.length(), null);
         markers.insertString(position, text.length());
     }
@@ -191,16 +197,16 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     /// Replaces text without messing up intervals and markers
-    public void replace(long start, MuleString text) {
+    public void replace(long start, ELispString text) {
         content.delete(start - 1, text.length());
-        content.insert(start - 1, text, true);
+        content.insert(start - 1, text.value());
     }
 
     public void erase() {
         intervals.delete(0, content.getLength());
         markers.delete(0, content.getLength());
         content.delete(0, content.getLength());
-        content.setEOL(content.getEOL()); // reset the internal tree
+        content.compact(); // reset the internal tree
     }
 
     public void setMultibyte(Object flag) {

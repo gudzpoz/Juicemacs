@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.resolver.RefResolver;
@@ -78,6 +79,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         return cons;
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void writeList(MemoryBuffer buffer, ELispCons value) {
         RefResolver resolver = fury.getRefResolver();
         buffer.writeByte(0xFF);

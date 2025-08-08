@@ -1,42 +1,42 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
-import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.HashMap;
 
 public final class ELispObarray extends AbstractELispIdentityObject implements ELispValue {
-    private final HashMap<MuleString, ELispSymbol> symbols;
+    private final HashMap<String, ELispSymbol> symbols;
 
-    public ELispObarray(HashMap<MuleString, ELispSymbol> symbols) {
+    public ELispObarray(HashMap<String, ELispSymbol> symbols) {
         this.symbols = symbols;
     }
 
-    public HashMap<MuleString, ELispSymbol> symbols() {
+    public HashMap<String, ELispSymbol> symbols() {
         return symbols;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public ELispSymbol intern(MuleString name) {
-        return symbols.computeIfAbsent(name, ELispSymbol::new);
+    @SuppressWarnings("PMD.TruffleNoDirectRecursion")
+    public ELispSymbol intern(AbstractTruffleString name) {
+        return intern(name.toString());
     }
 
-    @SuppressWarnings("PMD.TruffleNoDirectRecursion")
+    @CompilerDirectives.TruffleBoundary
     public ELispSymbol intern(String name) {
-        return intern(MuleString.fromString(name));
+        return symbols.computeIfAbsent(name, ELispSymbol::new);
     }
 
     @CompilerDirectives.TruffleBoundary
     @Nullable
-    public ELispSymbol internSoft(MuleString value) {
+    public ELispSymbol internSoft(String value) {
         return symbols.get(value);
     }
 
     @CompilerDirectives.TruffleBoundary
     @Nullable
-    public ELispSymbol unintern(MuleString name) {
+    public ELispSymbol unintern(String name) {
         return symbols.remove(name);
     }
 

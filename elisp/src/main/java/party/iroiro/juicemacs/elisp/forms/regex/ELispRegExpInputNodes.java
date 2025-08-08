@@ -1,14 +1,13 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.mule.MuleByteArrayString;
-import party.iroiro.juicemacs.mule.MuleString;
-
-import static party.iroiro.juicemacs.mule.MuleByteArrayString.STATE_UNI_BYTES;
-import static party.iroiro.juicemacs.mule.MuleByteArrayString.uniByteCodePoint;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 abstract class ELispRegExpInputNodes {
     @GenerateInline(value = false)
@@ -16,13 +15,11 @@ abstract class ELispRegExpInputNodes {
         public abstract long execute(Object input);
 
         @Specialization
-        public long testInputStrLength(MuleByteArrayString input) {
-            return input.bytes().length;
-        }
-
-        @Specialization
-        public long testInputStrLength(MuleString input) {
-            return input.length();
+        public long testInputStrLength(
+                ELispString input,
+                @Cached TruffleString.CodePointLengthNode length
+        ) {
+            return length.execute(input.value(), StringSupport.UTF_32);
         }
 
         @Specialization
@@ -36,7 +33,7 @@ abstract class ELispRegExpInputNodes {
         public abstract long execute(Object input);
 
         @Specialization
-        public long inputGetStrStart(MuleString input) {
+        public long inputGetStrStart(ELispString input) {
             return 0;
         }
 
@@ -50,27 +47,21 @@ abstract class ELispRegExpInputNodes {
     abstract static class InputGetCharNode extends Node {
         public abstract int execute(Object input, long index);
 
-        public static boolean isLatin1(MuleByteArrayString input) {
-            return input.getState() != STATE_UNI_BYTES;
+        @Specialization(guards = "input.state() != 1")
+        public int inputGetStrCharMultibyte(
+                ELispString input, long index,
+                @Cached @Cached.Shared TruffleString.CodePointAtIndexNode charAt
+        ) {
+            return charAt.execute(input.value(), (int) index, StringSupport.UTF_32);
         }
 
-        @Specialization(guards = "isLatin1(input)")
-        public int inputGetStrCharLatin1(MuleByteArrayString input, long index) {
-            return Byte.toUnsignedInt(input.bytes()[(int) index]);
-        }
-
-        @Specialization
-        public int inputGetStrChar(MuleByteArrayString input, long index) {
-            int code = Byte.toUnsignedInt(input.bytes()[(int) index]);
-            if (input.getState() == STATE_UNI_BYTES) {
-                code = uniByteCodePoint(code);
-            }
-            return code;
-        }
-
-        @Specialization
-        public int inputGetStrChar(MuleString input, long index) {
-            return input.codePointAt(index);
+        @Specialization(guards = "input.state() == 1")
+        public int inputGetStrCharUnibyte(
+                ELispString input, long index,
+                @Cached @Cached.Shared TruffleString.CodePointAtIndexNode charAt
+        ) {
+            int c = charAt.execute(input.value(), (int) index, StringSupport.UTF_32);
+            return c < 128 ? c : c + 0x3FFF00;
         }
 
         @Specialization

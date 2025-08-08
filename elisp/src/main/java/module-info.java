@@ -33,7 +33,6 @@ module party.iroiro.juicemacs.elisp {
     requires org.graalvm.polyglot;
 
     // Juicemacs
-    requires party.iroiro.juicemacs.mule;
     requires party.iroiro.juicemacs.piecetree;
 
     provides com.oracle.truffle.api.provider.TruffleLanguageProvider

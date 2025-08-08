@@ -8,6 +8,8 @@ import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.util.List;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asInt;
+
 public class BuiltInIndent extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
@@ -113,7 +115,7 @@ public class BuiltInIndent extends ELispBuiltIns {
             PieceTreeBase.Position position = buffer.getPosition();
             buffer.setPosition(new PieceTreeBase.Position(
                     position.line(),
-                    column + 1
+                    asInt(column + 1)
             ));
             return buffer.getPosition().column() - 1;
         }

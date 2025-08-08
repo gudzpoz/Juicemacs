@@ -4,7 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +13,7 @@ import static party.iroiro.juicemacs.elisp.forms.regex.REToken.*;
 
 final class ELispRegExpParser {
     @Nullable
-    private final MuleString whitespaceRegExp;
+    private final ELispString whitespaceRegExp;
     private final ArrayList<REToken> stack;
 
     private ELispRegExpLexer lexer;
@@ -24,8 +24,8 @@ final class ELispRegExpParser {
     private final IntArrayList processingGroupIndices;
     private final IntArrayList availableGroupIndices;
 
-    public ELispRegExpParser(MuleString regExp,
-                             @Nullable MuleString whitespaceRegExp) {
+    public ELispRegExpParser(ELispString regExp,
+                             @Nullable ELispString whitespaceRegExp) {
         this.whitespaceRegExp = whitespaceRegExp;
         lexer = new ELispRegExpLexer(regExp);
         stack = new ArrayList<>();

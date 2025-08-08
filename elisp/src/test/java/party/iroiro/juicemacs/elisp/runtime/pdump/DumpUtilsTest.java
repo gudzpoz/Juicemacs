@@ -11,7 +11,6 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispRecord;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.utils.IntArrayList;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -161,7 +160,6 @@ public class DumpUtilsTest {
                 .withAsyncCompilation(true)
                 .build();
         fury.register(NumberListRecord.class);
-        fury.register(IntArrayList.class);
         byte[] bytes = fury.serialize(new NumberListRecord(null, new ArrayList<>()));
         fury.deserialize(bytes);
     }

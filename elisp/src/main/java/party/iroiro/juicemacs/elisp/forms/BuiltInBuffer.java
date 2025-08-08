@@ -1,20 +1,24 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.util.*;
 
@@ -30,22 +34,22 @@ public class BuiltInBuffer extends ELispBuiltIns {
     //#region buffer_local_flags
     public final byte[] bufferLocalFlags = new byte[77];
     //#endregion buffer_local_flags
-    private final HashMap<MuleString, ELispBuffer> buffers = new HashMap<>();
+    private final HashMap<TruffleString, ELispBuffer> buffers = new HashMap<>();
     private final ValueStorage.Forwarded minibufferList = new ValueStorage.Forwarded();
 
-    private static HashMap<MuleString, ELispBuffer> getBuffers(@Nullable Node node) {
+    private static HashMap<TruffleString, ELispBuffer> getBuffers(@Nullable Node node) {
         return ELispContext.get(node).globals().builtInBuffer.buffers;
     }
 
     @CompilerDirectives.TruffleBoundary
     @Nullable
-    private static ELispBuffer getBuffer(MuleString name) {
+    private static ELispBuffer getBuffer(ELispString name) {
         // TODO: Handle name changes?
-        return getBuffers(null).get(name);
+        return getBuffers(null).get(name.asTruffleStringUncached());
     }
     @CompilerDirectives.TruffleBoundary
-    private static void putBuffer(MuleString name, ELispBuffer buffer) {
-        getBuffers(null).put(name, buffer);
+    private static void putBuffer(ELispString name, ELispBuffer buffer) {
+        getBuffers(null).put(name.asTruffleStringUncached(), buffer);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -137,7 +141,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
             if (bufferOrName instanceof ELispBuffer) {
                 return bufferOrName;
             }
-            ELispBuffer buffer = BuiltInBuffer.getBuffer(asStr(bufferOrName).value());
+            ELispBuffer buffer = BuiltInBuffer.getBuffer(asStr(bufferOrName));
             return buffer == null ? false : buffer;
         }
     }
@@ -223,13 +227,13 @@ public class BuiltInBuffer extends ELispBuiltIns {
             ELispContext context = ELispContext.get(null);
             ELispBuffer bufferDefaults = context.globals().getBufferDefaults();
 
-            MuleString name = asStr(bufferOrName).value();
+            ELispString name = asStr(bufferOrName);
             ELispBuffer buffer = new ELispBuffer(bufferDefaults, !isNil(inhibitBufferHooks));
             buffer.setWidthTable(false);
             // TODO: Texts
-            buffer.setName(new ELispString(name));
+            buffer.setName(new ELispString(name.asTruffleStringUncached()));
             buffer.setLastName(buffer.getName());
-            buffer.setUndoList(name.startsWith(" "));
+            buffer.setUndoList(StringNodes.charAt(name.value(), 0) == ' ');
 
             buffer.reset();
             buffer.resetLocalVariables(true);
@@ -290,33 +294,39 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGenerateNewBufferName extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString generateNewBufferName(ELispString name, Object ignore) {
+        public static ELispString generateNewBufferName(
+                ELispString name, Object ignore,
+                @Cached TruffleString.FromLongNode longToString,
+                @Cached TruffleString.CodePointAtIndexNode charAt
+        ) {
             if (!isNil(FGetBuffer.getBuffer(name))) {
                 return name;
             }
             if (BuiltInFns.FStringEqual.stringEqual(name, ignore)) {
                 return name;
             }
-            MuleString base = name.value();
-            if (base.startsWith(" ")) {
+            if (charAt.execute(name.value(), 0, StringSupport.UTF_32) == ' ') {
                 int i = new Random().nextInt(1_000_000);
-                base = new MuleStringBuffer().append(base)
-                        .append('-').append(MuleString.fromString(Integer.toString(i)))
+                AbstractTruffleString base = new MuleStringBuilder()
+                        .appendString(name)
+                        .appendCodePoint('-')
+                        .append(longToString.execute(i, StringSupport.UTF_32, true), 0)
                         .build();
-                if (getBuffer(base) != null) {
+                name = new ELispString(base, name.state());
+                if (getBuffer(name) != null) {
                     return new ELispString(base);
                 }
             }
             for (int i = 2; i < Integer.MAX_VALUE; i++) {
-                MuleString gen = new MuleStringBuffer()
-                        .append(base)
-                        .append('<')
-                        .append(MuleString.fromString(Integer.toString(i)))
-                        .append('>')
+                AbstractTruffleString gen = new MuleStringBuilder()
+                        .appendString(name)
+                        .appendCodePoint('<')
+                        .append(longToString.execute(i, StringSupport.UTF_32, true), 0)
+                        .appendCodePoint('>')
                         .build();
-                ELispString wrap = new ELispString(gen);
-                if (BuiltInFns.FStringEqual.stringEqual(wrap, ignore) || getBuffer(gen) == null) {
-                    return wrap;
+                name = new ELispString(gen, name.state());
+                if (BuiltInFns.FStringEqual.stringEqual(name, ignore) || getBuffer(name) == null) {
+                    return name;
                 }
             }
             throw ELispSignals.error("Unable to find a new buffer name");
@@ -652,19 +662,20 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public boolean killBuffer(Object bufferOrName) {
-            HashMap<MuleString, ELispBuffer> buffers = getBuffers(this);
+            HashMap<TruffleString, ELispBuffer> buffers = getBuffers(this);
             if (bufferOrName instanceof ELispString name) {
-                return buffers.remove(name.value()) != null;
+                return buffers.remove(name.asTruffleStringUncached()) != null;
             }
             ELispBuffer buffer = asBuffer(bufferOrName);
             if (buffer.getName() instanceof ELispString name) {
-                ELispBuffer match = buffers.get(name.value());
+                TruffleString inner = name.asTruffleStringUncached();
+                ELispBuffer match = buffers.get(inner);
                 if (match == buffer) {
-                    buffers.remove(name.value());
+                    buffers.remove(inner);
                     return true;
                 }
             }
-            Optional<Map.Entry<MuleString, ELispBuffer>> entry = buffers.entrySet().stream()
+            Optional<Map.Entry<TruffleString, ELispBuffer>> entry = buffers.entrySet().stream()
                     .filter(e -> e.getValue() == buffer)
                     .findFirst();
             if (entry.isPresent()) {

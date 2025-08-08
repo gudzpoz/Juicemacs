@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.array.SourceLocation;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.HashMap;
 
@@ -156,7 +155,7 @@ public class SerializersTest {
 
         ELispObarray restored = roundTrip(obarray);
         assertEquals(obarray.symbols().size(), restored.symbols().size());
-        assertNotNull(restored.internSoft(MuleString.fromString("test1")));
-        assertNotNull(restored.internSoft(MuleString.fromString("test2")));
+        assertNotNull(restored.internSoft("test1"));
+        assertNotNull(restored.internSoft("test2"));
     }
 }

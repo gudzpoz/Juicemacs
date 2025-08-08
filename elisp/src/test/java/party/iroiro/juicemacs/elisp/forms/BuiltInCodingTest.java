@@ -12,7 +12,7 @@ public class BuiltInCodingTest {
     public void testDecodeCoding() {
         try (Context context = getContextBuilder(System.out).option("elisp.dumpFile", "emacs.pdmp").build()) {
             Value s = context.eval("elisp", """
-                    (decode-coding-string "\344\270\255" 'utf-8-emacs-unix)
+                    (decode-coding-string "\\344\\270\\255" 'utf-8-emacs-unix)
                     """);
             String unicode = "中";
             assertEquals(unicode, s.asString());

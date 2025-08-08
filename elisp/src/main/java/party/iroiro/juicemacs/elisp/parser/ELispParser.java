@@ -3,12 +3,14 @@ package party.iroiro.juicemacs.elisp.parser;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
-import party.iroiro.juicemacs.elisp.nodes.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispRootNodes;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.LocatedToken;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.*;
@@ -18,7 +20,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -40,8 +42,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 public class ELispParser {
     public interface InternContext {
         ELispSymbol intern(String name);
-        ELispSymbol intern(MuleString name);
-        MuleString applyShorthands(MuleString symbol);
+        ELispSymbol intern(TruffleString name);
+        String applyShorthands(String symbol);
     }
 
     private @Nullable Source source = null;
@@ -109,9 +111,9 @@ public class ELispParser {
             case BigNum(BigInteger value) -> ELispBigNum.wrap(value);
             case FloatNum(double value) -> value;
             case Char(int value) -> (long) value;
-            case Str(MuleString value) -> new ELispString(value);
-            case Symbol(MuleString value, boolean intern, boolean shorthand) -> {
-                MuleString symbol = value;
+            case Str(TruffleString value, int state) -> new ELispString(value, state);
+            case Symbol(String value, boolean intern, boolean shorthand) -> {
+                String symbol = value;
                 if (shorthand) {
                     symbol = context.applyShorthands(symbol);
                 }
@@ -127,14 +129,14 @@ public class ELispParser {
                 }
                 yield new ELispSymbol(symbol);
             }
-            case BoolVec(long length, MuleString value) -> {
+            case BoolVec(long length, TruffleString value) -> {
                 byte[] bytes = new byte[(int) Math.ceilDiv(length, 8)];
-                PrimitiveIterator.OfInt iterator = value.iterator(0);
+                TruffleStringIterator iterator = value.createCodePointIteratorUncached(TruffleString.Encoding.UTF_32);
                 for (int i = 0; i < length; i += 8) {
                     if (!iterator.hasNext()) {
                         throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
                     }
-                    int codepoint = iterator.nextInt();
+                    int codepoint = iterator.nextUncached();
                     if (codepoint > 0xFF) {
                         throw ELispSignals.invalidReadSyntax("Expected raw byte string");
                     }
@@ -336,14 +338,14 @@ public class ELispParser {
             ELispLexical.@Nullable Scope debugScope
     ) throws IOException {
         ELispParser parser = new ELispParser(context, source);
-        ELispExpressionNode expr = ELispInterpretedNode.createRoot(parser.parse(source), debugScope);
+        ELispExpressionNode expr = ELispRootNodes.createRoot(parser.parse(source), debugScope);
         return new ELispRootNode(language, expr, parser.getWholeSection(source));
     }
 
     private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source, boolean debug)
             throws IOException {
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
-        ELispExpressionNode expr = ELispInterpretedNode.createMacroexpand(parser.parse(source), parser.isLexicallyBound());
+        ELispExpressionNode expr = ELispRootNodes.createMacroexpand(parser.parse(source), parser.isLexicallyBound());
         if (!debug) {
             source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
         }

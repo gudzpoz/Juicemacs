@@ -6,15 +6,20 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.util.*;
 import java.util.stream.StreamSupport;
@@ -28,11 +33,11 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         return BuiltInMiniBufFactory.getFactories();
     }
 
-    record CompletionItem(@Nullable MuleString s, Object key, Object value) {
+    record CompletionItem(@Nullable AbstractTruffleString s, Object key, Object value) {
     }
 
     static abstract sealed class CompletionMatcher {
-        protected final MuleString target;
+        protected final ELispString target;
         protected final boolean ignoreCase;
         private final Object predicate;
         private final ELispRegExp.CompiledRegExp[] regExps;
@@ -41,7 +46,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             this.predicate = predicate;
             this.ignoreCase = !isNil(COMPLETION_IGNORE_CASE.getValue());
             this.regExps = getRegExps(language);
-            this.target = (this.ignoreCase ? BuiltInCaseFiddle.FUpcase.upcaseString(target) : target).value();
+            this.target = this.ignoreCase ? BuiltInCaseFiddle.FUpcase.upcaseString(target) : target;
         }
 
         public static ELispRegExp.CompiledRegExp[] getRegExps(ELispLanguage language) {
@@ -81,9 +86,9 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             return new CompletionItem(getString(s), key, false);
         }
 
-        public static CompletionItem obToItem(Map.Entry<MuleString, ELispSymbol> entry) {
-            MuleString key = entry.getKey();
-            return new CompletionItem(key, key, true);
+        public static CompletionItem obToItem(Map.Entry<String, ELispSymbol> entry) {
+            String key = entry.getKey();
+            return new CompletionItem(TruffleUtils.string(key), key, true);
         }
 
         public static CompletionItem htToItem(Map.Entry<Object, Object> entry) {
@@ -93,20 +98,20 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         }
 
         public void tryMatch(
-                @Nullable MuleString s, Object key, Object value,
+                @Nullable AbstractTruffleString s, Object key, Object value,
                 FuncallDispatchNode dispatchNode, Node node
         ) {
             if (s == null) {
                 return;
             }
-            if (s.length() < target.length()) {
+            if (StringNodes.length(s) < target.length()) {
                 return;
             }
             PrimitiveIterator.OfInt expected = target.iterator(0);
-            PrimitiveIterator.OfInt actual = s.iterator(0);
+            TruffleStringIterator actual = s.createCodePointIteratorUncached(StringSupport.UTF_32);
             while (expected.hasNext()) {
                 int e = expected.nextInt();
-                int a = actual.nextInt();
+                int a = actual.nextUncached();
                 if (ignoreCase) {
                     a = Math.toIntExact(BuiltInCaseFiddle.FUpcase.upcaseChar(a));
                 }
@@ -122,7 +127,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             if (regExps.length != 0) {
                 ELispBuffer buffer = ELispContext.get(null).currentBuffer();
                 for (ELispRegExp.CompiledRegExp regExp : regExps) {
-                    if (isNil(regExp.call(s, true, 0, -1, buffer))) {
+                    if (isNil(regExp.call(new ELispString(s), true, 0, -1, buffer))) {
                         return;
                     }
                 }
@@ -130,12 +135,12 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             record(s, key);
         }
 
-        protected abstract void record(MuleString string, Object key);
+        protected abstract void record(AbstractTruffleString string, Object key);
 
-        private static @Nullable MuleString getString(Object o) {
+        private static @Nullable AbstractTruffleString getString(Object o) {
             return switch (o) {
                 case ELispString eStr -> eStr.value();
-                case ELispSymbol symbol -> symbol.name();
+                case ELispSymbol symbol -> TruffleUtils.string(symbol.name());
                 default -> null;
             };
         }
@@ -519,14 +524,14 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         }
 
         private static final class TryCompletionMatcher extends CompletionMatcher {
-            private final ArrayList<MuleString> matches = new ArrayList<>();
+            private final ArrayList<AbstractTruffleString> matches = new ArrayList<>();
 
             TryCompletionMatcher(ELispString target, Object predicate, ELispLanguage language) {
                 super(target, predicate, language);
             }
 
             @Override
-            protected void record(MuleString string, Object key) {
+            protected void record(AbstractTruffleString string, Object key) {
                 matches.add(string);
             }
 
@@ -537,20 +542,20 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                 if (matches.size() == 1) {
                     return true;
                 }
-                MuleStringBuffer buffer = new MuleStringBuffer();
-                long index = target.length();
-                MuleString first = matches.getFirst();
-                buffer.appendMuleString(first, 0, index);
+                MuleStringBuilder buffer = new MuleStringBuilder();
+                int index = target.length();
+                AbstractTruffleString first = matches.getFirst();
+                buffer.appendString(BuiltInFns.FSubstring.substring(new ELispString(first), 0L, (long) index));
                 appendCommonChar:
-                while (index < first.length()) {
-                    int originalChar = first.charAt(index);
+                while (index < StringNodes.length(first)) {
+                    int originalChar = StringNodes.charAt(first, index);
                     int upper = ignoreCase ? Math.toIntExact(BuiltInCaseFiddle.FUpcase.upcaseChar(originalChar)) : originalChar;
                     for (int i = 1; i < matches.size(); i++) {
-                        MuleString matched = matches.get(i);
-                        if (index >= matched.length()) {
+                        AbstractTruffleString matched = matches.get(i);
+                        if (index >= StringNodes.length(matched)) {
                             break appendCommonChar;
                         }
-                        int c = matched.charAt(index);
+                        int c = StringNodes.charAt(matched, index);
                         if (ignoreCase) {
                             c = Math.toIntExact(BuiltInCaseFiddle.FUpcase.upcaseChar(c));
                         }
@@ -558,7 +563,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                             break appendCommonChar;
                         }
                     }
-                    buffer.append(originalChar);
+                    buffer.appendCodePoint(originalChar);
                     index++;
                 }
                 return new ELispString(buffer.build());
@@ -635,7 +640,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             }
 
             @Override
-            protected void record(MuleString string, Object key) {
+            protected void record(AbstractTruffleString string, Object key) {
                 matches.add(key);
             }
 
@@ -763,7 +768,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             }
 
             @Override
-            protected void record(MuleString string, Object key) {
+            protected void record(AbstractTruffleString string, Object key) {
                 matched = true;
             }
         }
@@ -807,7 +812,8 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
     public abstract static class FAssocString extends ELispBuiltInBaseNode {
         @Specialization
         public static Object assocString(Object key, Object list, Object caseFold) {
-            MuleString keyString = toSym(key) instanceof ELispSymbol sym ? sym.name() : asStr(key).value();
+            AbstractTruffleString keyString = toSym(key) instanceof ELispSymbol sym
+                    ? TruffleUtils.string(sym.name()) : asStr(key).value();
             boolean upcase = !isNil(caseFold);
             if (upcase) {
                 keyString = asStr(BuiltInCaseFiddle.FUpcase.upcaseString(new ELispString(keyString))).value();
@@ -817,9 +823,9 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                 if (target instanceof ELispCons cons) {
                     target = cons.car();
                 }
-                MuleString rhs;
+                AbstractTruffleString rhs;
                 if (toSym(target) instanceof ELispSymbol sym) {
-                    rhs = sym.name();
+                    rhs = TruffleUtils.string(sym.name());
                 } else if (target instanceof ELispString str) {
                     rhs = str.value();
                 } else {

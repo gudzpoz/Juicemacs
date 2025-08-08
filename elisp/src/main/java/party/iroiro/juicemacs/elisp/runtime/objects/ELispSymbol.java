@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.mule.MuleString;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -23,22 +22,18 @@ import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 
 /// The symbol part of `struct Lisp_Symbol`
 ///
-/// Different from the C version, we do not keep the dynamically-bound value
+/// Different from the C version, we do not keep the dynamically bound value
 /// in the symbol, but in the Truffle context to allow parallel context usages.
 @ExportLibrary(InteropLibrary.class)
 public final class ELispSymbol implements ELispValue, TruffleObject {
-    private final MuleString name;
+    private final String name;
     private final boolean isKeyword;
 
     public ELispSymbol(String name) {
-        this(MuleString.fromString(name), name.startsWith(":"));
+        this(name, !name.isEmpty() && name.charAt(0) == ':');
     }
 
-    public ELispSymbol(MuleString name) {
-        this(name, name.length() > 0 && name.charAt(0) == ':');
-    }
-
-    public ELispSymbol(MuleString name, boolean isKeyword) {
+    public ELispSymbol(String name, boolean isKeyword) {
         this.name = name;
         this.isKeyword = isKeyword;
     }
@@ -180,7 +175,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         ELispContext.get(null).getFunctionStorage(this).set(function, this);
     }
 
-    public MuleString name() {
+    public String name() {
         return name;
     }
 
@@ -246,7 +241,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
 
     @Override
     public String toString() {
-        return name.toString();
+        return name;
     }
 
     //#region InteropLibrary
@@ -256,7 +251,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     }
     @ExportMessage
     public String asString() {
-        return name.toString();
+        return name;
     }
     //#endregion InteropLibrary
 

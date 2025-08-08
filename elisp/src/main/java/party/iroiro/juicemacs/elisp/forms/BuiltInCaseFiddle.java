@@ -5,8 +5,8 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.apache.commons.text.WordUtils;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.util.List;
 import java.util.PrimitiveIterator;
@@ -44,12 +44,12 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString upcaseString(ELispString obj) {
-            MuleStringBuffer builder = new MuleStringBuffer();
-            PrimitiveIterator.OfInt iterator = obj.value().iterator(0);
+            MuleStringBuilder builder = new MuleStringBuilder();
+            PrimitiveIterator.OfInt iterator = obj.iterator(0);
             while (iterator.hasNext()) {
-                builder.append(Math.toIntExact(upcaseChar(iterator.nextInt())));
+                builder.appendCodePoint(Math.toIntExact(upcaseChar(iterator.nextInt())));
             }
-            return new ELispString(builder.build());
+            return builder.buildString();
         }
     }
 
@@ -78,12 +78,12 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString downcaseString(ELispString obj) {
-            MuleStringBuffer builder = new MuleStringBuffer();
-            PrimitiveIterator.OfInt iterator = obj.value().iterator(0);
+            MuleStringBuilder builder = new MuleStringBuilder();
+            PrimitiveIterator.OfInt iterator = obj.iterator(0);
             while (iterator.hasNext()) {
-                builder.append(Math.toIntExact(downcaseChar(iterator.nextInt())));
+                builder.appendCodePoint(Math.toIntExact(downcaseChar(iterator.nextInt())));
             }
-            return new ELispString(builder.build());
+            return builder.buildString();
         }
     }
 

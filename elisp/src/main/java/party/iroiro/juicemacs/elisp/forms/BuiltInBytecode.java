@@ -8,7 +8,7 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBytecode;
-import party.iroiro.juicemacs.elisp.runtime.objects.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.List;
@@ -37,7 +37,7 @@ public class BuiltInBytecode extends ELispBuiltIns {
         @CompilerDirectives.TruffleBoundary
         @Specialization
         public Object byteCode(ELispString bytestr, ELispVector vector, long maxdepth) {
-            if (isMultibyte(bytestr.value())) {
+            if (isMultibyte(bytestr)) {
                 throw ELispSignals.wrongTypeArgument(BYTE_CODE_FUNCTION_P, bytestr);
             }
             ELispBytecode f = BuiltInAlloc.FMakeByteCode.makeByteCode(

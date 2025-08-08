@@ -6,6 +6,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
@@ -17,8 +18,9 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
-import party.iroiro.juicemacs.mule.MuleString;
-import party.iroiro.juicemacs.mule.MuleStringBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.EOFException;
 import java.io.FileNotFoundException;
@@ -128,15 +130,15 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             // Emacs: Copy FILENAME's data to FN but remove starting /: if any.
             // TODO: Why?
-            if (name.value().startsWith("/:")) {
+            if (name.startsWithUncached("/:")) {
                 name = BuiltInFns.FSubstring.substring(name, 2L, false);
             }
             for (Object suffix : suffixList) {
                 ELispString suffixString = asStr(suffix);
                 ELispString test = new ELispString(
-                        new MuleStringBuffer()
-                                .append(name.value())
-                                .append(suffixString.value())
+                        new MuleStringBuilder()
+                                .appendString(name)
+                                .appendString(suffixString)
                                 .build());
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P, null);
                 boolean exists;
@@ -207,7 +209,6 @@ public class BuiltInLRead extends ELispBuiltIns {
 
     @Nullable
     private static TruffleFile findLoadFilePureJava(Object file, boolean errorIfNotFound) {
-        CompilerDirectives.transferToInterpreter();
         ELispContext context = ELispContext.get(null);
         TruffleLanguage.Env env = context.truffleEnv();
 
@@ -598,7 +599,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 ELispRootNode root = ELispParser.parse(getLanguage(), getContext(), source, current);
                 root.getCallTarget().call(this);
             } catch (IOException e) {
-                throw ELispSignals.error(e.getMessage());
+                throw ELispSignals.error(Objects.requireNonNullElse(e.getMessage(), "io"));
             }
             return true;
         }
@@ -705,7 +706,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         public Object readFromString(ELispString string, Object start, Object end) {
             long from = notNilOr(start, 0L);
             long to = notNilOr(end, string.length());
-            MuleString sub = string.value().subSequence((int) from, (int) to);
+            TruffleString sub = string.value().substringUncached((int) from, (int) (to - from), StringSupport.UTF_32, true);
             try {
                 Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
                 ELispParser parser = new ELispParser(getContext(), elisp);
@@ -750,9 +751,12 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FIntern extends ELispBuiltInBaseNode {
         @Specialization
-        public Object intern(ELispString string, Object obarray) {
+        public Object intern(
+                ELispString string, Object obarray,
+                @Cached TruffleString.AsTruffleStringNode asTruffle
+        ) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            return array.intern(string.value());
+            return array.intern(asTruffle.execute(string.value(), StringSupport.UTF_32));
         }
     }
 
@@ -775,9 +779,12 @@ public class BuiltInLRead extends ELispBuiltIns {
             return name == found ? name : false;
         }
         @Specialization
-        public Object internSoft(ELispString name, Object obarray) {
+        public Object internSoft(
+                ELispString name, Object obarray,
+                @Cached TruffleString.ToJavaStringNode asJava
+        ) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            ELispSymbol symbol = array.internSoft(name.value());
+            ELispSymbol symbol = array.internSoft(asJava.execute(name.value()));
             return Objects.requireNonNullElse(symbol, false);
         }
     }
@@ -796,11 +803,14 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnintern extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean unintern(Object name, Object obarray) {
+        public boolean unintern(
+                Object name, Object obarray,
+                @Cached TruffleString.ToJavaStringNode asJava
+        ) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            MuleString s;
+            String s;
             if (name instanceof ELispString string) {
-                s = string.value();
+                s = asJava.execute(string.value());
             } else {
                 s = asSym(name).name();
             }

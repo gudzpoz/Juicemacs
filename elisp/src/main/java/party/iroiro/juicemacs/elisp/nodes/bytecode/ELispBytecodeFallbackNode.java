@@ -13,6 +13,9 @@ import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.nodes.*;
+import party.iroiro.juicemacs.elisp.nodes.ast.ConsInlinedAstNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispLiteralNodes;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotReadNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispFrameSlotWriteNode;
@@ -94,7 +97,6 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     private Object osrMetadata;
 
     public ELispBytecodeFallbackNode(ELispBytecode bytecode, int argsOnStack) {
-        CompilerAsserts.neverPartOfCompilation();
         this.startStackTop = argsOnStack - 1;
         byte[] bytes = bytecode.getBytecode();
         this.bytecode = bytes;
@@ -1221,10 +1223,10 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 }
             }
             while (nodes.size() < info.maxArgs()) {
-                nodes.add(ELispInterpretedNode.literal(false));
+                nodes.add(ELispLiteralNodes.of(false));
             }
             if (info.varArgs()) {
-                nodes.add(new ELispInterpretedNode.VarargToArrayNode(restNodes));
+                nodes.add(new ConsInlinedAstNode.VarargToArrayNode(restNodes));
             }
             ELispExpressionNode[] arguments = nodes.toArray(ELispExpressionNode[]::new);
             return inline.createNode(arguments);

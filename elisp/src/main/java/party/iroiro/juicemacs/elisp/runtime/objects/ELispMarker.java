@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -92,6 +93,7 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     @Override
+    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return inner.isDetached()
                 ? "#<marker in no buffer>"
@@ -129,6 +131,7 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     public BigInteger asBigInteger() {
         return BigInteger.valueOf(point());
     }
@@ -144,6 +147,7 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     @ExportMessage
+    @CompilerDirectives.TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
     }
@@ -152,7 +156,9 @@ public final class ELispMarker extends Number implements ELispValue {
     @ExportMessage boolean fitsInShort() { return point() <= Short.MAX_VALUE; }
     @ExportMessage boolean fitsInInt() { return point() <= Integer.MAX_VALUE; }
     @ExportMessage boolean fitsInLong() { return true; }
-    @ExportMessage boolean fitsInFloat() {
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    boolean fitsInFloat() {
         long point = point();
         if (Long.highestOneBit(point) <= 24) {
             return true;
@@ -160,7 +166,9 @@ public final class ELispMarker extends Number implements ELispValue {
         //noinspection UnpredictableBigDecimalConstructorCall
         return new BigDecimal((float) point).toBigIntegerExact().longValue() == point;
     }
-    @ExportMessage boolean fitsInDouble() {
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    boolean fitsInDouble() {
         long point = point();
         if (Long.highestOneBit(point) <= 53) {
             return true;

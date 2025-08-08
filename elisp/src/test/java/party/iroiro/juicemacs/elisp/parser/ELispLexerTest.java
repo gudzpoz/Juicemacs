@@ -43,9 +43,11 @@ import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.Unquote;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer.Token.UnquoteSplicing;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
-import party.iroiro.juicemacs.mule.MuleString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.fromBytes;
+import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.fromString;
 
 public class ELispLexerTest {
 
@@ -347,7 +349,7 @@ public class ELispLexerTest {
                 new EOF()
         ), lex("#[a]"));
         assertEquals(Arrays.asList(
-                new BoolVec(10, MuleString.fromString("test")),
+                new BoolVec(10, fromString("test").asTruffleStringUncached()),
                 new EOF()
         ), lex("#&10\"test\""));
         assertEquals(Arrays.asList(
@@ -426,11 +428,11 @@ public class ELispLexerTest {
     private static final Object[] STRING_TESTS = {
             "\"test\"", "test",
             "\"\\n\\ \\\n\"", "\n",
-            "\"\\M-1\"", MuleString.fromRaw(new byte[]{(byte) 0xb1}),
+            "\"\\M-1\"", new ELispString(new byte[]{(byte) 0xb1}),
             "\"\\70@\\70[\\70`\\70{\"", "8@8[8`8{",
             "\"\\C-[\"", "\u001b",
             "\"\\s\"", " ",
-            "\"\\\\`\\376\\377\"", MuleString.fromRaw(new byte[]{'\\', '`', (byte) 0xfe, (byte) 0xff}),
+            "\"\\\\`\\376\\377\"", new ELispString(new byte[]{'\\', '`', (byte) 0xfe, (byte) 0xff}),
     };
 
     @Test
@@ -438,9 +440,9 @@ public class ELispLexerTest {
         for (int i = 0; i < STRING_TESTS.length; i += 2) {
             String input = (String) STRING_TESTS[i];
             Object expected = STRING_TESTS[i + 1];
-            MuleString expectedStr = expected instanceof MuleString s ? s : MuleString.fromString(expected.toString());
+            ELispString expectedStr = expected instanceof ELispString s ? s : fromString(expected.toString());
             assertEquals(Arrays.asList(
-                    new Str(expectedStr),
+                    new Str(expectedStr.asTruffleStringUncached(), expectedStr.state()),
                     new EOF()
             ), lex(input));
         }
