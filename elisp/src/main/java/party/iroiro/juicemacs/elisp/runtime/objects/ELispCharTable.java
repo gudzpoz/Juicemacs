@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -204,7 +205,7 @@ public final class ELispCharTable extends AbstractELispVector {
         return table;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object getChar(int codepoint) {
         // TODO: When does Emacs fetch from parent tables?
         if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
@@ -239,7 +240,7 @@ public final class ELispCharTable extends AbstractELispVector {
         return inner.length;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void setChar(int codepoint, Object value) {
         if (codepoint < 128 && getAsciiSlot() instanceof SubTable ascii) {
             ascii.setChar(codepoint, value);
@@ -252,7 +253,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void setRange(int from, int to, Object value) {
         if (from == to) {
             setChar(from, value);
@@ -274,7 +275,7 @@ public final class ELispCharTable extends AbstractELispVector {
     }
 
     @Nullable
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public <T> T map(MapConsumer<T> callback, int startingChar) {
         int i = charTableIndex(startingChar, 0, 0);
         Object defaultValue = inner[DEFAULT_VALUT_SLOT];
@@ -303,7 +304,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public RefRangeResult refRange(int from, int target, int to) {
         return Objects.requireNonNull(map(new MapConsumer<>() {
             int last = from;
@@ -363,10 +364,10 @@ public final class ELispCharTable extends AbstractELispVector {
 
     @Override
     public void display(ELispPrint print) {
-        vectorPrintHelper(print, "#^[", "]", Arrays.asList(inner).iterator());
+        vectorPrintHelper(print, "#^[", "]", inner);
     }
 
-    public static ELispCharTable create(List<Object> objects) {
+    public static ELispCharTable create(ArrayList<Object> objects) {
         if (objects.size() < CHAR_TABLE_STANDARD_SLOTS) {
             throw ELispSignals.invalidReadSyntax("Invalid size char-table");
         }
@@ -418,7 +419,7 @@ public final class ELispCharTable extends AbstractELispVector {
             };
         }
 
-        public static SubTable create(List<Object> objects) {
+        public static SubTable create(ArrayList<Object> objects) {
             //noinspection SequencedCollectionMethodCanBeUsed
             int depth = (int) (long) objects.get(DEPTH_SLOT);
             int minChar = (int) (long) objects.get(MIN_CHAR_SLOT);
@@ -440,7 +441,7 @@ public final class ELispCharTable extends AbstractELispVector {
             return (int) (long) get(MIN_CHAR_SLOT);
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Object getChar(int codepoint) {
             int depth = getDepth();
             int i = charTableIndex(codepoint, depth, getMinChar());
@@ -451,7 +452,7 @@ public final class ELispCharTable extends AbstractELispVector {
             }
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public void setChar(int codepoint, Object value) {
             int depth = getDepth();
             int i = charTableIndex(codepoint, depth, getMinChar());
@@ -485,7 +486,7 @@ public final class ELispCharTable extends AbstractELispVector {
             return table;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public void setRange(int from, int to, Object value) {
             int minChar = getMinChar();
             int depth = getDepth();
@@ -505,7 +506,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
 
         @Nullable
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public <T> T map(MapConsumer<T> callback, Object defaultValue, int startingChar) {
             int minChar = getMinChar();
             int depth = getDepth();
@@ -528,7 +529,7 @@ public final class ELispCharTable extends AbstractELispVector {
             return null;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Object optimize(BiPredicate<Object, Object> eq) {
             boolean optimizable = true;
             @Nullable Object value = null;
@@ -559,7 +560,7 @@ public final class ELispCharTable extends AbstractELispVector {
 
         @Override
         public void display(ELispPrint print) {
-            displayHelper(print, "#^^[", "]");
+            vectorPrintHelper(print, "#^[", "]", inner);
         }
     }
 

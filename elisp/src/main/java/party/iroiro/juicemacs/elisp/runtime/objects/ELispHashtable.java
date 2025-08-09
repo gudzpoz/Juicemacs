@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -44,67 +44,37 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
     protected static Equivalence getEquivalence(Object testSym) {
         Equivalence test;
         if (testSym == EQ) {
-            test = new Equivalence() {
-                @Override
-                public boolean equals(Object a, Object b) {
-                    return BuiltInData.FEq.eq(a, b);
-                }
-                @Override
-                public int hashCode(Object o) {
-                    return o.hashCode();
-                }
-            };
+            test = new EqEquivalence();
         } else if (testSym == EQUAL) {
-            test = new Equivalence() {
-                @Override
-                public boolean equals(Object a, Object b) {
-                    return BuiltInFns.FEqual.equal(a, b);
-                }
-                @Override
-                public int hashCode(Object o) {
-                    return ELispValue.lispHashCode(o, 0);
-                }
-            };
+            test = new EqualEquivalence();
         } else {
             // Default: eql
-            test = new Equivalence() {
-                @Override
-                public boolean equals(Object a, Object b) {
-                    return BuiltInFns.FEql.eql(a, b);
-                }
-                @Override
-                public int hashCode(Object o) {
-                    if (o instanceof Double d) {
-                        return Long.hashCode(Double.doubleToRawLongBits(d));
-                    }
-                    return o.hashCode();
-                }
-            };
+            test = new EqlEquivalence();
         }
         return test;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void put(Object key, Object value) {
         inner.put(key, value);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public boolean containsKey(Object key) {
         return inner.containsKey(key);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object get(Object key) {
         return Objects.requireNonNullElse(inner.get(key), false);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object get(Object k, Object defaultValue) {
         return inner.get(k, defaultValue);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object remove(Object key) {
         return Objects.requireNonNullElse(inner.removeKey(key), false);
     }
@@ -125,7 +95,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         return weak;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void forEach(BiConsumer<Object, Object> action) {
         MapCursor<Object, Object> cursor = inner.getEntries();
         while (cursor.advance()) {
@@ -146,7 +116,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                 return hasNext;
             }
 
-            @CompilerDirectives.TruffleBoundary
+            @TruffleBoundary
             @Override
             public Map.Entry<Object, Object> next() {
                 if (!hasNext) {
@@ -157,7 +127,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                 return entry;
             }
 
-            @CompilerDirectives.TruffleBoundary
+            @TruffleBoundary
             private boolean advance() {
                 boolean hasNext = false;
                 @Nullable Object key = null;
@@ -176,7 +146,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
     }
 
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static ELispHashtable hashTableFromPlist(List<Object> list, boolean readSyntax) {
         // (make-hash-table :size 65 :test eql :weakness t)
         // #s(hash-table size 65 test eql rehash-size 1.5 rehash-threshold 0.8125 data ())
@@ -210,6 +180,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
     }
 
     @Nullable
+    @TruffleBoundary
     private static Object getFromPseudoPlist(List<Object> list, Object key, int start) {
         for (int i = start; i < list.size() - 1; i += 2) {
             if (list.get(i) == key) {
@@ -294,6 +265,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         }
 
         @Override
+        @TruffleBoundary
         public void put(Object key, Object value) {
             purge();
             if (weakKey) {
@@ -311,7 +283,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
             return super.size();
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Override
         public void forEach(BiConsumer<Object, Object> action) {
             MapCursor<Object, Object> cursor = inner.getEntries();
@@ -332,7 +304,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
             }
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private void purge() {
             Reference<?> poll = queue.poll();
             while (poll != null) {
@@ -375,6 +347,47 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                 super(referent, queue);
                 this.key = key;
             }
+        }
+    }
+
+    private static class EqlEquivalence extends Equivalence {
+        @Override
+        public boolean equals(Object a, Object b) {
+            return BuiltInFns.FEql.eql(a, b);
+        }
+
+        @Override
+        @TruffleBoundary
+        public int hashCode(Object o) {
+            if (o instanceof Double d) {
+                return Long.hashCode(Double.doubleToRawLongBits(d));
+            }
+            return o.hashCode();
+        }
+    }
+
+    private static class EqualEquivalence extends Equivalence {
+        @Override
+        public boolean equals(Object a, Object b) {
+            return BuiltInFns.FEqual.equal(a, b);
+        }
+
+        @Override
+        public int hashCode(Object o) {
+            return ELispValue.lispHashCode(o, 0);
+        }
+    }
+
+    private static class EqEquivalence extends Equivalence {
+        @Override
+        public boolean equals(Object a, Object b) {
+            return BuiltInData.FEq.eq(a, b);
+        }
+
+        @Override
+        @TruffleBoundary
+        public int hashCode(Object o) {
+            return o.hashCode();
         }
     }
 }

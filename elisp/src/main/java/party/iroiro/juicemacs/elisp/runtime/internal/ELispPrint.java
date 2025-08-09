@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.internal;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
@@ -68,7 +68,7 @@ public final class ELispPrint {
         return block != null && block != Character.UnicodeBlock.SPECIALS;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public ELispPrint print(int c) {
         if (inString) {
             if (c == '"' || c == '\\') {
@@ -212,7 +212,7 @@ public final class ELispPrint {
         return this;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private boolean printExisting(Object o) {
         if (stack.contains(o)) {
             Integer index = visited.computeIfAbsent(o, _ -> visited.size() + 1); // NOPMD
@@ -222,7 +222,7 @@ public final class ELispPrint {
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public ELispPrint print(Object o) {
         if (o instanceof Constable) {
             if (o == Boolean.FALSE) {
@@ -283,7 +283,7 @@ public final class ELispPrint {
         void print(int c);
         void flush();
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         default void print(ELispString s) {
             PrimitiveIterator.OfInt iterator = s.iterator(0);
             while (iterator.hasNext()) {

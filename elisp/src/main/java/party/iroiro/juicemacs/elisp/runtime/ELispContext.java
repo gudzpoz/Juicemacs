@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
@@ -117,7 +118,7 @@ public final class ELispContext implements ELispParser.InternContext {
         return truffleEnv;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     public String getEnv(String key) {
         return env.get(key);
@@ -136,9 +137,14 @@ public final class ELispContext implements ELispParser.InternContext {
             return;
         }
         TruffleFile file = truffleEnv.getPublicTruffleFile(options.dumpFile);
-        try (SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
-            ELispPortableDumper.deserializeIntoContext(channel, this);
-            patchContext();
+        try {
+            SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ));
+            try {
+                ELispPortableDumper.deserializeIntoContext(channel, this);
+                patchContext();
+            } finally {
+                channel.close();
+            }
         } catch (IOException e) {
             throw ELispSignals.reportFileError(e, new ELispString(options.dumpFile));
         }

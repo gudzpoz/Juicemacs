@@ -25,7 +25,7 @@
 
 package party.iroiro.juicemacs.piecetree;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -92,7 +92,7 @@ public final class PieceTreeBase {
     /* Moved: class PieceTreeSearchCache -> PieceTreeSearchCache.java */
 
     TreeNode root = SENTINEL;
-    private final List<StringBuffer> buffers;
+    private final ArrayList<StringBuffer> buffers;
     private int lineCnt;
     private long length;
     private final BufferCursor[] lastChangeBufferPos = new BufferCursor[3];
@@ -114,7 +114,7 @@ public final class PieceTreeBase {
         create(chunks);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private void create(StringBuffer[] chunks) {
         buffers.clear();
         buffers.add(new StringBuffer(TruffleString.CompactionLevel.S1));
@@ -158,7 +158,7 @@ public final class PieceTreeBase {
         int min = averageBufferSize - averageBufferSize / 3;
         int max = min * 2;
         TruffleStringBuilderUTF32[] tempChunk = {TruffleStringBuilder.createUTF32(max)};
-        List<StringBuffer> chunks = new ArrayList<>();
+        ArrayList<StringBuffer> chunks = new ArrayList<>();
         iterate(root, (node) -> {
             TruffleStringBuilderUTF32 sb = TruffleStringBuilder.createUTF32();
             getNodeContent(node, sb);
@@ -269,8 +269,8 @@ public final class PieceTreeBase {
         return buildString(ret);
     }
 
-    public List<TruffleString> getLinesContent() {
-        List<TruffleString> lines = new ArrayList<>();
+    public ArrayList<TruffleString> getLinesContent() {
+        ArrayList<TruffleString> lines = new ArrayList<>();
         TruffleStringBuilderUTF32[] currentLine = {TruffleStringBuilder.createUTF32()};
 
         iterate(root, (node) -> {
@@ -432,7 +432,7 @@ public final class PieceTreeBase {
                 );
                 // reuse node for content before insertion point.
                 deleteNodeTail(node, insertPosInBuffer);
-                List<Piece> newPieces = createNewPieces(value);
+                ArrayList<Piece> newPieces = createNewPieces(value);
                 if (newRightPiece.length > 0) {
                     rbInsertRight(node, newRightPiece);
                 }
@@ -445,7 +445,7 @@ public final class PieceTreeBase {
             }
         } else {
             // insert new node
-            List<Piece> pieces = createNewPieces(value);
+            ArrayList<Piece> pieces = createNewPieces(value);
             //noinspection DataFlowIssue: OK when root == SENTINEL
             TreeNode node = rbInsertLeft(null, pieces.getFirst());
             for (int k = 1; k < pieces.size(); k++) {
@@ -490,7 +490,7 @@ public final class PieceTreeBase {
             computeBufferMetadata();
             return;
         }
-        List<TreeNode> nodesToDel = new ArrayList<>();
+        ArrayList<TreeNode> nodesToDel = new ArrayList<>();
         BufferCursor startSplitPosInBuffer = positionInBuffer(startNode, startPosition.remainder);
         deleteNodeTail(startNode, startSplitPosInBuffer);
         searchCache.validate(offset);
@@ -514,8 +514,8 @@ public final class PieceTreeBase {
 
     private void insertContentToNodeLeft(AbstractTruffleString value, TreeNode node) {
         // we are inserting content to the beginning of node
-        List<TreeNode> nodesToDel = new ArrayList<>();
-        List<Piece> newPieces = createNewPieces(value);
+        ArrayList<TreeNode> nodesToDel = new ArrayList<>();
+        ArrayList<Piece> newPieces = createNewPieces(value);
         TreeNode newNode = rbInsertLeft(node, newPieces.getLast());
         for (int k = newPieces.size() - 2; k >= 0; k--) {
             newNode = rbInsertLeft(newNode, newPieces.get(k));
@@ -525,7 +525,7 @@ public final class PieceTreeBase {
 
     private void insertContentToNodeRight(AbstractTruffleString value, TreeNode node) {
         // we are inserting to the right of this node.
-        List<Piece> newPieces = createNewPieces(value);
+        ArrayList<Piece> newPieces = createNewPieces(value);
         TreeNode newNode = rbInsertRight(node, newPieces.getFirst());
         TreeNode tmpNode = newNode;
         for (int k = 1; k < newPieces.size(); k++) {
@@ -595,12 +595,12 @@ public final class PieceTreeBase {
         }
     }
 
-    private List<Piece> createNewPieces(AbstractTruffleString text) {
+    private ArrayList<Piece> createNewPieces(AbstractTruffleString text) {
         int textLength = length(text);
         if (textLength > AVERAGE_BUFFER_SIZE) {
             // the content is large, operations like substring, charCode becomes slow
             // so here we split it into smaller chunks, just like what we did for CR/LF normalization
-            List<Piece> newPieces = new ArrayList<>(textLength / AVERAGE_BUFFER_SIZE + 1);
+            ArrayList<Piece> newPieces = new ArrayList<>(textLength / AVERAGE_BUFFER_SIZE + 1);
             int start = 0;
             while (start < textLength) {
                 int remaining = textLength - start;
@@ -621,7 +621,9 @@ public final class PieceTreeBase {
         }
         int level = text.getStringCompactionLevelUncached(TruffleString.Encoding.UTF_32).getLog2();
         Piece newPiece = appendBuffer(text, lastChangeBufferPos[level], level, 0);
-        return List.of(newPiece);
+        ArrayList<Piece> newPieces = new ArrayList<>(1);
+        newPieces.add(newPiece);
+        return newPieces;
     }
 
     private Piece appendBuffer(AbstractTruffleString text, BufferCursor start, int level, int extraLength) {
@@ -920,7 +922,7 @@ public final class PieceTreeBase {
     //#endregion
 
     //#region Tree operations
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private boolean iterate(TreeNode node, Predicate<TreeNode> callback) {
         if (node == SENTINEL) {
             return callback.test(SENTINEL);

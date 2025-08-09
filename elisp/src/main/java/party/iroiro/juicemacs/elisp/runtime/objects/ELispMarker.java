@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -93,7 +93,7 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return inner.isDetached()
                 ? "#<marker in no buffer>"
@@ -131,7 +131,7 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public BigInteger asBigInteger() {
         return BigInteger.valueOf(point());
     }
@@ -147,7 +147,7 @@ public final class ELispMarker extends Number implements ELispValue {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
     }
@@ -157,7 +157,7 @@ public final class ELispMarker extends Number implements ELispValue {
     @ExportMessage boolean fitsInInt() { return point() <= Integer.MAX_VALUE; }
     @ExportMessage boolean fitsInLong() { return true; }
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     boolean fitsInFloat() {
         long point = point();
         if (Long.highestOneBit(point) <= 24) {
@@ -167,7 +167,7 @@ public final class ELispMarker extends Number implements ELispValue {
         return new BigDecimal((float) point).toBigIntegerExact().longValue() == point;
     }
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     boolean fitsInDouble() {
         long point = point();
         if (Long.highestOneBit(point) <= 53) {

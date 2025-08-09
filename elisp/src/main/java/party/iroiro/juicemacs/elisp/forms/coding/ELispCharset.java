@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
@@ -168,7 +168,7 @@ public final class ELispCharset {
         return method.encodeChar(code, this);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void mapChars(Consumer<ELispCons> callback, int from, int to) {
         boolean partial = minCode < from || to < maxCode;
 
@@ -195,7 +195,7 @@ public final class ELispCharset {
             }
             case SUBSET -> {
                 ELispVector subsetInfo = asVector(attributes.get(CHARSET_SUBSET));
-                ELispCharset parent = BuiltInCharSet.getCharsetFromId(asNatInt(subsetInfo.getFirst()));
+                ELispCharset parent = BuiltInCharSet.getCharsetFromId(asNatInt(subsetInfo.get(0)));
                 int offset = asInt(subsetInfo.get(3));
                 from -= offset;
                 to -= offset;
@@ -332,6 +332,7 @@ public final class ELispCharset {
         return Long.parseLong(next, 2, next.length(), 16);
     }
 
+    @TruffleBoundary
     private CharsetMap loadMapFromFile(ELispString file) {
         ELispString path = BuiltInLRead.locateOpenP(
                 CHARSET_MAP_PATH.getValue(),
@@ -522,7 +523,7 @@ public final class ELispCharset {
             @Override
             public long decodeChar(long code, ELispCharset charset) {
                 ELispVector subsetInfo = asVector(charset.attributes.get(CHARSET_SUBSET));
-                ELispCharset parent = BuiltInCharSet.getCharsetFromId(asInt(subsetInfo.getFirst()));
+                ELispCharset parent = BuiltInCharSet.getCharsetFromId(asInt(subsetInfo.get(0)));
                 long offset = asLong(subsetInfo.get(3));
                 code -= offset;
                 long parentStart = asLong(subsetInfo.get(1));
@@ -537,7 +538,7 @@ public final class ELispCharset {
             @Override
             public long encodeChar(long ch, ELispCharset charset) {
                 ELispVector subsetInfo = asVector(charset.attributes.get(CHARSET_SUBSET));
-                ELispCharset parent = BuiltInCharSet.getCharsetFromId(asInt(subsetInfo.getFirst()));
+                ELispCharset parent = BuiltInCharSet.getCharsetFromId(asInt(subsetInfo.get(0)));
                 long parentStart = asLong(subsetInfo.get(1));
                 long parentEnd = asLong(subsetInfo.get(2));
                 long code = parent.encodeChar(ch);

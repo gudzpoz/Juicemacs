@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.*;
@@ -25,6 +26,7 @@ import party.iroiro.juicemacs.elisp.nodes.ast.LazyConsExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.runtime.*;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -291,13 +293,13 @@ public class BuiltInEval extends ELispBuiltIns {
             @Nullable ELispExpressionNode[] thenCases;
 
             public CondNode(Object[] clauses) {
-                List<ELispExpressionNode> conditionNodes = new ArrayList<>(clauses.length);
-                List<@Nullable ELispExpressionNode> cases = new ArrayList<>(clauses.length);
+                ArrayList<ELispExpressionNode> conditionNodes = new ArrayList<>(clauses.length);
+                ArrayList<@Nullable ELispExpressionNode> cases = new ArrayList<>(clauses.length);
                 for (Object clause : clauses) {
                     ELispCons cons = asCons(clause);
                     conditionNodes.add(ELispInterpretedNode.create(cons.car()));
-                    List<Object> body = new ArrayList<>();
-                    ELispCons.ConsIterator iterator = cons.listIterator(1);
+                    ArrayList<Object> body = new ArrayList<>();
+                    ConsIterator iterator = cons.listIterator(1);
                     while (iterator.hasNext()) {
                         body.add(iterator.next());
                     }
@@ -651,7 +653,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object args, ELispCons body, Object env, Object docstring, Object iform,
                 AbstractELispClosure.ClosureCommons commons
         ) {
-            List<Object> inner = new ArrayList<>(CLOSURE_INTERACTIVE + 1);
+            ArrayList<Object> inner = new ArrayList<>(CLOSURE_INTERACTIVE + 1);
             inner.add(args);
             inner.add(body);
             inner.add(env);
@@ -720,7 +722,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         private static ELispExpressionNode getDefinition(ELispCons def) {
             CompilerDirectives.transferToInterpreter();
-            ELispCons.ConsIterator iterator = def.listIterator(1);
+            ConsIterator iterator = def.listIterator(1);
             Object args = iterator.next();
             ELispExpressionNode docString = null;
             if (iterator.hasNext()) {
@@ -1653,8 +1655,11 @@ public class BuiltInEval extends ELispBuiltIns {
                         return handler.executeGeneric(frame);
                     }
                     if (slot == ERROR_SLOT_DYNAMIC) {
-                        try (Dynamic _ = Dynamic.pushDynamic(symbol, data)) {
+                        Dynamic scope = Dynamic.pushDynamic(symbol, data);
+                        try {
                             return handler.executeGeneric(frame);
+                        } finally {
+                            scope.close();
                         }
                     }
                     frame = Objects.requireNonNull(lexicalBlock).newFrame(frame);
@@ -1824,7 +1829,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             boolean ignoreErrors = !isMacro && !isNil(macroOnly);
             // TODO: load_with_autoload_queue
-            loadFile(ELispLanguage.get(null), null, asCons(def.cdr()).car(), !ignoreErrors);
+            loadFile(ELispLanguage.get(null), null, asStr(asCons(def.cdr()).car()), !ignoreErrors);
 
             if (funname == NIL || ignoreErrors) {
                 return false;
@@ -1864,7 +1869,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return evalForm(form, lexical);
         }
 
-        @CompilerDirectives.TruffleBoundary(transferToInterpreterOnException = false)
+        @TruffleBoundary(transferToInterpreterOnException = false)
         private Object evalForm(Object form, boolean lexical) {
             ELispRootNode root = getEvalRoot(this, form, lexical);
             return root.getCallTarget().call();
@@ -1907,7 +1912,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 return dispatchNode.call();
             }
 
-            @CompilerDirectives.TruffleBoundary(transferToInterpreterOnException = false)
+            @TruffleBoundary(transferToInterpreterOnException = false)
             public ELispFunctionObject getRootCallTarget(Object form, Object lexical) {
                 ELispExpressionNode expr = ELispRootNodes.createRoot(new Object[]{form}, !isNil(lexical));
                 ELispRootNode root = new ELispRootNode(ELispLanguage.get(this), expr, getEvalSourceSection(form));
@@ -1956,7 +1961,7 @@ public class BuiltInEval extends ELispBuiltIns {
     public abstract static class FApply extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
         @Specialization
         public Object apply(Object function, Object[] arguments, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
-            List<Object> objects = new ArrayList<>(arguments.length);
+            ArrayList<Object> objects = new ArrayList<>(arguments.length);
             objects.add(function);
             objects.addAll(Arrays.asList(arguments).subList(0, arguments.length - 1));
             Object last = arguments[arguments.length - 1];
@@ -2241,7 +2246,7 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "func-arity", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FFuncArity extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static ELispCons funcArity(Object function) {
             Object object = ELispInterpretedNode.getIndirectFunction(function);
@@ -2362,7 +2367,7 @@ public class BuiltInEval extends ELispBuiltIns {
             );
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public static Object backtraceFrames(
                 BiFunction<Object[], FrameInstance, @Nullable Object> function,
                 long nframes,

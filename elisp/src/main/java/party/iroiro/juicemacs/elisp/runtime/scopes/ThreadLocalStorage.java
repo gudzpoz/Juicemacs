@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.scopes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import org.eclipse.jdt.annotation.Nullable;
@@ -42,7 +42,7 @@ public class ThreadLocalStorage {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private Object getSlowPath(Thread current) {
         Object value = fallbackGet();
         if (!lastThread.isAlive()) {
@@ -61,7 +61,7 @@ public class ThreadLocalStorage {
         return threadLocal;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private Object fallbackGet() {
         ThreadLocal<Object> threadLocal = values;
         return threadLocal == null ? UNBOUND : getThreadValues(threadLocal).get();
@@ -88,7 +88,7 @@ public class ThreadLocalStorage {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private void fallbackSet(Object value) {
         getThreadValues(values).set(value);
     }

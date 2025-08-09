@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
@@ -26,6 +27,7 @@ public interface ELispValue extends TruffleObject {
     @Override
     int hashCode();
 
+    @TruffleBoundary
     static int lispHashCode(Object o, int depth) {
         return o instanceof ELispValue value ? value.lispHashCode(depth) : o.hashCode();
     }

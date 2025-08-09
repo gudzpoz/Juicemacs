@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.scopes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -40,7 +40,7 @@ public final class TopLevelScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     String toDisplayString(boolean allowSideEffects) {
         return toString();
     }
@@ -61,7 +61,7 @@ public final class TopLevelScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object getMembers(boolean includeInternal) {
         ArrayList<ELispString> members = new ArrayList<>();
         language.globalVariablesMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
@@ -70,7 +70,7 @@ public final class TopLevelScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     boolean isMemberReadable(String member) {
         @Nullable ValueStorage storage = cache.get(member);
         if (storage == null) {
@@ -91,7 +91,7 @@ public final class TopLevelScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     Object readMember(String member) throws UnknownIdentifierException {
         if (!isMemberReadable(member)) {
             throw UnknownIdentifierException.create(member);
@@ -112,13 +112,13 @@ public final class TopLevelScope implements TruffleObject {
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     boolean isMemberModifiable(String member) {
         return isMemberReadable(member) && !cache.get(member).isConstant();
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
         ELispSymbol symbol = symbolCache.get(member);
         ValueStorage storage = cache.get(member);

@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -12,10 +12,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
-import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
-import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.*;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -53,7 +51,7 @@ public class BuiltInCoding extends ELispBuiltIns {
                 root.getCallTarget().call();
             } catch (ELispSignals.ELispSignalException e) {
                 // TODO: safe_eval
-                e.printStackTrace();
+                throw new UnsupportedOperationException("unable to safe_eval coding system define form", e);
             }
         }
         if (FCodingSystemP.codingSystemP(codingSystem)) {
@@ -386,12 +384,18 @@ public class BuiltInCoding extends ELispBuiltIns {
             ELispCodingSystem coding = codings.resolveCodingSystem(codingSystem);
             InternalByteArray bytes = getInternal.execute(this, string);
             ValueStorage.Forwarded container = new ValueStorage.Forwarded();
-            try (SeekableInMemoryByteChannel channel = new SeekableInMemoryByteChannel(bytes.getArray())) {
+            @Nullable SeekableInMemoryByteChannel channel = null;
+            try {
+                channel = new SeekableInMemoryByteChannel(bytes.getArray());
                 return new ELispString(
                         codings.decode(coding, channel, bytes.getOffset(), bytes.getEnd(), container).build()
                 );
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, ELispGlobals.STRING);
+            } finally {
+                if (channel != null) {
+                    channel.close();
+                }
             }
         }
     }
@@ -653,7 +657,7 @@ public class BuiltInCoding extends ELispBuiltIns {
     @ELispBuiltIn(name = "define-coding-system-internal", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FDefineCodingSystemInternal extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static boolean defineCodingSystemInternal(Object[] args) {
             if (args.length < CODING_ARG_MAX) {
@@ -754,7 +758,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             return symbols;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Pair<Object, ELispString> checkCharSetList(Object arg, ELispSymbol codingType) {
             int maxCharsetId = 0;
             @Nullable ELispCons list;
@@ -777,7 +781,7 @@ public class BuiltInCoding extends ELispBuiltIns {
                 maxCharsetId = list.stream().mapToInt(ELispTypeSystem::asInt).max().orElse(0);
             } else {
                 list = BuiltInFns.FCopySequence.copySequenceList(asCons(arg));
-                ELispCons.ConsIterator iterator = list.listIterator(0);
+                ConsIterator iterator = list.listIterator(0);
                 while (iterator.hasNextCons()){
                     ELispCons current = iterator.nextCons();
                     Object charset = current.car();

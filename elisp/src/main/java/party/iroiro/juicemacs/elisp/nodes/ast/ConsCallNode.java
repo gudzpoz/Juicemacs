@@ -10,6 +10,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.scopes.DebuggerScopeObject;
 
@@ -32,7 +33,7 @@ public abstract class ConsCallNode extends ELispExpressionNode implements Instru
     protected static ELispExpressionNode[] initChildren(ELispCons cons, int reserved) {
         // Trade time for allocation amount. Hopefully, most conses are short.
         ELispExpressionNode[] children = new ELispExpressionNode[cons.size() - 1 + reserved];
-        ELispCons.ConsIterator argIterator = cons.listIterator(1);
+        ConsIterator argIterator = cons.listIterator(1);
         for (int i = reserved; argIterator.hasNext(); i++) {
             Object arg = argIterator.next();
             children[i] = ELispInterpretedNode.create(arg);

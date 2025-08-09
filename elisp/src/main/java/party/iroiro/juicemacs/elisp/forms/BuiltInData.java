@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -209,7 +210,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
@@ -271,7 +272,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
@@ -333,7 +334,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE && Math.abs(rr) < Integer.MAX_VALUE) {
@@ -395,7 +396,7 @@ public class BuiltInData extends ELispBuiltIns {
             return super.fallback(left, right);
         }
         @Override
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Number generalCase(Number left, Number right) {
             if (left instanceof Long ll && right instanceof Long rr) {
                 if (Math.abs(ll) < Integer.MAX_VALUE) {
@@ -565,7 +566,7 @@ public class BuiltInData extends ELispBuiltIns {
     /// unless you are implementing `max`, `min` or `sort`.
     ///
     /// @see #arithCompare(Object, Object)
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static int compareTo(Object a, Object b) {
         if (!(a instanceof Number na)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
@@ -603,7 +604,7 @@ public class BuiltInData extends ELispBuiltIns {
     ///
     /// Unlike [#compareTo(Object, Object)], this function allows correct NaN value
     /// handling.
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static byte arithCompare(Object a, Object b) {
         if (!(a instanceof Number na)) {
             throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, a);
@@ -848,24 +849,17 @@ public class BuiltInData extends ELispBuiltIns {
             if (obj1 == obj2) {
                 return true;
             }
-            // Simulate the Emacs behavior of packed integers
-            if (obj1 instanceof Long l1) {
-                return obj2 instanceof Long l2 && l1.longValue() == l2.longValue();
-            }
-            // In `(setq a2 (setq a1 (double-value)))`, due to boxing and unboxing,
-            // it is possible that `a1 != a2`. We do not want that, so we choose
-            // to let eq compare them by value.
-            if (obj1 instanceof Double d1) {
-                return obj2 instanceof Double d2 &&
+            return switch (obj1) {
+                // Simulate the Emacs behavior of packed integers
+                case Long l1 -> obj2 instanceof Long l2 && l1.longValue() == l2.longValue();
+                case ELispBigNum n1 -> obj2 instanceof ELispBigNum n2 && n1.lispEquals(n2);
+                // In `(setq a2 (setq a1 (double-value)))`, due to boxing and unboxing,
+                // it is possible that `a1 != a2`. We do not want that, so we choose
+                // to let eq compare them by value.
+                case Double d1 -> obj2 instanceof Double d2 &&
                         Double.doubleToRawLongBits(d1) == Double.doubleToRawLongBits(d2);
-            }
-            if (isNil(obj1)) {
-                return isNil(obj2);
-            }
-            if (isT(obj1)) {
-                return isT(obj2);
-            }
-            return obj1.equals(obj2); // NOPMD: equals usage inside FEq
+                default -> (isNil(obj1) && isNil(obj2)) || (isT(obj1) && isT(obj2));
+            };
         }
     }
 
@@ -2616,6 +2610,7 @@ public class BuiltInData extends ELispBuiltIns {
             return new ELispString(Long.toString(number));
         }
         @Specialization
+        @TruffleBoundary
         public static ELispString numberToStringFloat(double number) {
             if (Double.isNaN(number)) {
                 long bits = Double.doubleToRawLongBits(number);
@@ -2742,7 +2737,7 @@ public class BuiltInData extends ELispBuiltIns {
             return sum;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Object tryAddBigNum(long prev, int i, Object[] args) {
             BigInteger sum = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
@@ -2758,6 +2753,7 @@ public class BuiltInData extends ELispBuiltIns {
             return ELispBigNum.wrap(sum);
         }
 
+        @TruffleBoundary
         private static double tryAddDouble(double prev, int i, Object[] args) {
             double sum = prev;
             for (; i < args.length; i++) {
@@ -2798,7 +2794,7 @@ public class BuiltInData extends ELispBuiltIns {
             if (args.length == 1) {
                 return switch (arg0) {
                     case Long l when l > Long.MIN_VALUE -> Math.negateExact(l);
-                    case Long l -> ELispBigNum.wrap(BigInteger.valueOf(l).negate()); // NOPMD: negative is fine
+                    case Long l -> ELispBigNum.forceWrap(l).negate();
                     case Double d -> -d;
                     case ELispBigNum n -> n.negate();
                     default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
@@ -2834,7 +2830,7 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Object tryMinusBigNum(BigInteger result, int i, Object[] args) {
             for (; i < args.length; i++) {
                 switch (args[i]) {
@@ -2849,6 +2845,7 @@ public class BuiltInData extends ELispBuiltIns {
             return ELispBigNum.wrap(result);
         }
 
+        @TruffleBoundary
         private static double tryMinusDouble(double prev, int i, Object[] args) {
             double result = prev;
             for (; i < args.length; i++) {
@@ -2902,7 +2899,7 @@ public class BuiltInData extends ELispBuiltIns {
             return product;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Object tryTimesBigNum(long prev, int i, Object[] args) {
             BigInteger product = BigInteger.valueOf(prev);
             for (; i < args.length; i++) {
@@ -2918,6 +2915,7 @@ public class BuiltInData extends ELispBuiltIns {
             return ELispBigNum.wrap(product);
         }
 
+        @TruffleBoundary
         private static double tryTimesDouble(double prev, int i, Object[] args) {
             double product = prev;
             for (; i < args.length; i++) {
@@ -2950,6 +2948,7 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "/", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FQuo extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+        @TruffleBoundary
         @Specialization
         public static Object quoAny(Object number, Object[] divisors) {
             for (Object arg : divisors) {
@@ -2985,7 +2984,7 @@ public class BuiltInData extends ELispBuiltIns {
             return quo;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Object tryQuoBigNum(BigInteger prev, int i, Object[] args) {
             BigInteger quo = prev;
             for (; i < args.length; i++) {
@@ -2998,6 +2997,7 @@ public class BuiltInData extends ELispBuiltIns {
             return ELispBigNum.wrap(quo);
         }
 
+        @TruffleBoundary
         private static double tryQuoDouble(double prev, Object[] args) {
             double quo = prev;
             for (Object arg : args) {
@@ -3186,7 +3186,7 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization(replaces = "logandLong")
         public static Object logand(Object[] intsOrMarkers) {
             BigInteger result = BigInteger.ONE.negate();
@@ -3238,7 +3238,7 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization(replaces = "logorLong")
         public static Object logior(Object[] intsOrMarkers) {
             BigInteger result = BigInteger.ZERO;
@@ -3277,7 +3277,7 @@ public class BuiltInData extends ELispBuiltIns {
             return result;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization(replaces = "logxorLong")
         public static Object logxor(Object[] intsOrMarkers) {
             BigInteger result = BigInteger.ZERO;

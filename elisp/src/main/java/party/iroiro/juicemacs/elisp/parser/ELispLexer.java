@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
@@ -511,7 +511,7 @@ public class ELispLexer {
     /**
      * Read the remaining encoded ELisp character following the {@code ?} character.
      */
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private int readChar(boolean inString) throws IOException {
         int c = noEOF(reader.read());
         // Normal characters: ?a => 'a'
@@ -883,7 +883,7 @@ public class ELispLexer {
         };
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     LocatedToken next() throws IOException {
         if (!hasNext()) {
             throw new EOFException();

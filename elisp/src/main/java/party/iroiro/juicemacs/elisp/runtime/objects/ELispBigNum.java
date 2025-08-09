@@ -33,6 +33,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     ///
     /// @param value the BigInteger to wrap
     /// @return the wrapped BigInteger or a long if it fits
+    @TruffleBoundary
     public static Number wrap(BigInteger value) {
         if (value.bitLength() < 64) {
             return value.longValue();
@@ -144,10 +145,12 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
         return wrap(value.shiftLeft((int) count));
     }
 
+    @TruffleBoundary
     public int bitCount() {
         return value.bitCount();
     }
 
+    @TruffleBoundary
     public int signum() {
         return value.signum();
     }
@@ -166,19 +169,18 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
     //#endregion BigInteger
 
     @Override
+    @TruffleBoundary
     public boolean lispEquals(Object other) {
-        return equals(other);
+        return other instanceof ELispBigNum n && value.equals(n.value);
     }
     @Override
     public int lispHashCode(int depth) {
         return hashCode();
     }
     @Override
+    @SuppressWarnings("EqualsDoesntCheckParameterClass")
     public boolean equals(Object other) {
-        // TODO: Document incompatibilities
-        // In Emacs, two bignums of identical values are not necessarily equal (by #'eq).
-        // We choose to differ from Emacs here.
-        return other instanceof ELispBigNum n && value.equals(n.value);
+        return lispEquals(other);
     }
     @Override
     public int hashCode() {

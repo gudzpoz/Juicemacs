@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -122,7 +123,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
         abstract long divide(long x, long y);
         abstract RoundingMode roundingMode();
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Object round(Object x, Object y) {
             Number n = asNum(x);
             if (isNil(y)) {

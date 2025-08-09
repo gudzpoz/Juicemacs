@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -74,7 +74,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCallProcess extends ELispBuiltInBaseNode {
         @Specialization
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Object callProcess(ELispString program, Object[] args) {
             Object input = args.length > 0 ? args[0] : false;
             if (!isNil(input)) {

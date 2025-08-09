@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -19,6 +20,7 @@ import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.*;
 
@@ -62,7 +64,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static MaterializedFrame newUpperFrameFromCons(ELispCons cons) {
         return Truffle.getRuntime().createMaterializedFrame(
                 new Object[0],
@@ -85,6 +87,13 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         }
         inner[CLOSURE_CONSTANTS] = list;
         return list;
+    }
+
+    @Override
+    public void display(ELispPrint print) {
+        // Update inner envObject
+        Object _ = get(CLOSURE_CONSTANTS);
+        super.display(print);
     }
 
     private ELispCons getBody() {
@@ -195,12 +204,17 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         }
 
         public Object execute(VirtualFrame frame, boolean isVoid) {
-            try (Dynamic _ = pushScope(frame)) {
+            @Nullable Dynamic scope = pushScope(frame);
+            try {
                 if (isVoid) {
                     body.executeVoid(frame);
                     return false;
                 }
                 return body.executeGeneric(frame);
+            } finally {
+                if (scope != null) {
+                    scope.close();
+                }
             }
         }
 

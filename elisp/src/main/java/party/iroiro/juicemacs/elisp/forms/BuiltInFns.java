@@ -6,7 +6,7 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 
 import com.oracle.truffle.api.nodes.Node;
@@ -17,6 +17,7 @@ import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -40,17 +41,18 @@ public class BuiltInFns extends ELispBuiltIns {
         return BuiltInFnsFactory.getFactories();
     }
 
-    public static Iterator<?> iterateSequence(Object sequence) {
+    public static TruffleUtils.Iter<?> iterateSequence(Object sequence) {
         if (isNil(sequence)) {
-            return Collections.emptyIterator();
+            return TruffleUtils.Iter.of(Collections.emptyIterator());
         }
-        return switch (sequence) {
+        Iterator<?> inner = switch (sequence) {
             case ELispCons cons -> cons.iterator();
             case ELispVector vector -> vector.iterator();
             case ELispString string -> string.iteratorUncached();
             case ELispBoolVector boolVector -> boolVector.iterator();
             default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         };
+        return TruffleUtils.Iter.of(inner);
     }
 
     private static boolean expectNil(ELispSymbol seq) {
@@ -121,7 +123,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return RANDOM.nextLong();
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Object randomBigInteger(ELispBigNum bigNum) {
             BigInteger bigInteger = bigNum.asBigInteger();
             if (bigInteger.signum() != 1) {
@@ -135,7 +137,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return random;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static long secureSeed() {
             if (SECURE_RANDOM == null) {
                 return System.nanoTime() * 31 + System.identityHashCode(SecureRandom.class);
@@ -204,11 +206,11 @@ public class BuiltInFns extends ELispBuiltIns {
             return safeLengthCons(cons);
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static long safeLengthCons(ELispCons cons) {
             HashSet<ELispCons> distinct = new HashSet<>();
             long count = 0;
-            ELispCons.ConsIterator i = cons.listIterator(0);
+            ConsIterator i = cons.listIterator(0);
             while (i.hasNextCons()) {
                 try {
                     ELispCons next = i.nextCons();
@@ -350,7 +352,7 @@ public class BuiltInFns extends ELispBuiltIns {
 
         private static AbstractTruffleString getInner(Object object) {
             if (toSym(object) instanceof ELispSymbol symbol) {
-                return TruffleUtils.string(symbol.name());
+                return StringSupport.tString(symbol.name());
             }
             return asStr(object).value();
         }
@@ -458,7 +460,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (string1 instanceof ELispString s) {
                 return s.value();
             } else {
-                return TruffleUtils.string(asSym(string1).name());
+                return StringSupport.tString(asSym(string1).name());
             }
         }
 
@@ -590,6 +592,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "append", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FAppend extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static Object append(Object[] sequences) {
             if (sequences.length == 0) {
@@ -597,7 +600,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             for (int i = 0; i < sequences.length - 1; i++) {
-                Iterator<?> iterator = iterateSequence(sequences[i]);
+                TruffleUtils.Iter<?> iterator = iterateSequence(sequences[i]);
                 while (iterator.hasNext()) {
                     builder.add(iterator.next());
                 }
@@ -633,9 +636,9 @@ public class BuiltInFns extends ELispBuiltIns {
             return builder.buildString();
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public static void appendSequence(MuleStringBuilder builder, Object sequence) {
-            Iterator<?> i = iterateSequence(sequence);
+            TruffleUtils.Iter<?> i = iterateSequence(sequence);
             while (i.hasNext()) {
                 builder.appendCodePoint(asInt(i.next()));
             }
@@ -653,11 +656,12 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "vconcat", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FVconcat extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static ELispVector vconcat(Object[] sequences) {
             ArrayList<Object> list = new ArrayList<>();
             for (Object sequence : sequences) {
-                Iterator<?> i = iterateSequence(sequence);
+                TruffleUtils.Iter<?> i = iterateSequence(sequence);
                 while (i.hasNext()) {
                     list.add(i.next());
                 }
@@ -968,7 +972,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "take", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FTake extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object take(long n, Object list) {
             if (isNil(list) || n <= 0) {
@@ -1085,13 +1089,13 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "member", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMember extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object member(Object elt, Object list) {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = asCons(list).listIterator(0);
+            ConsIterator iterator = asCons(list).listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons next = iterator.nextCons();
                 if (FEqual.equal(next.car(), elt)) {
@@ -1111,13 +1115,13 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "memq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMemq extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object memq(Object elt, Object list) {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = asCons(list).listIterator(0);
+            ConsIterator iterator = asCons(list).listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons next = iterator.nextCons();
                 if (BuiltInData.FEq.eq(next.car(), elt)) {
@@ -1137,13 +1141,13 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "memql", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMemql extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object memql(Object elt, Object list) {
             if (isNil(list)) {
                 return false;
             }
-            ELispCons.ConsIterator i = asCons(list).listIterator(0);
+            ConsIterator i = asCons(list).listIterator(0);
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
                 if (FEql.eql(current.car(), elt)) {
@@ -1164,7 +1168,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "assq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FAssq extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object assq(Object key, Object alist) {
             if (isNil(alist)) {
@@ -1191,7 +1195,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "assoc", minArgs = 2, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FAssoc extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public Object assoc(
                 Object key, Object alist, Object testfn,
@@ -1241,7 +1245,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "rassq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FRassq extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object rassq(Object key, Object alist) {
             if (isNil(alist)) {
@@ -1287,7 +1291,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "delq", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDelq extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object delq(Object elt, Object list) {
             if (isNil(list)) {
@@ -1301,7 +1305,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 }
                 cons = asCons(cdr);
             }
-            ELispCons.ConsIterator i = cons.listIterator(1);
+            ConsIterator i = cons.listIterator(1);
             ELispCons prev = cons;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -1340,7 +1344,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean deleteNil(Object elt, ELispSymbol seq) {
             return expectNil(seq);
         }
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object deleteList(Object elt, ELispCons seq) {
             while (FEqual.equal(elt, seq.car())) {
@@ -1350,7 +1354,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 }
                 seq = asCons(cdr);
             }
-            ELispCons.ConsIterator i = seq.listIterator(1);
+            ConsIterator i = seq.listIterator(1);
             ELispCons prev = seq;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -1376,7 +1380,7 @@ public class BuiltInFns extends ELispBuiltIns {
         }
         @Specialization
         public static ELispVector deleteVec(Object elt, ELispVector seq) {
-            List<Object> list = new ArrayList<>();
+            ArrayList<Object> list = new ArrayList<>();
             for (Object e : seq) {
                 if (!FEqual.equal(elt, e)) {
                     list.add(e);
@@ -1420,7 +1424,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return new ELispString(builder.build());
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static ELispCons nreverseList(ELispCons seq) {
             return FReverse.reverseList(seq);
@@ -1507,13 +1511,13 @@ public class BuiltInFns extends ELispBuiltIns {
             // TODO
             throw new UnsupportedOperationException();
         }
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static Object sortList(ELispCons seq, Object[] args) {
             SortParameters params = SortParameters.parse(args);
             Stream<Object> sorted = seq.stream().sorted(params);
             if (params.inPlace) {
-                ELispCons.ConsIterator iterator = seq.listIterator(0);
+                ConsIterator iterator = seq.listIterator(0);
                 sorted.forEachOrdered((o) -> iterator.nextCons().setCar(o));
                 return seq;
             } else {
@@ -1596,13 +1600,13 @@ public class BuiltInFns extends ELispBuiltIns {
             return isNil(predicate) || predicate == EQ;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization(guards = "useEq(predicate)")
         public static Object plistGetEq(Object plist, Object prop, Object predicate) {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = cons.listIterator(0);
+            ConsIterator iterator = cons.listIterator(0);
             try {
                 while (iterator.hasNext()) {
                     Object key = iterator.next();
@@ -1616,7 +1620,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return false;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization(replaces = "plistGetEq")
         public static Object plistGet(
                 Object plist, Object prop, Object predicate,
@@ -1712,7 +1716,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return ELispCons.listOf(prop, val);
             }
             ELispCons list = asCons(plist);
-            ELispCons.ConsIterator i = list.listIterator(0);
+            ConsIterator i = list.listIterator(0);
             ELispCons tail;
             do {
                 Object key = i.next();
@@ -1770,7 +1774,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(predicate)) {
                 return plistMemberEq(cons, prop);
             }
-            ELispCons.ConsIterator iterator = cons.listIterator(0);
+            ConsIterator iterator = cons.listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons current = iterator.nextCons();
                 if (!isNil(BuiltInEval.FFuncall.funcall(this, predicate, current.car(), prop))) {
@@ -1784,7 +1788,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isNil(plist)) {
                 return false;
             }
-            ELispCons.ConsIterator iterator = asCons(plist).listIterator(0);
+            ConsIterator iterator = asCons(plist).listIterator(0);
             while (iterator.hasNextCons()) {
                 ELispCons current = iterator.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), prop)) {
@@ -1816,6 +1820,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean equalDouble(double obj1, double obj2) {
             return Double.doubleToRawLongBits(obj1) == Double.doubleToRawLongBits(obj2);
         }
+        @TruffleBoundary
         @Specialization(replaces = {"equalLong", "equalDouble"})
         public static boolean eql(Object obj1, Object obj2) {
             return BuiltInData.FEq.eq(obj1, obj2)
@@ -1852,6 +1857,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean equalString(ELispString o1, ELispString o2) {
             return o1.value().equals(o2.value());
         }
+        @TruffleBoundary
         @Specialization(replaces = {"equalLong", "equalDouble", "equalString"})
         public static boolean equal(Object o1, Object o2) {
             if (o1 == o2) {
@@ -1985,7 +1991,7 @@ public class BuiltInFns extends ELispBuiltIns {
         }
 
         private static ELispCons tail(ELispCons cons) {
-            ELispCons.ConsIterator i = cons.listIterator(0);
+            ConsIterator i = cons.listIterator(0);
             ELispCons tail = cons;
             while (i.hasNextCons()) {
                 tail = i.nextCons();
@@ -2018,7 +2024,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 Object function, Object sequence, Object separator,
                 @Cached(inline = true) FuncallDispatchNode dispatchNode
         ) {
-            Iterator<?> i = iterateSequence(sequence);
+            TruffleUtils.Iter<?> i = iterateSequence(sequence);
             MuleStringBuilder builder = new MuleStringBuilder();
             while (i.hasNext()) {
                 Object result = dispatchNode.dispatch(this, function, i.next());
@@ -2026,10 +2032,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     if (result instanceof ELispString s) {
                         builder.appendString(s);
                     } else {
-                        Iterator<?> chars = iterateSequence(result);
-                        while (chars.hasNext()) {
-                            builder.appendCodePoint(asInt(chars.next()));
-                        }
+                        FConcat.appendSequence(builder, result);
                     }
                 }
                 if (!isNil(separator) && i.hasNext()) {
@@ -2052,7 +2055,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FMapcar extends ELispBuiltInBaseNode {
         @Specialization
         public Object mapcar(Object function, Object sequence, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
-            Iterator<?> i = iterateSequence(sequence);
+            TruffleUtils.Iter<?> i = iterateSequence(sequence);
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             while (i.hasNext()) {
                 builder.add(dispatchNode.dispatch(this, function, i.next()));
@@ -2076,7 +2079,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 Object function, Object sequence,
                 @Cached(inline = true) FuncallDispatchNode dispatchNode
         ) {
-            Iterator<?> i = iterateSequence(sequence);
+            TruffleUtils.Iter<?> i = iterateSequence(sequence);
             while (i.hasNext()) {
                 dispatchNode.dispatch(this, function, i.next());
             }
@@ -2096,7 +2099,7 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FMapcan extends ELispBuiltInBaseNode {
         @Specialization
         public Object mapcan(Object function, Object sequence, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
-            Iterator<?> i= iterateSequence(sequence);
+            TruffleUtils.Iter<?> i= iterateSequence(sequence);
             ArrayList<Object> results = new ArrayList<>();
             while (i.hasNext()) {
                 results.add(dispatchNode.dispatch(this, function, i.next()));
@@ -2248,10 +2251,13 @@ public class BuiltInFns extends ELispBuiltIns {
             if (FFeaturep.featurep(feature, false)) {
                 return true;
             }
+            ELispString file;
             if (isNil(filename)) {
-                filename = new ELispString(feature.name());
+                file = new ELispString(feature.name());
+            } else {
+                file = asStr(filename);
             }
-            BuiltInLRead.loadFile(getLanguage(), this, filename, isNil(noerror));
+            BuiltInLRead.loadFile(getLanguage(), this, file, isNil(noerror));
             return true;
         }
     }
@@ -2466,6 +2472,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "sxhash-eq", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FSxhashEq extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static long sxhashEq(Object obj) {
             return obj.hashCode();
@@ -2502,6 +2509,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "sxhash-equal", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FSxhashEqual extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static long sxhashEqual(Object obj) {
             if (obj instanceof ELispValue v) {

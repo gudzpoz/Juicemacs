@@ -63,9 +63,7 @@ public final class MuleStringBuilder {
     }
 
     public MuleStringBuilder append(TruffleString s, int state) {
-        if ((state | this.state) != StringSupport.STATE_EMACS) {
-            sb.appendStringUncached(s);
-        } else {
+        if ((state | this.state) == StringSupport.STATE_EMACS) {
             if (this.state == StringSupport.STATE_BYTES) {
                 convertToMultibyte();
             } else {
@@ -74,6 +72,8 @@ public final class MuleStringBuilder {
             if (state == StringSupport.STATE_BYTES) {
                 s = StringSupport.toMultibyte(s);
             }
+            sb.appendStringUncached(s);
+        } else {
             sb.appendStringUncached(s);
         }
         return this;

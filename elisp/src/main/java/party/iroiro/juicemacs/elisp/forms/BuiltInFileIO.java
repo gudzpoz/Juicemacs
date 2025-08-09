@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
@@ -268,7 +268,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeTempFileInternal extends ELispBuiltInBaseNode {
         @Specialization
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public ELispString makeTempFileInternal(ELispString prefix, Object dirFlag, Object suffix, Object text) {
             TruffleLanguage.Env env = getContext().truffleEnv();
             TruffleFile file = env.getPublicTruffleFile(prefix.toString()).getAbsoluteFile();
@@ -377,12 +377,13 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "expand-file-name", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FExpandFileName extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static ELispString expandFileName(ELispString name, Object defaultDirectory) {
             return new ELispString(expandFileNamePath(name, defaultDirectory).toString());
         }
 
+        @TruffleBoundary
         public static Path expandFileNamePath(ELispString name, Object defaultDirectory) {
             String file = name.toString();
             Path path;
@@ -390,15 +391,15 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 path = Path.of(System.getProperty("user.home") + file.substring(1));
             } else if (!file.startsWith("/")) {
                 String dir;
-                if (isNil(defaultDirectory)) {
-                    Object globalDir = DEFAULT_DIRECTORY.getValue();
-                    if (isNil(globalDir)) {
-                        dir = System.getProperty("user.home");
-                    } else {
-                        dir = globalDir.toString();
-                    }
+                if (defaultDirectory instanceof ELispString s) {
+                    dir = s.toString();
                 } else {
-                    dir = defaultDirectory.toString();
+                    Object globalDir = DEFAULT_DIRECTORY.getValue();
+                    if (globalDir instanceof ELispString s) {
+                        dir = s.toString();
+                    } else {
+                        dir = System.getProperty("user.home");
+                    }
                 }
                 if (dir.startsWith("~")) {
                     dir = System.getProperty("user.home") + dir.substring(1);
@@ -775,7 +776,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "file-directory-p", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FFileDirectoryP extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static boolean fileDirectoryP(ELispString filename) {
             String path = filename.toString();
@@ -1095,23 +1096,28 @@ public class BuiltInFileIO extends ELispBuiltIns {
                 }
             }
             TruffleFile file = env.getPublicTruffleFile(filename.toString());
-            try (SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ))) {
-                long start = notNilOr(beg, 0L);
-                long limit = Math.min(notNilOr(end, Long.MAX_VALUE), file.size());
+            try {
+                SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ));
+                try {
+                    long start = notNilOr(beg, 0L);
+                    long limit = Math.min(notNilOr(end, Long.MAX_VALUE), file.size());
 
-                Object codingSystem = detectCodingSystem(context, filename, channel, file.size());
-                BuiltInCoding.FCheckCodingSystem.checkCodingSystem(codingSystem);
-                ELispCodings codings = context.globals().getCodings();
-                ELispCodingSystem coding = codings.resolveCodingSystem(asSym(codingSystem));
+                    Object codingSystem = detectCodingSystem(context, filename, channel, file.size());
+                    BuiltInCoding.FCheckCodingSystem.checkCodingSystem(codingSystem);
+                    ELispCodings codings = context.globals().getCodings();
+                    ELispCodingSystem coding = codings.resolveCodingSystem(asSym(codingSystem));
 
-                ValueStorage.Forwarded container = new ValueStorage.Forwarded();
-                buffer.insert(codings.decode(coding, channel, start, limit, container).buildString());
-                if (visit) {
-                    BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
-                    BUFFER_FILE_NAME.setValue(new ELispString(file.getName()));
-                    BUFFER_FILE_TRUENAME.setValue(new ELispString(file.getAbsoluteFile().toString()));
+                    ValueStorage.Forwarded container = new ValueStorage.Forwarded();
+                    buffer.insert(codings.decode(coding, channel, start, limit, container).buildString());
+                    if (visit) {
+                        BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
+                        BUFFER_FILE_NAME.setValue(new ELispString(file.getName()));
+                        BUFFER_FILE_TRUENAME.setValue(new ELispString(file.getAbsoluteFile().toString()));
+                    }
+                    return ELispCons.listOf(new ELispString(file.getAbsoluteFile().toString()), limit - start);
+                } finally {
+                    channel.close();
                 }
-                return ELispCons.listOf(new ELispString(file.getAbsoluteFile().toString()), limit - start);
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, filename);
             }
@@ -1134,7 +1140,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             return codingSystem;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private Object callSetAutoCodingSystem(ELispContext context, ELispString filename,
                                                SeekableByteChannel file, long size)
                 throws IOException {

@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
@@ -13,7 +14,7 @@ import java.util.Objects;
 /// Container of built-in functions define in subclasses of
 /// [party.iroiro.juicemacs.elisp.forms.ELispBuiltIns]
 ///
-/// Several functions can be inlined into the AST (when [#inline()] is not null).
+/// Several functions can be inlined into the AST (when [#inlineFactory()] is not null).
 ///
 /// @see party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.InlineFactory
 public record ELispSubroutine(
@@ -40,6 +41,7 @@ public record ELispSubroutine(
         return "#<subr " + body.callTarget() +  ">";
     }
 
+    @TruffleBoundary
     public boolean specialForm() {
         return info.rawArg();
     }

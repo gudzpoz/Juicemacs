@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -34,7 +34,7 @@ public class BuiltInBytecode extends ELispBuiltIns {
     @ELispBuiltIn(name = "byte-code", minArgs = 3, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FByteCode extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public Object byteCode(ELispString bytestr, ELispVector vector, long maxdepth) {
             if (isMultibyte(bytestr)) {

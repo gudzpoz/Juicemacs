@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.ListIterator;
@@ -9,7 +9,7 @@ import java.util.NoSuchElementException;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
-final class BrentTortoiseHareIterator implements ListIterator<Object>, ELispCons.ConsIterator {
+final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsIterator {
     private Object tortoise;
     private Object tail;
 
@@ -55,7 +55,7 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ELispCons
         return nextCons().car;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Override
     public ELispCons nextCons() {
         ELispCons next;

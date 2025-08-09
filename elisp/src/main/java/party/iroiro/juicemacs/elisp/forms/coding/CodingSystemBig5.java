@@ -2,11 +2,10 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-
-import java.util.Iterator;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_ATTR_ASCII_COMPAT;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_BIG5;
@@ -26,7 +25,7 @@ public final class CodingSystemBig5 implements ELispCodingSystemType {
         if (charsetList.size() != 2) {
             throw ELispSignals.error("There should be just two charsets");
         }
-        Iterator<Object> i = charsetList.iterator();
+        ConsIterator i = charsetList.iterator();
         ELispCharset charset = BuiltInCharSet.getCharsetFromId(asInt(i.next()));
         if (charset.dimension != 1) {
             throw ELispSignals.error("Big5 charset must be one-dimensional");

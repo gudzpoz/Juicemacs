@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
@@ -23,18 +23,18 @@ public final class ELispObarray extends AbstractELispIdentityObject implements E
         return intern(name.toString());
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public ELispSymbol intern(String name) {
         return symbols.computeIfAbsent(name, ELispSymbol::new);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     public ELispSymbol internSoft(String value) {
         return symbols.get(value);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     public ELispSymbol unintern(String name) {
         return symbols.remove(name);

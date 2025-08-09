@@ -1,17 +1,18 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
-import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInFns.iterateSequence;
@@ -104,7 +105,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
     private record SparseKeymap(ELispCons cons) implements Keymap {
         @Override
         public Object get(Object key, boolean parentLookup) {
-            ELispCons.ConsIterator i = cons.listIterator(1);
+            ConsIterator i = cons.listIterator(1);
             @Nullable ELispCons parent = null;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -123,7 +124,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         }
 
         private void remove(Object key) {
-            ELispCons.ConsIterator i = cons.listIterator(1);
+            ConsIterator i = cons.listIterator(1);
             ELispCons prev = cons;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -146,7 +147,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                 remove(key);
             } else {
                 Object newList;
-                ELispCons.ConsIterator i = cons.listIterator(1);
+                ConsIterator i = cons.listIterator(1);
                 @Nullable ELispCons pair = null;
                 while (i.hasNextCons()) {
                     ELispCons current = i.nextCons();
@@ -172,7 +173,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
 
         @Override
         public Object map(Object function) {
-            ELispCons.ConsIterator i = cons.listIterator(1);
+            ConsIterator i = cons.listIterator(1);
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
                 Object car = current.car();
@@ -190,8 +191,8 @@ public class BuiltInKeymap extends ELispBuiltIns {
 
     private Object globalMap = false;
 
-    @CompilerDirectives.TruffleBoundary
-    public static void keymapSet(Object keymap, Iterator<?> iterator, Object value, boolean doRemove) {
+    @TruffleBoundary
+    public static void keymapSet(Object keymap, TruffleUtils.Iter<?> iterator, Object value, boolean doRemove) {
         while (iterator.hasNext()) {
             Object key = iterator.next();
             Keymap wrap = Keymap.wrap(keymap);
@@ -307,7 +308,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FKeymapParent extends ELispBuiltInBaseNode {
         @Specialization
         public static Object keymapParent(ELispCons keymap) {
-            ELispCons.ConsIterator i = keymap.listIterator(1);
+            ConsIterator i = keymap.listIterator(1);
             while (i.hasNextCons()) {
                 ELispCons next = i.nextCons();
                 if (FKeymapp.keymapp(next)) {
@@ -329,7 +330,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FSetKeymapParent extends ELispBuiltInBaseNode {
         @Specialization
         public static Object setKeymapParent(ELispCons keymap, Object parent) {
-            ELispCons.ConsIterator i = keymap.listIterator(1);
+            ConsIterator i = keymap.listIterator(1);
             ELispCons prev = keymap;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
@@ -380,12 +381,9 @@ public class BuiltInKeymap extends ELispBuiltIns {
     public abstract static class FMapKeymap extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean mapKeymap(Object function, Object keymap, Object sortFirst) {
-            while (true) {
+            do {
                 keymap = FMapKeymapInternal.mapKeymapInternal(function, keymap);
-                if (isNil(keymap)) {
-                    break;
-                }
-            }
+            } while (!isNil(keymap));
             return false;
         }
     }

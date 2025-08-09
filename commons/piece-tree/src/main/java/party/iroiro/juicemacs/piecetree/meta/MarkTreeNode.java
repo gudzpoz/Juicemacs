@@ -25,7 +25,7 @@
 
 package party.iroiro.juicemacs.piecetree.meta;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.piecetree.meta.MarkPieceTreeBase.Piece;
 
@@ -116,7 +116,7 @@ public final class MarkTreeNode<T> {
         return node;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private long calculateSize() {
         if (this == SENTINEL) {
             return 0;

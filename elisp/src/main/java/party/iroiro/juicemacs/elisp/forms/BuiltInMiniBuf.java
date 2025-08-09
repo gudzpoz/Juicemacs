@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -62,7 +62,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
 
         @SuppressWarnings("BooleanMethodIsAlwaysInverted")
         public boolean forEachInCollection(Object collection, FuncallDispatchNode dispatchNode, Node node) {
-            Iterator<CompletionItem> i = getIterator(collection);
+            TruffleUtils.Iter<CompletionItem> i = getIterator(collection);
             while (i.hasNext()) {
                 CompletionItem item = i.next();
                 tryMatch(item.s, item.key, item.value, dispatchNode, node);
@@ -70,15 +70,17 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
             return true;
         }
 
-        @CompilerDirectives.TruffleBoundary
-        private Iterator<CompletionItem> getIterator(Object collection) {
-            return switch (collection) {
+        @TruffleBoundary
+        private TruffleUtils.Iter<CompletionItem> getIterator(Object collection) {
+            Iterator<CompletionItem> iter = switch (collection) {
                 case ELispCons assocList -> assocList.stream().map(CompletionMatcher::toItem).iterator();
                 case ELispHashtable hashtable ->
                         StreamSupport.stream(hashtable.spliterator(), false).map(CompletionMatcher::htToItem).iterator();
-                case ELispObarray obarray -> obarray.symbols().entrySet().stream().map(CompletionMatcher::obToItem).iterator();
+                case ELispObarray obarray ->
+                        obarray.symbols().entrySet().stream().map(CompletionMatcher::obToItem).iterator();
                 default -> throw new UnsupportedOperationException();
             };
+            return TruffleUtils.Iter.of(iter);
         }
 
         public static CompletionItem toItem(Object key) {
@@ -88,7 +90,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
 
         public static CompletionItem obToItem(Map.Entry<String, ELispSymbol> entry) {
             String key = entry.getKey();
-            return new CompletionItem(TruffleUtils.string(key), key, true);
+            return new CompletionItem(StringSupport.tString(key), key, true);
         }
 
         public static CompletionItem htToItem(Map.Entry<Object, Object> entry) {
@@ -140,7 +142,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         private static @Nullable AbstractTruffleString getString(Object o) {
             return switch (o) {
                 case ELispString eStr -> eStr.value();
-                case ELispSymbol symbol -> TruffleUtils.string(symbol.name());
+                case ELispSymbol symbol -> StringSupport.tString(symbol.name());
                 default -> null;
             };
         }
@@ -813,7 +815,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
         @Specialization
         public static Object assocString(Object key, Object list, Object caseFold) {
             AbstractTruffleString keyString = toSym(key) instanceof ELispSymbol sym
-                    ? TruffleUtils.string(sym.name()) : asStr(key).value();
+                    ? StringSupport.tString(sym.name()) : asStr(key).value();
             boolean upcase = !isNil(caseFold);
             if (upcase) {
                 keyString = asStr(BuiltInCaseFiddle.FUpcase.upcaseString(new ELispString(keyString))).value();
@@ -825,7 +827,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                 }
                 AbstractTruffleString rhs;
                 if (toSym(target) instanceof ELispSymbol sym) {
-                    rhs = TruffleUtils.string(sym.name());
+                    rhs = StringSupport.tString(sym.name());
                 } else if (target instanceof ELispString str) {
                     rhs = str.value();
                 } else {

@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -156,12 +156,13 @@ public final class ELispCodings {
         return codingSpecTable.get(name);
     }
 
+    @TruffleBoundary
     public ELispCodingSystem resolveCodingSystem(ELispSymbol name) {
         ELispCodingSystem system = codingSpecTable.get(name);
         return system == null ? codingSpecTable.get(UNDECIDED) : system;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     private ELispCodingSystemType getCodingSystemType(ELispSymbol name) {
         return CODING_SYSTEM_TYPES.get(name);

@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -38,7 +39,7 @@ final class ELispRegExpParser {
         return groupIndex;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public REAst parse() {
         stack.add(new GroupStart(0));
         while (true) {

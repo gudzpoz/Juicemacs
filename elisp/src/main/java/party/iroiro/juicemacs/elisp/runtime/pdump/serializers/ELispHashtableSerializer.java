@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
 import org.apache.fury.resolver.RefResolver;
@@ -15,7 +15,7 @@ public final class ELispHashtableSerializer extends Serializer<ELispHashtable> {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void write(MemoryBuffer buffer, ELispHashtable value) {
         RefResolver resolver = fury.getRefResolver();
         if (!resolver.writeRefOrNull(buffer, value.getTest())) {

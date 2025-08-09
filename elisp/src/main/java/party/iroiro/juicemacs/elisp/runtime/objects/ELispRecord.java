@@ -19,6 +19,6 @@ public class ELispRecord extends AbstractELispVector {
 
     @Override
     public void display(ELispPrint print) {
-        displayHelper(print, "#s(", ")");
+        vectorPrintHelper(print, "#s(", ")", inner);
     }
 }

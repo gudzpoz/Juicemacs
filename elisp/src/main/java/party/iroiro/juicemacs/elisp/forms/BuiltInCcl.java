@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -121,7 +121,7 @@ public class BuiltInCcl extends ELispBuiltIns {
     @ELispBuiltIn(name = "register-ccl-program", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FRegisterCclProgram extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public long registerCclProgram(ELispSymbol name, Object cclProg) {
             BuiltInCcl ccl = getThis(this);

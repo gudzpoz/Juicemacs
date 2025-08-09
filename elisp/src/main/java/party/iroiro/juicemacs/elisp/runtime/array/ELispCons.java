@@ -11,7 +11,6 @@ import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
-import java.util.ListIterator;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
@@ -200,12 +199,6 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
         return new BrentTortoiseHareIterator(false);
     }
     //#endregion Utilities
-
-    public interface ConsIterator extends ListIterator<Object> {
-        boolean hasNextCons();
-        ELispCons currentCons();
-        ELispCons nextCons();
-    }
 
     public static final class ListBuilder {
         @Nullable

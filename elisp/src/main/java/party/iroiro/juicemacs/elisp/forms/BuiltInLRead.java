@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.*;
@@ -16,6 +16,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -66,8 +67,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         try {
             return ELispParser.read(ELispContext.get(null), source);
         } catch (IOException e) {
-            String message = e.getMessage();
-            throw ELispSignals.error(message == null ? stream.toString() : message);
+            throw ELispSignals.error(TruffleUtils.eMessage(e));
         }
     }
 
@@ -172,8 +172,8 @@ public class BuiltInLRead extends ELispBuiltIns {
         return result;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static boolean loadFile(ELispLanguage language, @Nullable Node caller, Object file, boolean errorIfNotFound) {
+    @TruffleBoundary
+    public static boolean loadFile(ELispLanguage language, @Nullable Node caller, ELispString file, boolean errorIfNotFound) {
         Object loader = LOAD_SOURCE_FILE_FUNCTION.getValue();
         if (isNil(loader)) {
             TruffleFile path = findLoadFilePureJava(file, errorIfNotFound);
@@ -188,7 +188,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         } else {
             ELispString path = locateOpenP(
                     LOAD_PATH.getValue(),
-                    asStr(file),
+                    file,
                     LOAD_SUFFIXES.getValue(),
                     false, true, true
             );
@@ -208,7 +208,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     }
 
     @Nullable
-    private static TruffleFile findLoadFilePureJava(Object file, boolean errorIfNotFound) {
+    private static TruffleFile findLoadFilePureJava(ELispString file, boolean errorIfNotFound) {
         ELispContext context = ELispContext.get(null);
         TruffleLanguage.Env env = context.truffleEnv();
 
@@ -257,7 +257,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         } catch (EOFException e) {
             throw ELispSignals.endOfFile(file);
         } catch (IOException e) {
-            throw ELispSignals.error(e.getMessage());
+            throw ELispSignals.error(TruffleUtils.eMessage(e));
         }
     }
 
@@ -269,7 +269,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             Object placeholder,
             ELispHashtable recursive
     ) {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Object substitute(Object tree) {
             if (tree == placeholder) {
                 return object;
@@ -574,7 +574,19 @@ public class BuiltInLRead extends ELispBuiltIns {
         public boolean evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
             ELispContext context = getContext();
             ELispBuffer current = isNil(buffer) ? context.currentBuffer() : asBuffer(buffer);
-            Object path = or(current.getFileTruename(), current.getFilename(), filename);
+            Source source = getSource(filename, current, context);
+            try {
+                ELispRootNode root = ELispParser.parse(getLanguage(), context, source, current);
+                root.getCallTarget().call(this);
+            } catch (IOException e) {
+                throw ELispSignals.error(TruffleUtils.eMessage(e));
+            }
+            return true;
+        }
+
+        @TruffleBoundary
+        private static Source getSource(Object filename, ELispBuffer current, ELispContext context) {
+            ELispString path = asStr(or(current.getFileTruename(), current.getFilename(), filename));
             ELispString name = asStr(or(filename, path, current.getName()));
             @Nullable Source source = null;
             if (!isNil(path)) {
@@ -595,13 +607,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             if (source == null) {
                 source = Source.newBuilder("elisp", "", name.toString()).build();
             }
-            try {
-                ELispRootNode root = ELispParser.parse(getLanguage(), getContext(), source, current);
-                root.getCallTarget().call(this);
-            } catch (IOException e) {
-                throw ELispSignals.error(Objects.requireNonNullElse(e.getMessage(), "io"));
-            }
-            return true;
+            return source;
         }
     }
 
@@ -829,6 +835,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FObarrayMake extends ELispBuiltInBaseNode {
         @Specialization
+        @TruffleBoundary
         public static ELispObarray obarrayMake(Object size) {
             return new ELispObarray(new HashMap<>((int) notNilOr(size, 0)));
         }
@@ -856,7 +863,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "obarray-clear", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FObarrayClear extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static boolean obarrayClear(ELispObarray obarray) {
             obarray.symbols().clear();
@@ -873,7 +880,7 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "mapatoms", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FMapatoms extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public boolean mapatoms(Object function, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);

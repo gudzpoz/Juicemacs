@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -99,7 +99,7 @@ public class ELispParser {
     private final HashMap<Long, Object> cyclicReferences = new HashMap<>();
     private final ELispHashtable readObjectsCompleted = new ELispHashtable();
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private Object nextObject() throws IOException {
         LocatedToken token = read();
         return switch (token.token()) {
@@ -187,7 +187,7 @@ public class ELispParser {
                 yield arrayConsList(builder, i, token, endLocation);
             }
             case RecordOpen() -> {
-                List<Object> list = readList();
+                ArrayList<Object> list = readList();
                 Object type = list.getFirst();
                 if (type == HASH_TABLE) {
                     yield ELispHashtable.hashTableFromPlist(list, true);
@@ -267,8 +267,8 @@ public class ELispParser {
         return cons;
     }
 
-    private List<Object> readVector() throws IOException {
-        List<Object> vector = new ArrayList<>();
+    private ArrayList<Object> readVector() throws IOException {
+        ArrayList<Object> vector = new ArrayList<>();
         while (!(peek() instanceof SquareClose)) {
             vector.add(nextObject());
         }
@@ -276,8 +276,8 @@ public class ELispParser {
         return vector;
     }
 
-    private List<Object> readList() throws IOException {
-        List<Object> vector = new ArrayList<>();
+    private ArrayList<Object> readList() throws IOException {
+        ArrayList<Object> vector = new ArrayList<>();
         while (!(peek() instanceof ParenClose)) {
             vector.add(nextObject());
         }
@@ -299,7 +299,7 @@ public class ELispParser {
         return !(peek() instanceof EOF);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object nextLisp() throws IOException {
         cyclicReferences.clear();
         readObjectsCompleted.clear();
@@ -308,21 +308,21 @@ public class ELispParser {
 
     private Object[] parse(@Nullable Source source) throws IOException {
         this.source = source;
-        List<Object> expressions = new ArrayList<>();
+        ArrayList<Object> expressions = new ArrayList<>();
         while (hasNext()) {
             expressions.add(nextLisp());
         }
         return expressions.toArray();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source) throws IOException {
         ELispParser parser = new ELispParser(context, source);
         boolean debug = context instanceof ELispContext c && c.options().debug();
         return parse(language, parser, source, debug);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static ELispRootNode parse(ELispLanguage language, InternContext context, Source source, ELispBuffer buffer)
             throws IOException {
         ELispParser parser = new ELispParser(context, new ELispLexer(CodePointReader.from(buffer, buffer.pointMin())));
@@ -330,7 +330,7 @@ public class ELispParser {
         return parse(language, parser, source, debug);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static ELispRootNode parseDebugEval(
             ELispLanguage language,
             InternContext context,
@@ -352,7 +352,7 @@ public class ELispParser {
         return new ELispRootNode(language, expr, parser.getWholeSection(source));
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static Object read(InternContext context, String s) throws IOException {
         return read(context, Source.newBuilder("elisp", s, "").build());
     }

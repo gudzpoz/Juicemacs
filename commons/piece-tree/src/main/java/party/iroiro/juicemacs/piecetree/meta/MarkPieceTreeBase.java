@@ -25,7 +25,7 @@
 
 package party.iroiro.juicemacs.piecetree.meta;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.jdt.annotation.Nullable;
 
 import java.util.*;
@@ -89,7 +89,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         return length;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     protected void insert(long offset, Piece<T> value) {
         if (root == SENTINEL) {
             // insert new node
@@ -144,7 +144,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         deleteStartingFrom(offset, cnt, startPosition);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     protected void deleteStartingFrom(long offset, long cnt, NodePosition<T> startPosition) {
         if (cnt == 0) {
             // [#delete] only deletes interval marks
@@ -223,7 +223,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         updateTreeMetadata(this, node, lengthDelta);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     protected NodePosition<T> nodeAt(long offset) {
         MarkTreeNode<T> x = root;
         long nodeStartOffset = 0;
@@ -296,7 +296,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
     }
     //#endregion
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     protected <R> R forEachMarkIn(long offset, long cnt, PieceConsumer<T, R> consumer) {
         if (root == SENTINEL) {
             return null;

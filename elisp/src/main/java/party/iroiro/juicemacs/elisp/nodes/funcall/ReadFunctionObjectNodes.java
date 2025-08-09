@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.nodes.funcall;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
@@ -186,7 +187,7 @@ public abstract class ReadFunctionObjectNodes {
         }
 
         @Specialization(replaces = "checkCons")
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public Object checkConsUncached(ELispCons cons) {
             if (cons.car() == LAMBDA) {
                 return BuiltInEval.FFunction.getFunction(cons, this);

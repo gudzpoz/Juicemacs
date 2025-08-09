@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.scopes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -41,7 +41,7 @@ public record DebuggerScopeObject(
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object toDisplayString(boolean allowSideEffects) {
         return toString();
     }
@@ -79,7 +79,7 @@ public record DebuggerScopeObject(
     }
 
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object readMember(String member) throws UnsupportedMessageException {
         ELispLexical.@Nullable LexicalReference ref = lexical.getReference(context.intern(member));
         if (ref == null) {

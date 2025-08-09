@@ -8,7 +8,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.TruffleString;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.nio.ByteBuffer;
@@ -70,6 +69,10 @@ public abstract class StringSupport {
             return -1;
         }
         return INDEX_OF_ANY.execute(haystack, start, end, needles);
+    }
+
+    public static TruffleString tString(String string) {
+        return TruffleString.fromJavaStringUncached(string, TruffleString.Encoding.UTF_32);
     }
 
     @GenerateUncached

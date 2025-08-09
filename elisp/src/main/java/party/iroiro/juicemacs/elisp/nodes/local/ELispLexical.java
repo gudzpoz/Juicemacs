@@ -1,10 +1,12 @@
 package party.iroiro.juicemacs.elisp.nodes.local;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
@@ -172,14 +174,14 @@ public final class ELispLexical {
     /// Also, Emacs oclosures directly depend on the order of the list items.
     ///
     /// @see Scope#toAssocList(Frame)
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static ELispLexical.Scope newBlockFromAlist(MaterializedFrame frame, ELispCons cons) {
         ArrayList<ELispSymbol> symbols = new ArrayList<>();
         for (int i = 0, count = cons.size(); i < count; i++) {
             symbols.add(NIL);
         }
         ELispLexical block = new ELispLexical(null, symbols.toArray(new ELispSymbol[0]));
-        ELispCons.ConsIterator i = cons.listIterator(0);
+        ConsIterator i = cons.listIterator(0);
         int index = block.frameSlots.length - 1;
         while (i.hasNext()) {
             if (i.next() instanceof ELispCons binding) {
@@ -210,7 +212,7 @@ public final class ELispLexical {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     public static Scope getScope(Node currentNode) {
         while (currentNode != null) {
@@ -231,7 +233,7 @@ public final class ELispLexical {
         return scope == null ? null : scope.getReference(symbol);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static boolean isRootScope(Node currentNode) {
         while (currentNode != null) {
             if (currentNode instanceof ScopeProvider provider) {

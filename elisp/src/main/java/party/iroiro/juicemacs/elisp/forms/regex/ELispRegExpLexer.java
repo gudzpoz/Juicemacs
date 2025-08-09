@@ -7,7 +7,6 @@ import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 
@@ -207,7 +206,7 @@ final class ELispRegExpLexer implements Iterator<REToken> {
             lastChar = -1;
         }
 
-        List<CharClassContent> contents = new ArrayList<>();
+        ArrayList<CharClassContent> contents = new ArrayList<>();
         while (true) {
             CharClassContent content = namedCharClass();
             if (content != null) {

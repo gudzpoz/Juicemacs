@@ -160,8 +160,13 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
                 }
                 dynamic = Dynamic.pushDynamic(argSymbols, values);
             }
-            try (Dynamic _ = dynamic) {
+            @Nullable Dynamic scope = dynamic;
+            try {
                 return body.executeGeneric(frame);
+            } finally {
+                if (scope != null) {
+                    scope.close();
+                }
             }
         }
 

@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
@@ -169,9 +169,8 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         intervals.insert(start - 1, end - start, isNil(properties) ? null : properties);
     }
 
-    @CompilerDirectives.TruffleBoundary
     public void insert(ELispString text) {
-        insert(getPoint(), text);
+        insert(getPoint(), text); // NOPMD: not recursion
     }
 
     public void insert(long point, ELispString text) {
@@ -224,13 +223,13 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return intervals;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     public Forwarded getLocal(ELispSymbol symbol) {
         return localVariables.get(symbol);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Forwarded makeLocal(ELispSymbol symbol) {
         return localVariables.computeIfAbsent(symbol, _ -> new Forwarded());
     }

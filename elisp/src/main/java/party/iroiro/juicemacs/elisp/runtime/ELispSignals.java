@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -106,7 +106,7 @@ public abstract class ELispSignals {
         return new ELispSignalException(exception.getTag(), exception.getData(), location);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static ELispSignalException signal(ELispSymbol error, Object... data) {
         for (int i = 0; i < data.length; i++) {
             if (data[i] instanceof String s) {
@@ -133,21 +133,27 @@ public abstract class ELispSignals {
     //#endregion Symbol operations
 
     //#region Function operations
+    @TruffleBoundary
     public static ELispSignalException argsOutOfRange(long index) {
         return signal(ARGS_OUT_OF_RANGE, index, false);
     }
+    @TruffleBoundary
     public static ELispSignalException argsOutOfRange(Object object, long index) {
         return signal(ARGS_OUT_OF_RANGE, object, index);
     }
+    @TruffleBoundary
     public static ELispSignalException argsOutOfRange(Object object, long left, long right) {
         return signal(ARGS_OUT_OF_RANGE, object, left, right);
     }
+    @TruffleBoundary
     public static ELispSignalException wrongNumberOfArguments(Object function, long actual) {
         return signal(WRONG_NUMBER_OF_ARGUMENTS, function, actual);
     }
+    @TruffleBoundary
     public static ELispSignalException wrongTypeArgument(ELispSymbol predicate, Object actual) {
         return signal(WRONG_TYPE_ARGUMENT, predicate, actual);
     }
+    @TruffleBoundary
     public static ELispSignalException wrongLengthArgument(long expected, long actual) {
         return signal(WRONG_LENGTH_ARGUMENT, expected, actual);
     }
@@ -161,7 +167,7 @@ public abstract class ELispSignals {
 
     //#region File operations
     public static ELispSignalException reportFileError(IOException e, Object file) {
-        return signal(FILE_ERROR, e.getMessage(), file);
+        return signal(FILE_ERROR, TruffleUtils.eMessage(e), file);
     }
     public static ELispSignalException fileMissing(FileNotFoundException e, Object file) {
         return signal(FILE_MISSING, e.getClass().getSimpleName(), e.getMessage(), file);
@@ -242,7 +248,7 @@ public abstract class ELispSignals {
         );
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static RuntimeException remapException(RuntimeException e, Node location) {
         ELispSignals.ELispSignalException mapped = switch (e) {
             case ClassCastException cast -> {

@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -1103,7 +1103,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "insert", minArgs = 0, maxArgs = 0, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FInsert extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static boolean insert(Object[] args) {
             ELispBuffer buffer = currentBuffer();
@@ -1663,7 +1663,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "message", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FMessage extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public Object message(Object formatString, Object[] args) {
             if (isNil(formatString)) {
@@ -1675,7 +1675,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             return formatted;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public static void message(ELispContext context, String s) {
             context.out().println(s);
         }
@@ -1850,7 +1850,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "format", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FFormat extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static ELispString format(ELispString string, Object[] objects) {
             // TODO

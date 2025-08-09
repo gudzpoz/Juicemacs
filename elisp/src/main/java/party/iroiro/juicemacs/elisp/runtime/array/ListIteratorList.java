@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 
 import java.util.*;
@@ -30,9 +31,12 @@ public interface ListIteratorList extends List<Object> {
     }
 
     @Override
-    default Iterator<Object> iterator() {
+    default ConsIterator iterator() {
         return listIterator();
     }
+
+    @Override
+    ConsIterator listIterator(int index);
 
     @Override
     default Object[] toArray() {
@@ -96,9 +100,10 @@ public interface ListIteratorList extends List<Object> {
     }
 
     @Override
+    @TruffleBoundary
     default boolean retainAll(Collection<?> c) {
         boolean modified = false;
-        ListIterator<Object> i = listIterator();
+        ConsIterator i = listIterator();
         while (i.hasNext()) {
             if (!c.contains(i.next())) {
                 i.remove();
@@ -161,7 +166,7 @@ public interface ListIteratorList extends List<Object> {
 
     @SuppressWarnings("PMD.TruffleNoDirectRecursion")
     @Override
-    default ListIterator<Object> listIterator() {
+    default ConsIterator listIterator() {
         return listIterator(0);
     }
 

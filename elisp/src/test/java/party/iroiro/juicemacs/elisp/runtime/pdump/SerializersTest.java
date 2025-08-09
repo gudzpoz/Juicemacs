@@ -5,6 +5,7 @@ import org.apache.fury.Fury;
 import org.apache.fury.config.Language;
 import org.apache.fury.memory.MemoryBuffer;
 import org.junit.jupiter.api.Test;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.array.SourceLocation;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -90,7 +91,7 @@ public class SerializersTest {
             builder.add((long) i);
         }
         ELispCons list = (ELispCons) builder.build();
-        ELispCons.ConsIterator i = list.listIterator(0);
+        ConsIterator i = list.listIterator(0);
         while (i.hasNextCons()) {
             i.nextCons().setSourceLocation(1, 2, 3, 4);
         }

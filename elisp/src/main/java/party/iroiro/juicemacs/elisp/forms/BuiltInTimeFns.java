@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
@@ -86,7 +86,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             }
             return bigNumToInstant(asBigNum(timestamp.car()).asBigInteger(), hz);
         }
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static Instant bigNumToInstant(BigInteger ticks, long hz) {
             BigInteger nanos = BigInteger.valueOf(1_000_000_000);
             BigInteger hzBig = BigInteger.valueOf(hz);
@@ -119,9 +119,9 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             if (seconds < Long.MAX_VALUE / hz / 2) {
                 return ELispCons.cons(seconds * hz + nanos * hz / 1_000_000_000L, hz);
             }
-            return toBigNumCons(seconds, nanos, BigInteger.valueOf(hz)); // NOPMD: valueOf(long) is fine
+            return toBigNumCons(seconds, nanos, ELispBigNum.forceWrap(hz).asBigInteger());
         }
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public static Object toBigNumCons(long seconds, long nanos, BigInteger hz) {
             return ELispCons.cons(
                     ELispBigNum.wrap(
@@ -313,6 +313,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "format-time-string", minArgs = 1, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FFormatTimeString extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
         public static ELispString formatTimeString(ELispString formatString, Instant time, Object zone) {
             // TODO

@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.nodes.funcall;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -45,7 +46,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             this.maxArgs = maxArgs;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private ELispSignals.ELispSignalException wrongNumberOfArguments(int actual) {
             Object functionInfo = false;
             if (function instanceof ELispBuiltInBaseNode) {

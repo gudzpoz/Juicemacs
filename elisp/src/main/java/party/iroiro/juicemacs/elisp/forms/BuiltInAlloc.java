@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -235,7 +235,10 @@ public class BuiltInAlloc extends ELispBuiltIns {
                 @Bind Node node
         ) {
             ArrayList<Object> list = new ArrayList<>();
-            list.addAll(List.of(arglist, byteCode, constants, depth));
+            list.add(arglist);
+            list.add(byteCode);
+            list.add(constants);
+            list.add(depth);
             list.addAll(Arrays.asList(args));
             ELispBytecode bytecode = (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
             bytecode.fillDebugInfo(node);
@@ -368,7 +371,7 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @ELispBuiltIn(name = "garbage-collect", minArgs = 0, maxArgs = 0)
     @GenerateNodeFactory
     public abstract static class FGarbageCollect extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static ELispCons garbageCollect() {
             Runtime.getRuntime().gc();

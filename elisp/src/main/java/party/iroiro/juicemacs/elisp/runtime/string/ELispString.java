@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.string;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -55,13 +55,12 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
 
     public ELispString(byte[] unibyteBytes) {
-        this.value = TruffleString.fromByteArrayUncached(unibyteBytes, TruffleString.Encoding.ISO_8859_1)
-                .switchEncodingUncached(TruffleString.Encoding.UTF_32);
+        this.value = StringSupport.fromBytes(unibyteBytes);
         this.state = STATE_BYTES;
     }
 
     public ELispString(String init) {
-        this(TruffleString.fromJavaStringUncached(init, TruffleString.Encoding.UTF_32));
+        this(StringSupport.tString(init));
     }
 
     public AbstractTruffleString value() {
@@ -170,6 +169,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         return intervals;
     }
 
+    @TruffleBoundary
     public void syncFromPlist(List<Object> list) {
         if ((list.size() - 1) % 3 != 0) {
             throw ELispSignals.error("Odd length text property list");
@@ -205,7 +205,7 @@ public final class ELispString implements TruffleObject, ELispValue {
         return TruffleString.AsTruffleStringNode.getUncached().execute(value, TruffleString.Encoding.UTF_32);
     }
     @ExportMessage
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return ELispPrint.toString(this).toString();
     }

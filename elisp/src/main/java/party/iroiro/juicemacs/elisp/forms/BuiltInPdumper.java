@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -33,7 +33,7 @@ public class BuiltInPdumper extends ELispBuiltIns {
     @ELispBuiltIn(name = "dump-emacs-portable", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDumpEmacsPortable extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public boolean dumpEmacsPortable(ELispString filename, Object trackReferrers) {
             ELispContext context = getContext();

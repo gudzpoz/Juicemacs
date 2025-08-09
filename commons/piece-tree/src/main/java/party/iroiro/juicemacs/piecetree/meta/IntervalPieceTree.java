@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.piecetree.meta;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.jdt.annotation.Nullable;
 
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.SENTINEL;
@@ -24,7 +24,7 @@ public final class IntervalPieceTree<T> extends MarkPieceTreeBase<T> {
         return piece.mark();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void putPropertiesFor(long offset, long cnt, T properties) {
         NodePosition<T> startPosition = nodeAt(offset);
         MarkTreeNode<T> node = startPosition.node();

@@ -12,13 +12,12 @@ import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableWriteNodeGen;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
@@ -79,7 +78,7 @@ public class LetNode extends ELispExpressionNode {
 
         @Nullable ELispLexical block = ELispLexical.newBlock(this, symbols);
         int length = symbols.length;
-        Iterator<?> sourceSectionProvider = ELispCons.iterate(varlist).iterator();
+        ConsIterator sourceSectionProvider = asConsIter(varlist);
         for (int i = 0; i < length; i++) {
             ELispSymbol symbol = symbols[i];
             ELispExpressionNode clause = clauses[i];
@@ -148,8 +147,13 @@ public class LetNode extends ELispExpressionNode {
         if (lexicalBlock != null) {
             frame = block.newFrame(frame);
         }
-        try (Dynamic _ = executeClauses(frame, block)) {
+        @Nullable Dynamic scope = executeClauses(frame, block);
+        try {
             bodyNode.executeVoid(frame);
+        } finally {
+            if (scope != null) {
+                scope.close();
+            }
         }
     }
 
@@ -160,8 +164,13 @@ public class LetNode extends ELispExpressionNode {
         if (lexicalBlock != null) {
             frame = block.newFrame(frame);
         }
-        try (Dynamic _ = executeClauses(frame, block)) {
+        @Nullable Dynamic scope = executeClauses(frame, block);
+        try {
             return bodyNode.executeGeneric(frame);
+        } finally {
+            if (scope != null) {
+                scope.close();
+            }
         }
     }
 
@@ -172,8 +181,8 @@ public class LetNode extends ELispExpressionNode {
     }
 
     private static Pair<ELispExpressionNode[], ELispSymbol[]> parseClauses(Object varlist) {
-        List<ELispSymbol> symbolList = new ArrayList<>();
-        List<ELispExpressionNode> values = new ArrayList<>();
+        ArrayList<ELispSymbol> symbolList = new ArrayList<>();
+        ArrayList<ELispExpressionNode> values = new ArrayList<>();
         for (Object assignment : ELispCons.iterate(varlist)) {
             Object symbol;
             Object value;

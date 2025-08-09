@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -10,6 +10,7 @@ import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -32,9 +33,9 @@ public class BuiltInDired extends ELispBuiltIns {
     }
 
     public static TruffleFile getTruffleFile(ELispContext context, ELispString file) {
-        return context.truffleEnv().getPublicTruffleFile(
-                BuiltInFileIO.FExpandFileName.expandFileNamePath(file, false).toString()
-        );
+        return context.truffleEnv().getPublicTruffleFile(TruffleUtils.toString(
+                BuiltInFileIO.FExpandFileName.expandFileNamePath(file, false)
+        ));
     }
 
     record CompletionRegexpFilter(ELispContext context, ArrayList<ELispRegExp.CompiledRegExp> regexps)
@@ -59,7 +60,7 @@ public class BuiltInDired extends ELispBuiltIns {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static Object fileNameCompletion(ELispContext context, ELispString file, ELispString dirname, boolean all, Object predicate) {
         boolean ignoreCase = !isNil(COMPLETION_IGNORE_CASE.getValue());
         try (Dynamic _ = Dynamic.pushDynamic(DEFAULT_DIRECTORY, dirname);
@@ -122,7 +123,7 @@ public class BuiltInDired extends ELispBuiltIns {
     @ELispBuiltIn(name = "directory-files", minArgs = 1, maxArgs = 5)
     @GenerateNodeFactory
     public abstract static class FDirectoryFiles extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public Object directoryFiles(ELispString directory, boolean full, Object match, boolean nosort, Object count) {
             long limit = notNilOr(count, -1);
@@ -322,7 +323,7 @@ public class BuiltInDired extends ELispBuiltIns {
                         // #7: size
                         file.size(),
                         // #8: mode
-                        permissionString(file),
+                        new ELispString(permissionString(file)),
                         // #9: ?
                         false,
                         // #10: TODO: inode
@@ -335,10 +336,10 @@ public class BuiltInDired extends ELispBuiltIns {
             }
         }
 
-        private ELispString permissionString(TruffleFile file) throws IOException {
+        @TruffleBoundary
+        private byte[] permissionString(TruffleFile file) throws IOException {
             byte[] string = new byte[10];
-            string[0] = (byte) (file.isDirectory() ? 'd' :
-                    file.isSymbolicLink() ? 'l' :'-');
+            string[0] = (byte) (file.isDirectory() ? 'd' : file.isSymbolicLink() ? 'l' : '-');
             Set<PosixFilePermission> permissions = file.getPosixPermissions();
             string[1] = (byte) (permissions.contains(PosixFilePermission.OWNER_READ) ? 'r' : '-');
             string[2] = (byte) (permissions.contains(PosixFilePermission.OWNER_WRITE) ? 'w' : '-');
@@ -349,7 +350,7 @@ public class BuiltInDired extends ELispBuiltIns {
             string[7] = (byte) (permissions.contains(PosixFilePermission.OTHERS_READ) ? 'r' : '-');
             string[8] = (byte) (permissions.contains(PosixFilePermission.OTHERS_WRITE) ? 'w' : '-');
             string[9] = (byte) (permissions.contains(PosixFilePermission.OTHERS_EXECUTE) ? 'x' : '-');
-            return new ELispString(string);
+            return string;
         }
     }
 

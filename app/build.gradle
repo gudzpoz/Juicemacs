@@ -4,6 +4,7 @@
 
 plugins {
     id 'buildlogic.java-application-conventions'
+    id 'org.graalvm.buildtools.native' version '0.11.0'
 }
 
 dependencies {
@@ -31,5 +32,19 @@ tasks.register('jvmCmd') {
         var graalRuntimeArgs = graalArgs.collect { "\"${((String) it).replace("\"", "\\\"")}\"" }.join(" ")
         var cmd = "java ${graalRuntimeArgs} -cp ${classpath.asPath} ${application.mainClass.get()}"
         println(cmd)
+    }
+}
+
+graalvmNative {
+    toolchainDetection = true
+    binaries {
+        main {
+            imageName = 'elisp-repl'
+            mainClass = application.mainClass
+            richOutput = true
+            quickBuild = true
+            verbose = true
+            buildArgs.add('--diagnostics-mode')
+        }
     }
 }

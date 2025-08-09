@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -409,7 +410,7 @@ final class ELispRegExpCompiler {
         );
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private HalfCompiled quantifiedNoProgress(
             HalfCompiled inner, int min, int max, boolean greedy,
             @Nullable HalfCompiled lookaround
@@ -738,7 +739,7 @@ final class ELispRegExpCompiler {
             this.canon = canon;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Nullable
         private HalfCompiled buildTrie(REAst[][] alternations) {
             states.add(IntArrayList.newListWith(-1));
@@ -833,7 +834,7 @@ final class ELispRegExpCompiler {
             return newState;
         }
 
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         private static boolean isBranchesExact(REAst[][] alternations) {
             for (REAst[] alternation : alternations) {
                 for (REAst child : alternation) {

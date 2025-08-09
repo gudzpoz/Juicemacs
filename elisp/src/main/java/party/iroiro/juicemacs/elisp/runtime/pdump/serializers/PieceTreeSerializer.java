@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
@@ -38,7 +39,7 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
 
         @SuppressWarnings("unchecked")
         @Override
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         public void write(MemoryBuffer buffer, IntervalPieceTree value) {
             try (DumpUtils.CounterSlot slot = DumpUtils.CounterSlot.record(buffer)) {
                 value.forPropertiesIn(0, Long.MAX_VALUE, true, new IntervalPieceTree.IntervalConsumer() {
@@ -100,8 +101,9 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
         @SuppressWarnings({"unchecked", "PMD.UseDiamondOperator"})
         @Override
         public MarkerPieceTree read(MemoryBuffer buffer) {
-            @SuppressWarnings("DataFlowIssue")
-            MarkerPieceTree tree = new MarkerPieceTree(null, null);
+            MarkerPieceTree tree = new MarkerPieceTree((_, _) -> {
+                throw CompilerDirectives.shouldNotReachHere();
+            }, 0xDEADBEEFL);
             fury.getRefResolver().reference(tree);
 
             long length = buffer.readVarUint64();

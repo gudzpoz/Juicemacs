@@ -74,15 +74,21 @@ public abstract class ELispRootNodes {
 
         @Override
         public void executeVoid(VirtualFrame frame) {
-            try (Dynamic _ = Dynamic.withLexicalBinding(rootScope != null)) {
+            Dynamic scope = Dynamic.withLexicalBinding(rootScope != null);
+            try {
                 node.executeVoid(frame);
+            } finally {
+                scope.close();
             }
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            try (Dynamic _ = Dynamic.withLexicalBinding(rootScope != null)) {
+            Dynamic scope = Dynamic.withLexicalBinding(rootScope != null);
+            try {
                 return node.executeGeneric(frame);
+            } finally {
+                scope.close();
             }
         }
 

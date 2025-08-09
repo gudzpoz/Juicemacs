@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -148,7 +149,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         return slowPathGetIndirectFunction((ELispSymbol) toSym(o), context);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static Object slowPathGetIndirectFunction(ELispSymbol symbol, ELispContext context) {
         Object o;
         HashSet<ELispSymbol> visited = new HashSet<>();

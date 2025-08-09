@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset.CharsetMethod;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
@@ -103,6 +104,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return getThis(null).internalCharsetList.get(id);
     }
 
+    @TruffleBoundary
     private static ELispVector getCharsetAttr(Object symbol) {
         //noinspection SuspiciousMethodCalls
         ELispVector vec = getThis(null).charsetHashTable.get(symbol);
@@ -158,7 +160,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
         return defineCharsetInternal(args); // NOPMD
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private boolean defineCharsetInternal(Object[] args) {
         if (args.length != CHARSET_ARG_MAX) {
             throw ELispSignals.wrongNumberOfArguments(DEFINE_CHARSET_INTERNAL, args.length);
@@ -435,7 +437,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                 }));
             } else {
                 @Nullable ELispCons prev = null;
-                ELispCons.ConsIterator i = asConsIter(charsetOrderedList);
+                ConsIterator i = asConsIter(charsetOrderedList);
                 while (i.hasNextCons()) {
                     ELispCons cons = i.nextCons();
                     ELispCharset cs = getCharsetFromId(asInt(cons.car()));
@@ -463,7 +465,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @ELispBuiltIn(name = "charsetp", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FCharsetp extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public boolean charsetp(Object object) {
             return toSym(object) instanceof ELispSymbol symbol && getThis(this).charsetHashTable.containsKey(symbol);
@@ -526,7 +528,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
     @ELispBuiltIn(name = "define-charset-alias", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FDefineCharsetAlias extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public boolean defineCharsetAlias(ELispSymbol alias, Object charset) {
             ELispVector attr = getCharsetAttr(charset);

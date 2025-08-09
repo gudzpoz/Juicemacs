@@ -64,11 +64,11 @@ public abstract class ELispBuiltIns {
         BUILT_IN_SOURCES.put(this.getClass().getSimpleName(), javaSource);
 
         List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> factories = getNodeFactories();
-        List<SemiInitializedBuiltIn> results = new ArrayList<>(factories.size());
+        ArrayList<SemiInitializedBuiltIn> results = new ArrayList<>(factories.size());
         for (NodeFactory<? extends ELispExpressionNode> factory : factories) {
             for (ELispBuiltIn builtIn : factory.getNodeClass().getAnnotationsByType(ELispBuiltIn.class)) {
                 boolean varArgs = builtIn.varArgs();
-                List<ReadFunctionArgNode> args = new ArrayList<>(builtIn.maxArgs() + (varArgs ? 1 : 0));
+                ArrayList<ReadFunctionArgNode> args = new ArrayList<>(builtIn.maxArgs() + (varArgs ? 1 : 0));
                 for (int i = 0; i < builtIn.maxArgs(); i++) {
                     args.add(new ReadFunctionArgNode(i));
                 }

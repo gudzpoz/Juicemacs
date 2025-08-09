@@ -1,10 +1,12 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.eclipse.jdt.annotation.Nullable;
+
+import java.util.Iterator;
 
 public abstract class TruffleUtils {
     private TruffleUtils() {
@@ -26,7 +28,7 @@ public abstract class TruffleUtils {
     ///    for Truffle debug utilities.)
     /// 4. `null` (because [Source#createUnavailableSection()] causes *a lot* of problems).
     @Nullable
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static SourceSection createSection(
             Source source,
             int startLine, int startColumn,
@@ -52,12 +54,41 @@ public abstract class TruffleUtils {
     ///
     /// [Throwable#addSuppressed(Throwable)] is blocklisted and should not be reachable during
     /// runtime compilation.
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void addSuppressed(Exception e, Exception suppressed) {
         e.addSuppressed(suppressed);
     }
 
-    public static TruffleString string(String string) {
-        return TruffleString.fromJavaStringUncached(string, TruffleString.Encoding.UTF_32);
+    /// [com.oracle.truffle.api.CompilerDirectives.TruffleBoundary] wrapper around [Throwable#getMessage()]
+    @TruffleBoundary
+    public static String eMessage(Throwable e) {
+        String message = e.getMessage();
+        return message == null ? e.getClass().getName() : message;
+    }
+
+    /// [com.oracle.truffle.api.CompilerDirectives.TruffleBoundary] wrapper around [Object#toString()]
+    @TruffleBoundary
+    public static String toString(Object o) {
+        return o.toString();
+    }
+
+    /// A [com.oracle.truffle.api.CompilerDirectives.TruffleBoundary] wrapper around [Iterator]
+    ///
+    /// The iterator interface is highly polymorphic and might cause Truffle native images
+    /// to compile *all* iterator implementations it can find.
+    @CompilerDirectives.ValueType
+    public record Iter<T>(Iterator<T> inner) {
+        @TruffleBoundary
+        public boolean hasNext() {
+            return inner.hasNext();
+        }
+        @TruffleBoundary
+        public T next() {
+            return inner.next();
+        }
+        @SuppressWarnings("PMD.ShortMethodName")
+        public static <T> Iter<T> of(Iterator<T> inner) {
+            return new Iter<>(inner);
+        }
     }
 }

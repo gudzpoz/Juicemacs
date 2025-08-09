@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -60,7 +61,7 @@ public abstract class ELispRegExp {
     /// where `start` and `end` are both in codepoint offsets.
     ///
     /// The buffer argument can be null, as long as one does not use category/case/syntax table-related regex.
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static CompiledRegExp compile(TruffleLanguage<?> language,
                                          ELispString string,
                                          @Nullable ELispString whitespaceRegExp,

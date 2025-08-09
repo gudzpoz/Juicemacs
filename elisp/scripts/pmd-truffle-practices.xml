@@ -126,6 +126,66 @@
     </rule>
 
     <rule
+            name="TruffleNoTryWithResourceStatement"
+            language="java"
+            message="Try-with-resource statements introduce addSuppressed calls, causing trouble for native images."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Try-with-resource statements add additional finally blocks to call addSuppressed for any
+            exceptions thrown by the AutoCloseable::close() method. However, Throwable::addSuppressed()
+            is blocklisted by Truffle during native image compilation.
+            Use try-finally blocks manually instead, and remember to avoid addSuppressed() usages.
+            (Alternatively, you may annotate the method with @TruffleBoundary.)
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //MethodDeclaration
+                [not(pmd-java:hasAnnotation("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary"))]
+                //TryStatement/ResourceList
+            ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
+            name="TruffleDoNotCallPolymorphicMethods"
+            language="java"
+            message="Do not call highly polymorphic methods, which might lead to unexpected compilations."
+            class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Calling highly polymorphic methods like Object::toString() and Throwable::getMessage()
+            might lead to compilation of all implementations in native image generation.
+            Use instanceof to get a more specific type or wrap the calls with @TruffleBoundary.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //MethodDeclaration
+                [not(pmd-java:hasAnnotation("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary"))]
+                //MethodCall[
+                ./VariableAccess
+                [pmd-java:typeIsExactly("java.lang.Object")
+                 or pmd-java:typeIs("java.lang.annotation.Annotation")
+                 or pmd-java:typeIsExactly("java.lang.Number")
+                 or pmd-java:typeIsExactly("java.lang.Throwable")
+                 or pmd-java:typeIsExactly("java.lang.Exception")
+                 or pmd-java:typeIsExactly("java.lang.RuntimeException")
+                 or pmd-java:typeIsExactly("java.io.IOException")
+                 or pmd-java:typeIsExactly("java.lang.Iterable")
+                 or pmd-java:typeIsExactly("java.util.Iterator")
+                 or pmd-java:typeIsExactly("java.util.List")
+                 or pmd-java:typeIsExactly("java.util.Collection")
+                 or pmd-java:typeIsExactly("party.iroiro.juicemacs.elisp.runtime.objects.ELispValue")
+                 ]]
+            ]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule
             name="TruffleBoundaryAtComplexTypes"
             language="java"
             message="Methods using HashMaps, BigIntegers or other complex types should be annotated with @TruffleBoundary."

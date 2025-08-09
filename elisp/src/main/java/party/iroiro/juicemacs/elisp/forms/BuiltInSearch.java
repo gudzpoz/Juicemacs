@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -12,6 +12,7 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
@@ -92,7 +93,7 @@ public class BuiltInSearch extends ELispBuiltIns {
 
     private static final RegexpCache COMPILED_REGEXPS = new RegexpCache();
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static ELispRegExp.CompiledRegExp compileRegExp(
             ELispLanguage language,
             ELispString regexp,
@@ -331,7 +332,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     @ELispBuiltIn(name = "string-match", minArgs = 2, maxArgs = 4)
     @GenerateNodeFactory
     public abstract static class FStringMatch extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public Object stringMatch(ELispString regexp, ELispString string, Object start, boolean inhibitModify) {
             ELispRegExp.CompiledRegExp pattern = compileRegExp(getLanguage(), regexp, null);
@@ -637,7 +638,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             // TODO: fixedcase, literal...
             long subexpN = notNilOr(subexp, 0);
             ELispString s = asStr(isNil(string) ? matchStr(this) : string);
-            ELispCons.ConsIterator cons = asCons(matchData(this)).listIterator((int) (subexpN * 2));
+            ConsIterator cons = asCons(matchData(this)).listIterator((int) (subexpN * 2));
             int start = asInt(cons.next());
             int end = asInt(cons.next());
             int length = StringNodes.length(s.value());
@@ -772,7 +773,7 @@ public class BuiltInSearch extends ELispBuiltIns {
                 throw ELispSignals.wrongTypeArgument(LISTP, list);
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            Iterator<Object> iterator = asCons(list).iterator();
+            ConsIterator iterator = asCons(list).iterator();
             while (iterator.hasNext()) {
                 Object o = iterator.next();
                 if (iterator.hasNext()) {
@@ -803,7 +804,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         public Object matchDataTranslate(long n) {
             Object value = matchData(this);
             if (value instanceof ELispCons cons) {
-                ELispCons.ConsIterator i = cons.listIterator(0);
+                ConsIterator i = cons.listIterator(0);
                 while (i.hasNextCons()) {
                     ELispCons current = i.nextCons();
                     if (current.car() instanceof Long l) {

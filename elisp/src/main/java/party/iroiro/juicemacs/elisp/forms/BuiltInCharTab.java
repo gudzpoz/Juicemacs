@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -23,7 +23,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
         return BuiltInCharTabFactory.getFactories();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void charTableMap(ELispCharTable table, BiConsumer<Object, Object> callback) {
         @Nullable ELispVector decoder = null;
         if (table.getPurpose() == CHAR_CODE_PROPERTY_TABLE && table.extraSlots() == 5) {

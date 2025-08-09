@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -41,18 +41,18 @@ public class BuiltInBuffer extends ELispBuiltIns {
         return ELispContext.get(node).globals().builtInBuffer.buffers;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Nullable
     private static ELispBuffer getBuffer(ELispString name) {
         // TODO: Handle name changes?
         return getBuffers(null).get(name.asTruffleStringUncached());
     }
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBuffer(ELispString name, ELispBuffer buffer) {
         getBuffers(null).put(name.asTruffleStringUncached(), buffer);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static Object getBufferList() {
         return ELispCons.listOf(getBuffers(null).values().toArray());
     }
@@ -216,7 +216,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "get-buffer-create", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FGetBufferCreate extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public static ELispBuffer getBufferCreate(Object bufferOrName, Object inhibitBufferHooks) {
             Object object = FGetBuffer.getBuffer(bufferOrName);
@@ -659,7 +659,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "kill-buffer", minArgs = 0, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FKillBuffer extends ELispBuiltInBaseNode {
-        @CompilerDirectives.TruffleBoundary
+        @TruffleBoundary
         @Specialization
         public boolean killBuffer(Object bufferOrName) {
             HashMap<TruffleString, ELispBuffer> buffers = getBuffers(this);

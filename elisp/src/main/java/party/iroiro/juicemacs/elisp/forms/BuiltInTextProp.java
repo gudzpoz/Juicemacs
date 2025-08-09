@@ -4,12 +4,11 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.eclipse.jdt.annotation.Nullable;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 
-import java.util.Iterator;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -344,7 +343,7 @@ public class BuiltInTextProp extends ELispBuiltIns {
         @Specialization
         public Object addTextProperties(long start, long end, Object properties, Object object) {
             ELispBuffer buffer = isNil(object) ? getContext().currentBuffer() : asBuffer(object);
-            Iterator<?> i = ELispCons.iterate(properties).iterator();
+            ConsIterator i = asConsIter(properties);
             while (i.hasNext()) {
                 Object property = i.next();
                 Object value = i.next();

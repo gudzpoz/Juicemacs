@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.scopes;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
@@ -103,7 +104,7 @@ public final class ValueStorage implements Externalizable {
     public boolean isAssumeConstant() {
         return assumeConstant;
     }
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void updateAssumeConstant(ELispContext context) {
         if (!assumeConstant) {
             return;
@@ -174,7 +175,7 @@ public final class ValueStorage implements Externalizable {
         noLongerAssumeConstant();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object swapThreadLocalValue(Object value, ELispSymbol symbol) {
         if (isConstant()) {
             throw ELispSignals.settingConstant(symbol);
@@ -247,7 +248,7 @@ public final class ValueStorage implements Externalizable {
         return delegate instanceof BufferLocal local ? local.defaultValue : delegate.getValue();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void setDefaultValue(Object value, ELispSymbol symbol, ELispContext context) {
         if (isConstant()) {
             if (symbol.isKeyword() && value == symbol) {
@@ -271,7 +272,7 @@ public final class ValueStorage implements Externalizable {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void setBufferLocal(boolean localIfSet, ELispSymbol symbol) {
         noLongerAssumeConstant();
         if (delegate instanceof VarAlias(ELispSymbol target)) {

@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.nodes.bytecode;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.dsl.*;
@@ -27,7 +28,6 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -403,11 +403,14 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        try (Bindings bindings = new Bindings()) {
+        Bindings bindings = new Bindings();
+        try {
             Object[] constants = ((ELispBytecode) frame.getArguments()[0]).getConstants();
             return executeBodyFromBci(frame, 0, startStackTop, constants, bindings); // NOPMD
         } catch (OsrResultException result) {
             return result.result;
+        } finally {
+            bindings.close();
         }
     }
 
@@ -690,7 +693,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         frame.setObject(top, BuiltInEditFns.FPreviousChar.previousCharBuffer(context.currentBuffer()));
                         break;
                     case CURRENT_COLUMN:               // 0151
-                        frame.setObject(top, getContext().currentBuffer().getPosition().column() - 1);
+                        frame.setObject(top, (long) getContext().currentBuffer().getPosition().column() - 1);
                         break;
                     case INDENT_TO:                    // 0152
                         frame.setObject(top, BuiltInIndent.FIndentTo.indentTo(frame.getObject(top), false));
@@ -1038,7 +1041,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         return ELispSignals.invalidFunction(function);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static int getHandlingTarget(AbstractTruffleException e, Bindings bindings) {
         AbstractTruffleException rethrow = e;
         Bindings.SignalHandler handler;
@@ -1056,7 +1059,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         return handler.target;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static Object getExceptionData(AbstractTruffleException e) {
         if (e instanceof ELispSignals.ELispSignalException signal) {
             return ELispCons.cons(signal.getTag(), signal.getData());
@@ -1212,8 +1215,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             if (inline.isTailored()) {
                 return inline.createNode(getReadSlotNodes(base + 1, base + n));
             }
-            List<ELispExpressionNode> nodes = new ArrayList<>();
-            List<ELispExpressionNode> restNodes = new ArrayList<>();
+            ArrayList<ELispExpressionNode> nodes = new ArrayList<>();
+            ArrayList<ELispExpressionNode> restNodes = new ArrayList<>();
             for (int i = 0; i < n; i++) {
                 ELispExpressionNode node = new ReadStackSlotNode(base + 1 + i);
                 if (nodes.size() < info.maxArgs()) {

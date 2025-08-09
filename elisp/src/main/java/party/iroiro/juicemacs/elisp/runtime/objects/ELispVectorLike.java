@@ -9,11 +9,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.AbstractList;
-import java.util.Iterator;
 import java.util.List;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class ELispVectorLike<T> extends AbstractList<T> implements List<T>, ELispValue, TruffleObject {
+public abstract class ELispVectorLike<T> extends AbstractList<T> implements  List<T>, ELispValue, TruffleObject {
     public abstract void setUntyped(int i, Object object);
 
     @Override
@@ -33,19 +32,15 @@ public abstract class ELispVectorLike<T> extends AbstractList<T> implements List
         return ELispPrint.toString(this).toString();
     }
 
-    protected void vectorPrintHelper(ELispPrint print, String prefix, String suffix, Iterator<?> iterator) {
+    protected void vectorPrintHelper(ELispPrint print, String prefix, String suffix, Object[] array) {
         print.print(prefix).start(this);
-        if (iterator.hasNext()) {
-            print.print(iterator.next());
-        }
-        while (iterator.hasNext()) {
-            print.sep().print(iterator.next());
+        for (int i = 0; i < array.length; i++) {
+            print.print(array[i]);
+            if (i < array.length - 1) {
+                print.sep();
+            }
         }
         print.print(suffix).end();
-    }
-
-    protected void displayHelper(ELispPrint print, String prefix, String suffix) {
-        vectorPrintHelper(print, prefix, suffix, iterator());
     }
 
     //#region Interop Array Elements

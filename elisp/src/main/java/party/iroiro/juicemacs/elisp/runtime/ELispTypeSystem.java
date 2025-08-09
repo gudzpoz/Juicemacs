@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -168,8 +169,8 @@ public abstract class ELispTypeSystem {
         if (value instanceof ELispBigNum bigNum) {
             return bigNum;
         }
-        if (value instanceof Number number) {
-            return ELispBigNum.forceWrap(number.longValue());
+        if (value instanceof Long l) {
+            return ELispBigNum.forceWrap(l);
         }
         throw ELispSignals.wrongTypeArgument(INTEGERP, value);
     }
@@ -254,7 +255,7 @@ public abstract class ELispTypeSystem {
         return asCons(value);
     }
 
-    public static ELispCons.ConsIterator asConsIter(Object value) {
+    public static ConsIterator asConsIter(Object value) {
         if (isNil(value)) {
             return ELispCons.emptyIterator();
         }

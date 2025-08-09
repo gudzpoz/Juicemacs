@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.nodes.ast;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -9,6 +10,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 
@@ -39,9 +41,9 @@ public final class ConsInlinedAstNode extends ConsCallNode {
         } else if (inline.isTailored()) {
             return inline.createNode(initChildren(cons, 0));
         }
-        List<ELispExpressionNode> nodes = new ArrayList<>();
-        List<ELispExpressionNode> restNodes = new ArrayList<>();
-        ELispCons.ConsIterator argIterator = cons.listIterator(1);
+        ArrayList<ELispExpressionNode> nodes = new ArrayList<>();
+        ArrayList<ELispExpressionNode> restNodes = new ArrayList<>();
+        ConsIterator argIterator = cons.listIterator(1);
         while (argIterator.hasNext()) {
             ELispExpressionNode node = ELispInterpretedNode.create(argIterator.next());
             if (nodes.size() < info.maxArgs()) {
@@ -117,7 +119,7 @@ public final class ConsInlinedAstNode extends ConsCallNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public RuntimeException rewriteException(RuntimeException e) {
         return ELispSignals.remapException(e, getParent() == null ? this : getParent());
     }

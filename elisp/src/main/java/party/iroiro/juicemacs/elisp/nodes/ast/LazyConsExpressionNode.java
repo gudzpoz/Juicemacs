@@ -56,10 +56,13 @@ public final class LazyConsExpressionNode extends ELispExpressionNode implements
         ELispExpressionNode created = switch (function) {
             case ELispCons c when c.car() == MACRO -> {
                 Object callable = ReadFunctionObjectNodes.getFunctionUncached(this, c.cdr());
-                try (Dynamic _ = Dynamic.withLexicalBinding(ELispLexical.getScope(this) != null)) {
+                Dynamic scope = Dynamic.withLexicalBinding(ELispLexical.getScope(this) != null);
+                try {
                     Object[] args = ConsCallNode.argsArrayWithFunc(callable, cons);
                     Object o = FuncallDispatchNodeGen.getUncached().executeDispatch(this, args);
                     yield ELispInterpretedNode.createWithLocation(o, cons);
+                } finally {
+                    scope.close();
                 }
             }
             case ELispSubroutine sub when sub.inlinable() && stable != null && stable != Assumption.NEVER_VALID ->

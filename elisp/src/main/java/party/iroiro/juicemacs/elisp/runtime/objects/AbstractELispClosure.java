@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -66,7 +67,7 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
 
     @Override
     public void display(ELispPrint print) {
-        displayHelper(print, "#[", "]");
+        vectorPrintHelper(print, "#[", "]", inner);
     }
 
     @Nullable
@@ -78,7 +79,7 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         return source == null ? null : source.getSource();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static AbstractELispClosure create(List<?> inner, ClosureCommons rootSource) {
         Object[] array = inner.toArray();
         int size = array.length;
