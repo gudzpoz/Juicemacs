@@ -321,7 +321,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
                 AbstractTruffleString gen = new MuleStringBuilder()
                         .appendString(name)
                         .appendCodePoint('<')
-                        .append(longToString.execute(i, StringSupport.UTF_32, true), 0)
+                        .append(longToString.execute(i, StringSupport.UTF_32, true), 0) // NOPMD: no need to explode node execution
                         .appendCodePoint('>')
                         .build();
                 name = new ELispString(gen, name.state());

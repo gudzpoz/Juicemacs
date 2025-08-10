@@ -6,6 +6,8 @@ import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 
@@ -91,11 +93,38 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "random", minArgs = 0, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FRandom extends ELispBuiltInBaseNode {
-        private static final Random RANDOM = new Random();
+        @CompilationFinal
         @Nullable
-        private static final SecureRandom SECURE_RANDOM;
+        private static Random random = null;
+        @CompilationFinal
+        @Nullable
+        private static SecureRandom secureRandom = null;
 
-        static {
+        @Specialization
+        public static Object random(Object limit) {
+            if (random == null) {
+                runtimeInitRandom();
+            }
+            if (isT(limit)) {
+                random.setSeed(secureSeed());
+            }
+            if (limit instanceof Long l) {
+                return random.nextLong(l);
+            }
+            if (limit instanceof ELispBigNum big) {
+                return randomBigInteger(big);
+            }
+            return random.nextLong();
+        }
+
+        /// Lazily initializes [#random] and [#secureRandom]
+        ///
+        /// This is for native images: native images do not want compile-time
+        /// initialized random fields ([#random]) because their compile-time
+        /// seed will be persisted and shared between sessions.
+        private static void runtimeInitRandom() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            random = new Random();
             SecureRandom instance;
             try {
                 instance = SecureRandom.getInstanceStrong();
@@ -106,21 +135,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     instance = null;
                 }
             }
-            SECURE_RANDOM = instance;
-        }
-
-        @Specialization
-        public static Object random(Object limit) {
-            if (isT(limit)) {
-                RANDOM.setSeed(secureSeed());
-            }
-            if (limit instanceof Long l) {
-                return RANDOM.nextLong(l);
-            }
-            if (limit instanceof ELispBigNum big) {
-                return randomBigInteger(big);
-            }
-            return RANDOM.nextLong();
+            secureRandom = instance;
         }
 
         @TruffleBoundary
@@ -132,17 +147,17 @@ public class BuiltInFns extends ELispBuiltIns {
             int bits = bigInteger.bitLength();
             BigInteger random;
             do {
-                random = new BigInteger(bits, RANDOM);
+                random = new BigInteger(bits, FRandom.random);
             } while (random.compareTo(bigInteger) >= 0);
             return random;
         }
 
         @TruffleBoundary
         private static long secureSeed() {
-            if (SECURE_RANDOM == null) {
+            if (secureRandom == null) {
                 return System.nanoTime() * 31 + System.identityHashCode(SecureRandom.class);
             }
-            return SECURE_RANDOM.nextLong();
+            return secureRandom.nextLong();
         }
     }
 
@@ -1369,19 +1384,19 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
             PrimitiveIterator.OfInt i = seq.iterator(0);
-            StringBuilder builder = new StringBuilder();
+            MuleStringBuilder builder = new MuleStringBuilder();
             while (i.hasNext()) {
                 int codepoint = i.nextInt();
                 if (!(elt instanceof Long l && l == codepoint)) {
                     builder.appendCodePoint(codepoint);
                 }
             }
-            return new ELispString(builder.toString());
+            return builder.buildString();
         }
         @Specialization
         public static ELispVector deleteVec(Object elt, ELispVector seq) {
-            ArrayList<Object> list = new ArrayList<>();
-            for (Object e : seq) {
+            ArrayList<Object> list = new ArrayList<>(seq.size());
+            for (Object e : seq.inner()) {
                 if (!FEqual.equal(elt, e)) {
                     list.add(e);
                 }

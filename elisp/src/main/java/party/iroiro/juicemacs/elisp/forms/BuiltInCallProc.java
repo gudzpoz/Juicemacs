@@ -73,8 +73,8 @@ public class BuiltInCallProc extends ELispBuiltIns {
     @ELispBuiltIn(name = "call-process", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FCallProcess extends ELispBuiltInBaseNode {
-        @Specialization
         @TruffleBoundary
+        @Specialization
         public Object callProcess(ELispString program, Object[] args) {
             Object input = args.length > 0 ? args[0] : false;
             if (!isNil(input)) {

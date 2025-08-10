@@ -1,5 +1,8 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -12,12 +15,14 @@ class ByteIterator {
     final long end;
     private long position;
 
+    @TruffleBoundary
     public ByteIterator(SeekableByteChannel input, long start, long end) {
         this.input = input;
         this.start = start;
         this.end = end;
         position = start;
-        buffer = ByteBuffer.allocate(4096).limit(0);
+        buffer = ByteBuffer.allocate(4096);
+        TruffleUtils.bufLimit(buffer, 0);
     }
 
     public long inputBytes() {
@@ -26,12 +31,14 @@ class ByteIterator {
 
     public void skip(long n) {
         position += n - buffer.remaining();
-        buffer.position(0).limit(0);
+        buffer.position(0);
+        TruffleUtils.bufLimit(buffer, 0);
     }
 
-    public void skipToEnd() throws IOException {
+    public void skipToEnd() {
         position = end;
-        buffer.position(0).limit(0);
+        buffer.position(0);
+        TruffleUtils.bufLimit(buffer, 0);
     }
 
     public byte next() throws IOException {
@@ -46,7 +53,7 @@ class ByteIterator {
             return true;
         }
         buffer.clear();
-        buffer.limit(Math.clamp(end - position, 0, buffer.capacity()));
+        TruffleUtils.bufLimit(buffer, Math.clamp(end - position, 0, buffer.capacity()));
         int inc = input.position(position).read(buffer.clear());
         buffer.flip();
         if (inc > 0) {
@@ -64,6 +71,7 @@ class ByteIterator {
 
     public void reset(long i) {
         position = start + i;
-        buffer.position(0).limit(0);
+        buffer.position(0);
+        TruffleUtils.bufLimit(buffer, 0);
     }
 }

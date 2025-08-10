@@ -29,6 +29,7 @@ public final class ELispPrint {
     private final ArrayList<Object> stack;
     private boolean inString = false;
 
+    @TruffleBoundary
     private ELispPrint(PrintFunc func) {
         this.stack = new ArrayList<>();
         this.visited = new HashMap<>();

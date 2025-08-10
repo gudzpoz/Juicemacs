@@ -51,10 +51,13 @@ public class ELispParser {
     private final ELispLexer lexer;
     private boolean lexicalBinding;
 
+
+    @TruffleBoundary
     public ELispParser(InternContext context, Source source) {
         this(context, new ELispLexer(source));
     }
 
+    @TruffleBoundary
     public ELispParser(InternContext context, ELispLexer lexer) {
         this.context = context;
         this.lexer = lexer;
@@ -195,7 +198,7 @@ public class ELispParser {
                 yield new ELispRecord(list);
             }
             case StrWithPropsOpen() -> {
-                List<Object> list = readList();
+                ArrayList<Object> list = readList();
                 ELispString base = (ELispString) list.getFirst();
                 base.syncFromPlist(list);
                 yield base;
@@ -347,7 +350,7 @@ public class ELispParser {
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
         ELispExpressionNode expr = ELispRootNodes.createMacroexpand(parser.parse(source), parser.isLexicallyBound());
         if (!debug) {
-            source = Source.newBuilder(source).content(Source.CONTENT_NONE).build();
+            source = TruffleUtils.buildSource(Source.newBuilder(source).content(Source.CONTENT_NONE));
         }
         return new ELispRootNode(language, expr, parser.getWholeSection(source));
     }

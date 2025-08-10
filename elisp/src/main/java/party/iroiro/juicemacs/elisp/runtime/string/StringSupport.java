@@ -8,6 +8,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.TruffleString;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.nio.ByteBuffer;
@@ -54,7 +55,7 @@ public abstract class StringSupport {
 
     public static TruffleString fromRaw(ByteBuffer buffer) {
         byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);
+        TruffleUtils.bufGet(buffer, bytes);
         return fromBytes(bytes);
     }
 

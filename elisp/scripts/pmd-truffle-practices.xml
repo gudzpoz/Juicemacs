@@ -158,6 +158,8 @@
             Calling highly polymorphic methods like Object::toString() and Throwable::getMessage()
             might lead to compilation of all implementations in native image generation.
             Use instanceof to get a more specific type or wrap the calls with @TruffleBoundary.
+            (By the way, access to annotation properties is also polymorphic because it is actually
+            implemented by JVM (at least in HotSpot) with proxies.)
         </description>
         <priority>3</priority>
         <properties>
@@ -178,6 +180,7 @@
                  or pmd-java:typeIsExactly("java.util.Iterator")
                  or pmd-java:typeIsExactly("java.util.List")
                  or pmd-java:typeIsExactly("java.util.Collection")
+                 or pmd-java:typeIs("com.oracle.truffle.api.source.Source.SourceBuilder")
                  or pmd-java:typeIsExactly("party.iroiro.juicemacs.elisp.runtime.objects.ELispValue")
                  ]]
             ]]></value>

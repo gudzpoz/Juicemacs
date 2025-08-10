@@ -49,6 +49,7 @@ public final class PieceTreeBase {
 
     /* Skipped: class LineStarts */
 
+    @TruffleBoundary // TODO: why native-image reports parsing error?
     static LineStartList createLineStartsFast(AbstractTruffleString str) {
         LineStartList r = new LineStartList();
         r.add(0);
@@ -626,6 +627,7 @@ public final class PieceTreeBase {
         return newPieces;
     }
 
+    @TruffleBoundary // TODO: why native-image reports parsing error?
     private Piece appendBuffer(AbstractTruffleString text, BufferCursor start, int level, int extraLength) {
         StringBuffer buffer = buffers.get(level);
         int startOffset = buffer.length();

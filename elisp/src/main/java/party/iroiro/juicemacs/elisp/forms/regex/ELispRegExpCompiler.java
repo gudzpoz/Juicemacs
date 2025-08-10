@@ -12,6 +12,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import com.oracle.truffle.api.CompilerDirectives;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
@@ -880,7 +881,7 @@ final class ELispRegExpCompiler {
                 switch (segment) {
                     case HalfCompiled sub -> compiled.add(sub);
                     case Integer code -> compiled.add(new HalfCompiled.Single(code));
-                    default -> throw ELispSignals.error("Invalid segment: " + segment);
+                    default -> throw ELispSignals.error(TruffleUtils.concat("Invalid segment: ", segment));
                 }
             }
             return new HalfCompiled.Segments(

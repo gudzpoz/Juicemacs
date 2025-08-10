@@ -498,11 +498,11 @@ public class BuiltInKeymap extends ELispBuiltIns {
         public static boolean defineKey(ELispCons keymap, Object key, Object def, Object remove) {
             boolean doRemove = !isNil(remove);
             if (key instanceof ELispVector vector && !vector.isEmpty()) {
-                if (isT(vector.getFirst())) {
+                if (isT(vector.get(0))) {
                     if (vector.size() != 1) {
                         throw ELispSignals.error("Key sequence starts with non-prefix key <t>");
                     }
-                } else if (vector.getFirst() == REMAP) {
+                } else if (vector.get(0) == REMAP) {
                     if (vector.size() != 2) {
                         throw ELispSignals.error("Key sequence starts with non-prefix key <remap>");
                     }

@@ -20,6 +20,7 @@ import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.PrimitiveIterator;
 
@@ -1048,6 +1049,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "system-name", minArgs = 0, maxArgs = 0)
     @GenerateNodeFactory
     public abstract static class FSystemName extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static ELispString systemName() {
             Object value = SYSTEM_NAME.getValue();
@@ -1768,7 +1770,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 builder.add(properties[i]);
                 builder.add(properties[i + 1]);
             }
-            s.syncFromPlist(List.of(false, 0L, length, builder.build()));
+            s.syncFromPlist(Arrays.asList(false, 0L, length, builder.build()));
             return s;
         }
     }

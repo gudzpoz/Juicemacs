@@ -1,0 +1,523 @@
+#+title: Contributing
+
+Thank you for your interest in Juicemacs! This document contains coding
+examples, common development pitfalls, and an introduction to some useful
+developer tools. Whether you are looking to contribute or just taking a peek,
+this guide should help you started with the current codebase.
+
+Alternatively, you can also contribute by reporting bugs or discussing designs
+and features. Other than a personal request to use [[https://codeberg.org/gudzpoz/Juicemacs][Codeberg]] instead of the
+GitHub mirror, there are no other guidelines (yet). Please feel free to [[https://codeberg.org/gudzpoz/Juicemacs/issues/new][open
+issues]] on Codeberg for anything related to Juicemacs.
+
+For code contributors, there is also this legal notice boilerplate here:
+
+#+begin_quote
+When contributing to this project, you must agree that you have authored 100% of
+the content, that you have the necessary rights to the content and that the
+content you contribute may be provided under the project licence ([[file:LICENSE][GPLv3]]).
+#+end_quote
+
+* Background
+
+Juicemacs builds upon other tools and frameworks and has its own code structure.
+For people with no prior experience of the dependencies, getting started can be
+difficult. This guide aims to ease the burden on new contributors and help them
+get familiar with the directory structure and the Truffle framework.
+
+This guide assumes the following:
+
+- The reader should have knowledge of Emacs Lisp, including its data types,
+  language designs (i.e., [[http://xahlee.info/emacs/emacs/lisp1_vs_lisp2.html][Lisp-2]], [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Macros.html][macros]], [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Lexical-Binding.html][lexical scoping]], and [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Dynamic-Binding.html][dynamic scoping]])
+  and a bit of its internals ([[https://www.gnu.org/software/emacs/manual/html_node/elisp/Byte-Compilation.html][byte compilation]] and possibly [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Native-Compilation.html][native compilation]]).
+
+- The reader should know Java and its basic syntax. In particular, there are a
+  few new features from recent JDK versions that get used heavily in the
+  codebase, including:
+
+  - Markdown JavaDoc ([[https://openjdk.org/jeps/467][JEP 467]])
+  - =instanceof= pattern matching ([[https://openjdk.org/jeps/394][JEP 394]])
+  - =switch= pattern matching ([[https://openjdk.org/jeps/441][JEP 441]])
+  - =record= classes ([[https://openjdk.org/jeps/395][JEP 395]])
+
+- No prior knowledge of the Truffle framework is required. The reader is not
+  expected to know how to work with Truffle when implementing simple Lisp
+  functions (but it would certainly help if they do). When talking about Truffle
+  caveats that do need a basic understanding of Truffle/Graal, this guide will
+  include links to materials that I find useful when getting started with
+  Truffle.
+
+* Table Of Contents
+
+This guide will talk about the following:
+
+- How Juicemacs uses code generation to ease developing
+
+  To keep in sync with [[https://en.wikipedia.org/wiki/GNU_Emacs][GNU Emacs]], Juicemacs heavily relies on code generation
+  (see [[https://github.com/gudzpoz/emacs-extractor][emacs-extractor]]). This will keep the Lisp function signatures (extracted
+  as Java method signatures) and documentation (extracted into JavaDoc) remain
+  synchronized. The next section, [[Implementing Basic Built-in Functions]], will
+  cover how to work with the generated code.
+
+- What things you will need to take note of to make the Truffle JIT magic happen
+
+  Juicemacs uses [[https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/][the Truffle framework]] for a [[https://en.wikipedia.org/wiki/Just-in-time_compilation][JIT compiling]] [[https://en.wikipedia.org/wiki/Emacs_Lisp][ELisp]] interpreter.
+  This framework, however, requires quite a few workarounds to make the JIT
+  magic happen. We will document these caveats in dedicated sections. (If you
+  encounter any new gotchas, you are welcome to add them here!)
+
+* Implementing Basic Built-in Functions
+
+Like any language implementation, we need to implement a lot of built-in
+functions in Juicemacs. GNU Emacs has around 1800, and there's still a long long
+way to go. With code generation from [[https://github.com/gudzpoz/emacs-extractor][emacs-extractor]] and the Truffle annotation
+processor, implementing a built-in Lisp subroutine is not that hard and can be a
+good way to get started with the codebase.
+
+For example, we can get to implement the =consp= function in just two steps:
+
+1. Locate the pre-generated placeholder implementation. In this case, the
+   function is defined in =data.c= in GNU Emacs, and the generated placeholder
+   can be found in =BuiltInData.java=:
+
+   #+begin_src java
+     @ELispBuiltIn(name = "consp", minArgs = 1, maxArgs = 1)
+     @GenerateNodeFactory
+     public abstract static class FConsp extends ELispBuiltInBaseNode {
+         @Specialization
+         public static Void consp(Object object) {
+             throw new UnsupportedOperationException();
+         }
+     }
+   #+end_src
+
+2. Implement the function in two lines:
+
+   #+begin_src diff
+      @ELispBuiltIn(name = "consp", minArgs = 1, maxArgs = 1)
+      @GenerateNodeFactory
+      public abstract static class FConsp extends ELispBuiltInBaseNode {
+          @Specialization
+     -    public static Void consp(Object object) {
+     -        throw new UnsupportedOperationException();
+     +    public static boolean consp(Object object) {
+     +        return object instanceof ELispCons;
+          }
+      }
+   #+end_src
+
+Of course, most built-in functions will require more than two lines of code, but
+the above covers the gist of a built-in function definition in Juicemacs:
+
+- =@ELispBuiltIn= metadata :: =@ELispBuiltIn= annotations contain basic function
+  information, such as the function name and argument counts. They are used by
+  the language context to register built-in functions. (See =ELispBuiltIns.java=
+  for more implementation details.)
+
+- =@GenerateNodeFactory= :: This annotation asks Truffle to generate factory
+  classes for this function and gather all the factories into a list.
+
+- =abstract static class FConsp extends ELispBuiltInBaseNode= :: This class
+  definition is required for Truffle code generation to kick in:
+
+  - =abstract=: Truffle will generate child classes.
+  - =ELispBuiltInBaseNode=: This class extends the =Node= class from Truffle and
+    contains several abstract =executeXXX= methods. Truffle will generate
+    JIT-capable implementations for these =executeXXX= methods, which in turn
+    will call =@Specialization= methods for the actual work.
+
+- =@Specialization= :: This annotation marks the implementation of the =consp=
+  function. A class can contains several =@Specialization= methods, each
+  with different parameter types (and optionally different return types) but the
+  same parameter count.
+
+Most of the above should be kept as is, because they will be overwritten when we
+rerun the code generation to update JavaDoc and incorporate GNU Emacs changes. Therefore,
+for the code generator to work correctly, there are a few things to note:
+
+- You can only place extra method / class definitions either inside the function
+  class, or at the top of the enclosing class (at the top of =BuiltInData.java=
+  in this case).
+- Do not modify the argument names, which are also used by the code generator
+  and should already be in sync with the JavaDoc.
+
+#+begin_quote
+Sometimes the placeholder implementation is not yet generated. In that case, you
+will need to modify the [[https://github.com/gudzpoz/emacs-extractor][emacs-extractor]] code to extract them from the GNU Emacs
+code.
+#+end_quote
+
+** Language Context: =ELispContext=
+
+Language contexts are special objects for which Truffle can allocate dedicated
+space in thread-local storage for quick retrieval. There are several way to
+obtain an =ELispContext= reference:
+
+- =ELispContext.get(<currentNode>)=:
+
+  #+begin_src java
+    @ELispBuiltIn(name = "symbol-value", minArgs = 1, maxArgs = 1)
+    @GenerateNodeFactory
+    public abstract static class FSymbolValue extends ELispBuiltInBaseNode {
+        @Specialization
+        public Object symbolValue(ELispSymbol symbol) {
+            ELispContext context = getContext(); // or ELispContext.get(this)
+            return context.getStorage(symbol).getValue(symbol);
+        }
+    }
+  #+end_src
+
+  The =currentNode= reference is usually =this=. It serves to help Truffle
+  store the =ELispContext= instance inline. =ELispBuiltInBaseNode= child classes
+  have a =getContext= utility method for this.
+
+- =ELispContext.get(null)=: Used when no =Node= reference is within reach. Can
+  be slower than the former case.
+
+Currently, =ELispContext= provides access to:
+
+- Global obarray
+- Truffle environment
+- Filesystem (with more IO policy enforced than plain =java.io= calls)
+- Symbol value storage (see [[Symbols and Variables]])
+
+** Object Types
+
+Most Lisp object implementations are in
+=party.iroiro.juicemacs.elisp.runtime.objects=, with the exception of
+=ELispCons= and =ELispString=. Other than primitive types, all of them implement
+the =ELispValue= interface.
+
+|---------------+----------------------------+----------------------------------|
+| Emacs Type    | Juicemacs Type             | Notes                            |
+|---------------+----------------------------+----------------------------------|
+| =nil=         | =false= or symbol =NIL=    | use =isNil= to check             |
+| =t=           | =true= or symbol =T=       | use =isT= to check               |
+| =fixnum=      | =long= or boxed =Long=     | avoid leaking boxed =int=        |
+| =float=       | =double= or boxed =Double= |                                  |
+| =bignum=      | =ELispBigNum=              |                                  |
+| =symbol=      | =ELispSymbol=              | immutable, see =ValueStorage=    |
+| =cons=        | =ELispCons=                | with source location, by the way |
+| =string=      | =ELispString=              | see also =TruffleString=         |
+| =vector=      | =ELispVector=              |                                  |
+| =record=      | =ELispRecord=              |                                  |
+| =char-table=  | =ELispCharTable=           |                                  |
+| =bool-vecotr= | =ELispBoolVector=          |                                  |
+|---------------+----------------------------+----------------------------------|
+
+*** Object Utilities
+
+Most objects can be created with their constructors, and most utilities are
+located directly within the object class, such as =ELispCons.of(...)= or
+=ELispCons.ListBuilder= or =consInstance.iterator()=.
+
+For simple type checking, you may change the signature of =@Specialization=
+methods, and Truffle will check the type for you. If a parameter can be of
+multiple types, then you might need to perform manual type checking using
+=instanceof= and Java pattern matching:
+
+- =if (object instanceof ELispCons cons) { return cons.car(); }=
+- =switch (object) { case ELispCons cons -> return cons.car(); }=
+
+=ELispTypeSystem= also has a few type-casting utilities:
+
+- =isNil= / =isT=
+- =notNilOr=: useful for optional =fixnum= arguments
+- =asLong= / =asInt= / =asRanged= / =asChar=
+- =asCons= / =asConsIter= / =asVector= / =asSym= / ...
+
+*** Conses
+
+Conses are simple pair-like constructs in Lisp. However, since lists and
+ultimately Lisp source code are stored as conses, another field is packed into
+our =ELispCons= object: source location encoded as a =long=. Truffle uses the
+extra info in stack traces as well as [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome Debugger]] protocol integration.
+However, since most functions are byte-compiled after bootstrap, one may also
+argue that this field can be removed.
+
+Also, since cons lists can be circular, one is always recommended to use
+=ConsIterator= (obtained via =cons.iterator/listIterator()=), which has cycle
+detection baked in.
+
+*** Symbols and Variables
+
+Unlike GNU Emacs, which stores symbol values within symbol structs, we make
+=ELispSymbol= immutable and store values inside =ValueStorage= and
+=FunctionStorage=. Storage objects can be retrieved from the current language
+context (=ELispContext=). (Note that lexical variables are implemented
+differently. See =ELispLexical=.)
+
+*** Strings and =TruffleString=
+
+Emacs strings are ... complicated. Here are some examples:
+
+- Emacs codepoints go up to =#x3FFFFF=, while Unicode spans only =0= to =#x10FFFF=.
+
+- Emacs has two kinds of strings: =unibyte= and =multibyte=. ="ascii string"= is
+  unibyte, as well as ="ascii+\255"=. ="🤔"= is multibyte, and ="🤗\255"= is ...
+  multibyte (please read on). Also, both of them are mutable.
+
+- Multibyte strings can contain raw bytes, likely meaning bytes that failed to
+  decode, represented as codepoints between =#x3FFFF80= and =#x3FFFFF=.
+
+- (And, yes. All above also applies to Emacs buffers.)
+
+This means we cannot use =java.lang.String= or any string implementation that
+expects only valid Unicode. The good news is that =TruffleString= support
+=UTF-32= and we can store those invalid Unicode codepoints with a bit of
+tweaking. The bad news is, it still expects Unicode and will try to convert
+invalid bytes into replacement characters from time to time. But anyways, now
+=ELispString= stores the following to maintain some compatibility with GNU
+Emacs:
+
+- =state= :: =STATE_BYTES(1)= or =STATE_ASCII(0)= is =unibyte=. Any values higher than
+  =1= (=STATE_UTF32(2)/STATE_EMACS(3)=) is =multibyte=.
+- =value= :: A =TruffleString= object with an auto-compacting =UTF-32= encoding.
+  It /should/ be able to support non-Unicode chars in =#x110000 ~ #x3FFFFF=. (It
+  it quite fortunate that =TruffleString= allows =CodeRange.BROKEN= chars. But
+  currently it sometimes convert those chars into =#xFFFD=, the replaecment
+  character.)
+- =intervals= :: Emacs string properties
+
+Utilities for strings are currently scattered everywhere...
+
+- =StringNodes=
+- =StringSupport=
+- =MuleStringBuilder=
+
+** Linting
+
+- Run =./gradlew :elisp:emacsGen=. This will check if all function signations
+  match.
+- Run =./gradlew :elisp:pmdMain=. This will check against common pitfalls.
+- Run =./gradlew :app:nativeCompile=. This will reveal many, but not all,
+  incorrect uses of Truffle nodes.
+
+** Testing
+
+In addition to writing manual unit tests, there are two other way to test your
+function implementation:
+
+- =ElSemiFuzzTest.java= :: It runs =el-semi-fuzz.el= from [[https://github.com/gudzpoz/emacs-extractor][emacs-extractor]] to
+  generate a bunch of test cases from GNU Emacs behavior, and then tests them
+  against Juicemacs. It is best suited for context-independent pure functions
+  like arithmetic.
+
+- =ELispLanguageTest= :: This test bootstraps Juicemacs, pdumps it and then runs
+  some [[https://www.gnu.org/software/emacs/manual/html_mono/ert.html][ERT tests]]. Currently, it only run =data-tests= and =floatfns-tests=. Free
+  free to add more!
+
+To run the two test suites above, simply modify the Java code to include or
+generate test cases for your functions. During development, you might also want
+to exclude tests for other functions to save time, since these tests typically
+take quite some time.
+
+* Authoring Truffle Nodes
+
+While implementing Lisp functions is straightforward, making them run fast can
+be a challenge because it usually involve writing a few Truffle nodes. We will
+begin with a few examples:
+
+** Using Other Nodes In Your Function
+
+Truffle provides quite a few built-in nodes that are tailored to provide decent
+JIT performance. A common way to put these nodes to use is to add an extra
+argument annotated with =@Cache= in your =@Specialization= function:
+
+#+begin_src java
+  @ELispBuiltIn(name = "aref", minArgs = 2, maxArgs = 2)
+  @GenerateNodeFactory
+  public abstract static class FAref extends ELispBuiltInBaseNode {
+      @Specialization
+      public static long arefString(ELispString array, long idx,
+                                    @Cached TruffleString.CodePointAtIndexNode charAt) {
+          checkRange(array.length(), idx);
+          AbstractTruffleString s = array.value(); // TruffleString or MutableTruffleString
+          return charAt.execute(s, (int) idx, TruffleString.Encoding.UTF_32);
+      }
+  }
+#+end_src
+
+The =@Cache= annotation asks Truffle to generate code to lazily initialize and
+reuse the annotated field. For Truffle nodes, Truffle will automatically use the
+generated implementation; for other values, the user is expected to provide an
+initialization expression.
+
+#+begin_quote
+UTF-32 Truffle strings may be stored as Latin-1, 16-bit shorts, or 32-bit ints.
+Also, some strings can be "lazy", consisting of a rope-like structure with
+pieces concatenated from other strings. It will be quite costly to compile code
+to handle all these at runtime. The provided built-in nodes will make good
+speculation about the string types and produce (hopefully) efficient and compact
+JIT snippet.
+
+We also provide some nodes, including =FuncallDispatchNode= for fast function
+calls and =GlobalVariableReadNode= for dynamic-scoped variable reading. See the
+implementations of =mapc=, =mapcar= and =mapconcat= for some examples.
+#+end_quote
+
+** Inlined Functions
+
+In Lisp, almost everything is expressed as function calls (called "forms").
+However, for functions like =+= and =logior=, which typically appears in other
+languages as binary operators (=+= and =|=), it can be really costly to treat
+them as normal function calls.
+
+Juicemacs provides a way to inline these functions. But first, we need to talk
+more about Truffle nodes.
+
+*** Truffle Nodes
+
+One can think of Truffle nodes as executable [[https://en.wikipedia.org/wiki/Abstract_syntax_tree][AST]] nodes, with each node carrying
+its own runtime info (statistics, caches, or just anything). During JIT
+compilation, Truffle stitches together the executable code in the AST tree,
+constant-fold everything where possible (called "partial evalutation"), and
+produces the JIT compilation product.
+
+Most of ELisp functions can be implemented with a single Truffle node and does
+not need inlining performance-wise. But if you do need to (e.g., when
+implementing arithmetic functions), you are expected to:
+
+- Know about "speculative compilation". (Here is a good introduction:
+  [[https://webkit.org/blog/10308/speculation-in-javascriptcore/][Speculation in JavaScriptCore - WebKit]]. Reading only the first few sections
+  will suffice.)
+
+- Know about Truffle DSL and how it achieves speculation. I have a blog post
+  that hopefully can help you with it: [[https://kyo.iroiro.party/en/posts/emacs-lisp-interpreter-with-graalvm-truffle/][Writing a Lisp JIT Interpreter with
+  GraalVM Truffle]]. You may also refer to Truffle tutorials like [[https://www.endoflineblog.com/graal-truffle-tutorial-part-0-what-is-truffle][the series by
+  Adam Ruka]]. You need to get familiar with the following before reading on:
+
+  - =@CompilationFinal=
+  - =CompilerDirectives.transferToInterpreterAndInvalidate()=
+  - =@Specialization=
+
+*** =ELispBuiltInBaseNode.InlineFactory=
+
+For a function to support AST-level inlining, just implement the =InlineFactory=
+interface:
+
+#+begin_src java
+  @ELispBuiltIn(name = "+", minArgs = 0, maxArgs = 0, varArgs = true)
+  @GenerateNodeFactory
+  public abstract static class FPlus extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.InlineFactory {
+      // ...
+
+      @Override
+      public ELispExpressionNode createNode(ELispExpressionNode[] arguments) {
+          if (arguments.length == 0) { // (+) -> 0
+              return ELispLiteralNodes.of(0L);
+          }
+          if (arguments.length == 1) { // (+ num) -> num
+              return BuiltInDataFactory.NumberAsIsUnaryNodeGen.create(arguments[0]);
+          }
+          // (+ a b c) -> ((a + b) + c)
+          return varArgsToBinary(arguments, 0, BuiltInDataFactory.FPlusBinaryNodeGen::create);
+      }
+  }
+#+end_src
+
+The returned =ELispExpressionNode= will replace the function node (with a
+=ConsInlinedAstNode= wrapper to support function redefinition). See
+=BuiltInData.java= for some more examples.
+
+** Special Forms
+
+Similar to inlinable functions, we implement Lisp special forms (=if=, =progn=,
+etc.) also by implementing an interface: =SpecialFactory=:
+
+#+begin_src java
+  @ELispBuiltIn(name = "progn", minArgs = 0, maxArgs = 0, varArgs = true, rawArg = true)
+  @GenerateNodeFactory
+  public abstract static class FProgn extends ELispBuiltInBaseNode implements ELispBuiltInBaseNode.SpecialFactory {
+      @Specialization
+      public static Void prognBailout(Object[] body) {
+          return null; // progn is not expected to be called
+      }
+
+      @Override
+      public ELispExpressionNode createNode(Object[] arguments) {
+          ELispExpressionNode[] nodes = ELispInterpretedNode.create(arguments);
+          if (nodes.length == 0) {
+              return ELispLiteralNodes.of(false);
+          }
+          if (nodes.length == 1) {
+              return nodes[0];
+          }
+          return new PrognBlockNode(nodes);
+      }
+  }
+#+end_src
+
+Unlike =InlineFactor=, where the arguments are passed in as AST nodes,
+=SpecialFactory= receives the arguments as plain objects as is required by many
+special forms. So =(defvar sym)= (a special form) gets a =ELispSymbol= in
+=createNode=, while =(defvar1 'sym)= (a function) gets an =ObjectLiteralNode=
+were it an inlinable function.
+
+** Internal Nodes
+
+There are some other nodes implementing language mechanisms like lexical scoping
+and function calls. They are mostly in the =party.iroiro.juicemacs.elisp.nodes=
+package. Modifying them might require deeper understanding of Truffle and one is
+recommended to read code from other Truffle language implementations before
+deciding on what to do. But rest assured, these nodes are not well-optimized yet
+and you will very likely be able to find plenty room for improvement.
+
+* Taming Native Images
+
+One of the main challenges for working with Truffle is that it (and the Graal
+compiler) can be quite picky about the interpreter code. Truffle even has a
+method blocklist to prevent compilation of methods that are hard to
+partial-evaluate.
+
+We have a few PMD rule to detect code that might cause trouble (see
+[[file:elisp/scripts/pmd-elisp-cautions.xml]] and
+[[file:elisp/scripts/pmd-truffle-practices.xml]]) and you may also find other
+pitfalls by trying to generating native images for Juicemacs.
+
+This section tries to summarize these pitfalls.
+
+- Recursive methods cause trouble because Truffle tries to inline everything,
+  leading to exploding code size. Annotate them with =@TruffleBoundary= to
+  disallow partial evaluation.
+- Truffle uses =VirtualFrame= to track variables. When passing the frame
+  instance to a method, the method should not be used in a loop, unless the loop
+  is mark for =@ExplodeLoop=. (Otherwise the method will fail to compile.)
+- When calling an polymorphic method (e.g., =Object::toString=), Truffle (during
+  native image compilation) will mark all implementing methods for compilation.
+
+The above leads to the following:
+
+- Highly complicated classes (usually with high recursive methods) should only
+  be used inside =@TruffleBoundary= functions. This includes =BigInteger=,
+  =HashMap= and a thousand others.
+- Locale related operations involves HashMap, and should be avoided. This means,
+  all =java.lang.String= concatenations must also happen inside
+  =@TruffleBoundary= because they somehow calls formatting methods which can be
+  locale dependent at times.
+- Working around string concatenation is painful, not only because we need a
+  dedicated =@TruffleBoundary= utility method, but also because it forbids us
+  from using any method (in external librarier or Java standard library) that
+  does string concatenation in partial evaluated code.
+
+There are more. Ways to discover them are:
+
+- Try =./gradlew :app:nativeCompile=.
+- Enable =engine.TraceCompilation= and set =engine.CompilationFailureAction= to
+  =Diagnose=. (See =ELispLanguageTest.java=.)
+
+** List of Random Caveats
+
+- Methods that performs string concatenation and thus must be used within
+  =@TruffleBoundary=
+  - =ByteBuffer.allocate(i)= / =byteBuffer.get(i)= / =byteBuffer.limit(i)=:
+    exception message construction
+  - =SourceBuilder::build= (Truffle objects tracking source info)
+- Common methods (or types) that are highly polymorphic:
+  - =Object::toString= / =Object::hashCode=
+  - =List::<any_method>=
+  - =Iterator::<any_method>=
+  - =Number::<any_method>=
+  - =Exception::getMessage=
+- Others
+  - =FileTime::toInstant= (see JavaDoc in =TruffleUtils.java=)

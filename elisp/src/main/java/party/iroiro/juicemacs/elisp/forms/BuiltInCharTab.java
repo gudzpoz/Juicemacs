@@ -281,9 +281,9 @@ public class BuiltInCharTab extends ELispBuiltIns {
     @ELispBuiltIn(name = "unicode-property-table-internal", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FUnicodePropertyTableInternal extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public Object unicodePropertyTableInternal(Object prop) {
-            ELispContext context = getContext();
             Object val = BuiltInFns.FAssq.assq(prop, CHAR_CODE_PROPERTY_ALIST.getValue());
             if (!(val instanceof ELispCons cons)) {
                 return false;

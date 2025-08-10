@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -44,6 +45,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInFileIOFactory.getFactories();
     }
+
+    private static final Set<StandardOpenOption> CHANNEL_READ_OPTION = Set.of(StandardOpenOption.READ);
 
     private static TruffleFile generateTempFileName(TruffleFile dir, String prefix, String suffix) {
         String hexString = Long.toHexString(Integer.toUnsignedLong(new Random().nextInt()));
@@ -130,18 +133,18 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileNameDirectory extends ELispBuiltInBaseNode {
         @Specialization
         public Object fileNameDirectory(ELispString filename) {
-            TruffleLanguage.Env env = getContext().truffleEnv();
-            String sep = env.getFileNameSeparator();
+            ELispContext context = getContext();
+            String sep = context.truffleEnv().getFileNameSeparator();
             String name = filename.toString();
             if (seemsLikeDirectory(name, sep)) {
                 return filename;
             }
-            TruffleFile parent = env.getPublicTruffleFile(name).getParent();
+            TruffleFile parent = context.getFile(name).getParent();
             if (parent == null) {
                 return false;
             }
-            String dir = parent.toString();
-            return new ELispString(seemsLikeDirectory(dir, sep) ? dir : parent + sep);
+            String dir = TruffleUtils.toString(parent);
+            return new ELispString(seemsLikeDirectory(dir, sep) ? dir : TruffleUtils.concat(dir, sep));
         }
 
         private static boolean seemsLikeDirectory(String name, String sep) {
@@ -243,9 +246,10 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "directory-file-name", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FDirectoryFileName extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static ELispString directoryFileName(ELispString directory) {
-            return new ELispString(Path.of(directory.toString()).toString());
+            return new ELispString(TruffleUtils.toString(Path.of(directory.toString())));
         }
     }
 
@@ -267,8 +271,8 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "make-temp-file-internal", minArgs = 4, maxArgs = 4)
     @GenerateNodeFactory
     public abstract static class FMakeTempFileInternal extends ELispBuiltInBaseNode {
-        @Specialization
         @TruffleBoundary
+        @Specialization
         public ELispString makeTempFileInternal(ELispString prefix, Object dirFlag, Object suffix, Object text) {
             TruffleLanguage.Env env = getContext().truffleEnv();
             TruffleFile file = env.getPublicTruffleFile(prefix.toString()).getAbsoluteFile();
@@ -525,8 +529,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FDeleteFileInternal extends ELispBuiltInBaseNode {
         @Specialization
         public boolean deleteFileInternal(ELispString filename) {
-            Path path = FExpandFileName.expandFileNamePath(filename, false);
-            TruffleFile file = getContext().truffleEnv().getPublicTruffleFile(path.toString());
+            TruffleFile file = getContext().getFileExpanded(filename);
             try {
                 file.delete();
             } catch (IOException e) {
@@ -549,7 +552,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileNameCaseInsensitiveP extends ELispBuiltInBaseNode {
         @Specialization
         public boolean fileNameCaseInsensitiveP(ELispString filename) {
-            TruffleFile file = getContext().truffleEnv().getPublicTruffleFile(filename.toString());
+            TruffleFile file = getContext().getFile(filename.toString());
             return file.exists();
         }
     }
@@ -671,8 +674,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
         @Specialization
         public boolean fileExistsP(ELispString filename) {
             // TODO: TRAMP and other hooks
-            Path path = FExpandFileName.expandFileNamePath(filename, false);
-            return getContext().truffleEnv().getPublicTruffleFile(path.toString()).exists();
+            return getContext().getFileExpanded(filename).exists();
         }
     }
 
@@ -704,7 +706,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileReadableP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean fileReadableP(ELispString filename) {
-            return ELispContext.get(null).truffleEnv().getPublicTruffleFile(filename.asString()).isReadable();
+            return ELispContext.get(null).getFile(filename.toString()).isReadable();
         }
     }
 
@@ -753,8 +755,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileSymlinkP extends ELispBuiltInBaseNode {
         @Specialization
         public boolean fileSymlinkP(ELispString filename) {
-            TruffleLanguage.Env env = getContext().truffleEnv();
-            TruffleFile file = env.getPublicTruffleFile(filename.toString());
+            TruffleFile file = getContext().truffleEnv().getPublicTruffleFile(filename.toString());
             return file.isSymbolicLink();
         }
     }
@@ -805,8 +806,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileAccessibleDirectoryP extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean fileAccessibleDirectoryP(ELispString filename) {
-            TruffleFile file = ELispContext.get(null).truffleEnv()
-                    .getPublicTruffleFile(FExpandFileName.expandFileNamePath(filename, false).toString());
+            TruffleFile file = ELispContext.get(null).getFileExpanded(filename);
             return file.isDirectory() && file.isReadable();
         }
     }
@@ -1097,7 +1097,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             }
             TruffleFile file = env.getPublicTruffleFile(filename.toString());
             try {
-                SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ));
+                SeekableByteChannel channel = file.newByteChannel(CHANNEL_READ_OPTION);
                 try {
                     long start = notNilOr(beg, 0L);
                     long limit = Math.min(notNilOr(end, Long.MAX_VALUE), file.size());

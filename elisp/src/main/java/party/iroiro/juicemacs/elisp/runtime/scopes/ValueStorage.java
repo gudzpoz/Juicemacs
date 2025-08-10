@@ -13,6 +13,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -166,11 +167,13 @@ public final class ValueStorage implements Externalizable {
 
     public void aliasSymbol(ELispSymbol from, ELispSymbol to) {
         if (isConstant()) {
-            throw ELispSignals.error("Cannot make a constant an alias: " + from);
+            throw ELispSignals.error(TruffleUtils.concat("Cannot make a constant an alias: ", from));
         }
         switch (delegate) {
             case PlainValue _, VarAlias _ -> delegate = new VarAlias(to);
-            default -> throw ELispSignals.error("Don’t know how to make a buffer-local variable an alias: " + from);
+            default -> throw ELispSignals.error(TruffleUtils.concat(
+                    "Don’t know how to make a buffer-local variable an alias: ", from
+            ));
         }
         noLongerAssumeConstant();
     }

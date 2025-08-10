@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -15,6 +16,7 @@ public final class MaterializedFrameSerializer extends Serializer<MaterializedFr
     }
 
     @Override
+    @TruffleBoundary
     public void write(MemoryBuffer buffer, MaterializedFrame value) {
         FrameDescriptor descriptor = value.getFrameDescriptor();
         assert descriptor.getAuxiliarySlots().isEmpty();
@@ -42,6 +44,7 @@ public final class MaterializedFrameSerializer extends Serializer<MaterializedFr
     }
 
     @Override
+    @TruffleBoundary
     public MaterializedFrame read(MemoryBuffer buffer) {
         int count = buffer.readVarUint32();
         MaterializedFrame frame = Truffle.getRuntime()

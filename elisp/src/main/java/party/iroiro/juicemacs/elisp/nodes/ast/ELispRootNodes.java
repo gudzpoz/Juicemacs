@@ -151,7 +151,7 @@ public abstract class ELispRootNodes {
         }
 
         private synchronized Object evalAndExpand(VirtualFrame frame) {
-            ArrayList<Object> expressions = new ArrayList<>(List.of(this.expressions).reversed());
+            ArrayList<Object> expressions = new ArrayList<>(Arrays.asList(this.expressions).reversed());
             ELispExpressionNode[] nodes = this.nodes;
             int nodeCount = 0;
             @Nullable Object result = null;
@@ -161,7 +161,7 @@ public abstract class ELispRootNodes {
                 BuiltInEval.FMacroexpand.copySourceLocation(expanded, expression);
                 if (expanded instanceof ELispCons form && form.car() == PROGN
                     && form.cdr() instanceof ELispCons body) {
-                    expressions.addAll(List.of(body.toArray()).reversed());
+                    expressions.addAll(Arrays.asList(body.toArray()).reversed());
                 } else {
                     expanded = callNode.dispatch(this, macroexpand, expression, true);
                     BuiltInEval.FMacroexpand.copySourceLocation(expanded, expression);

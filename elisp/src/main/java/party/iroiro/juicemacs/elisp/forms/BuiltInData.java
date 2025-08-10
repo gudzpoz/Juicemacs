@@ -934,10 +934,10 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispBoolVector _ -> BOOL_VECTOR;
                 case ELispCharTable _ -> CHAR_TABLE;
                 case ELispRecord record -> {
-                    if (record.getFirst() instanceof ELispRecord clazz && clazz.size() > 1) {
+                    if (record.get(0) instanceof ELispRecord clazz && clazz.size() > 1) {
                         yield clazz.get(1);
                     }
-                    yield record.getFirst();
+                    yield record.get(0);
                 }
                 // TODO: Handle other pseudo-vectors
                 case ELispInterpretedClosure _ -> INTERPRETED_FUNCTION;
@@ -1857,6 +1857,7 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "subr-arity", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FSubrArity extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static ELispCons subrArity(ELispSubroutine subr) {
             ELispBuiltIn info = subr.info();
@@ -2609,8 +2610,8 @@ public class BuiltInData extends ELispBuiltIns {
         public static ELispString numberToStringFixed(long number) {
             return new ELispString(Long.toString(number));
         }
-        @Specialization
         @TruffleBoundary
+        @Specialization
         public static ELispString numberToStringFloat(double number) {
             if (Double.isNaN(number)) {
                 long bits = Double.doubleToRawLongBits(number);
@@ -2656,6 +2657,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FStringToNumber extends ELispBuiltInBaseNode {
         private static final Pattern FLOAT_SEARCH_PATTERN = Pattern.compile(ELispLexer.FLOAT_PATTERN_STRING);
 
+        @TruffleBoundary
         @Specialization
         public Object stringToNumber(ELispString string, Object base) {
             String s = StringUtils.strip(string.toString(), " \t");
@@ -2802,7 +2804,7 @@ public class BuiltInData extends ELispBuiltIns {
             }
             return switch (arg0) {
                 case Long l -> tryMinusLong(l, 1, args);
-                case ELispBigNum n -> tryMinusBigNum(n.asBigInteger(), 1, args);
+                case ELispBigNum n -> tryMinusBigNum(n, 1, args);
                 case Double d -> tryMinusDouble(d, 1, args);
                 default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, arg0);
             };
@@ -2815,14 +2817,14 @@ public class BuiltInData extends ELispBuiltIns {
                         try {
                             result = Math.subtractExact(result, l);
                         } catch (ArithmeticException e) {
-                            return tryMinusBigNum(BigInteger.valueOf(result), i, args); // NOPMD: valueOf(long) is fine
+                            return tryMinusBigNum(ELispBigNum.forceWrap(result), i, args);
                         }
                     }
                     case Double _ -> {
                         return tryMinusDouble(toDouble(result), i, args);
                     }
                     case ELispBigNum _ -> {
-                        return tryMinusBigNum(BigInteger.valueOf(result), i, args); // NOPMD: valueOf(long) is fine
+                        return tryMinusBigNum(ELispBigNum.forceWrap(result), i, args);
                     }
                     default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, args[i]);
                 }
@@ -2831,7 +2833,8 @@ public class BuiltInData extends ELispBuiltIns {
         }
 
         @TruffleBoundary
-        private static Object tryMinusBigNum(BigInteger result, int i, Object[] args) {
+        private static Object tryMinusBigNum(ELispBigNum current, int i, Object[] args) {
+            BigInteger result = current.asBigInteger();
             for (; i < args.length; i++) {
                 switch (args[i]) {
                     case ELispBigNum n -> result = result.subtract(n.asBigInteger());
@@ -2958,7 +2961,7 @@ public class BuiltInData extends ELispBuiltIns {
             }
             return switch (number) {
                 case Long l -> tryQuoLong(l, divisors);
-                case ELispBigNum n -> tryQuoBigNum(n.asBigInteger(), 0, divisors);
+                case ELispBigNum n -> tryQuoBigNum(n, 0, divisors);
                 case Double d -> tryQuoDouble(d, divisors);
                 default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, number);
             };
@@ -2972,11 +2975,11 @@ public class BuiltInData extends ELispBuiltIns {
                         try {
                             quo = Math.divideExact(quo, l);
                         } catch (ArithmeticException e) {
-                            return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors); // NOPMD: valueOf(long) is fine
+                            return tryQuoBigNum(ELispBigNum.forceWrap(quo), i, divisors);
                         }
                     }
                     case ELispBigNum _ -> {
-                        return tryQuoBigNum(BigInteger.valueOf(quo), i, divisors); // NOPMD: valueOf(long) is fine
+                        return tryQuoBigNum(ELispBigNum.forceWrap(quo), i, divisors);
                     }
                     default -> throw ELispSignals.wrongTypeArgument(NUMBER_OR_MARKER_P, divisors[i]);
                 }
@@ -2985,8 +2988,8 @@ public class BuiltInData extends ELispBuiltIns {
         }
 
         @TruffleBoundary
-        private static Object tryQuoBigNum(BigInteger prev, int i, Object[] args) {
-            BigInteger quo = prev;
+        private static Object tryQuoBigNum(ELispBigNum prev, int i, Object[] args) {
+            BigInteger quo = prev.asBigInteger();
             for (; i < args.length; i++) {
                 switch (args[i]) {
                     case ELispBigNum n -> quo = quo.divide(n.asBigInteger());

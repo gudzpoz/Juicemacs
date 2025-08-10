@@ -170,7 +170,7 @@ public abstract class ELispSignals {
         return signal(FILE_ERROR, TruffleUtils.eMessage(e), file);
     }
     public static ELispSignalException fileMissing(FileNotFoundException e, Object file) {
-        return signal(FILE_MISSING, e.getClass().getSimpleName(), e.getMessage(), file);
+        return signal(FILE_MISSING, TruffleUtils.eMessage(e), file);
     }
     public static ELispSignalException fileAlreadyExists(TruffleFile file) {
         return signal(FILE_ALREADY_EXISTS, file.toString());

@@ -943,8 +943,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             }
             ELispSymbol[] eolTypes = system.getSpec().eolTypes();
             if (eolTypes.length > 1) {
-                //noinspection RedundantCast
-                return new ELispVector(List.of((Object[]) eolTypes)); // NOPMD
+                return new ELispVector(((Object[]) eolTypes).clone()); // NOPMD
             }
             return eolTypes[0] == UNIX ? 0L : (eolTypes[0] == DOS ? 1L : 2L);
         }

@@ -239,7 +239,9 @@ public class BuiltInAlloc extends ELispBuiltIns {
             list.add(byteCode);
             list.add(constants);
             list.add(depth);
-            list.addAll(Arrays.asList(args));
+            for (Object arg : args) {
+                list.add(arg);
+            }
             ELispBytecode bytecode = (ELispBytecode) AbstractELispClosure.create(list, new AbstractELispClosure.ClosureCommons());
             bytecode.fillDebugInfo(node);
             return bytecode;

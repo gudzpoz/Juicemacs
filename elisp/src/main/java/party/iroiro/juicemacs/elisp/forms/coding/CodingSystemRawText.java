@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
@@ -38,7 +39,7 @@ final class CodingSystemRawText implements ELispCodingSystemType {
         }
 
         private int fillTilLimit(ByteBuffer buffer, ReadableByteChannel input, long limit) throws IOException {
-            buffer.limit(buffer.position() + (int) Math.min(buffer.remaining(), limit));
+            TruffleUtils.bufLimit(buffer, buffer.position() + (int) Math.min(buffer.remaining(), limit));
             return input.read(buffer);
         }
 

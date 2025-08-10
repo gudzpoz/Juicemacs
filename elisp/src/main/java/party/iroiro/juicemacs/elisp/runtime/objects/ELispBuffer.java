@@ -966,6 +966,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         defaultValues.resetLocalVariables(true);
     }
 
+    @TruffleBoundary
     public static void initDirectory() {
         ELispLanguage.Env env = ELispContext.get(null).truffleEnv();
         String cwd = env.getCurrentWorkingDirectory() + env.getFileNameSeparator();

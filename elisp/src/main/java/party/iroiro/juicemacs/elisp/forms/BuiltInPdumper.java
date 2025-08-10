@@ -37,8 +37,7 @@ public class BuiltInPdumper extends ELispBuiltIns {
         @Specialization
         public boolean dumpEmacsPortable(ELispString filename, Object trackReferrers) {
             ELispContext context = getContext();
-            Path path = BuiltInFileIO.FExpandFileName.expandFileNamePath(filename, false);
-            TruffleFile file = context.truffleEnv().getPublicTruffleFile(path.toString());
+            TruffleFile file = context.getFileExpanded(filename);
             try (OutputStream output = file.newOutputStream(StandardOpenOption.CREATE)) {
                 ELispPortableDumper.serializeFromContext(output, context);
             } catch (IOException e) {

@@ -70,6 +70,12 @@ You're welcome to try the tests and report any failing cases! (I think many of
 them might simply throw an =UnsupportedOperationException= since they are yet to
 be implemented.)
 
+* Contributing
+
+Check out [[file:CONTRIBUTING.org]] for a walkthrough. Check out [[file:docs/TODO.org]]
+or search for =UnsupportedOperationException= or =TODO= in code for
+things that need more work.
+
 * Documentation
 
 - [[file:elisp/README.org]]: Documenting the structure of the ELisp interpreter

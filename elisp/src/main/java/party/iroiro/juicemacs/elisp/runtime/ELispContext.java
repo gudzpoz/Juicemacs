@@ -17,6 +17,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.FExpandFileName;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -29,6 +30,7 @@ import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Objects;
@@ -117,6 +119,14 @@ public final class ELispContext implements ELispParser.InternContext {
     public ELispLanguage.Env truffleEnv() {
         return truffleEnv;
     }
+    public TruffleFile getFile(Object file) {
+        return truffleEnv.getPublicTruffleFile(TruffleUtils.toString(file));
+    }
+    public TruffleFile getFileExpanded(ELispString file) {
+        Path path = FExpandFileName.expandFileNamePath(file, false);
+        return getFile(path);
+    }
+
 
     @TruffleBoundary
     @Nullable

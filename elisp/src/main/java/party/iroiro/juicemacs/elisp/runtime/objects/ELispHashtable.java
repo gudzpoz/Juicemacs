@@ -8,6 +8,7 @@ import org.graalvm.collections.MapCursor;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
@@ -213,7 +214,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
             weakKey = weak == KEY_AND_VALUE || weak == KEY_OR_VALUE || weak == KEY;
             weakValue = weak == KEY_OR_VALUE || weak == VALUE;
             if (!weakKey && !weakValue) {
-                throw ELispSignals.error("Invalid weakness argument: " + weak);
+                throw ELispSignals.error(TruffleUtils.concat("Invalid weakness argument: ", weak));
             }
         }
 

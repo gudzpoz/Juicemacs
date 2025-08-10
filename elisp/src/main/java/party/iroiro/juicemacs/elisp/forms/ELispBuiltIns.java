@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.source.Source;
 import org.eclipse.jdt.annotation.Nullable;
@@ -54,6 +55,7 @@ public abstract class ELispBuiltIns {
 
     private final boolean inline;
 
+    @TruffleBoundary
     public final InitializationResult initialize(ELispLanguage language) {
         Source javaSource = Source.newBuilder(
                 "java", "", this.getClass().getSimpleName() + ".java"

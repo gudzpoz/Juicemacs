@@ -30,6 +30,7 @@ public final class ConsInlinedAstNode extends ConsCallNode {
         this.stable = stable;
     }
 
+    @TruffleBoundary
     private static ELispExpressionNode generateInlineNode(ELispCons cons, ELispSubroutine inline) {
         ELispBuiltIn info = inline.info();
         int args = cons.size() - 1;

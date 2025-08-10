@@ -97,6 +97,9 @@ jobs:
           ./gradlew --info --stacktrace :commons:piece-tree:test   || true
           ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true
           ./gradlew --info --stacktrace :elisp:test                || true
+      - name: Native Image Generation
+        run: |
+          ./gradlew :app:nativeCompile || true
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
@@ -112,5 +115,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: repl
-          path: app/build/libs/app-all.jar
+          path: |
+            app/build/libs/app-all.jar
+            app/build/native/nativeCompile/elisp-repl
           retention-days: 30

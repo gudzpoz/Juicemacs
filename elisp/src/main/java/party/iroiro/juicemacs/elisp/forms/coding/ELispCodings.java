@@ -118,6 +118,7 @@ public final class ELispCodings {
         return type.initExtraAttrs(attrs, args, charsetList);
     }
 
+    @TruffleBoundary
     public void addCodingSystem(ELispSymbol codingType, ELispSymbol name, ELispCodingSystem.Spec spec,
                                 int prioritizedCategory) {
         ELispCodingSystemType type = Objects.requireNonNull(getCodingSystemType(codingType));
@@ -151,6 +152,7 @@ public final class ELispCodings {
         return new ELispCodingSystemType.EolDetectingCodingSystem(spec, eolTypes);
     }
 
+    @TruffleBoundary
     @Nullable
     public ELispCodingSystem getCodingSystem(ELispSymbol name) {
         return codingSpecTable.get(name);
@@ -168,6 +170,7 @@ public final class ELispCodings {
         return CODING_SYSTEM_TYPES.get(name);
     }
 
+    @TruffleBoundary
     public MuleStringBuilder decode(
             ELispCodingSystem coding,
             SeekableByteChannel channel,

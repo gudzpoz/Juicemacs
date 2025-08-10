@@ -63,7 +63,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
         }
         ELispString s = asStr(stream);
-        Source source = Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
+        Source source = getSourceWithName(s);
         try {
             return ELispParser.read(ELispContext.get(null), source);
         } catch (IOException e) {
@@ -71,6 +71,12 @@ public class BuiltInLRead extends ELispBuiltIns {
         }
     }
 
+    @TruffleBoundary
+    private static Source getSourceWithName(ELispString s) {
+        return Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
+    }
+
+    @TruffleBoundary
     private static boolean completeFilenameP(ELispString filename) {
         // TODO: This is different from Emacs.
         return Path.of(filename.toString()).isAbsolute();
@@ -155,7 +161,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                     Instant lastModified;
                     try {
                         FileTime lastModifiedTime = env.getPublicTruffleFile(test.toString()).getLastModifiedTime();
-                        lastModified = lastModifiedTime.toInstant();
+                        lastModified = TruffleUtils.toInstant(lastModifiedTime);
                     } catch (IOException e) {
                         throw ELispSignals.fileMissing(new FileNotFoundException(test.toString()), test);
                     }
@@ -250,7 +256,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             return ELispParser.parse(
                     language,
                     context,
-                    Source.newBuilder("elisp", file).build()
+                    TruffleUtils.buildSource(Source.newBuilder("elisp", file))
             );
         } catch (FileNotFoundException e) {
             throw ELispSignals.fileMissing(e, file);
@@ -714,7 +720,7 @@ public class BuiltInLRead extends ELispBuiltIns {
             long to = notNilOr(end, string.length());
             TruffleString sub = string.value().substringUncached((int) from, (int) (to - from), StringSupport.UTF_32, true);
             try {
-                Source elisp = Source.newBuilder("elisp", sub.toString(), "read-from-string").build();
+                Source elisp = TruffleUtils.buildSource(Source.newBuilder("elisp", sub.toString(), "read-from-string"));
                 ELispParser parser = new ELispParser(getContext(), elisp);
                 Object o = parser.nextLisp();
                 return ELispCons.cons(o, from + parser.getCodepointOffset());
@@ -834,8 +840,8 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "obarray-make", minArgs = 0, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FObarrayMake extends ELispBuiltInBaseNode {
-        @Specialization
         @TruffleBoundary
+        @Specialization
         public static ELispObarray obarrayMake(Object size) {
             return new ELispObarray(new HashMap<>((int) notNilOr(size, 0)));
         }

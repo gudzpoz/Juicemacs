@@ -127,7 +127,7 @@ public class BuiltInCcl extends ELispBuiltIns {
             BuiltInCcl ccl = getThis(this);
             long index = ccl.cclPrograms.size();
             ccl.cclProgramIndices.put(name, index);
-            ccl.cclPrograms.add(new CclProgram(cclProg instanceof ELispVector v ? v : new ELispVector(List.of())));
+            ccl.cclPrograms.add(new CclProgram(cclProg instanceof ELispVector v ? v : new ELispVector(new Object[0])));
             return index;
         }
     }

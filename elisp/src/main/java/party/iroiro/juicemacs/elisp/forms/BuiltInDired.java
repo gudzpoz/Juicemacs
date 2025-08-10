@@ -10,7 +10,6 @@ import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -30,12 +29,6 @@ public class BuiltInDired extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInDiredFactory.getFactories();
-    }
-
-    public static TruffleFile getTruffleFile(ELispContext context, ELispString file) {
-        return context.truffleEnv().getPublicTruffleFile(TruffleUtils.toString(
-                BuiltInFileIO.FExpandFileName.expandFileNamePath(file, false)
-        ));
     }
 
     record CompletionRegexpFilter(ELispContext context, ArrayList<ELispRegExp.CompiledRegExp> regexps)
@@ -66,7 +59,7 @@ public class BuiltInDired extends ELispBuiltIns {
         try (Dynamic _ = Dynamic.pushDynamic(DEFAULT_DIRECTORY, dirname);
              Dynamic _ = Dynamic.pushDynamic(CASE_FOLD_SEARCH, ignoreCase)) {
             // TODO: encode file names
-            TruffleFile d = getTruffleFile(context, dirname);
+            TruffleFile d = context.getFileExpanded(dirname);
             Collection<TruffleFile> listing = d.list();
 
             Object allCompletion = listing.stream().filter((entry) -> { // TODO: NOPMD
@@ -130,7 +123,7 @@ public class BuiltInDired extends ELispBuiltIns {
             ELispRegExp.@Nullable CompiledRegExp matcher = isNil(match)
                     ? null
                     : BuiltInSearch.compileRegExp(getLanguage(), asStr(match), null);
-            TruffleFile dir = getTruffleFile(getContext(), directory);
+            TruffleFile dir = getContext().getFileExpanded(directory);
             try {
                 Stream<TruffleFile> stream = dir.list().stream();
                 if (matcher != null) {
@@ -293,10 +286,11 @@ public class BuiltInDired extends ELispBuiltIns {
     @ELispBuiltIn(name = "file-attributes", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FFileAttributes extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public Object fileAttributes(ELispString filename, Object idFormat) {
             // TODO: id-format
-            TruffleFile file = getTruffleFile(getContext(), filename);
+            TruffleFile file = getContext().getFileExpanded(filename);
             if (!file.exists()) {
                 return false;
             }

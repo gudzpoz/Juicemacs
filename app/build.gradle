@@ -7,16 +7,26 @@ plugins {
     id 'org.graalvm.buildtools.native' version '0.11.0'
 }
 
+ext {
+    jlineVersion = '3.30.5'
+    picocliVersion = '4.7.7'
+}
+
 dependencies {
     implementation project(':elisp')
 
-    implementation 'org.jline:jline:3.26.3'
-    implementation 'info.picocli:picocli:4.7.6'
+    implementation "org.jline:jline:${jlineVersion}"
+    implementation "info.picocli:picocli:${picocliVersion}"
+    annotationProcessor "info.picocli:picocli-codegen:${picocliVersion}"
     runtimeOnly "org.graalvm.polyglot:inspect-community:${truffleVersion}"
 }
 
 application {
     mainClass = 'party.iroiro.juicemacs.juice.ELispRepl'
+}
+
+compileJava {
+    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
 }
 
 tasks.run.configure {
@@ -42,7 +52,6 @@ graalvmNative {
             imageName = 'elisp-repl'
             mainClass = application.mainClass
             richOutput = true
-            quickBuild = true
             verbose = true
             buildArgs.add('--diagnostics-mode')
         }

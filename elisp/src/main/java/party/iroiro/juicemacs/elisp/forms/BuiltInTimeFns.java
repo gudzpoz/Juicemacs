@@ -52,6 +52,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             return Instant.ofEpochSecond(0, (long) (second * 1_000_000_000));
         }
         @ImplicitCast
+        @TruffleBoundary
         public static Instant consToInstant(ELispCons timestamp) {
             if (timestamp.cdr() instanceof ELispCons tail) {
                 long high = asLong(timestamp.car());
@@ -156,6 +157,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "time-add", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FTimeAdd extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
         public Object timeAdd(Instant a, Instant b) {
             return this.toTime(a.plus(Instant.EPOCH.until(b)));
@@ -173,6 +175,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "time-subtract", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FTimeSubtract extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
         public Object timeSubtract(Instant a, Instant b) {
             return this.toTime(a.minus(Instant.EPOCH.until(b)));

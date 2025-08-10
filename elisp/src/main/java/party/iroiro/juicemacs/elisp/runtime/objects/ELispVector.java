@@ -24,6 +24,10 @@ public final class ELispVector extends AbstractELispVector {
         this(Collections.nCopies(count, value));
     }
 
+    public Object[] inner() {
+        return inner;
+    }
+
     @TruffleBoundary
     public ELispVector reverse() {
         return new ELispVector(Arrays.asList(inner).reversed());

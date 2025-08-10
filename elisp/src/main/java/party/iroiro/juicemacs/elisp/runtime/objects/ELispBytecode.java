@@ -65,7 +65,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
     }
 
     @Override
-    public FunctionRootNode getFunctionRootNode() {
+    protected FunctionRootNode getFunctionRootNode() {
         BytecodeCallNode node = new BytecodeCallNode();
         ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                 node, node.requiredArgCount, node.maxArgCount

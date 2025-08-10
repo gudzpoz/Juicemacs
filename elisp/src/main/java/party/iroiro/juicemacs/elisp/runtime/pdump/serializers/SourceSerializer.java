@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import org.apache.fury.Fury;
 import org.apache.fury.memory.MemoryBuffer;
@@ -26,6 +27,7 @@ public final class SourceSerializer extends Serializer<Source> {
     }
 
     @Override
+    @TruffleBoundary
     public Source read(MemoryBuffer buffer) {
         boolean internal = buffer.readBoolean();
         String name = fury.readJavaString(buffer);

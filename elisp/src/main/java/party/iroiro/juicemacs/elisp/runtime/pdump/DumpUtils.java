@@ -193,11 +193,13 @@ public abstract class DumpUtils {
         }
 
         @Override
+        @TruffleBoundary
         public void write(MemoryBuffer buffer, T value) {
             throw new IllegalStateException("references to " + getType() + " leaked through");
         }
 
         @Override
+        @TruffleBoundary
         public T read(MemoryBuffer buffer) {
             throw new IllegalStateException("references to " + getType() + " leaked through");
         }

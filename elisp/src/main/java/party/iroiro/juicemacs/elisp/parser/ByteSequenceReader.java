@@ -1,6 +1,8 @@
 package party.iroiro.juicemacs.elisp.parser;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.polyglot.io.ByteSequence;
+import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,10 +30,11 @@ public final class ByteSequenceReader {
     private int position = 0;
     private boolean eof = false;
 
+    @TruffleBoundary
     public ByteSequenceReader(ByteSequence bytes, Charset charset) {
         this.bytes = bytes;
         this.decoder = charset.newDecoder();
-        bb.limit(0);
+        TruffleUtils.bufLimit(bb, 0);
     }
 
     /**
@@ -39,6 +42,7 @@ public final class ByteSequenceReader {
      *
      * @param n the number of bytes to skip
      */
+    @TruffleBoundary
     public void skipBytes(int n, boolean peeked) {
         if (peeked) {
             position = lastActualPosition + n;
@@ -46,7 +50,7 @@ public final class ByteSequenceReader {
             position -= bb.remaining();
             position += n;
         }
-        bb.limit(0);
+        TruffleUtils.bufLimit(bb, 0);
     }
 
     private void copy() {
@@ -88,7 +92,8 @@ public final class ByteSequenceReader {
      * @throws IOException if unable to read as a Unicode codepoint
      */
     private void readChar() throws IOException {
-        cb.position(0).limit(1);
+        cb.position(0);
+        TruffleUtils.bufLimit(cb, 1);
         do {
             CoderResult cr = decoder.decode(bb, cb, eof);
             if (cr.isUnderflow()) {
@@ -99,7 +104,7 @@ public final class ByteSequenceReader {
             } else if (cr.isOverflow()) {
                 if (cb.position() == 0) {
                     // Surrogate pairs
-                    cb.limit(2);
+                    TruffleUtils.bufLimit(cb, 2);
                 }
             } else {
                 cr.throwException();

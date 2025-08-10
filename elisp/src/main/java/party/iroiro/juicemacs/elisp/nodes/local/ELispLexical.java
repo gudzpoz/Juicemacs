@@ -11,7 +11,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asSym;
@@ -40,6 +40,7 @@ public final class ELispLexical {
         DYNAMIC_DESCRIPTOR = FrameDescriptor.newBuilder().build();
     }
 
+    @TruffleBoundary
     public static FrameDescriptor rootFrameDescriptor(int args, boolean lexical) {
         if (!lexical) {
             return DYNAMIC_DESCRIPTOR;
@@ -80,7 +81,7 @@ public final class ELispLexical {
     /// for any dynamic symbols.
     private ELispLexical(@Nullable Scope upperScope, ELispSymbol[] symbols) {
         this.upperScope = upperScope;
-        this.symbols = new ArrayList<>(List.of(symbols));
+        this.symbols = new ArrayList<>(Arrays.asList(symbols));
         this.frameSlots = new int[symbols.length];
         for (int i = 0; i < symbols.length; i++) {
             frameSlots[i] = i + FRAME_SLOT_START;

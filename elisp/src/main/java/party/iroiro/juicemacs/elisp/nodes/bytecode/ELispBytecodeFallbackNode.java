@@ -1207,6 +1207,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             return nodes;
         }
 
+        @TruffleBoundary
         private ELispExpressionNode generateInlineNode(Object f, ELispSubroutine inline) {
             ELispBuiltIn info = inline.info();
             if (n < info.minArgs() || (!info.varArgs() && info.maxArgs() < n)) {

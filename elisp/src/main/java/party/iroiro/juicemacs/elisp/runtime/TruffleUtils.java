@@ -3,13 +3,24 @@ package party.iroiro.juicemacs.elisp.runtime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import org.eclipse.jdt.annotation.Nullable;
 
+import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.Iterator;
 
 public abstract class TruffleUtils {
     private TruffleUtils() {
+    }
+
+    @TruffleBoundary
+    public static Source buildSource(SourceBuilder builder) throws IOException {
+        return builder.build();
     }
 
     /// Creates a [SourceSection] retaining all provide information.
@@ -70,6 +81,34 @@ public abstract class TruffleUtils {
     @TruffleBoundary
     public static String toString(Object o) {
         return o.toString();
+    }
+
+    /// [com.oracle.truffle.api.CompilerDirectives.TruffleBoundary] wrapper around [FileTime#toInstant()]
+    ///
+    /// [FileTime#toInstant()] seems to throw [AssertionError] in some situations, which causes trouble
+    /// for native image generation.
+    @TruffleBoundary
+    public static Instant toInstant(FileTime time) {
+        return time.toInstant();
+    }
+
+    @TruffleBoundary
+    public static String concat(Object... objects) {
+        String[] strings = new String[objects.length];
+        for (int i = 0; i < objects.length; i++) {
+            strings[i] = objects[i].toString();
+        }
+        return String.join("", strings);
+    }
+
+    @TruffleBoundary
+    public static void bufLimit(Buffer buffer, int limit) {
+        buffer.limit(limit);
+    }
+
+    @TruffleBoundary
+    public static void bufGet(ByteBuffer buffer, byte[] bytes) {
+        buffer.get(bytes);
     }
 
     /// A [com.oracle.truffle.api.CompilerDirectives.TruffleBoundary] wrapper around [Iterator]

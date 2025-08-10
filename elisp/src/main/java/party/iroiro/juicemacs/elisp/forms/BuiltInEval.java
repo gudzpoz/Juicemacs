@@ -953,6 +953,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         sym.setDefaultValue(init.executeGeneric(frame));
                     }
                 }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return replace(ELispLiteralNodes.of(symbol)).executeGeneric(frame);
             }
         }
@@ -1875,6 +1876,7 @@ public class BuiltInEval extends ELispBuiltIns {
             return root.getCallTarget().call();
         }
 
+        @TruffleBoundary
         public static ELispRootNode getEvalRoot(
                 @Nullable Node node,
                 Object form,
@@ -1963,10 +1965,14 @@ public class BuiltInEval extends ELispBuiltIns {
         public Object apply(Object function, Object[] arguments, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
             ArrayList<Object> objects = new ArrayList<>(arguments.length);
             objects.add(function);
-            objects.addAll(Arrays.asList(arguments).subList(0, arguments.length - 1));
+            for (int i = 0; i < arguments.length - 1; i++) {
+                objects.add(arguments[i]);
+            }
             Object last = arguments[arguments.length - 1];
             if (!isNil(last)) {
-                objects.addAll(asCons(last));
+                for (Object o : asCons(last)) {
+                    objects.add(o);
+                }
             }
             arguments = objects.toArray();
             return dispatchNode.executeDispatch(this, arguments);
@@ -2006,9 +2012,15 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
                 Object o = nodes[nodes.length - 1].executeGeneric(frame);
                 if (!isNil(o)) {
-                    objects.addAll(asCons(o));
+                    addAll(o, objects);
                 }
                 return objects.toArray();
+            }
+
+            private static void addAll(Object o, ArrayList<Object> objects) {
+                for (Object item : asCons(o)) {
+                    objects.add(item);
+                }
             }
         }
     }
