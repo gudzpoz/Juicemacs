@@ -61,19 +61,16 @@ public class BuiltInLRead extends ELispBuiltIns {
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, stream);
             }
+        } else if (stream instanceof ELispString s) {
+            ELispLexer lexer = new ELispLexer(CodePointReader.from(s));
+            ELispParser parser = new ELispParser(ELispContext.get(null), lexer);
+            try {
+                return parser.nextLisp();
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, stream);
+            }
         }
-        ELispString s = asStr(stream);
-        Source source = getSourceWithName(s);
-        try {
-            return ELispParser.read(ELispContext.get(null), source);
-        } catch (IOException e) {
-            throw ELispSignals.error(TruffleUtils.eMessage(e));
-        }
-    }
-
-    @TruffleBoundary
-    private static Source getSourceWithName(ELispString s) {
-        return Source.newBuilder(ELispLanguage.ID, s.toString(), null).build();
+        throw new UnsupportedOperationException();
     }
 
     @TruffleBoundary

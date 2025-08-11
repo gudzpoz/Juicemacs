@@ -387,9 +387,9 @@ public class BuiltInCoding extends ELispBuiltIns {
             @Nullable SeekableInMemoryByteChannel channel = null;
             try {
                 channel = new SeekableInMemoryByteChannel(bytes.getArray());
-                return new ELispString(
-                        codings.decode(coding, channel, bytes.getOffset(), bytes.getEnd(), container).build()
-                );
+                return codings.decode(
+                        coding, channel, bytes.getOffset(), bytes.getEnd(), container
+                ).buildString();
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, ELispGlobals.STRING);
             } finally {

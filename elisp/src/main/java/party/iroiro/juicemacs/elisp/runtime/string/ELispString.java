@@ -10,6 +10,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.*;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.BuiltInData.FAref;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
@@ -22,8 +23,7 @@ import java.util.List;
 import java.util.PrimitiveIterator;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
-import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.STATE_BYTES;
-import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.UTF_32;
+import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.*;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
@@ -82,10 +82,7 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
 
     public int codePointAt(int index) {
-        int c = StringNodes.charAt(value, index);
-        return state == STATE_BYTES ? (
-                c < 128 ? c : c + 0x3FFF00
-        ) : c;
+        return (int) FAref.arefStringUncached(this, index);
     }
 
     public Iterator<Long> iteratorUncached() {

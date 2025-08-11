@@ -68,6 +68,7 @@ public class ElSemiFuzzTest {
             // I do think the approach taken by Java to *not* distinguish between NaN values is better.
             Map.entry("mod", Predicate.expectNaNArithmetic()),
             Map.entry("+", Predicate.expectNaNArithmetic()),
+            Map.entry("*", Predicate.expectNaNArithmetic()),
             // Java: Both 5e-324 and 4.9e-324 prints as 4.9e-324
             // Emacs: Both 5e-324 and 4.9e-324 prints as 5e-324
             Map.entry("number-to-string", Predicate.expectReplaced(

@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.parser;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -93,6 +94,10 @@ public sealed abstract class CodePointReader implements AutoCloseable {
 
     public static CodePointReader from(ELispBuffer buffer, long point) {
         return new IteratorReader(buffer.iterator(point, buffer.pointMax()));
+    }
+
+    public static CodePointReader from(ELispString string) {
+        return new IteratorReader(string.iterator(0));
     }
 
     public static CodePointReader from(ELispBuffer buffer, long start, boolean invert) {
