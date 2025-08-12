@@ -168,7 +168,7 @@ public class ElSemiFuzzTest {
                     String actual = extracted.getArrayElement(1).asString();
                     String function = extracted.getArrayElement(2).asString();
                     if (!expected.equals(actual)) {
-                        String input = new String(bytes);
+                        String input = expr.toString();
                         if (!isExpectedFailure(function, input, expected, actual)) {
                             assertEquals(expected, actual, input);
                         }

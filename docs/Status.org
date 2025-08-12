@@ -18,11 +18,115 @@ These subroutines are implemented by (at least) ~100 C files:
 
 #+name: c-files
 #+begin_src bash
-  grep -lr '^DEFUN ("' ../elisp/emacs/src/*.c | wc --lines
+  grep -lr '^DEFUN ("' ../elisp/emacs/src/*.c | sed -E 's#.+/([^/]+\.c)$#\1#'
 #+end_src
 
 #+RESULTS: c-files
-: 105
+| alloc.c            |
+| androidfns.c       |
+| androidmenu.c      |
+| androidselect.c    |
+| androidvfs.c       |
+| atimer.c           |
+| buffer.c           |
+| bytecode.c         |
+| callint.c          |
+| callproc.c         |
+| casefiddle.c       |
+| casetab.c          |
+| category.c         |
+| ccl.c              |
+| character.c        |
+| charset.c          |
+| chartab.c          |
+| cmds.c             |
+| coding.c           |
+| comp.c             |
+| composite.c        |
+| cygw32.c           |
+| data.c             |
+| dbusbind.c         |
+| decompress.c       |
+| dired.c            |
+| dispnew.c          |
+| doc.c              |
+| dosfns.c           |
+| editfns.c          |
+| emacs.c            |
+| emacs-module.c     |
+| eval.c             |
+| fileio.c           |
+| filelock.c         |
+| floatfns.c         |
+| fns.c              |
+| font.c             |
+| fontset.c          |
+| frame.c            |
+| fringe.c           |
+| gfilenotify.c      |
+| gnutls.c           |
+| haikufns.c         |
+| haikufont.c        |
+| haikumenu.c        |
+| haikuselect.c      |
+| image.c            |
+| indent.c           |
+| inotify.c          |
+| insdel.c           |
+| json.c             |
+| keyboard.c         |
+| keymap.c           |
+| kqueue.c           |
+| lcms.c             |
+| lread.c            |
+| macros.c           |
+| marker.c           |
+| menu.c             |
+| minibuf.c          |
+| msdos.c            |
+| pdumper.c          |
+| pgtkfns.c          |
+| pgtkim.c           |
+| pgtkmenu.c         |
+| pgtkselect.c       |
+| print.c            |
+| process.c          |
+| profiler.c         |
+| search.c           |
+| sfntfont-android.c |
+| sound.c            |
+| sqlite.c           |
+| syntax.c           |
+| sysdep.c           |
+| term.c             |
+| terminal.c         |
+| textconv.c         |
+| textprop.c         |
+| thread.c           |
+| timefns.c          |
+| treesit.c          |
+| undo.c             |
+| w16select.c        |
+| w32console.c       |
+| w32cygwinx.c       |
+| w32dwrite.c        |
+| w32fns.c           |
+| w32font.c          |
+| w32image.c         |
+| w32menu.c          |
+| w32notify.c        |
+| w32proc.c          |
+| w32select.c        |
+| window.c           |
+| xdisp.c            |
+| xfaces.c           |
+| xfns.c             |
+| xmenu.c            |
+| xml.c              |
+| xselect.c          |
+| xsettings.c        |
+| xsmfns.c           |
+| xwidget.c          |
 
 * Juicemacs Subroutines
 
@@ -83,12 +187,92 @@ and filled with actual code:
                (impl-count (length impls))
                (todo-count (length todos))
                (file-count (length files)))
+    (setq java-files files)
     `(("" "Implemented" "Remaining" "Total" "Files")
-      ("GNU Emacs" ,total 0 ,total ,c-files)
+      ("GNU Emacs" ,total 0 ,total ,(length c-files))
       ("Juicemacs" ,impl-count ,todo-count ,(+ impl-count todo-count) ,file-count)))
 #+end_src
 
 #+RESULTS:
 |           | Implemented | Remaining | Total | Files |
 | GNU Emacs |        1798 |         0 |  1798 |   105 |
-| Juicemacs |         427 |       846 |  1273 |    47 |
+| Juicemacs |         429 |       844 |  1273 |    47 |
+
+* Remaining C Files
+
+#+begin_src elisp :var c-files=c-files
+  (let* ((extracted-files
+          (mapcar (lambda (f) (and (string-match "/BuiltIn\\(.+\\)\\.java$" f)
+                                   (downcase (match-string 1 f))))
+                  java-files))
+         (remaining (seq-filter
+                     (lambda (f)
+                       (not (member (with-temp-buffer
+                                      (insert (car f))
+                                      (replace-string "-" "" nil 1 (point-max))
+                                      (replace-string ".c" "" nil 1 (point-max))
+                                      (buffer-string))
+                                    extracted-files)))
+                     c-files)))
+    (sort remaining))
+#+end_src
+
+#+RESULTS:
+| androidfns.c       |
+| androidmenu.c      |
+| androidselect.c    |
+| androidvfs.c       |
+| atimer.c           |
+| cygw32.c           |
+| dbusbind.c         |
+| decompress.c       |
+| dosfns.c           |
+| emacs-module.c     |
+| font.c             |
+| fontset.c          |
+| fringe.c           |
+| gfilenotify.c      |
+| gnutls.c           |
+| haikufns.c         |
+| haikufont.c        |
+| haikumenu.c        |
+| haikuselect.c      |
+| image.c            |
+| inotify.c          |
+| insdel.c           |
+| json.c             |
+| kqueue.c           |
+| lcms.c             |
+| menu.c             |
+| msdos.c            |
+| pgtkfns.c          |
+| pgtkim.c           |
+| pgtkmenu.c         |
+| pgtkselect.c       |
+| profiler.c         |
+| sfntfont-android.c |
+| sound.c            |
+| sqlite.c           |
+| sysdep.c           |
+| term.c             |
+| textconv.c         |
+| thread.c           |
+| undo.c             |
+| w16select.c        |
+| w32console.c       |
+| w32cygwinx.c       |
+| w32dwrite.c        |
+| w32fns.c           |
+| w32font.c          |
+| w32image.c         |
+| w32menu.c          |
+| w32notify.c        |
+| w32proc.c          |
+| w32select.c        |
+| xfns.c             |
+| xmenu.c            |
+| xml.c              |
+| xselect.c          |
+| xsettings.c        |
+| xsmfns.c           |
+| xwidget.c          |

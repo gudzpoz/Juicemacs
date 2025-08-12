@@ -128,7 +128,9 @@ public final class ELispString implements TruffleObject, ELispValue {
 
     @Override
     public String toString() {
-        // TODO: transcode
+        if ((state & STATE_BYTES) != 0) {
+            return toDisplayString(true);
+        }
         return value().toJavaStringUncached();
     }
 

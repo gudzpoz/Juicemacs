@@ -1072,8 +1072,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKeywordp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean keywordp(Object object) {
-            return toSym(object) instanceof ELispSymbol symbol && symbol.isKeyword();
+        public boolean keywordp(Object object) {
+            return toSym(object) instanceof ELispSymbol symbol && symbol.isKeyword()
+                    && getContext().obarray().internSoft(symbol.name()) != null;
         }
     }
 
