@@ -391,7 +391,7 @@ public final class ELispCharTable extends AbstractELispVector {
             super(inner.toArray());
         }
 
-        protected SubTable(Object[] inner) {
+        public SubTable(Object[] inner) {
             super(inner);
         }
 
@@ -564,7 +564,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
     }
 
-    private static final class CompressedUnipropSubTable extends SubTable {
+    public static final class CompressedUnipropSubTable extends SubTable {
         public CompressedUnipropSubTable(SubTable wrapped) {
             super(wrapped.inner);
             if (getDepth() != 2) {

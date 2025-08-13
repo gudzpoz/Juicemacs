@@ -1,20 +1,20 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.apache.fury.Fury;
-import org.apache.fury.memory.MemoryBuffer;
-import org.apache.fury.resolver.RefResolver;
-import org.apache.fury.serializer.collection.AbstractCollectionSerializer;
+import org.apache.fory.Fory;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.resolver.RefResolver;
+import org.apache.fory.serializer.collection.CollectionSerializer;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 
 import java.util.Collection;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
-public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons> {
+public class ELispConsSerializer extends CollectionSerializer<ELispCons> {
 
-    public ELispConsSerializer(Fury fury) {
-        super(fury, ELispCons.class, false);
+    public ELispConsSerializer(Fory fory) {
+        super(fory, ELispCons.class, false);
     }
 
     @Override
@@ -51,10 +51,10 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         }
         buffer.writeByte(state);
         if (!carNil) {
-            fury.writeRef(buffer, value.car());
+            fory.writeRef(buffer, value.car());
         }
         if (!cdrNil) {
-            fury.writeRef(buffer, value.cdr());
+            fory.writeRef(buffer, value.cdr());
         }
         if (hasDebug) {
             buffer.writeInt64(value.encodedLocation);
@@ -66,12 +66,12 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         boolean cdrNil = (state & 0x04) != 0;
         boolean carNil = (state & 0x08) != 0;
         ELispCons cons = ELispCons.cons(false, false);
-        fury.getRefResolver().reference(cons);
+        fory.getRefResolver().reference(cons);
         if (!carNil) {
-            cons.setCar(fury.readRef(buffer));
+            cons.setCar(fory.readRef(buffer));
         }
         if (!cdrNil) {
-            cons.setCdr(fury.readRef(buffer));
+            cons.setCdr(fory.readRef(buffer));
         }
         if (hasDebug) {
             cons.encodedLocation = buffer.readInt64();
@@ -81,7 +81,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
 
     @TruffleBoundary
     private void writeList(MemoryBuffer buffer, ELispCons value) {
-        RefResolver resolver = fury.getRefResolver();
+        RefResolver resolver = fory.getRefResolver();
         buffer.writeByte(0xFF);
         try (DumpUtils.CounterSlot slot = DumpUtils.CounterSlot.record(buffer)) {
             // list: (obj1 obj2 obj3 . tail)
@@ -96,14 +96,14 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
             //   - writeNonRef(tail)          ||
             ELispCons current = value;
             while (true) {
-                fury.writeRef(buffer, current.car());
+                fory.writeRef(buffer, current.car());
                 buffer.writeInt64(current.encodedLocation);
                 slot.inc();
                 if (!resolver.writeRefValueFlag(buffer, current.cdr())) {
                     return;
                 }
                 if (!(current.cdr() instanceof ELispCons next)) {
-                    fury.writeNonRef(buffer, current.cdr());
+                    fory.writeNonRef(buffer, current.cdr());
                     return;
                 }
                 buffer.writerIndex(buffer.writerIndex() - 1);
@@ -113,7 +113,7 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
     }
 
     private ELispCons readList(MemoryBuffer buffer) {
-        RefResolver resolver = fury.getRefResolver();
+        RefResolver resolver = fory.getRefResolver();
         // list: (obj1 obj2 obj3 . tail)
         // - count = 3
         // - obj1 = readRef() + location + ref(cons2)
@@ -125,11 +125,11 @@ public class ELispConsSerializer extends AbstractCollectionSerializer<ELispCons>
         resolver.reference(head);
         ELispCons current = head;
         for (int i = 0; ; i++) {
-            Object car = fury.readRef(buffer);
+            Object car = fory.readRef(buffer);
             current.setCar(car);
             current.encodedLocation = buffer.readInt64();
             if (i == count - 1) {
-                current.setCdr(fury.readRef(buffer));
+                current.setCdr(fory.readRef(buffer));
                 break;
             }
             ELispCons next = ELispCons.cons(false, false);

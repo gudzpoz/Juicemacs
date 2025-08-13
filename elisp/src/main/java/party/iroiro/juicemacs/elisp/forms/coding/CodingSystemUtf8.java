@@ -47,7 +47,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         return new Utf8Codec(spec, eol);
     }
 
-    private final class BomDetectingCodingSystem extends ELispCodingSystem {
+    final class BomDetectingCodingSystem extends ELispCodingSystem {
         private final ELispSymbol withSig;
         private final ELispSymbol noSig;
 
@@ -70,7 +70,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         }
     }
 
-    private final class Utf8Codec extends ELispCodingSystem {
+    final class Utf8Codec extends ELispCodingSystem {
         Utf8Codec(Spec spec, EolAwareStringBuilder.EndOfLine eol) {
             super(CodingSystemUtf8.this, spec, eol);
         }

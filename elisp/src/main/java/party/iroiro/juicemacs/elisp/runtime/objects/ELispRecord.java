@@ -5,7 +5,7 @@ import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 
 import java.util.List;
 
-public class ELispRecord extends AbstractELispVector {
+public final class ELispRecord extends AbstractELispVector {
     public ELispRecord(List<Object> inner) {
         this(inner.toArray());
     }

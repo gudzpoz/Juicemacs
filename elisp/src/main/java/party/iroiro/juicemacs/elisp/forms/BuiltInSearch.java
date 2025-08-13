@@ -7,6 +7,9 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
+import org.apache.fory.Fory;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.serializer.collection.MapSerializer;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
@@ -89,6 +92,18 @@ public class BuiltInSearch extends ELispBuiltIns {
             }
             return regexp;
         }
+    }
+
+    public static void registerSerializer(Fory fory) {
+        fory.registerSerializer(RegexpCache.class, new MapSerializer<>(fory, RegexpCache.class) {
+            @Override
+            public void write(MemoryBuffer buffer, RegexpCache value) {
+            }
+            @Override
+            public RegexpCache read(MemoryBuffer buffer) {
+                return new RegexpCache();
+            }
+        });
     }
 
     private static final RegexpCache COMPILED_REGEXPS = new RegexpCache();

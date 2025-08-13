@@ -9,9 +9,9 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import org.apache.fury.Fury;
-import org.apache.fury.memory.MemoryBuffer;
-import org.apache.fury.serializer.Serializer;
+import org.apache.fory.Fory;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.serializer.Serializer;
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -252,46 +252,50 @@ public final class ELispContext implements ELispParser.InternContext {
     }
 
     public static final class ContextSerializer extends Serializer<ELispContext> {
-        private final ELispContext context;
+        @Nullable
+        private static ELispContext context = null;
+        public static void setCurrentContext(@Nullable ELispContext context) {
+            ContextSerializer.context = context;
+        }
 
-        public ContextSerializer(Fury fury, ELispContext context) {
-            super(fury, ELispContext.class);
-            this.context = context;
+        public ContextSerializer(Fory fory) {
+            super(fory, ELispContext.class);
         }
 
         @Override
         public void write(MemoryBuffer buffer, ELispContext context) {
-            DumpUtils.writeAnchor(fury, buffer, Boolean.FALSE);
-            DumpUtils.writeAnchor(fury, buffer, Boolean.TRUE);
+            DumpUtils.writeAnchor(fory, buffer, Boolean.FALSE);
+            DumpUtils.writeAnchor(fory, buffer, Boolean.TRUE);
 
             for (ELispSymbol[] symbols : ELispGlobals.getAllSymbols()) {
-                DumpUtils.writeAnchors(fury, buffer, symbols);
+                DumpUtils.writeAnchors(fory, buffer, symbols);
             }
 
             ELispGlobals globals = context.globals;
             ELispSubroutine[] subroutines = Objects.requireNonNull(globals.takeSubroutines());
             buffer.writeInt32(subroutines.length);
             for (ELispSubroutine subroutine : subroutines) {
-                fury.writeJavaString(buffer, subroutine.info().name());
+                fory.writeJavaString(buffer, subroutine.info().name());
             }
-            DumpUtils.writeAnchors(fury, buffer, subroutines);
+            DumpUtils.writeAnchors(fory, buffer, subroutines);
 
-            DumpUtils.writeAnchor(fury, buffer, ELispLexical.DYNAMIC);
-            DumpUtils.writeAnchor(fury, buffer, ValueStorage.UNBOUND);
+            DumpUtils.writeAnchor(fory, buffer, ELispLexical.DYNAMIC);
+            DumpUtils.writeAnchor(fory, buffer, ValueStorage.UNBOUND);
 
-            fury.writeRef(buffer, globals);
-            DumpUtils.writeContextArray(fury, buffer, context.language.globalVariablesMap, context.variablesArray);
-            DumpUtils.writeContextArray(fury, buffer, context.language.globalFunctionsMap, context.functionsArray);
+            fory.writeRef(buffer, globals);
+            DumpUtils.writeContextArray(fory, buffer, context.language.globalVariablesMap, context.variablesArray);
+            DumpUtils.writeContextArray(fory, buffer, context.language.globalFunctionsMap, context.functionsArray);
         }
 
         @Override
         public ELispContext read(MemoryBuffer buffer) {
-            fury.getRefResolver().reference(context);
-            DumpUtils.readAnchor(fury, buffer, Boolean.FALSE);
-            DumpUtils.readAnchor(fury, buffer, Boolean.TRUE);
+            Objects.requireNonNull(context);
+            fory.getRefResolver().reference(context);
+            DumpUtils.readAnchor(fory, buffer, Boolean.FALSE);
+            DumpUtils.readAnchor(fory, buffer, Boolean.TRUE);
 
             for (ELispSymbol[] symbols : ELispGlobals.getAllSymbols()) {
-                DumpUtils.readAnchors(fury, buffer, symbols);
+                DumpUtils.readAnchors(fory, buffer, symbols);
             }
 
             int length = buffer.readInt32();
@@ -303,17 +307,17 @@ public final class ELispContext implements ELispParser.InternContext {
                 subroutineMap.put(subroutine.info().name(), subroutine);
             }
             for (int i = 0; i < length; i++) {
-                String name = fury.readJavaString(buffer);
+                String name = fory.readJavaString(buffer);
                 subroutines[i] = Objects.requireNonNull(subroutineMap.get(name));
             }
-            DumpUtils.readAnchors(fury, buffer, subroutines);
+            DumpUtils.readAnchors(fory, buffer, subroutines);
 
-            DumpUtils.readAnchor(fury, buffer, ELispLexical.DYNAMIC);
-            DumpUtils.readAnchor(fury, buffer, ValueStorage.UNBOUND);
+            DumpUtils.readAnchor(fory, buffer, ELispLexical.DYNAMIC);
+            DumpUtils.readAnchor(fory, buffer, ValueStorage.UNBOUND);
 
-            context.globals = (ELispGlobals) fury.readRef(buffer);
-            DumpUtils.readContextArray(fury, buffer, context.language.globalVariablesMap, context.variablesArray);
-            DumpUtils.readContextArray(fury, buffer, context.language.globalFunctionsMap, context.functionsArray);
+            context.globals = (ELispGlobals) fory.readRef(buffer);
+            DumpUtils.readContextArray(fory, buffer, context.language.globalVariablesMap, context.variablesArray);
+            DumpUtils.readContextArray(fory, buffer, context.language.globalFunctionsMap, context.functionsArray);
             return context;
         }
     }

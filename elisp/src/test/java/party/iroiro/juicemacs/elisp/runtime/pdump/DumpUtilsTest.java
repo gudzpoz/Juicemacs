@@ -1,9 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump;
 
-import org.apache.fury.Fury;
-import org.apache.fury.config.Language;
-import org.apache.fury.memory.MemoryBuffer;
-import org.apache.fury.serializer.collection.AbstractCollectionSerializer;
+import org.apache.fory.Fory;
+import org.apache.fory.config.Language;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.serializer.collection.CollectionSerializer;
+import org.eclipse.jdt.annotation.Nullable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
@@ -22,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NIL;
 
 public class DumpUtilsTest {
-    private static Fury getFury() {
-        return Fury.builder()
+    private static Fory getFory() {
+        return Fory.builder()
                 .withLanguage(Language.JAVA)
                 .withRefTracking(true)
                 .build();
@@ -36,23 +37,23 @@ public class DumpUtilsTest {
                 new Object[0],
                 ELispCons.listOf(1L, 2L),
         };
-        Fury fury = getFury();
-        fury.register(ELispCons.class);
+        Fory fory = getFory();
+        fory.register(ELispCons.class);
         MemoryBuffer buffer = MemoryBuffer.newHeapBuffer(10);
-        DumpUtils.writeAnchors(fury, buffer, array);
+        DumpUtils.writeAnchors(fory, buffer, array);
         for (Object o : array) {
-            fury.writeRef(buffer, o);
+            fory.writeRef(buffer, o);
         }
-        fury.reset();
-        DumpUtils.readAnchors(fury, buffer, array);
+        fory.reset();
+        DumpUtils.readAnchors(fory, buffer, array);
         for (Object o : array) {
-            assertSame(o, fury.readRef(buffer));
+            assertSame(o, fory.readRef(buffer));
         }
     }
 
     @Test
     public void testContextArray() {
-        Fury fury = Fury.builder()
+        Fory fory = Fory.builder()
                 .withLanguage(Language.JAVA)
                 .requireClassRegistration(false)
                 .withRefTracking(true)
@@ -70,7 +71,7 @@ public class DumpUtilsTest {
             int index = sharedIndicesMap.lookup(NIL);
             array.getDynamic(index);
 
-            DumpUtils.writeContextArray(fury, buffer, sharedIndicesMap, array);
+            DumpUtils.writeContextArray(fory, buffer, sharedIndicesMap, array);
         }
 
         {
@@ -80,7 +81,7 @@ public class DumpUtilsTest {
                     ValueStorage[]::new,
                     ValueStorage::new
             );
-            DumpUtils.readContextArray(fury, buffer, sharedIndicesMap, array);
+            DumpUtils.readContextArray(fory, buffer, sharedIndicesMap, array);
         }
     }
 
@@ -100,27 +101,27 @@ public class DumpUtilsTest {
 
     @Test
     public void testFinalFields() {
-        Fury fury = getFury();
-        fury.register(FinalObject.class);
+        Fory fory = getFory();
+        fory.register(FinalObject.class);
         FinalObject original = new FinalObject(100);
-        byte[] bytes = fury.serialize(original);
-        Object output = fury.deserialize(bytes);
+        byte[] bytes = fory.serialize(original);
+        Object output = fory.deserialize(bytes);
         assertInstanceOf(FinalObject.class, output);
         assertEquals(original, output);
     }
 
     @Test
     public void testVectors() {
-        Fury fury = getFury();
-        fury.register(ELispVector.class);
-        fury.register(ELispRecord.class);
+        Fory fory = getFory();
+        fory.register(ELispVector.class);
+        fory.register(ELispRecord.class);
 
         ELispVector v1 = new ELispVector(List.of(1L, 2L, 3L, 4L, 5L));
         ELispRecord v2 = new ELispRecord(List.of(1L, 2L, 3L, 4L, 5L));
-        byte[] bytes1 = fury.serialize(v1);
-        byte[] bytes2 = fury.serialize(v2);
-        Object output = fury.deserialize(bytes1);
-        Object output2 = fury.deserialize(bytes2);
+        byte[] bytes1 = fory.serialize(v1);
+        byte[] bytes2 = fory.serialize(v2);
+        Object output = fory.deserialize(bytes1);
+        Object output2 = fory.deserialize(bytes2);
         assertInstanceOf(ELispVector.class, output);
         assertTrue(v1.lispEquals(output));
         assertInstanceOf(ELispRecord.class, output2);
@@ -129,25 +130,25 @@ public class DumpUtilsTest {
 
     @Test
     public void testNoConstructor() {
-        Fury fury = getFury();
-        fury.register(FinalInt.class);
-        byte[] bytes = fury.serialize(new FinalInt(new AtomicInteger(1)));
-        Object output = fury.deserialize(bytes);
+        Fory fory = getFory();
+        fory.register(FinalInt.class);
+        byte[] bytes = fory.serialize(new FinalInt(new AtomicInteger(1)));
+        Object output = fory.deserialize(bytes);
         FinalInt finalInt = assertInstanceOf(FinalInt.class, output);
         assertEquals(1, finalInt.getValue());
     }
 
     @Test
     public void testCollection() {
-        Fury fury = Fury.builder()
+        Fory fory = Fory.builder()
                 .withLanguage(Language.JAVA)
                 .build();
-        fury.register(EmptyList.class);
-        fury.registerSerializer(EmptyList.class, EmptyList.EmptySerializer.class);
-        fury.register(SomeRecord.class);
+        fory.register(EmptyList.class);
+        fory.registerSerializer(EmptyList.class, EmptyList.EmptySerializer.class);
+        fory.register(SomeRecord.class);
         SomeRecord someRecord = new SomeRecord(new EmptyList(), List.of());
-        byte[] bytes = fury.serialize(someRecord);
-        Object output = fury.deserialize(bytes);
+        byte[] bytes = fory.serialize(someRecord);
+        Object output = fory.deserialize(bytes);
         SomeRecord someRecord2 = assertInstanceOf(SomeRecord.class, output);
         assertEquals(someRecord, someRecord2);
     }
@@ -155,16 +156,16 @@ public class DumpUtilsTest {
     @Disabled // TODO: upstream issue #2257
     @Test
     public void testNumberListRecord() {
-        Fury fury = Fury.builder()
+        Fory fory = Fory.builder()
                 .withLanguage(Language.JAVA)
                 .withAsyncCompilation(true)
                 .build();
-        fury.register(NumberListRecord.class);
-        byte[] bytes = fury.serialize(new NumberListRecord(null, new ArrayList<>()));
-        fury.deserialize(bytes);
+        fory.register(NumberListRecord.class);
+        byte[] bytes = fory.serialize(new NumberListRecord(null, new ArrayList<>()));
+        fory.deserialize(bytes);
     }
 
-    record NumberListRecord(AutoCloseable n, List<Object> list) {
+    record NumberListRecord(@Nullable AutoCloseable n, List<Object> list) {
     }
 
     record FinalObject(int value) {
@@ -192,9 +193,9 @@ public class DumpUtilsTest {
             return 0;
         }
 
-        public static final class EmptySerializer extends AbstractCollectionSerializer<EmptyList> {
-            public EmptySerializer(Fury fury) {
-                super(fury, EmptyList.class, false);
+        public static final class EmptySerializer extends CollectionSerializer<EmptyList> {
+            public EmptySerializer(Fory fory) {
+                super(fory, EmptyList.class, false);
             }
             @Override
             public void write(MemoryBuffer buffer, EmptyList value) {

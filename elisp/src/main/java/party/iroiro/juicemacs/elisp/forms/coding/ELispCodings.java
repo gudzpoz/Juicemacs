@@ -1,8 +1,17 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.apache.fory.Fory;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemRawText.RawCoding;
+import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemUndecided.DetectingCodingSystem;
+import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemUtf8.BomDetectingCodingSystem;
+import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemUtf8.Utf8Codec;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCharset.CharsetMethod;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystem.Spec;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCodingSystemType.EolDetectingCodingSystem;
+import party.iroiro.juicemacs.elisp.forms.coding.EolAwareStringBuilder.EndOfLine;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -186,6 +195,29 @@ public final class ELispCodings {
                     codingStorage.setValue(coding.getSpec().name());
                 }
             }
+        }
+    }
+
+    public static void registerSerializer(Fory fory, boolean gen) {
+        for (Class<?> system : new Class<?>[]{
+                CharsetMethod.class,
+                ELispCodings.class,
+                ELispCharset.class,
+                ELispCodingDetector.class,
+                Spec.class,
+
+                BomDetectingCodingSystem.class,
+                DetectingCodingSystem.class,
+                EolDetectingCodingSystem.class,
+                RawCoding.class,
+                Utf8Codec.class,
+
+                EndOfLine.class,
+        }) {
+            fory.register(system, gen);
+        }
+        for (ELispCodingSystemType type : CODING_SYSTEM_TYPES.values()) {
+            fory.register(type.getClass(), gen);
         }
     }
 }

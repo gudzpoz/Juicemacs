@@ -3,7 +3,8 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
-public abstract class AbstractELispVector extends ELispVectorLike<Object> {
+public sealed abstract class AbstractELispVector extends ELispVectorLike<Object>
+        permits AbstractELispClosure, ELispCharTable, ELispCharTable.SubTable, ELispRecord, ELispVector {
     // TODO: Reduce copies in the old List API
     // TODO: Transparent long[]/double[] vectors
     protected final Object[] inner;
@@ -78,5 +79,9 @@ public abstract class AbstractELispVector extends ELispVectorLike<Object> {
             }
         }
         return true;
+    }
+
+    public Object[] inner() {
+        return inner;
     }
 }

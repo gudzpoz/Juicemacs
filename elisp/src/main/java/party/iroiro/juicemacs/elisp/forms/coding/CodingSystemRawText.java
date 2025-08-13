@@ -33,7 +33,7 @@ final class CodingSystemRawText implements ELispCodingSystemType {
         return new RawCoding(spec, eol);
     }
 
-    private final class RawCoding extends ELispCodingSystem {
+    final class RawCoding extends ELispCodingSystem {
         RawCoding(Spec spec, EolAwareStringBuilder.EndOfLine eol) {
             super(CodingSystemRawText.this, spec, eol);
         }

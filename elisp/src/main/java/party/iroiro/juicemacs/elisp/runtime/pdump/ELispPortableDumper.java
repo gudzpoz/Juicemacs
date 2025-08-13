@@ -2,29 +2,43 @@ package party.iroiro.juicemacs.elisp.runtime.pdump;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import org.apache.fury.Fury;
-import org.apache.fury.config.Language;
-import org.apache.fury.io.FuryStreamReader;
-import org.apache.fury.logging.LoggerFactory;
-import org.apache.fury.serializer.ExternalizableSerializer;
-import party.iroiro.juicemacs.elisp.forms.ELispBuiltIns;
+import org.apache.fory.Fory;
+import org.apache.fory.config.Language;
+import org.apache.fory.io.ForyStreamReader;
+import org.apache.fory.logging.LoggerFactory;
+import org.apache.fory.serializer.ExternalizableSerializer;
+import party.iroiro.juicemacs.elisp.forms.*;
+import party.iroiro.juicemacs.elisp.forms.BuiltInCcl.CclProgram;
+import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical.Captured;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical.Scope;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext.ContextSerializer;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispConsSerializer;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure.ClosureCommons;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer.MarkerMoveNotifier;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispHashtable.ELispWeakHashtable;
 import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.*;
+import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.PieceTreeSerializer.Intervals;
+import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.PieceTreeSerializer.Marks;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
+import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree.Marker;
 
 import java.io.OutputStream;
 import java.nio.channels.SeekableByteChannel;
@@ -33,92 +47,168 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.JAVA_SOURC
 
 /// Portable dumper for ELisp
 public final class ELispPortableDumper {
-    private static Fury getFury(ELispContext context) {
+    // TODO: support pdump with native images until fory fixes issues
+    private static final Fory FORY;
+
+    static {
         LoggerFactory.disableLogging();
-        Fury fury = Fury.builder()
+        Fory fory = Fory.builder()
                 .withLanguage(Language.JAVA)
-                .withAsyncCompilation(true)
                 .withRefTracking(true)
-                .requireClassRegistration(false)
-                .suppressClassRegistrationWarnings(true)
+                .requireClassRegistration(true)
                 .ignoreBasicTypesRef(true)
-                .ignoreStringRef(true)
                 .registerGuavaTypes(false)
                 .build();
 
-        // TODO: Register *all* classes (even external private ones?)
-        //   and make fury a static field to support GraalVM.
-
-        registerSerializers(fury);
-
-        // Context
-        fury.registerSerializer(ELispContext.class, new ELispContext.ContextSerializer(fury, context));
-        fury.register(ELispGlobals.class);
-        fury.register(ELispBuiltIns.class);
-        for (ELispBuiltIns builtIn : context.globals().getBuiltIns()) {
-            fury.register(builtIn.getClass());
-        }
-        return fury;
-    }
-
-    static void registerSerializers(Fury fury) {
         // Symbols
-        fury.register(TruffleString.class);
-        fury.register(MutableTruffleString.class);
-        fury.registerSerializer(ELispObarray.class, new ELispObarraySerializer(fury));
-        fury.registerSerializer(ELispSymbol.class, new ELispSymbolSerializer(fury));
+        fory.registerSerializer(ELispObarray.class, new ELispObarraySerializer(fory));
+        fory.registerSerializer(ELispSymbol.class, new ELispSymbolSerializer(fory));
         // Symbol values
-        fury.registerSerializer(ThreadLocalStorage.class,
-                DumpUtils.stateless(fury, ThreadLocalStorage.class, () -> new ThreadLocalStorage(false)));
-        fury.registerSerializer(ValueStorage.class, new ExternalizableSerializer<>(fury, ValueStorage.class));
-        fury.register(ValueStorage.PlainValue.class);
-        fury.register(ValueStorage.Forwarded.class);
-        fury.register(ValueStorage.ForwardedBool.class);
-        fury.register(ValueStorage.ForwardedLong.class);
-        fury.register(ValueStorage.ForwardedPerKboard.class);
-        fury.register(ValueStorage.ForwardedPerBuffer.class);
-        fury.register(ValueStorage.BufferLocal.class);
-        fury.register(ValueStorage.TrappedWrite.class);
-        fury.register(FunctionStorage.class);
+        fory.registerSerializer(ThreadLocalStorage.class,
+                DumpUtils.stateless(fory, ThreadLocalStorage.class, () -> new ThreadLocalStorage(false)));
+        fory.registerSerializer(ValueStorage.class, new ExternalizableSerializer<>(fory, ValueStorage.class));
 
         // Objects
-        fury.registerSerializer(ELispHashtable.class, new ELispHashtableSerializer(fury));
-        fury.registerSerializer(ELispHashtable.ELispWeakHashtable.class, new ELispHashtableSerializer(fury));
-        fury.registerSerializer(ELispCons.class, new ELispConsSerializer(fury));
-        fury.register(ELispString.class);
-        fury.register(ELispCharTable.class);
-        fury.register(ELispCharTable.SubTable.class);
-        fury.register(ELispBoolVector.class);
-        fury.register(ELispVector.class);
-        fury.register(ELispRecord.class);
-        fury.register(ELispInterpretedClosure.class);
-        fury.register(ELispBytecode.class);
+        fory.registerSerializer(ELispHashtable.class, new ELispHashtableSerializer(fory));
+        fory.registerSerializer(ELispWeakHashtable.class, new ELispHashtableSerializer(fory));
+        fory.registerSerializer(ELispCons.class, new ELispConsSerializer(fory));
 
         // Buffers
-        fury.register(ELispBuffer.class);
-        fury.register(ELispBuffer.MarkerMoveNotifier.class);
-        fury.registerSerializer(ELispMarker.class, new ELispMarkerSerializer(fury));
-        fury.registerSerializer(MarkerPieceTree.Marker.class, DumpUtils.never(fury, MarkerPieceTree.Marker.class));
-        fury.registerSerializer(PieceTreeBase.class, new PieceTreeSerializer(fury));
-        fury.registerSerializer(IntervalPieceTree.class, new PieceTreeSerializer.Intervals(fury));
-        fury.registerSerializer(MarkerPieceTree.class, new PieceTreeSerializer.Marks(fury));
+        fory.registerSerializer(ELispMarker.class, new ELispMarkerSerializer(fory));
+        fory.registerSerializer(Marker.class, DumpUtils.never(fory, Marker.class));
+        fory.registerSerializer(PieceTreeBase.class, new PieceTreeSerializer(fory));
+        fory.registerSerializer(IntervalPieceTree.class, new Intervals(fory));
+        fory.registerSerializer(MarkerPieceTree.class, new Marks(fory));
 
         // Truffle internals
-        fury.registerSerializer(CyclicAssumption.class, new CyclicAssumptionSerializer(fury));
-        fury.registerSerializer(Assumption.class, DumpUtils.never(fury, Assumption.class));
-        Class<? extends MaterializedFrame> frameClass = Truffle.getRuntime().createMaterializedFrame(new Object[0]).getClass();
-        fury.registerSerializer(frameClass, new MaterializedFrameSerializer(fury));
-        fury.registerSerializer(ELispSubroutine.class, DumpUtils.never(fury, ELispSubroutine.class));
-        fury.registerSerializer(JAVA_SOURCE.getClass(), new SourceSerializer(fury));
+        fory.registerSerializer(CyclicAssumption.class, new CyclicAssumptionSerializer(fory));
+        fory.registerSerializer(Assumption.class, DumpUtils.never(fory, Assumption.class));
+        Class<? extends MaterializedFrame> frameClass = Truffle.getRuntime()
+                .createMaterializedFrame(new Object[0]).getClass(); // FrameWithoutBoxing
+        fory.registerSerializer(frameClass, new MaterializedFrameSerializer(fory));
+        fory.registerSerializer(ELispSubroutine.class, DumpUtils.never(fory, ELispSubroutine.class));
+        fory.registerSerializer(JAVA_SOURCE.getClass(), new SourceSerializer(fory)); // SourceImpl
+
+        Class<?>[] classes = {
+                // Symbols
+                PlainValue.class,
+                Forwarded.class,
+                ForwardedBool.class,
+                ForwardedLong.class,
+                ForwardedPerKboard.class,
+                ForwardedPerBuffer.class,
+                VarAlias.class,
+                BufferLocal.class,
+                TrappedWrite.class,
+                FunctionStorage.class,
+                // Objects
+                ELispString.class,
+                ELispCharTable.class,
+                ELispCharTable.SubTable.class,
+                ELispCharTable.CompressedUnipropSubTable.class,
+                ELispBoolVector.class,
+                ELispVector.class,
+                ELispRecord.class,
+                ELispInterpretedClosure.class,
+                ELispBytecode.class,
+                // Buffers
+                ELispBuffer.class,
+                MarkerMoveNotifier.class,
+                // Lexical
+                ELispLexical.class,
+                Scope.class,
+                Captured.class,
+                ClosureCommons.class,
+                // Truffle internals
+                FrameDescriptor.class,
+                TruffleString.class,
+                MutableTruffleString.class,
+                // Context
+                ELispBuiltIns[].class,
+                BuiltInAlloc.class,
+                BuiltInBuffer.class,
+                BuiltInBytecode.class,
+                BuiltInCallInt.class,
+                BuiltInCallProc.class,
+                BuiltInCaseFiddle.class,
+                BuiltInCaseTab.class,
+                BuiltInCategory.class,
+                BuiltInCcl.class, CclProgram.class,
+                BuiltInCharSet.class,
+                BuiltInCharTab.class,
+                BuiltInCharacter.class,
+                BuiltInCmds.class,
+                BuiltInCoding.class,
+                BuiltInComp.class,
+                BuiltInComposite.class,
+                BuiltInData.class,
+                BuiltInDired.class,
+                BuiltInDispNew.class,
+                BuiltInDoc.class,
+                BuiltInEditFns.class,
+                BuiltInEmacs.class,
+                BuiltInEval.class,
+                BuiltInFileIO.class,
+                BuiltInFileLock.class,
+                BuiltInFloatFns.class,
+                BuiltInFns.class,
+                BuiltInFrame.class,
+                BuiltInIndent.class,
+                BuiltInKeyboard.class,
+                BuiltInKeymap.class,
+                BuiltInLRead.class,
+                BuiltInMacros.class,
+                BuiltInMarker.class,
+                BuiltInMiniBuf.class,
+                BuiltInPdumper.class,
+                BuiltInPrint.class,
+                BuiltInProcess.class,
+                BuiltInSearch.class,
+                BuiltInSyntax.class,
+                BuiltInTerminal.class,
+                BuiltInTextProp.class,
+                BuiltInTimeFns.class,
+                BuiltInTreesit.class,
+                BuiltInWindow.class,
+                BuiltInXDisp.class,
+                BuiltInXFaces.class,
+        };
+        for (Class<?> builtIn : classes) {
+            fory.register(builtIn, false);
+        }
+        BuiltInSearch.registerSerializer(fory);
+        ELispCodings.registerSerializer(fory, false);
+
+        for (Class<?> builtIn : classes) {
+            fory.register(builtIn, true);
+        }
+        ELispCodings.registerSerializer(fory, true);
+
+        // No other objects should store refs to ELispGlobals and ELispContext
+        fory.register(ELispGlobals.class, false);
+        fory.registerSerializer(ELispContext.class, new ContextSerializer(fory));
+        fory.register(ELispGlobals.class, true);
+
+        FORY = fory;
     }
 
     public static void serializeFromContext(OutputStream output, ELispContext context) {
-        Fury fury = getFury(context);
-        fury.serializeJavaObject(output, context);
+        try {
+            ELispContext.ContextSerializer.setCurrentContext(context);
+            FORY.serializeJavaObject(output, context);
+            FORY.reset();
+        } finally {
+            ELispContext.ContextSerializer.setCurrentContext(null);
+        }
     }
 
     public static void deserializeIntoContext(SeekableByteChannel channel, ELispContext context) {
-        Fury fury = getFury(context);
-        fury.deserializeJavaObject(FuryStreamReader.of(channel), ELispContext.class);
+        try {
+            ELispContext.ContextSerializer.setCurrentContext(context);
+            FORY.deserializeJavaObject(ForyStreamReader.of(channel), ELispContext.class);
+            FORY.reset();
+        } finally {
+            ELispContext.ContextSerializer.setCurrentContext(null);
+        }
     }
 }

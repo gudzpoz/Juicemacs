@@ -21,7 +21,7 @@ module party.iroiro.juicemacs.elisp {
     requires org.apache.commons.compress;
     requires org.apache.commons.lang3;
     requires org.apache.commons.text;
-    requires org.apache.fury.core;
+    requires org.apache.fory.core;
     requires org.eclipse.jdt.annotation;
     requires org.eclipse.collections.impl;
     requires org.graalvm.collections;

@@ -3,9 +3,9 @@ package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import org.apache.fury.Fury;
-import org.apache.fury.memory.MemoryBuffer;
-import org.apache.fury.serializer.Serializer;
+import org.apache.fory.Fory;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.serializer.Serializer;
 import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
@@ -15,26 +15,26 @@ import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 import java.util.HashSet;
 
 public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
-    public PieceTreeSerializer(Fury fury) {
-        super(fury, PieceTreeBase.class);
+    public PieceTreeSerializer(Fory fory) {
+        super(fory, PieceTreeBase.class);
     }
 
     @Override
     public void write(MemoryBuffer buffer, PieceTreeBase value) {
-        fury.writeRef(buffer, value.getLinesRawContent());
+        fory.writeRef(buffer, value.getLinesRawContent());
     }
 
     @Override
     public PieceTreeBase read(MemoryBuffer buffer) {
-        fury.getRefResolver().reference(null);
-        TruffleString content = (TruffleString) fury.readRef(buffer);
+        fory.getRefResolver().reference(null);
+        TruffleString content = (TruffleString) fory.readRef(buffer);
         return new PieceTreeBase(content);
     }
 
     @SuppressWarnings("rawtypes")
     public static final class Intervals extends Serializer<IntervalPieceTree> {
-        public Intervals(Fury fury) {
-            super(fury, IntervalPieceTree.class);
+        public Intervals(Fory fory) {
+            super(fory, IntervalPieceTree.class);
         }
 
         @SuppressWarnings("unchecked")
@@ -47,7 +47,7 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
 
                     @Override
                     public @Nullable Object accept(@Nullable Object a, long offset, long length) {
-                        fury.writeRef(buffer, a);
+                        fory.writeRef(buffer, a);
                         buffer.writeVarUint64(length);
                         assert offset == this.offset;
                         this.offset += length;
@@ -61,11 +61,11 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
         @Override
         public IntervalPieceTree read(MemoryBuffer buffer) {
             IntervalPieceTree<Object> tree = new IntervalPieceTree<>();
-            fury.getRefResolver().reference(tree);
+            fory.getRefResolver().reference(tree);
             int count = buffer.readInt32();
             long offset = 0;
             for (int i = 0; i < count; i++) {
-                Object value = fury.readRef(buffer);
+                Object value = fory.readRef(buffer);
                 long length = buffer.readVarUint64();
                 tree.insert(offset, length, value);
             }
@@ -75,8 +75,8 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
 
     @SuppressWarnings("rawtypes")
     public static final class Marks extends Serializer<MarkerPieceTree> {
-        public Marks(Fury fury) {
-            super(fury, MarkerPieceTree.class);
+        public Marks(Fory fory) {
+            super(fory, MarkerPieceTree.class);
         }
 
         @Override
@@ -93,9 +93,9 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
                 buffer.writeVarUint64(position);
                 buffer.writeBoolean(marker.affinity() == MarkerPieceTree.Affinity.RIGHT);
             }
-            DumpUtils.writeAnchors(fury, buffer, markerArray);
-            fury.writeRef(buffer, value.getBuffer());
-            fury.writeRef(buffer, value.getListener());
+            DumpUtils.writeAnchors(fory, buffer, markerArray);
+            fory.writeRef(buffer, value.getBuffer());
+            fory.writeRef(buffer, value.getListener());
         }
 
         @SuppressWarnings({"unchecked", "PMD.UseDiamondOperator"})
@@ -104,7 +104,7 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
             MarkerPieceTree tree = new MarkerPieceTree((_, _) -> {
                 throw CompilerDirectives.shouldNotReachHere();
             }, 0xDEADBEEFL);
-            fury.getRefResolver().reference(tree);
+            fory.getRefResolver().reference(tree);
 
             long length = buffer.readVarUint64();
             tree.insertString(0, length);
@@ -118,9 +118,9 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
                 markerArray[i] = marker;
                 tree.insertMarker(position, marker);
             }
-            DumpUtils.readAnchors(fury, buffer, markerArray);
-            Object treeBuffer = fury.readRef(buffer);
-            MarkerPieceTree.MarkerMovedListener listener = (MarkerPieceTree.MarkerMovedListener) fury.readRef(buffer);
+            DumpUtils.readAnchors(fory, buffer, markerArray);
+            Object treeBuffer = fory.readRef(buffer);
+            MarkerPieceTree.MarkerMovedListener listener = (MarkerPieceTree.MarkerMovedListener) fory.readRef(buffer);
             tree.setBuffer(treeBuffer);
             tree.setListener(listener);
             return tree;

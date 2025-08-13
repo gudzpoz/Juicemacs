@@ -2,8 +2,6 @@ package party.iroiro.juicemacs.elisp;
 
 import org.eclipse.jdt.annotation.Nullable;
 import org.graalvm.polyglot.Context;
-
-
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Test;
 

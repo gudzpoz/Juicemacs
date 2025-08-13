@@ -1,23 +1,23 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
-import org.apache.fury.Fury;
-import org.apache.fury.memory.MemoryBuffer;
-import org.apache.fury.serializer.Serializer;
+import org.apache.fory.Fory;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.serializer.Serializer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 public final class ELispSymbolSerializer extends Serializer<ELispSymbol> {
-    public ELispSymbolSerializer(Fury fury) {
-        super(fury, ELispSymbol.class);
+    public ELispSymbolSerializer(Fory fory) {
+        super(fory, ELispSymbol.class);
     }
 
     @Override
     public void write(MemoryBuffer buffer, ELispSymbol value) {
-        fury.writeRef(buffer, value.name());
+        fory.writeRef(buffer, value.name());
     }
 
     @Override
     public ELispSymbol read(MemoryBuffer buffer) {
-        fury.getRefResolver().reference(null);
-        return new ELispSymbol((String) fury.readRef(buffer));
+        fory.getRefResolver().reference(null);
+        return new ELispSymbol((String) fory.readRef(buffer));
     }
 }

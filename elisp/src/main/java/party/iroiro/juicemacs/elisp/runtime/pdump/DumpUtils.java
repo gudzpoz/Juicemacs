@@ -1,10 +1,10 @@
 package party.iroiro.juicemacs.elisp.runtime.pdump;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.apache.fury.Fury;
-import org.apache.fury.memory.MemoryBuffer;
-import org.apache.fury.resolver.RefResolver;
-import org.apache.fury.serializer.Serializer;
+import org.apache.fory.Fory;
+import org.apache.fory.memory.MemoryBuffer;
+import org.apache.fory.resolver.RefResolver;
+import org.apache.fory.serializer.Serializer;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
@@ -37,12 +37,12 @@ public abstract class DumpUtils {
     /// them, and when we restore them, we want the tree and the elisp markers
     /// to share the same instance of nodes.
     ///
-    /// @see #readAnchors(Fury, MemoryBuffer, Object[])
-    public static <T> void writeAnchors(Fury fury, MemoryBuffer output, T[] array) {
+    /// @see #readAnchors(Fory, MemoryBuffer, Object[])
+    public static <T> void writeAnchors(Fory fory, MemoryBuffer output, T[] array) {
         if (array.length == 0) {
             return;
         }
-        RefResolver resolver = fury.getRefResolver();
+        RefResolver resolver = fory.getRefResolver();
         int recentId = -1;
         for (T value : array) {
             int id = getAnchor(value, resolver);
@@ -65,38 +65,38 @@ public abstract class DumpUtils {
         return dummy.readVarUint32();
     }
 
-    /// @see #writeAnchors(Fury, MemoryBuffer, Object[])
-    public static <T> void readAnchors(Fury fury, MemoryBuffer input, T[] array) {
+    /// @see #writeAnchors(Fory, MemoryBuffer, Object[])
+    public static <T> void readAnchors(Fory fory, MemoryBuffer input, T[] array) {
         int startId = input.readVarUint32();
         int length = input.readVarUint32();
-        RefResolver resolver = fury.getRefResolver();
+        RefResolver resolver = fory.getRefResolver();
         for (int i = 0; i < length; i++) {
             if (resolver.preserveRefId() != startId + i) {
-                throw ELispSignals.fatal("fury internal error");
+                throw ELispSignals.fatal("fory internal error");
             }
             resolver.reference(array[i]);
         }
     }
 
-    public static <T> void writeAnchor(Fury fury, MemoryBuffer output, T item) {
-        RefResolver resolver = fury.getRefResolver();
+    public static <T> void writeAnchor(Fory fory, MemoryBuffer output, T item) {
+        RefResolver resolver = fory.getRefResolver();
         int id = getAnchor(item, resolver);
         output.writeVarUint32(id);
     }
 
-    public static <T> void readAnchor(Fury fury, MemoryBuffer input, T item) {
+    public static <T> void readAnchor(Fory fory, MemoryBuffer input, T item) {
         int id = input.readVarUint32();
-        RefResolver resolver = fury.getRefResolver();
+        RefResolver resolver = fory.getRefResolver();
         if (resolver.preserveRefId() != id) {
-            throw ELispSignals.fatal("fury internal error");
+            throw ELispSignals.fatal("fory internal error");
         }
         resolver.reference(item);
     }
 
-    /// @see #readContextArray(Fury, MemoryBuffer, SharedIndicesMap, SharedIndicesMap.ContextArray)
+    /// @see #readContextArray(Fory, MemoryBuffer, SharedIndicesMap, SharedIndicesMap.ContextArray)
     @TruffleBoundary
     public static <T> void writeContextArray(
-            Fury fury, MemoryBuffer output,
+            Fory fory, MemoryBuffer output,
             SharedIndicesMap indicesMap,
             SharedIndicesMap.ContextArray<T> array
     ) {
@@ -106,8 +106,8 @@ public abstract class DumpUtils {
             for (ELispSymbol symbol : symbols) {
                 int index = indicesMap.lookup(symbol);
                 if (array.contains(index)) {
-                    fury.writeRef(output, symbol);
-                    fury.writeRef(output, array.getDynamic(index));
+                    fory.writeRef(output, symbol);
+                    fory.writeRef(output, array.getDynamic(index));
                     slot.inc();
                 }
             }
@@ -115,10 +115,10 @@ public abstract class DumpUtils {
         output.writeInt32(CONTEXT_ARRAY_END);
     }
 
-    /// @see #writeContextArray(Fury, MemoryBuffer, SharedIndicesMap, SharedIndicesMap.ContextArray)
+    /// @see #writeContextArray(Fory, MemoryBuffer, SharedIndicesMap, SharedIndicesMap.ContextArray)
     @SuppressWarnings("unchecked")
     public static <T> int readContextArray(
-            Fury fury, MemoryBuffer input,
+            Fory fory, MemoryBuffer input,
             SharedIndicesMap indicesMap,
             SharedIndicesMap.ContextArray<T> array
     ) {
@@ -126,8 +126,8 @@ public abstract class DumpUtils {
         if (magic1 == CONTEXT_ARRAY_START) {
             int size = input.readInt32();
             for (int i = 0; i < size; i++) {
-                ELispSymbol symbol = (ELispSymbol) fury.readRef(input);
-                T value = (T) fury.readRef(input);
+                ELispSymbol symbol = (ELispSymbol) fory.readRef(input);
+                T value = (T) fory.readRef(input);
                 int index = indicesMap.lookup(symbol);
                 array.addIfAbsent(index, value);
             }
@@ -139,12 +139,12 @@ public abstract class DumpUtils {
         throw ELispSignals.fatal("corrupt context array magic");
     }
 
-    public static <T> Serializer<T> never(Fury fury, Class<T> clazz) {
-        return new NeverSerializer<>(fury, clazz);
+    public static <T> Serializer<T> never(Fory fory, Class<T> clazz) {
+        return new NeverSerializer<>(fory, clazz);
     }
 
-    public static <T> Serializer<T> stateless(Fury fury, Class<T> clazz, Supplier<T> supplier) {
-        return new Serializer<>(fury, clazz) {
+    public static <T> Serializer<T> stateless(Fory fory, Class<T> clazz, Supplier<T> supplier) {
+        return new Serializer<>(fory, clazz) {
             @Override
             public void write(MemoryBuffer buffer, T value) {
                 // no-op
@@ -188,8 +188,8 @@ public abstract class DumpUtils {
     }
 
     private static final class NeverSerializer<T> extends Serializer<T> {
-        public NeverSerializer(Fury fury, Class<T> type) {
-            super(fury, type);
+        public NeverSerializer(Fory fory, Class<T> type) {
+            super(fory, type);
         }
 
         @Override
