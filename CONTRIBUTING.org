@@ -66,6 +66,8 @@ This guide will talk about the following:
   magic happen. We will document these caveats in dedicated sections. (If you
   encounter any new gotchas, you are welcome to add them here!)
 
+- What to work on
+
 * Implementing Basic Built-in Functions
 
 Like any language implementation, we need to implement a lot of built-in
@@ -127,9 +129,31 @@ the above covers the gist of a built-in function definition in Juicemacs:
     will call =@Specialization= methods for the actual work.
 
 - =@Specialization= :: This annotation marks the implementation of the =consp=
-  function. A class can contains several =@Specialization= methods, each
-  with different parameter types (and optionally different return types) but the
-  same parameter count.
+  function. A class can contains several =@Specialization= methods, each with
+  different parameter types (and optionally different return types) but the same
+  parameter count (similar to Java method overloading):
+
+  #+begin_src java
+    @ELispBuiltIn(name = "length", minArgs = 1, maxArgs = 1)
+    @GenerateNodeFactory
+    public abstract static class FLength extends ELispBuiltInBaseNode {
+        @Specialization
+        public static long lengthCons(ELispCons sequence) {
+            return sequence.size();
+        }
+        @Specialization
+        public static long lengthVector(ELispVectorLike<?> sequence) {
+            return sequence.size();
+        }
+        @Specialization
+        public static long lengthString(ELispString sequence) {
+            return sequence.length();
+        }
+    }
+  #+end_src
+
+  Truffle will generate code to dispatch function calls to correponding
+  specializations.
 
 Most of the above should be kept as is, because they will be overwritten when we
 rerun the code generation to update JavaDoc and incorporate GNU Emacs changes. Therefore,
@@ -525,3 +549,50 @@ There are more. Ways to discover them are:
   - =Exception::getMessage=
 - Others
   - =FileTime::toInstant= (see JavaDoc in =TruffleUtils.java=)
+
+* Debugging
+
+Using a Java debugger should be enough most of the time. See =TestingUtils.java=
+for some useful Truffle options when debugging:
+
+- =engine.Compilation=: It seems sometimes Truffle can corrupt the stack info,
+  making Java debuggers basically useless. If the bug is reproducible, you may
+  try turning off compilation.
+
+- =inspect=: Enable you to use [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome debugger]] to debug Lisp code since we
+  don't have edebug here. (It's not working very well though.)
+
+- =engine.CompilationFailureAction= / =engine.TraceCompilation=: Useful when
+  you are diagnosing performance issues.
+
+* What To Work On?
+
+- Places marked with =UnsupportedOperationException= or =TODO= comments
+
+  We mark out unimplemented features in the codebase with
+  =UnsupportedOperationException= or =TODO= comments. And grepping for them are
+  a good way to find things to work on.
+
+- Failing conformance tests
+
+  All those =el-semi-fuzz= and ERT tests do reveal conformance issues in
+  Juicemacs. Currently, Juicemacs does not pass all the ERT tests and
+  occasionally fails =el-semi-fuzz= tests (because the randomness). Looking into
+  these failing cases can be a good way to learn about the internals of both
+  Juicemacs and GNU Emacs.
+
+- Adding more tests
+
+  There are quite a lot of ERT tests in the GNU Emacs codebase. However,
+  currently we only run a few of them in our unit test
+  (=ELispLanguageTest.java=). Getting more of them to run can be quite
+  beneficial too.
+
+- Performance engineering
+
+  There is a TODO list here at [[file:docs/TODO.org]]. The reason I chose to use a
+  text file instead of issue trackers was because they were mostly about the
+  internals of Juicemacs and might require some Truffle hacking, and there were
+  simply too many things to track and learn about. There are still some unsolved
+  issues (and one might add more), and you are welcome to look into them if you
+  want to learn more about Truffle the framework.

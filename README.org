@@ -2,6 +2,7 @@
 
 [[https://justforfunnoreally.dev][https://img.shields.io/badge/justforfunnoreally-dev-9ff.svg]]
 [[https://openjdk.org/projects/jdk/23/][https://img.shields.io/badge/Java-23-orange.svg?logo=openjdk&ext=.svg]]
+[[https://github.com/gudzpoz/Juicemacs/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/gudzpoz/Juicemacs/test.yml?ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
 that over-ambitiously aims to explore the following:
