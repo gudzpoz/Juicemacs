@@ -10,6 +10,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'net.sourceforge.pmd:pmd-java:7.12.0'
-    testImplementation 'net.sourceforge.pmd:pmd-test:7.6.0'
+    implementation libs.pmd.java
+    testImplementation libs.pmd.test
 }

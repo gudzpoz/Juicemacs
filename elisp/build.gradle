@@ -9,7 +9,7 @@ plugins {
 }
 
 pmd {
-    toolVersion = pmdVersion
+    toolVersion = libs.pmd.java.get().version
     incrementalAnalysis = true
     ruleSetFiles = files(
             'scripts/pmd-truffle-practices.xml',
@@ -21,29 +21,26 @@ pmd {
 
 dependencies {
     pmd project(':commons:pmd-no-int')
-    pmd "net.sourceforge.pmd:pmd-ant:${pmdVersion}"
-    pmd "net.sourceforge.pmd:pmd-java:${pmdVersion}"
+    pmd libs.bundles.pmd
 
     implementation project(':commons:piece-tree')
 
-    implementation 'org.apache.commons:commons-lang3:3.18.0'
-    implementation 'org.apache.commons:commons-compress:1.27.1'
-    implementation 'org.apache.commons:commons-text:1.12.0'
-    implementation 'org.apache.fory:fory-core:0.11.2'
-    implementation "org.eclipse.collections:eclipse-collections-api:${eclipseCollectionsVersion}"
-    implementation "org.eclipse.collections:eclipse-collections:${eclipseCollectionsVersion}"
-    implementation 'com.github.albfernandez:juniversalchardet:2.5.0'
+    implementation libs.commons.compress
+    implementation libs.commons.lang3
+    implementation libs.commons.text
+    implementation libs.fory.core
+    implementation libs.bundles.eclipse.collections
+    implementation libs.juniversalchardet
 
-    api "org.graalvm.truffle:truffle-api:${truffleVersion}"
-    implementation "org.graalvm.polyglot:polyglot:${truffleVersion}"
-    annotationProcessor "org.graalvm.truffle:truffle-dsl-processor:${truffleVersion}"
-    runtimeOnly "org.graalvm.truffle:truffle-runtime:${truffleVersion}"
+    api libs.graalvm.truffle.api
+    implementation libs.graalvm.polyglot
+    annotationProcessor libs.graalvm.dsl.processor
+    runtimeOnly libs.graalvm.truffle.runtime
 
-    testImplementation 'org.openjdk.jmh:jmh-core:1.37'
-    testImplementation 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
-    testImplementation "org.graalvm.truffle:truffle-tck:${truffleVersion}"
-    testRuntimeOnly "org.graalvm.polyglot:inspect-community:${truffleVersion}"
-    testRuntimeOnly "org.graalvm.polyglot:profiler-community:${truffleVersion}"
+    testImplementation libs.bundles.jmh
+    testImplementation libs.graalvm.truffle.tck
+    testRuntimeOnly libs.graalvm.inspect
+    testRuntimeOnly libs.graalvm.profiler
 }
 
 tasks.withType(JavaCompile).configureEach {

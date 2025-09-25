@@ -1,6 +1,5 @@
 /*
  * This settings file is used to specify which projects to include in your build-logic build.
- * This project uses @Incubating APIs which are subject to change.
  */
 
 dependencyResolutionManagement {
@@ -10,4 +9,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = 'build-logic'
+rootProject.name = 'buildSrc'

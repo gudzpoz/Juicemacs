@@ -1,7 +1,3 @@
-/*
- * This project uses @Incubating APIs which are subject to change.
- */
-
 plugins {
     id 'java'
     // // JaCoCo transforms the bytecode, which severely impacts how
@@ -15,6 +11,13 @@ plugins {
 
 repositories {
     mavenCentral()
+    // TODO: use maven central when bugs (in fory) are fixed
+    maven {
+        url = "https://repository.apache.org/content/repositories/snapshots/"
+        mavenContent {
+            snapshotsOnly()
+        }
+    }
 }
 
 boolean isGraalVM() {
@@ -50,32 +53,23 @@ int preferredJvmVersion() {
 }
 
 ext {
-    eclipseCollectionsVersion = '11.1.0'
-    pmdVersion = '7.7.0'
-    truffleVersion = '24.2.2'
     graalArgs = getGraalVMArgs()
-    preferredJvmVersion = preferredJvmVersion()
 }
 
 dependencies {
-    implementation 'org.jspecify:jspecify:1.0.0'
-}
+    implementation libs.jspecify
 
-testing {
-    suites {
-        test {
-            useJUnitJupiter()
-        }
-    }
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(preferredJvmVersion)
+        languageVersion = JavaLanguageVersion.of(preferredJvmVersion())
     }
 }
 
-//test {
-//    // Always generate JaCoCo report after tests run
-//    finalizedBy jacocoTestReport
-//}
+tasks.named('test') {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+}

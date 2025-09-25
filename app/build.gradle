@@ -1,24 +1,15 @@
-/*
- * This project uses @Incubating APIs which are subject to change.
- */
-
 plugins {
     id 'buildlogic.java-application-conventions'
     id 'org.graalvm.buildtools.native' version '0.11.0'
 }
 
-ext {
-    jlineVersion = '3.30.5'
-    picocliVersion = '4.7.7'
-}
-
 dependencies {
     implementation project(':elisp')
 
-    implementation "org.jline:jline:${jlineVersion}"
-    implementation "info.picocli:picocli:${picocliVersion}"
-    annotationProcessor "info.picocli:picocli-codegen:${picocliVersion}"
-    runtimeOnly "org.graalvm.polyglot:inspect-community:${truffleVersion}"
+    implementation libs.jline
+    implementation libs.picocli.lib
+    annotationProcessor libs.picocli.codegen
+    runtimeOnly libs.graalvm.inspect
 }
 
 application {

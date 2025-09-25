@@ -1,1 +1,56 @@
-# https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
+[versions]
+# Core
+jspecify = "1.0.0"
+truffle = "25.0.0"
+
+# Libraries
+commons-compress = "1.28.0"
+commons-lang3 = "3.19.0"
+commons-text = "1.14.0"
+eclipse-collections = '11.1.0'
+fory = "0.13.0-SNAPSHOT" # TODO: use maven central when bugs are fixed
+juniversalchardet = "2.5.0"
+
+# CLI
+jline = "3.30.6"
+picocli = "4.7.7"
+
+# Testing, etc.
+pmd = "7.17.0"
+jmh = "1.37"
+junit = "5.13.4"
+
+[libraries]
+jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
+
+graalvm-truffle-api = { group = "org.graalvm.truffle", name = "truffle-api", version.ref = "truffle" }
+graalvm-truffle-runtime = { group = "org.graalvm.truffle", name = "truffle-runtime", version.ref = "truffle" }
+graalvm-truffle-tck = { group = "org.graalvm.truffle", name = "truffle-tck", version.ref = "truffle" }
+graalvm-dsl-processor = { group = "org.graalvm.truffle", name = "truffle-dsl-processor", version.ref = "truffle" }
+graalvm-polyglot = { group = "org.graalvm.polyglot", name = "polyglot", version.ref = "truffle" }
+graalvm-inspect = { group = "org.graalvm.polyglot", name = "inspect-community", version.ref = "truffle" }
+graalvm-profiler = { group = "org.graalvm.polyglot", name = "profiler-community", version.ref = "truffle" }
+
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commons-compress" }
+commons-lang3 = { group = "org.apache.commons", name = "commons-lang3", version.ref = "commons-lang3" }
+commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "commons-text" }
+eclipse-collections-api = { group = "org.eclipse.collections", name = "eclipse-collections-api", version.ref = "eclipse-collections" }
+eclipse-collections-impl = { group = "org.eclipse.collections", name = "eclipse-collections", version.ref = "eclipse-collections" }
+fory-core = { group = "org.apache.fory", name = "fory-core", version.ref = "fory" }
+juniversalchardet = { group = "com.github.albfernandez", name = "juniversalchardet", version.ref = "juniversalchardet" }
+
+jline = { group = "org.jline", name = "jline", version.ref = "jline" }
+picocli-lib = { group = "info.picocli", name = "picocli", version.ref = "picocli" }
+picocli-codegen = { group = "info.picocli", name = "picocli-codegen", version.ref = "picocli" }
+
+pmd-ant = { group = "net.sourceforge.pmd", name = "pmd-ant", version.ref = "pmd" }
+pmd-java = { group = "net.sourceforge.pmd", name = "pmd-java", version.ref = "pmd" }
+pmd-test = { group = "net.sourceforge.pmd", name = "pmd-test", version.ref = "pmd" }
+jmh-core = { group = "org.openjdk.jmh", name = "jmh-core", version.ref = "jmh" }
+jmh-generator-annprocess = { group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version.ref = "jmh" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+
+[bundles]
+eclipse-collections = ["eclipse-collections-api", "eclipse-collections-impl"]
+jmh = ["jmh-core", "jmh-generator-annprocess"]
+pmd = ["pmd-ant", "pmd-java"]
