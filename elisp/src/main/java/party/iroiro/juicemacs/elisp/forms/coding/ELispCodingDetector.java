@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.mozilla.universalchardet.UniversalDetector;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 

@@ -25,7 +25,7 @@
 
 package party.iroiro.juicemacs.piecetree;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /// Search cache for [PieceTreeBase].
 ///

@@ -2,7 +2,7 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
@@ -532,7 +532,7 @@ public final class ELispCharTable extends AbstractELispVector {
         @TruffleBoundary
         public Object optimize(BiPredicate<Object, Object> eq) {
             boolean optimizable = true;
-            @Nullable Object value = null;
+            Object value = null;
             int slots = getSlots(getDepth());
             for (int i = 0; i < slots; i++) {
                 Object slot = getContentSlot(i);

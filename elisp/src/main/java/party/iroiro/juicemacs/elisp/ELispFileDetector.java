@@ -1,11 +1,10 @@
 package party.iroiro.juicemacs.elisp;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class ELispFileDetector implements FileTypeDetector {
     public static final String EXTENSION = ".el";

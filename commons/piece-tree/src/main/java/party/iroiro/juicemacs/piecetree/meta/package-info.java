@@ -1,6 +1,6 @@
 /// Piece-tree-like structures for string/buffer metadata keeping,
 /// e.g., marks and string mark
-@NonNullByDefault
+@NullMarked
 package party.iroiro.juicemacs.piecetree.meta;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.jspecify.annotations.NullMarked;

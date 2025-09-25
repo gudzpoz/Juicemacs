@@ -3,7 +3,7 @@ package party.iroiro.juicemacs.elisp.runtime.scopes;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 
@@ -56,6 +56,7 @@ public class ThreadLocalStorage {
         if (threadLocal != null) {
             return threadLocal;
         }
+        //noinspection NullableProblems
         threadLocal = new ThreadLocal<>();
         values = threadLocal;
         return threadLocal;

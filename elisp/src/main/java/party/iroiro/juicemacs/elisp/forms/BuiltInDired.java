@@ -5,7 +5,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -120,7 +119,7 @@ public class BuiltInDired extends ELispBuiltIns {
         @Specialization
         public Object directoryFiles(ELispString directory, boolean full, Object match, boolean nosort, Object count) {
             long limit = notNilOr(count, -1);
-            ELispRegExp.@Nullable CompiledRegExp matcher = isNil(match)
+            ELispRegExp.CompiledRegExp matcher = isNil(match)
                     ? null
                     : BuiltInSearch.compileRegExp(getLanguage(), asStr(match), null);
             TruffleFile dir = getContext().getFileExpanded(directory);

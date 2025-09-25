@@ -7,7 +7,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
@@ -72,9 +71,9 @@ public final class TopLevelScope implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMemberReadable(String member) {
-        @Nullable ValueStorage storage = cache.get(member);
+        ValueStorage storage = cache.get(member);
         if (storage == null) {
-            @Nullable ELispSymbol symbol = context.obarray().internSoft(member);
+            ELispSymbol symbol = context.obarray().internSoft(member);
             if (symbol == null) {
                 return false;
             }

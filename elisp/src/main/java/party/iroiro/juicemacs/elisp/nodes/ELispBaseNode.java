@@ -1,7 +1,7 @@
 package party.iroiro.juicemacs.elisp.nodes;
 
 import com.oracle.truffle.api.nodes.Node;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 

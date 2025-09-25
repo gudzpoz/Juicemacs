@@ -7,7 +7,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.parser.CodePointReader;
@@ -118,7 +118,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         Instant saveMtime = Instant.MIN;
         boolean absolute = completeFilenameP(name);
         ELispString original = name;
-        @Nullable ELispString result = null;
+        ELispString result = null;
         ELispCons pathList = paths instanceof ELispCons cons ? cons : ELispCons.listOf(new ELispString("."));
         ELispCons suffixList = ELispCons.cons(new ELispString(""), suffixes);
         ELispContext context = ELispContext.get(null);
@@ -305,7 +305,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                             yield cons;
                         }
                         case ELispString s -> {
-                            s.forProperties((o, _, _) -> substitute(o));
+                            s.forProperties((o, _, _) -> substitute(Objects.requireNonNull(o)));
                             yield s;
                         }
                         case ELispVectorLike<?> vec -> {
@@ -591,7 +591,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         private static Source getSource(Object filename, ELispBuffer current, ELispContext context) {
             ELispString path = asStr(or(current.getFileTruename(), current.getFilename(), filename));
             ELispString name = asStr(or(filename, path, current.getName()));
-            @Nullable Source source = null;
+            Source source = null;
             if (!isNil(path)) {
                 TruffleFile file = context.truffleEnv().getPublicTruffleFile(path.toString());
                 if (file.exists()) {

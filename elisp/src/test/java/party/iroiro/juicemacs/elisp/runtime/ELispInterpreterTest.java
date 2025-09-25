@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContextBuilder;
 
@@ -212,6 +213,27 @@ public class ELispInterpreterTest {
                 event.prepareContinue();
             });
             tester.expectDone();
+        }
+    }
+
+    @Test
+    public void testIncList() {
+        try (Context context = getContextBuilder(null).build()) {
+            context.eval("elisp", """
+                    ;;; -*- lexical-binding: t -*-
+                    (defvar elb-inclist-no-type-hints-list
+                      (mapcar #'random (make-list 50000 100)))
+                    
+                    (defalias 'elb-inclist #'(lambda (l)
+                      (prog1 l
+                        (while l
+                          (let ((c l))
+                    	    (setcar c (1+ (car c)))
+                    	    (setq l (cdr c)))))))
+                    """);
+            for (int i = 0; i < 10000; i++) {
+                context.eval("elisp", "(elb-inclist elb-inclist-no-type-hints-list)");
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.regex;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 
 import java.util.ArrayList;

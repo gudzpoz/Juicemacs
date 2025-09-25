@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -507,7 +506,7 @@ public class BuiltInTextProp extends ELispBuiltIns {
             }
             long offset = start;
             long len = end - start;
-            @Nullable IntervalPieceTree<Object> tree;
+            IntervalPieceTree<Object> tree;
             if (object instanceof ELispString s) {
                 tree = s.getIntervals();
             } else {
@@ -517,7 +516,7 @@ public class BuiltInTextProp extends ELispBuiltIns {
             if (tree == null) {
                 return isNil(value) ? false : start;
             }
-            @Nullable Long diffStart = tree.forPropertiesIn(
+            Long diffStart = tree.forPropertiesIn(
                     offset, len, true,
                     (properties, propsStart, _) -> {
                         Object actual = BuiltInData.FCdrSafe.cdrSafe(

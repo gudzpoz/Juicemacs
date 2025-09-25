@@ -5,7 +5,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -64,7 +64,7 @@ public class LetNode extends ELispExpressionNode {
 
     @SuppressWarnings("PMD.TruffleNodeUseInsertToAdoptDynamicChildren")
     private ELispExpressionNode updateClauses() {
-        @Nullable ELispExpressionNode bodyNode = this.bodyNode;
+        ELispExpressionNode bodyNode = this.bodyNode;
         if (bodyNode != null) {
             return bodyNode;
         }
@@ -76,7 +76,7 @@ public class LetNode extends ELispExpressionNode {
 
         ArrayList<ELispSymbol> dynamicSymbols = new ArrayList<>();
 
-        @Nullable ELispLexical block = ELispLexical.newBlock(this, symbols);
+        ELispLexical block = ELispLexical.newBlock(this, symbols);
         int length = symbols.length;
         ConsIterator sourceSectionProvider = asConsIter(varlist);
         for (int i = 0; i < length; i++) {
@@ -147,7 +147,7 @@ public class LetNode extends ELispExpressionNode {
         if (lexicalBlock != null) {
             frame = block.newFrame(frame);
         }
-        @Nullable Dynamic scope = executeClauses(frame, block);
+        Dynamic scope = executeClauses(frame, block);
         try {
             bodyNode.executeVoid(frame);
         } finally {
@@ -164,7 +164,7 @@ public class LetNode extends ELispExpressionNode {
         if (lexicalBlock != null) {
             frame = block.newFrame(frame);
         }
-        @Nullable Dynamic scope = executeClauses(frame, block);
+        Dynamic scope = executeClauses(frame, block);
         try {
             return bodyNode.executeGeneric(frame);
         } finally {

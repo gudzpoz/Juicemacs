@@ -4,8 +4,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.eclipse.jdt.annotation.Nullable;
-import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
@@ -25,7 +23,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
 
     @TruffleBoundary
     public static void charTableMap(ELispCharTable table, BiConsumer<Object, Object> callback) {
-        @Nullable ELispVector decoder = null;
+        ELispVector decoder = null;
         if (table.getPurpose() == CHAR_CODE_PROPERTY_TABLE && table.extraSlots() == 5) {
             Object decoderId = table.getExtra(1);
             if (decoderId instanceof Long id) {

@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.jupiter.api.Test;
 
@@ -46,7 +46,6 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.fromBytes;
 import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.fromString;
 
 public class ELispLexerTest {

@@ -7,7 +7,7 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
@@ -158,7 +158,7 @@ final class ELispRegExpCompiler {
                     REAst child,
                     REToken.Quantifier quantifier
             ) -> {
-                @Nullable HalfCompiled lookaround = null;
+                HalfCompiled lookaround = null;
                 if (next != null) {
                     int lookahead = next.lookahead(canon);
                     if (lookahead == -1) {
@@ -199,12 +199,12 @@ final class ELispRegExpCompiler {
             }
         }
         if (alternations.length >= 2 && TrieBuilder.isBranchesExact(alternations)) {
-            @Nullable HalfCompiled trie = new TrieBuilder(canon).buildTrie(alternations);
+            HalfCompiled trie = new TrieBuilder(canon).buildTrie(alternations);
             if (trie != null) {
                 return trie;
             }
         }
-        @Nullable HalfCompiled compiled = null;
+        HalfCompiled compiled = null;
         for (REAst[] alternation : alternations) {
             HalfCompiled[] entries = new HalfCompiled[alternation.length];
             for (int i = 0; i < alternation.length; i++) {

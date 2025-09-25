@@ -7,7 +7,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -96,9 +96,14 @@ public abstract class ELispRegExp {
     static ELispRegExpCompiler.Compiled getCompiled(ELispString string,
                                                     @Nullable ELispString whitespaceRegExp,
                                                     @Nullable ELispCharTable canon) {
-        ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp);
-        REAst ast = parser.parse();
-        return ELispRegExpCompiler.compile(ast, parser.getMaxGroup(), canon);
+        try {
+            ELispRegExpParser parser = new ELispRegExpParser(string, whitespaceRegExp);
+            REAst ast = parser.parse();
+            return ELispRegExpCompiler.compile(ast, parser.getMaxGroup(), canon);
+        } catch (Exception e) {
+            System.err.println("regexp: " + string);
+            throw e;
+        }
     }
 
 }

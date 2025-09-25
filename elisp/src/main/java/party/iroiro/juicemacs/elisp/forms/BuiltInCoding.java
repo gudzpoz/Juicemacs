@@ -8,7 +8,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.InternalByteArray;
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
@@ -384,7 +384,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             ELispCodingSystem coding = codings.resolveCodingSystem(codingSystem);
             InternalByteArray bytes = getInternal.execute(this, string);
             ValueStorage.Forwarded container = new ValueStorage.Forwarded();
-            @Nullable SeekableInMemoryByteChannel channel = null;
+            SeekableInMemoryByteChannel channel = null;
             try {
                 channel = new SeekableInMemoryByteChannel(bytes.getArray());
                 return codings.decode(
@@ -761,7 +761,7 @@ public class BuiltInCoding extends ELispBuiltIns {
         @TruffleBoundary
         private static Pair<Object, ELispString> checkCharSetList(Object arg, ELispSymbol codingType) {
             int maxCharsetId = 0;
-            @Nullable ELispCons list;
+            ELispCons list;
             if (isNil(arg)) {
                 list = null;
             } else if (toSym(arg) instanceof ELispSymbol symbol) {

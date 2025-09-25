@@ -1,7 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -131,8 +131,8 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
             @TruffleBoundary
             private boolean advance() {
                 boolean hasNext = false;
-                @Nullable Object key = null;
-                @Nullable Object value = null;
+                Object key = null;
+                Object value = null;
                 while ((key == null || value == null) && (hasNext = entries.advance())) {
                     key = ELispWeakHashtable.pruneWeakWrapper(entries.getKey());
                     value = ELispWeakHashtable.pruneWeakWrapper(entries.getValue());

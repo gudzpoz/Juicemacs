@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
@@ -41,7 +40,7 @@ public final class CodingSystemCharset implements ELispCodingSystemType {
                         idSlot = ELispCons.listOf(l, charsetIdObject);
                     }
                 } else {
-                    @Nullable ELispCons prevCons = null;
+                    ELispCons prevCons = null;
                     ConsIterator iterator = asCons(idSlot).listIterator(0);
                     while (iterator.hasNextCons()) {
                         ELispCons current = iterator.nextCons();

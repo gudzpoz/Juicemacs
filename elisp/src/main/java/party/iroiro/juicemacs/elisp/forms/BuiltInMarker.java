@@ -3,7 +3,7 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
@@ -114,7 +114,7 @@ public class BuiltInMarker extends ELispBuiltIns {
                 newMarker.setBuffer(buffer, l);
             } else {
                 ELispMarker m = asMarker(marker);
-                @Nullable ELispBuffer buffer = m.getBuffer();
+                ELispBuffer buffer = m.getBuffer();
                 if (buffer != null) {
                     newMarker.setBuffer(buffer, m.point());
                 }

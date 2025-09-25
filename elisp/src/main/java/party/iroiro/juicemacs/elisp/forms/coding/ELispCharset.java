@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharSet;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCharTab;
 import party.iroiro.juicemacs.elisp.forms.BuiltInLRead;
@@ -384,7 +383,7 @@ public final class ELispCharset {
             return;
         }
         // TODO: Support lazy loading of charset maps
-        @Nullable ELispVector decodingMap = null;
+        ELispVector decodingMap = null;
         ELispCharTable unifyTable = asCharTable(builtInCharSet.charUnifyTable.getValue());
         ELispCharTable encodingTable;
         {

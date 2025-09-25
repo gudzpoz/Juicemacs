@@ -22,11 +22,11 @@ module party.iroiro.juicemacs.elisp {
     requires org.apache.commons.lang3;
     requires org.apache.commons.text;
     requires org.apache.fory.core;
-    requires org.eclipse.jdt.annotation;
     requires org.eclipse.collections.impl;
     requires org.graalvm.collections;
     requires com.github.albfernandez.juniversalchardet;
     requires com.google.common;
+    requires org.jspecify;
 
     // GraalVM/Truffle
     requires org.graalvm.truffle;

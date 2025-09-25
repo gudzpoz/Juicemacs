@@ -6,7 +6,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import org.apache.fory.Fory;
 import org.apache.fory.memory.MemoryBuffer;
 import org.apache.fory.serializer.Serializer;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;

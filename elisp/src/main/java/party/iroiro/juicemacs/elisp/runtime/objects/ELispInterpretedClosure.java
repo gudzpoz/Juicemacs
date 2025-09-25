@@ -10,7 +10,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.*;
@@ -204,7 +204,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         }
 
         public Object execute(VirtualFrame frame, boolean isVoid) {
-            @Nullable Dynamic scope = pushScope(frame);
+            Dynamic scope = pushScope(frame);
             try {
                 if (isVoid) {
                     body.executeVoid(frame);
@@ -221,7 +221,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            @Nullable Source rootSource = commons.source;
+            Source rootSource = commons.source;
             if (rootSource == null) {
                 return null;
             }
@@ -253,7 +253,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
             }
             ArrayList<ELispSymbol> requiredArgs = new ArrayList<>();
             ArrayList<ELispSymbol> optionalArgs = new ArrayList<>();
-            @Nullable ELispSymbol rest = null;
+            ELispSymbol rest = null;
             int state = 0; // 0: required args, 1: optional args, 2: rest args, 3: end
             for (Object arg : asCons(args)) {
                 ELispSymbol symbol = asSym(arg);

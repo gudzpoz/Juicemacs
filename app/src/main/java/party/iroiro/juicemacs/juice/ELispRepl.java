@@ -2,7 +2,7 @@ package party.iroiro.juicemacs.juice;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -58,7 +58,6 @@ public class ELispRepl implements Callable<Integer> {
     Integer inspectPort;
 
     @Option(names = {"--extra-option"}, description = "Extra options to pass to Truffle")
-    @Nullable
     String @Nullable[] extraOptions;
 
     private final static String PROMPT_STRING = new AttributedStringBuilder()

@@ -10,7 +10,7 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBoolVector;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
@@ -137,7 +137,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         long end = frame.getLong(TRUFFLE_SLOT_SEARCH_END);
         long minIndex = frame.getLong(TRUFFLE_SLOT_START);
         long length = frame.getLong(TRUFFLE_SLOT_END);
-        @Nullable ELispCharTable canon = caseFold ? asCharTable(asBuffer(buffer).getCaseCanonTable()) : null;
+        ELispCharTable canon = caseFold ? asCharTable(asBuffer(buffer).getCaseCanonTable()) : null;
 
         while (true) {
             Object lastRun = dispatchFromBCI(input, end, minIndex, length, stacks, buffer, canon);

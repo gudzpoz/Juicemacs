@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.source.Source;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
@@ -88,7 +87,7 @@ public abstract class ELispBuiltIns {
                 //noinspection ResultOfMethodCallIgnored
                 symbol.hashCode();
                 FunctionRootNode rootNode = new FunctionRootNode(language, false, wrapper, null); // NOPMD
-                @Nullable Object inlineInfo = switch (function) {
+                Object inlineInfo = switch (function) {
                     case ELispBuiltInBaseNode.InlineFactory _, ELispBuiltInBaseNode.SpecialFactory _ -> function;
                     default -> inline && !builtIn.rawArg() ? factory : null;
                 };

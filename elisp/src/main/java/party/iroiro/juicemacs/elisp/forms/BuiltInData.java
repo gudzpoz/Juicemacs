@@ -10,7 +10,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleString.GetCodeRangeImpreciseNode;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
@@ -3160,7 +3159,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static Object max(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object result = convMarker(numberOrMarker);
-            @Nullable Object hasNaN = isNaN(result) ? result : null;
+            Object hasNaN = isNaN(result) ? result : null;
             for (Object arg : numbersOrMarkers) {
                 if (hasNaN == null && isNaN(arg)) {
                     hasNaN = arg;
@@ -3194,7 +3193,7 @@ public class BuiltInData extends ELispBuiltIns {
         @Specialization
         public static Object min(Object numberOrMarker, Object[] numbersOrMarkers) {
             Object result = FMax.convMarker(numberOrMarker);
-            @Nullable Object hasNaN = FMax.isNaN(result) ? result : null;
+            Object hasNaN = FMax.isNaN(result) ? result : null;
             for (Object arg : numbersOrMarkers) {
                 if (hasNaN == null && FMax.isNaN(arg)) {
                     hasNaN = arg;

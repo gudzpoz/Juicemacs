@@ -6,7 +6,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.SourceSection;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNodeGen;
 import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionObjectNodes;
@@ -44,7 +43,7 @@ public final class LazyConsExpressionNode extends ELispExpressionNode implements
     private ELispExpressionNode updateInnerNode() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         Object cardinal = cons.car();
-        @Nullable Assumption stable = toSym(cardinal) instanceof ELispSymbol sym
+        Assumption stable = toSym(cardinal) instanceof ELispSymbol sym
                 ? getContext().getFunctionStorage(sym).getStableAssumption()
                 : null;
         Object function = ReadFunctionObjectNodes.getFunctionUncached(this, cardinal);

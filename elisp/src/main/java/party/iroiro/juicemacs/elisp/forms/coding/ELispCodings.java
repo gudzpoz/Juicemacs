@@ -2,7 +2,7 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.apache.fory.Fory;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemRawText.RawCoding;
 import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemUndecided.DetectingCodingSystem;

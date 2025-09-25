@@ -26,7 +26,7 @@
 package party.iroiro.juicemacs.piecetree.meta;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -296,6 +296,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
     }
     //#endregion
 
+    @Nullable
     @TruffleBoundary
     protected <R> R forEachMarkIn(long offset, long cnt, PieceConsumer<T, R> consumer) {
         if (root == SENTINEL) {
@@ -329,7 +330,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
             if (length != piece.length()) {
                 piece = new Piece<>(length, piece.mark());
             }
-            @Nullable R accept = consumer.accept(piece, currentOffset);
+            R accept = consumer.accept(piece, currentOffset);
             if (accept != null) {
                 return accept;
             }
@@ -338,7 +339,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         }
         if (currentOffset == targetOffset) {
             while (currentNode != SENTINEL && currentNode.piece.length == 0) {
-                @Nullable R accept = consumer.accept(currentNode.piece, currentOffset);
+                R accept = consumer.accept(currentNode.piece, currentOffset);
                 if (accept != null) {
                     return accept;
                 }

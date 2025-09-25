@@ -4,7 +4,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
@@ -80,7 +79,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
             if (!isNil(input)) {
                 throw new UnsupportedOperationException();
             }
-            @Nullable ELispBuffer buffer = null;
+            ELispBuffer buffer = null;
             if (args.length > 1 && !isNil(args[1])) {
                 Object outSpec = args[1];
                 if (outSpec instanceof ELispCons cons) {

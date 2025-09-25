@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import org.eclipse.jdt.annotation.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInAlloc.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.*;
@@ -108,7 +107,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
             loadPaths = decodeEnvPath(null, path, true);
             loadPathCheck(loadPaths);
             if (!isNil(FMemq.memq(false, loadPaths))) {
-                @Nullable ELispCons defaultPaths = loadPathDefault();
+                ELispCons defaultPaths = loadPathDefault();
                 loadPathCheck(defaultPaths);
                 ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
                 for (Object o : loadPaths) {

@@ -4,7 +4,7 @@ import org.apache.fory.Fory;
 import org.apache.fory.config.Language;
 import org.apache.fory.memory.MemoryBuffer;
 import org.apache.fory.serializer.collection.CollectionSerializer;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;

@@ -6,7 +6,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
@@ -74,8 +74,8 @@ public final class ELispMarker extends Number implements ELispValue {
     @Override
     public boolean lispEquals(Object other) {
         if (other instanceof ELispMarker marker) {
-            @Nullable ELispBuffer otherBuffer = marker.getBuffer();
-            @Nullable ELispBuffer buffer = getBuffer();
+            ELispBuffer otherBuffer = marker.getBuffer();
+            ELispBuffer buffer = getBuffer();
             if (otherBuffer == buffer) {
                 return point() == marker.point();
             }
@@ -163,7 +163,6 @@ public final class ELispMarker extends Number implements ELispValue {
         if (Long.highestOneBit(point) <= 24) {
             return true;
         }
-        //noinspection UnpredictableBigDecimalConstructorCall
         return new BigDecimal((float) point).toBigIntegerExact().longValue() == point;
     }
     @ExportMessage
@@ -173,7 +172,6 @@ public final class ELispMarker extends Number implements ELispValue {
         if (Long.highestOneBit(point) <= 53) {
             return true;
         }
-        //noinspection UnpredictableBigDecimalConstructorCall
         return new BigDecimal((float) point).toBigIntegerExact().longValue() == point;
     }
     @ExportMessage byte asByte() throws UnsupportedMessageException { return (byte) point(); }

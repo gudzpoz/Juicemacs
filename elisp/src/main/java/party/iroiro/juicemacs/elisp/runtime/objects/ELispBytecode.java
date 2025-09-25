@@ -9,7 +9,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.InternalByteArray;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.FunctionRootNode;
@@ -147,7 +147,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
         @ExplodeLoop
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            @Nullable Dynamic dynamic;
+            Dynamic dynamic;
             if (argSymbols == null) {
                 for (int i = 0; i < optionalRestArgs.length; i++) {
                     frame.setObject(i, optionalRestArgs[i].executeGeneric(frame));
@@ -160,7 +160,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
                 }
                 dynamic = Dynamic.pushDynamic(argSymbols, values);
             }
-            @Nullable Dynamic scope = dynamic;
+            Dynamic scope = dynamic;
             try {
                 return body.executeGeneric(frame);
             } finally {
@@ -178,7 +178,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            @Nullable Source rootSource = commons.source;
+            Source rootSource = commons.source;
             if (rootSource == null) {
                 return null;
             }

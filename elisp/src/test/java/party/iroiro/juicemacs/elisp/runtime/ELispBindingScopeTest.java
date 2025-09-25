@@ -1,6 +1,5 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
@@ -133,7 +132,7 @@ public class ELispBindingScopeTest extends BaseFormTest {
     }
 
     @Override
-    protected Object @NonNull[] entries() {
+    protected Object[] entries() {
         return TESTS;
     }
 }

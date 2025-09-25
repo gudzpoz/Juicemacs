@@ -45,7 +45,7 @@
 ///
 /// Finally, there's this monolith class that uses all above for a funcall interface:
 /// [party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode].
-@NonNullByDefault
+@NullMarked
 package party.iroiro.juicemacs.elisp.nodes.funcall;
 
-import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.jspecify.annotations.NullMarked;

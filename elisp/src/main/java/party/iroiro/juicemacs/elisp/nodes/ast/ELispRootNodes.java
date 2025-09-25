@@ -6,7 +6,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
@@ -18,7 +18,6 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.INTERNAL_MACROEXPAND_FOR_LOAD;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.PROGN;
@@ -29,7 +28,7 @@ public abstract class ELispRootNodes {
     }
 
     public static ELispExpressionNode createMacroexpand(Object[] expressions, boolean lexical) {
-        @Nullable ELispContext context = ELispContext.get(null);
+        ELispContext context = ELispContext.get(null);
         //noinspection ConstantValue: nullable when creating AST during debug sessions
         if (context != null) {
             Object macroexpand = context.getFunctionStorage(INTERNAL_MACROEXPAND_FOR_LOAD).get();
@@ -154,7 +153,7 @@ public abstract class ELispRootNodes {
             ArrayList<Object> expressions = new ArrayList<>(Arrays.asList(this.expressions).reversed());
             ELispExpressionNode[] nodes = this.nodes;
             int nodeCount = 0;
-            @Nullable Object result = null;
+            Object result = null;
             while (!expressions.isEmpty()) {
                 Object expression = expressions.removeLast();
                 Object expanded = callNode.dispatch(this, macroexpand, expression, false);

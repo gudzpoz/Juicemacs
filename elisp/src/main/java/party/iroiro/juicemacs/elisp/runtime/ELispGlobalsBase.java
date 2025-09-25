@@ -1,6 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
@@ -106,7 +106,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     }
 
     public ELispSubroutine @Nullable [] takeSubroutines() {
-        ELispSubroutine @Nullable [] subroutines = this.subroutines;
+        ELispSubroutine[] subroutines = this.subroutines;
         this.subroutines = null;
         return subroutines;
     }
@@ -147,7 +147,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     }
 
     private void initBuiltIns(ELispLanguage language, AtomicInteger lock, ELispBuiltIns builtIns,
-                              int i, ELispBuiltIns.InitializationResult[] results) {
+                              int i, ELispBuiltIns.@Nullable InitializationResult[] results) {
         ELispGlobalsBase globals = this;
         Thread.ofVirtual().start(() -> {
             try {

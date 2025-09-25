@@ -3,7 +3,7 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -248,7 +248,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     public void reset() {
         Object bufferValue = ELispLanguage.get(null).currentBuffer().getValue();
-        @Nullable ELispBuffer currentBuffer = isNil(bufferValue) ? null : asBuffer(bufferValue);
+        ELispBuffer currentBuffer = isNil(bufferValue) ? null : asBuffer(bufferValue);
         setFilename(false);
         setFileTruename(false);
         setDirectory(currentBuffer == null ? false : currentBuffer.getDirectory());

@@ -13,7 +13,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.graalvm.polyglot.Value;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEditFns;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
