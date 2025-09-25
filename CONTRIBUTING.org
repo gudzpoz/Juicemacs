@@ -51,7 +51,7 @@ This guide assumes the following:
 
 This guide will talk about the following:
 
-- How Juicemacs uses code generation to ease developing
+- How Juicemacs uses code generation to ease developing:
 
   To keep in sync with [[https://en.wikipedia.org/wiki/GNU_Emacs][GNU Emacs]], Juicemacs heavily relies on code generation
   (see [[https://github.com/gudzpoz/emacs-extractor][emacs-extractor]]). This will keep the Lisp function signatures (extracted
@@ -59,7 +59,8 @@ This guide will talk about the following:
   synchronized. The next section, [[Implementing Basic Built-in Functions]], will
   cover how to work with the generated code.
 
-- What things you will need to take note of to make the Truffle JIT magic happen
+- What things you will need to take note of to make the Truffle JIT magic
+  happen:
 
   Juicemacs uses [[https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/][the Truffle framework]] for a [[https://en.wikipedia.org/wiki/Just-in-time_compilation][JIT compiling]] [[https://en.wikipedia.org/wiki/Emacs_Lisp][ELisp]] interpreter.
   This framework, however, requires quite a few workarounds to make the JIT
@@ -472,7 +473,7 @@ etc.) also by implementing an interface: =SpecialFactory=:
   }
 #+end_src
 
-Unlike =InlineFactor=, where the arguments are passed in as AST nodes,
+Unlike =InlineFactory=, where the arguments are passed in as AST nodes,
 =SpecialFactory= receives the arguments as plain objects as is required by many
 special forms. So =(defvar sym)= (a special form) gets a =ELispSymbol= in
 =createNode=, while =(defvar1 'sym)= (a function) gets an =ObjectLiteralNode=
@@ -521,8 +522,14 @@ The above leads to the following:
   locale dependent at times.
 - Working around string concatenation is painful, not only because we need a
   dedicated =@TruffleBoundary= utility method, but also because it forbids us
-  from using any method (in external librarier or Java standard library) that
+  from using any method (in external libraries or Java standard library) that
   does string concatenation in partial evaluated code.
+- When calling polymorphic methods, any of them failing the compilation will
+  make the whole compilation fail. Since most Java libraries (standard or
+  external) uses =java.lang.String= for errors, this basically means: no
+  polymorphic methods unless the interface is yours. When you see compilation
+  errors from strange classes, it's very likely that it is from an unnoticed
+  implementation of a polymorphic method.
 
 There are more. Ways to discover them are:
 
@@ -537,7 +544,7 @@ There are more. Ways to discover them are:
   for all try-with-resource statements, and that means we must use try-finally
   instead.
 - Methods that performs string concatenation and thus must be used within
-  =@TruffleBoundary=
+  =@TruffleBoundary= includes:
   - =ByteBuffer.allocate(i)= / =byteBuffer.get(i)= / =byteBuffer.limit(i)=:
     exception message construction
   - =SourceBuilder::build= (Truffle objects tracking source info)
@@ -567,28 +574,28 @@ for some useful Truffle options when debugging:
 
 * What To Work On?
 
-- Places marked with =UnsupportedOperationException= or =TODO= comments
+- Places marked with =UnsupportedOperationException= or =TODO= comments:
 
   We mark out unimplemented features in the codebase with
   =UnsupportedOperationException= or =TODO= comments. And grepping for them are
   a good way to find things to work on.
 
-- Failing conformance tests
+- Failing conformance tests:
 
   All those =el-semi-fuzz= and ERT tests do reveal conformance issues in
   Juicemacs. Currently, Juicemacs does not pass all the ERT tests and
-  occasionally fails =el-semi-fuzz= tests (because the randomness). Looking into
-  these failing cases can be a good way to learn about the internals of both
-  Juicemacs and GNU Emacs.
+  occasionally fails =el-semi-fuzz= tests (because of the randomness). Looking
+  into these failing cases can be a good way to learn about the internals of
+  both Juicemacs and GNU Emacs.
 
-- Adding more tests
+- Adding more tests:
 
   There are quite a lot of ERT tests in the GNU Emacs codebase. However,
   currently we only run a few of them in our unit test
   (=ELispLanguageTest.java=). Getting more of them to run can be quite
   beneficial too.
 
-- Performance engineering
+- Performance engineering:
 
   There is a TODO list here at [[file:docs/TODO.org]]. The reason I chose to use a
   text file instead of issue trackers was because they were mostly about the

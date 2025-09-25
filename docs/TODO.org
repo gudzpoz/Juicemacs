@@ -1,5 +1,12 @@
 #+title: TODO
 
+* TODO [#A] Start-up Performance Regression?
+
+In the past few months I've done quite some things to the codebase, including
+adding array cons and removing it, moving from mule-string to truffle strings,
+etc. Now, =ELispLanguageTest= has become very slow. I suspect that it is due to
+string-related commits, leading to increasing buffer load/parse time.
+
 * TODO [#A] =let/let*= Buffer Local Logic
 
 So, old Emacs had a bug:

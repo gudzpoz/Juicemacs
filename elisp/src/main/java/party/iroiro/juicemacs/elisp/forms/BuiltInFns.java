@@ -301,7 +301,7 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static Object properListP(Object object) {
             if (!(object instanceof ELispCons cons)) {
-                return isNil(object);
+                return isNil(object) ? 0L : false;
             }
             try {
                 return (long) cons.size();
