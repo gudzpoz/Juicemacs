@@ -1,4 +1,12 @@
 [versions]
+# Gradle
+javamodularity = "1.8.15"
+shadow = "8.3.5"
+buildtools-native = "0.11.0"
+errorprone-plugin = "4.3.0"
+errorprone-core = "2.42.0"
+errorprone-nullaway = "0.12.10"
+
 # Core
 jspecify = "1.0.0"
 truffle = "25.0.0"
@@ -21,6 +29,13 @@ jmh = "1.37"
 junit = "5.13.4"
 
 [libraries]
+javamodularity = { group = "org.javamodularity.moduleplugin", name = "org.javamodularity.moduleplugin.gradle.plugin", version.ref = "javamodularity" }
+shadow = { group = "com.gradleup.shadow", name = "com.gradleup.shadow.gradle.plugin", version.ref = "shadow" }
+buildtools-native = { group = "org.graalvm.buildtools.native", name = "org.graalvm.buildtools.native.gradle.plugin", version.ref = "buildtools-native" }
+errorprone-plugin = { group = "net.ltgt.errorprone", name = "net.ltgt.errorprone.gradle.plugin", version.ref = "errorprone-plugin" }
+errorprone-core = { group = "com.google.errorprone", name = "error_prone_core", version.ref = "errorprone-core" }
+errorprone-nullaway = { group = "com.uber.nullaway", name = "nullaway", version.ref = "errorprone-nullaway" }
+
 jspecify = { group = "org.jspecify", name = "jspecify", version.ref = "jspecify" }
 
 graalvm-truffle-api = { group = "org.graalvm.truffle", name = "truffle-api", version.ref = "truffle" }

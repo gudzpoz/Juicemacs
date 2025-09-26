@@ -28,14 +28,13 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
@@ -148,12 +147,12 @@ public final class ELispContext implements ELispParser.InternContext {
         }
         TruffleFile file = truffleEnv.getPublicTruffleFile(options.dumpFile);
         try {
-            SeekableByteChannel channel = file.newByteChannel(Set.of(StandardOpenOption.READ));
+            InputStream input = file.newInputStream(StandardOpenOption.READ);
             try {
-                ELispPortableDumper.deserializeIntoContext(channel, this);
+                ELispPortableDumper.deserializeIntoContext(input, this);
                 patchContext();
             } finally {
-                channel.close();
+                input.close();
             }
         } catch (IOException e) {
             throw ELispSignals.reportFileError(e, new ELispString(options.dumpFile));

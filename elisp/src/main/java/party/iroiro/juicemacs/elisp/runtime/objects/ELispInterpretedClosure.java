@@ -107,7 +107,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
 
     @Override
     protected FunctionRootNode getFunctionRootNode() {
-        ELispClosureCallNode node = new ELispClosureCallNode();
+        ELispClosureCallNode node = new ELispClosureCallNode(this);
         ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                 node, node.args.requiredArgCount(), node.args.maxArgCount()
         );
@@ -121,8 +121,9 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         );
     }
 
-    public final class ELispClosureCallNode extends ELispExpressionNode implements ELispLexical.ScopeProvider {
+    public static final class ELispClosureCallNode extends ELispExpressionNode implements ELispLexical.ScopeProvider {
 
+        private final ELispInterpretedClosure closure;
         @SuppressWarnings("FieldMayBeFinal")
         @Children
         private ELispExpressionNode[] readArgNodes;
@@ -139,11 +140,12 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
 
         private final ELispLexical.@Nullable Scope argScope;
 
-        public ELispClosureCallNode() {
-            ELispLexical.@Nullable Scope env = ELispInterpretedClosure.this.upperScope;
+        public ELispClosureCallNode(ELispInterpretedClosure closure) {
+            this.closure = closure;
+            ELispLexical.@Nullable Scope env = closure.upperScope;
             isLexical = env != null;
-            args = ClosureArgs.parse(getArgs());
-            body = BuiltInEval.FProgn.progn(getBody().toArray());
+            args = ClosureArgs.parse(closure.getArgs());
+            body = BuiltInEval.FProgn.progn(closure.getBody().toArray());
 
             List<ELispExpressionNode> argNodes = new ArrayList<>();
             for (int i = 0; i < args.requiredArgs.length; i++) {
@@ -221,15 +223,15 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            Source rootSource = commons.source;
+            Source rootSource = closure.commons.source;
             if (rootSource == null) {
                 return null;
             }
-            return getBody().getSourceSection(rootSource);
+            return closure.getBody().getSourceSection(rootSource);
         }
 
         public ELispInterpretedClosure getClosure() {
-            return ELispInterpretedClosure.this;
+            return closure;
         }
 
         @Override

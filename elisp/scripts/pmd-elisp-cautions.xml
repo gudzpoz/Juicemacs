@@ -210,6 +210,25 @@
         </properties>
     </rule>
 
+    <rule name="ELispUseStaticInnerClasses"
+          language="java"
+          message="Use static inner classes instead of non-static ones."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            Consider using static inner classes instead of non-static ones.
+            Be explicit about it.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+                //ClassDeclaration
+                //ClassDeclaration[@Static=false()]
+                ]]></value>
+            </property>
+        </properties>
+    </rule>
+
     <rule name="TruffleNodeMissingExecuteVoid"
           language="java"
           message="Please implement executeVoid()."
@@ -231,29 +250,6 @@
                   [./MethodDeclaration[@Name="executeGeneric"]]
                   [not (./MethodDeclaration[@Name="executeVoid"])]
                 ]
-                ]]></value>
-            </property>
-        </properties>
-    </rule>
-
-    <rule name="TruffleDoNotUseNull"
-          language="java"
-          message="Do not introduce null values into the code."
-          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
-        <description>
-            We use Boolean.FALSE to represent nil values and expect
-            no null value in code. Use false in place of null if you
-            must.
-        </description>
-        <priority>1</priority>
-        <properties>
-            <property name="xpath">
-                <value><![CDATA[
-                //NullLiteral
-                [not(ancestor::InfixExpression[@Operator=("==", "!=")])]
-                [not(parent::*[parent::MethodCall])]
-                [not(ancestor::*//Annotation[@SimpleName="Nullable"])]
-                [not(ancestor::*[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.SpecialFactory")])]
                 ]]></value>
             </property>
         </properties>

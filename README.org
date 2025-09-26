@@ -29,7 +29,7 @@ live with:
 * Running
 
 Currently, Juicemacs has two functional interpreters (one for AST, one for
-bytecoed) and enough built-in rountines implemented to handle =pdump=. It
+bytecode) and enough built-in routines implemented to handle =pdump=. It
 usually stops when =top-level= tries to use unimplemented UI subroutines.
 
 To run it:

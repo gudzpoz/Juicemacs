@@ -143,7 +143,6 @@ public final class PieceTreeBase {
                         chunks[i].length()
                 );
                 buffers.add(chunks[i]);
-                //noinspection DataFlowIssue: When root is SENTINEL, lastNode being null is fine.
                 lastNode = rbInsertRight(lastNode, piece);
             }
         }
@@ -447,7 +446,6 @@ public final class PieceTreeBase {
         } else {
             // insert new node
             ArrayList<Piece> pieces = createNewPieces(value);
-            //noinspection DataFlowIssue: OK when root == SENTINEL
             TreeNode node = rbInsertLeft(null, pieces.getFirst());
             for (int k = 1; k < pieces.size(); k++) {
                 node = rbInsertRight(node, pieces.get(k));
@@ -947,7 +945,7 @@ public final class PieceTreeBase {
         append(output, buffer.substring(startOffset, endOffset - startOffset));
     }
 
-    private TreeNode rbInsertRight(TreeNode node, Piece piece) {
+    private TreeNode rbInsertRight(@Nullable TreeNode node, Piece piece) {
         TreeNode z = new TreeNode(piece, TreeNode.RED);
         z.left = SENTINEL;
         z.right = SENTINEL;
@@ -956,6 +954,7 @@ public final class PieceTreeBase {
         z.lf_left = 0;
 
         TreeNode x = root;
+        assert root == SENTINEL || node != null;
         if (x == SENTINEL) {
             root = z;
             z.color = TreeNode.BLACK;
@@ -972,7 +971,7 @@ public final class PieceTreeBase {
         return z;
     }
 
-    private TreeNode rbInsertLeft(@SuppressWarnings("NullableProblems") TreeNode node, Piece piece) {
+    private TreeNode rbInsertLeft(@Nullable TreeNode node, Piece piece) {
         TreeNode z = new TreeNode(piece, TreeNode.RED);
         z.left = SENTINEL;
         z.right = SENTINEL;
@@ -980,6 +979,7 @@ public final class PieceTreeBase {
         z.size_left = 0;
         z.lf_left = 0;
 
+        assert root == SENTINEL || node != null;
         if (root == SENTINEL) {
             root = z;
             z.color = TreeNode.BLACK;

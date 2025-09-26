@@ -3753,7 +3753,7 @@ public class BuiltInData extends ELispBuiltIns {
             int start = (int) i;
             int end = b ? bits.nextClearBit(start) : bits.nextSetBit(start);
             int size = a.size();
-            return (end == -1 || end > size ? size : end) - start;
+            return (end == -1 || end > size ? size : end) - i;
         }
     }
 }

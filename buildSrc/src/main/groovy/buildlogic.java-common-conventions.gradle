@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'net.ltgt.errorprone'
     // // JaCoCo transforms the bytecode, which severely impacts how
     // // Graal/Truffle JIT compile the program.
     // // (For example, it introduces concurrency constructs to pass
@@ -26,6 +27,7 @@ boolean isGraalVM() {
 List<String> getGraalVMArgs() {
     boolean isGraalVM = isGraalVM()
     List<String> graalArgs = []
+    String truffleVersion = libs.graalvm.truffle.api.get().version
     if (!isGraalVM) {
         var classpath = configurations.create('compilerClasspath') {
             canBeResolved = true
@@ -57,6 +59,9 @@ ext {
 }
 
 dependencies {
+    errorprone libs.errorprone.core
+    errorprone libs.errorprone.nullaway
+
     implementation libs.jspecify
 
     testImplementation libs.junit.jupiter
@@ -66,6 +71,22 @@ dependencies {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(preferredJvmVersion())
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        disableWarningsInGeneratedCode = true
+        option('NullAway:AnnotatedPackages', 'party.iroiro')
+
+        // In contract to common Java practices, we use specialized types
+        // as much as possible: ArrayList over List, HashMap over Map, etc.
+        // This is to cater for Truffle's handling of polymorphism.
+        disable('NonApiType')
+        // The current codebase is filled with function templates throwing
+        // UnsupportedOperationExceptions.
+        // TODO: remove this line after we finish the implementation
+        disable('DoNotCallSuggester')
     }
 }
 

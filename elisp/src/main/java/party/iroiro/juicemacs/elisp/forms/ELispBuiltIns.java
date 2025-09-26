@@ -83,9 +83,7 @@ public abstract class ELispBuiltIns {
                         varArgs ? -1 : builtIn.maxArgs()
                 );
                 String symbol = builtIn.name();
-                // Pre-calculate hash since built-in symbols are always interned and kept in a hash table.
-                //noinspection ResultOfMethodCallIgnored
-                symbol.hashCode();
+                forceHash(symbol);
                 FunctionRootNode rootNode = new FunctionRootNode(language, false, wrapper, null); // NOPMD
                 Object inlineInfo = switch (function) {
                     case ELispBuiltInBaseNode.InlineFactory _, ELispBuiltInBaseNode.SpecialFactory _ -> function;
@@ -103,6 +101,12 @@ public abstract class ELispBuiltIns {
             }
         }
         return new InitializationResult(results);
+    }
+
+    /// Pre-calculate hash since built-in symbols are always interned and kept in a hash table.
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private static void forceHash(String symbol) {
+        symbol.hashCode();
     }
 
     public record InitializationResult(List<SemiInitializedBuiltIn> subroutines) {

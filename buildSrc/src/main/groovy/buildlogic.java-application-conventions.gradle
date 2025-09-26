@@ -2,4 +2,5 @@ plugins {
     id 'buildlogic.java-common-conventions'
     id 'application'
     id 'com.gradleup.shadow'
+    id 'org.graalvm.buildtools.native'
 }

@@ -30,14 +30,14 @@ public final class CodingSystemUndecided implements ELispCodingSystemType {
     @Override
     public ELispCodingSystem create(ELispCodingSystem.Spec spec, EolAwareStringBuilder.EndOfLine eol) {
         boolean preferUtf8 = spec.preferUtf8();
-        return new DetectingCodingSystem(spec, eol, preferUtf8);
+        return new DetectingCodingSystem(this, spec, eol, preferUtf8);
     }
 
-    final class DetectingCodingSystem extends ELispCodingSystem {
+    static final class DetectingCodingSystem extends ELispCodingSystem {
         private final boolean preferUtf8;
 
-        DetectingCodingSystem(Spec spec, EolAwareStringBuilder.EndOfLine eol, boolean preferUtf8) {
-            super(CodingSystemUndecided.this, spec, eol);
+        DetectingCodingSystem(CodingSystemUndecided system, Spec spec, EolAwareStringBuilder.EndOfLine eol, boolean preferUtf8) {
+            super(system, spec, eol);
             this.preferUtf8 = preferUtf8;
         }
 

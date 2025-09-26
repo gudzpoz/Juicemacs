@@ -40,8 +40,8 @@ import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree.Marker;
 
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.channels.SeekableByteChannel;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.JAVA_SOURCE;
 
@@ -59,6 +59,9 @@ public final class ELispPortableDumper {
                 .ignoreBasicTypesRef(true)
                 .registerGuavaTypes(false)
                 .build();
+
+        // Java
+        fory.registerSerializer(Object.class, DumpUtils.never(fory, Object.class));
 
         // Symbols
         fory.registerSerializer(ELispObarray.class, new ELispObarraySerializer(fory));
@@ -87,10 +90,12 @@ public final class ELispPortableDumper {
                 .createMaterializedFrame(new Object[0]).getClass(); // FrameWithoutBoxing
         fory.registerSerializer(frameClass, new MaterializedFrameSerializer(fory));
         fory.registerSerializer(ELispSubroutine.class, DumpUtils.never(fory, ELispSubroutine.class));
+        fory.registerSerializer(ELispSubroutine[].class, DumpUtils.never(fory, ELispSubroutine[].class));
         fory.registerSerializer(JAVA_SOURCE.getClass(), new SourceSerializer(fory)); // SourceImpl
 
         Class<?>[] classes = {
                 // Symbols
+                ELispSymbol[].class,
                 PlainValue.class,
                 Forwarded.class,
                 ForwardedBool.class,
@@ -189,26 +194,30 @@ public final class ELispPortableDumper {
         fory.registerSerializer(ELispContext.class, new ContextSerializer(fory));
         fory.register(ELispGlobals.class, true);
 
+        // TODO: until fory fixes this
+        //fory.ensureSerializersCompiled();
         FORY = fory;
     }
 
     public static void serializeFromContext(OutputStream output, ELispContext context) {
         try {
-            ELispContext.ContextSerializer.setCurrentContext(context);
+            ContextSerializer.setCurrentContext(context);
             FORY.serializeJavaObject(output, context);
             FORY.reset();
         } finally {
-            ELispContext.ContextSerializer.setCurrentContext(null);
+            ContextSerializer.setCurrentContext(null);
         }
     }
 
-    public static void deserializeIntoContext(SeekableByteChannel channel, ELispContext context) {
+    public static void deserializeIntoContext(InputStream input, ELispContext context) {
+        // This function originally accepts a SeekableByteChannel instead of InputStream.
+        // However, using channels seems to cause segment faults...? Maybe check this later.
         try {
-            ELispContext.ContextSerializer.setCurrentContext(context);
-            FORY.deserializeJavaObject(ForyStreamReader.of(channel), ELispContext.class);
+            ContextSerializer.setCurrentContext(context);
+            FORY.deserializeJavaObject(ForyStreamReader.of(input), ELispContext.class);
             FORY.reset();
         } finally {
-            ELispContext.ContextSerializer.setCurrentContext(null);
+            ContextSerializer.setCurrentContext(null);
         }
     }
 }

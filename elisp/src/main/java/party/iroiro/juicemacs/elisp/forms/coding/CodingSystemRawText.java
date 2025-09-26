@@ -30,12 +30,12 @@ final class CodingSystemRawText implements ELispCodingSystemType {
 
     @Override
     public ELispCodingSystem create(ELispCodingSystem.Spec spec, EolAwareStringBuilder.EndOfLine eol) {
-        return new RawCoding(spec, eol);
+        return new RawCoding(this, spec, eol);
     }
 
-    final class RawCoding extends ELispCodingSystem {
-        RawCoding(Spec spec, EolAwareStringBuilder.EndOfLine eol) {
-            super(CodingSystemRawText.this, spec, eol);
+    static final class RawCoding extends ELispCodingSystem {
+        private RawCoding(CodingSystemRawText system, Spec spec, EolAwareStringBuilder.EndOfLine eol) {
+            super(system, spec, eol);
         }
 
         private int fillTilLimit(ByteBuffer buffer, ReadableByteChannel input, long limit) throws IOException {

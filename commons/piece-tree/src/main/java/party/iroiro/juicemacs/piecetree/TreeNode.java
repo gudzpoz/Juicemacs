@@ -33,7 +33,7 @@ import party.iroiro.juicemacs.piecetree.PieceTreeBase.Piece;
  * rbTreeBase.ts @ vscode</a>
  */
 final class TreeNode {
-    @SuppressWarnings("DataFlowIssue")
+    @SuppressWarnings({"DataFlowIssue", "NullAway"})
     public final static TreeNode SENTINEL = new TreeNode(null, TreeNode.BLACK);
     public final static boolean RED = true;
     public final static boolean BLACK = false;
@@ -96,7 +96,7 @@ final class TreeNode {
         return node.parent;
     }
 
-    @SuppressWarnings("DataFlowIssue")
+    @SuppressWarnings({"DataFlowIssue", "NullAway"}) // sentinel
     public void detach() {
         parent = null;
         left = null;

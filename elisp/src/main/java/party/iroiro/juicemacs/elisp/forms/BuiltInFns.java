@@ -102,19 +102,20 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static Object random(Object limit) {
-            if (random == null) {
-                runtimeInitRandom();
+            Random r = random;
+            if (r == null) {
+                r = runtimeInitRandom();
             }
             if (isT(limit)) {
-                random.setSeed(secureSeed());
+                r.setSeed(secureSeed());
             }
             if (limit instanceof Long l) {
-                return random.nextLong(l);
+                return r.nextLong(l);
             }
             if (limit instanceof ELispBigNum big) {
                 return randomBigInteger(big);
             }
-            return random.nextLong();
+            return r.nextLong();
         }
 
         /// Lazily initializes [#random] and [#secureRandom]
@@ -122,9 +123,10 @@ public class BuiltInFns extends ELispBuiltIns {
         /// This is for native images: native images do not want compile-time
         /// initialized random fields ([#random]) because their compile-time
         /// seed will be persisted and shared between sessions.
-        private static void runtimeInitRandom() {
+        private static Random runtimeInitRandom() {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            random = new Random();
+            Random r = new Random();
+            random = r;
             SecureRandom instance;
             try {
                 instance = SecureRandom.getInstanceStrong();
@@ -136,6 +138,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 }
             }
             secureRandom = instance;
+            return r;
         }
 
         @TruffleBoundary

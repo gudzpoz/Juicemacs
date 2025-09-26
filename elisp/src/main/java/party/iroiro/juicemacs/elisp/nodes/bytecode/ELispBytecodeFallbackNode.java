@@ -519,7 +519,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                                 op == UNBIND7
                                         ? Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8)
                                         : op - UNBIND;
-                        bindings.unbind(ref);
+                        bindings.unbind(this, ref);
                         break;
                     case POPHANDLER:                   // 060
                         bindings.popHandler();
@@ -1011,7 +1011,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 if (exceptionJumps == null || exceptionJumpsStackTop == null) {
                     throw e;
                 }
-                int target = getHandlingTarget(e, bindings);
+                int target = getHandlingTarget(this, e, bindings);
                 if (CompilerDirectives.inInterpreter()) {
                     bci = exceptionJumps[target];
                     top = exceptionJumpsStackTop[target];
@@ -1041,13 +1041,12 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         return ELispSignals.invalidFunction(function);
     }
 
-    @TruffleBoundary
-    private static int getHandlingTarget(AbstractTruffleException e, Bindings bindings) {
+    private static int getHandlingTarget(Node node, AbstractTruffleException e, Bindings bindings) {
         AbstractTruffleException rethrow = e;
         Bindings.SignalHandler handler;
         while (true) {
             try {
-                handler = bindings.popHandlerTil(rethrow);
+                handler = bindings.popHandlerTil(node, rethrow);
                 break;
             } catch (AbstractTruffleException inner) {
                 rethrow = inner;
@@ -1072,7 +1071,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         CompilerAsserts.partialEvaluationConstant(nextBci);
         CompilerAsserts.partialEvaluationConstant(stackTop);
         if (nextBci < bci) {
-            if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
+            if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this, 1)) {
                 InterpreterState newState = new InterpreterState(stackTop, constants, bindings);
                 Object result = BytecodeOSRNode.tryOSR(this, nextBci, newState, null, frame);
                 if (result != null) {
@@ -1304,7 +1303,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
     }
 
-    final class Bindings implements AutoCloseable {
+    static final class Bindings implements AutoCloseable {
         private final ArrayList<Object> bindings;
         private final ArrayList<SignalHandler> signalHandlers;
 
@@ -1332,7 +1331,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             bindings.add(new UnwindProtect(value));
         }
 
-        public void unbind(int count) {
+        public void unbind(@Nullable Node node, int count) {
             AbstractTruffleException rethrow = null;
             for (int i = 0; i < count; i++) {
                 try {
@@ -1346,7 +1345,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                             marker.setBuffer(null, -1);
                         }
                         case UnwindProtect(Object function) ->
-                                BuiltInEval.FFuncall.funcall(ELispBytecodeFallbackNode.this, function);
+                                BuiltInEval.FFuncall.funcall(node, function);
                         default -> throw new IllegalStateException();
                     }
                 } catch (AbstractTruffleException e) {
@@ -1367,7 +1366,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
 
         @Nullable
-        public SignalHandler popHandlerTil(AbstractTruffleException e) {
+        public SignalHandler popHandlerTil(@Nullable Node node, AbstractTruffleException e) {
             boolean catchThrow;
             Object tag;
             if (e instanceof ELispSignals.ELispSignalException s) {
@@ -1393,7 +1392,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         continue;
                     }
                 }
-                unbind(bindings.size() - last.bindingsSize);
+                unbind(node, bindings.size() - last.bindingsSize);
                 return last;
             }
             return null;
@@ -1402,7 +1401,9 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         @Override
         public void close() {
             assert signalHandlers.isEmpty();
-            unbind(bindings.size());
+            if (!bindings.isEmpty()) {
+                unbind(null, bindings.size());
+            }
         }
 
         record SaveCurrentBuffer(Object buffer) {

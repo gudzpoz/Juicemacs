@@ -66,7 +66,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
 
     @Override
     protected FunctionRootNode getFunctionRootNode() {
-        BytecodeCallNode node = new BytecodeCallNode();
+        BytecodeCallNode node = new BytecodeCallNode(this);
         ReadFunctionArgNode.ArgCountVerificationNode wrapper = new ReadFunctionArgNode.ArgCountVerificationNode(
                 node, node.requiredArgCount, node.maxArgCount
         );
@@ -78,7 +78,8 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
         );
     }
 
-    public final class BytecodeCallNode extends ELispExpressionNode {
+    public static final class BytecodeCallNode extends ELispExpressionNode {
+        final ELispBytecode bytecode;
         final ELispInterpretedClosure.@Nullable ClosureArgs dynamicArgs;
         final ELispSymbol @Nullable[] argSymbols;
         final int requiredArgCount;
@@ -92,8 +93,9 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
         @Child
         private ELispBytecodeFallbackNode body;
 
-        BytecodeCallNode() {
-            Object args = getArgs();
+        BytecodeCallNode(ELispBytecode bytecode) {
+            this.bytecode = bytecode;
+            Object args = bytecode.getArgs();
             dynamicArgs = isNil(args) || args instanceof ELispCons ? ELispInterpretedClosure.ClosureArgs.parse(args) : null;
             if (dynamicArgs == null) {
                 long encodedArgs = asLong(args);
@@ -122,7 +124,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
             }
             this.optionalRestArgs = argNodes.toArray(new ReadFunctionArgNode[0]);
             body = new ELispBytecodeFallbackNode(
-                    ELispBytecode.this,
+                    bytecode,
                     dynamicArgs == null ? argNodes.size() : 0
             );
         }
@@ -135,7 +137,7 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
                 args = optionalRestArgs.length;
             }
             FrameDescriptor.Builder descriptor = FrameDescriptor.newBuilder();
-            descriptor.addSlots((int) getStackDepth() + args, FrameSlotKind.Object);
+            descriptor.addSlots((int) bytecode.getStackDepth() + args, FrameSlotKind.Object);
             return descriptor.build();
         }
 
@@ -178,11 +180,11 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
         @Nullable
         @Override
         public SourceSection getSourceSection() {
-            Source rootSource = commons.source;
+            Source rootSource = bytecode.commons.source;
             if (rootSource == null) {
                 return null;
             }
-            return ELispBytecode.this.getSourceSection(rootSource); // NOPMD (not recursion)
+            return bytecode.getSourceSection(rootSource); // NOPMD (not recursion)
         }
     }
 }

@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
+import party.iroiro.juicemacs.elisp.forms.coding.EolAwareStringBuilder.EndOfLine;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
@@ -42,17 +43,17 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
     public ELispCodingSystem create(ELispCodingSystem.Spec spec, EolAwareStringBuilder.EndOfLine eol) {
         Object bom = spec.utfBom();
         if (bom instanceof ELispCons cons) {
-            return new BomDetectingCodingSystem(spec, cons);
+            return new BomDetectingCodingSystem(this, spec, cons);
         }
-        return new Utf8Codec(spec, eol);
+        return new Utf8Codec(this, spec, eol);
     }
 
-    final class BomDetectingCodingSystem extends ELispCodingSystem {
+    static final class BomDetectingCodingSystem extends ELispCodingSystem {
         private final ELispSymbol withSig;
         private final ELispSymbol noSig;
 
-        BomDetectingCodingSystem(Spec spec, ELispCons bom) {
-            super(CodingSystemUtf8.this, spec, EolAwareStringBuilder.EndOfLine.LF);
+        BomDetectingCodingSystem(CodingSystemUtf8 system, Spec spec, ELispCons bom) {
+            super(system, spec, EolAwareStringBuilder.EndOfLine.LF);
             withSig = asSym(bom.car());
             noSig = asSym(bom.cdr());
         }
@@ -70,9 +71,9 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         }
     }
 
-    final class Utf8Codec extends ELispCodingSystem {
-        Utf8Codec(Spec spec, EolAwareStringBuilder.EndOfLine eol) {
-            super(CodingSystemUtf8.this, spec, eol);
+    static final class Utf8Codec extends ELispCodingSystem {
+        Utf8Codec(CodingSystemUtf8 system, Spec spec, EndOfLine eol) {
+            super(system, spec, eol);
         }
 
         @Override
