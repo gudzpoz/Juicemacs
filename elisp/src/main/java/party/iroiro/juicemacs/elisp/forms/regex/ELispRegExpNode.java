@@ -56,17 +56,14 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     @CompilerDirectives.CompilationFinal
     Object osrMetadata;
 
-    @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private ELispRegExpInputNodes.InputLengthNode lengthNode;
+    ELispRegExpInputNodes.InputLengthNode lengthNode;
 
-    @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private ELispRegExpInputNodes.InputGetCharNode getCharNode;
+    ELispRegExpInputNodes.InputGetCharNode getCharNode;
 
-    @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private ELispRegExpInputNodes.InputStartIndexNode startIndexNode;
+    ELispRegExpInputNodes.InputStartIndexNode startIndexNode;
 
     protected ELispRegExpNode(ELispRegExpCompiler.Compiled compiled, boolean caseFold) {
         this.code = compiled.opcodes();

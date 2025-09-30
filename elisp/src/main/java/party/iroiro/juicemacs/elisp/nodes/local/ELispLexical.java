@@ -147,7 +147,7 @@ public final class ELispLexical {
 
     @Nullable
     public static ELispLexical newBlock(Node currentNode, ELispSymbol[] symbols) {
-        @Nullable Scope scope = getScope(currentNode);
+        Scope scope = getScope(currentNode);
         if (scope == null) {
             return null;
         }
@@ -218,7 +218,7 @@ public final class ELispLexical {
     public static Scope getScope(Node currentNode) {
         while (currentNode != null) {
             if (currentNode instanceof ScopeProvider provider) {
-                @Nullable Scope scope = provider.getScope();
+                Scope scope = provider.getScope();
                 if (scope != null) {
                     return scope;
                 }
@@ -281,7 +281,7 @@ public final class ELispLexical {
     public record Scope(ELispLexical block, int limit) {
         @Nullable
         public LexicalReference getReference(ELispSymbol symbol) {
-            @Nullable LexicalReference rawReference = getRawReference(symbol);
+            LexicalReference rawReference = getRawReference(symbol);
             return rawReference == DYNAMIC ? null : rawReference;
         }
 
@@ -332,7 +332,7 @@ public final class ELispLexical {
                 Object value = frame.getValue(slot);
                 lb.add(ELispCons.cons(symbol, value));
             }
-            @Nullable Scope upperScope = block.upperScope;
+            Scope upperScope = block.upperScope;
             return lb.buildWithCdr(upperScope == null
                     ? false
                     : upperScope.toAssocList(getFrameSlot(frame)));

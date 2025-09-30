@@ -117,9 +117,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class OrNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Children
-            private ELispExpressionNode[] nodes;
+            ELispExpressionNode[] nodes;
 
             public OrNode(Object[] conditions) {
                 nodes = ELispInterpretedNode.create(conditions);
@@ -167,9 +166,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class AndNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Children
-            private ELispExpressionNode[] nodes;
+            ELispExpressionNode[] nodes;
 
             public AndNode(Object[] conditions) {
                 nodes = ELispInterpretedNode.create(conditions);
@@ -220,13 +218,10 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class IfNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode condition;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode thenBranch;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode elseBranch;
 
@@ -285,10 +280,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class CondNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Children
             ELispExpressionNode[] conditions;
-            @SuppressWarnings("FieldMayBeFinal")
             @Children
             @Nullable ELispExpressionNode[] thenCases;
 
@@ -316,7 +309,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 for (int i = 0; i < length; i++) {
                     Object condition = conditions[i].executeGeneric(frame);
                     if (!isNil(condition)) {
-                        @Nullable ELispExpressionNode then = thenCases[i];
+                        ELispExpressionNode then = thenCases[i];
                         if (then != null) {
                             then.executeVoid(frame);
                         }
@@ -332,7 +325,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 for (int i = 0; i < length; i++) {
                     Object condition = conditions[i].executeGeneric(frame);
                     if (!isNil(condition)) {
-                        @Nullable ELispExpressionNode then = thenCases[i];
+                        ELispExpressionNode then = thenCases[i];
                         return then == null ? condition : then.executeGeneric(frame);
                     }
                 }
@@ -376,7 +369,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
         public static final class PrognBlockNode extends ELispExpressionNode
                 implements BlockNode.ElementExecutor<ELispExpressionNode> {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             BlockNode<ELispExpressionNode> block;
 
@@ -448,10 +440,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class Prog1Node extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode firstNode;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode others;
 
@@ -641,9 +631,9 @@ public class BuiltInEval extends ELispBuiltIns {
                 // the closure, when root nodes are stored within closure objects.
                 // This is a hack to get the real closure object.
                 if (cons.cons.car() == AREF && cons.cons.cdr() instanceof ELispCons cdr
-                        && cons.cons.cdr() instanceof ELispCons cddr
+                        && cdr.cdr() instanceof ELispCons cddr
                         && cddr.car() instanceof Long l && l == CLOSURE_ARGLIST) {
-                    arguments[0] = ELispInterpretedNode.create(cddr.car());
+                    arguments[0] = ELispInterpretedNode.create(cdr.car());
                 }
             }
             return BuiltInEvalFactory.FMakeInterpretedClosureFactory.create(arguments);
@@ -750,7 +740,6 @@ public class BuiltInEval extends ELispBuiltIns {
             ELispExpressionNode finalDocString = docString;
             Object finalInteractive = interactive;
             return new ELispExpressionNode() {
-                @SuppressWarnings("FieldMayBeFinal")
                 @Child
                 ELispExpressionNode doc = finalDocString;
 
@@ -927,7 +916,6 @@ public class BuiltInEval extends ELispBuiltIns {
         private static class DefVarNode extends ELispExpressionNode {
             private final Object symbol;
             private final boolean initValueMissing;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode init;
 
@@ -1010,7 +998,6 @@ public class BuiltInEval extends ELispBuiltIns {
 
         private static class DefConstNode extends ELispExpressionNode {
             private final Object symbol;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode init;
 
@@ -1154,10 +1141,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static final class RepeatingBodyNode extends Node implements RepeatingNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode condition;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode bodyNode;
 
@@ -1182,7 +1167,6 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         public static class WhileNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             LoopNode loopNode;
 
@@ -1310,10 +1294,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class CatchNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode tagNode;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode bodyNodes;
 
@@ -1382,10 +1364,8 @@ public class BuiltInEval extends ELispBuiltIns {
         }
 
         private static class UnwindProtectNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode body;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode unwind;
 
@@ -1550,7 +1530,6 @@ public class BuiltInEval extends ELispBuiltIns {
             private final int finalSuccessIndex;
             private final Object[] conditionNames;
             private final Object var;
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
             ELispExpressionNode body;
 
@@ -1618,13 +1597,13 @@ public class BuiltInEval extends ELispBuiltIns {
                 if (slot == ERROR_SLOT_UNINITIALIZED) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     for (int i = 0; i < handlerBodies.length; i++) {
-                        @Nullable Object body = handlerBodies[i];
+                        Object body = handlerBodies[i];
                         handlers[i] = body == null ? null : FProgn.progn(asCons(body).toArray());
                     }
                     if (isNil(symbol)) {
                         slot = ERROR_SLOT_NIL;
                     } else {
-                        @Nullable ELispLexical block = ELispLexical.newBlock(this, new ELispSymbol[]{symbol});
+                        ELispLexical block = ELispLexical.newBlock(this, new ELispSymbol[]{symbol});
                         this.lexicalBlock = block;
                         if (block == null) {
                             slot = ERROR_SLOT_DYNAMIC;
@@ -1633,7 +1612,7 @@ public class BuiltInEval extends ELispBuiltIns {
                             block.descriptor().setSlotKind(slot, FrameSlotKind.Object);
                             ELispLexical.Scope scope = block.newScope(1);
                             for (int i = 0; i < handlers.length; i++) {
-                                @Nullable ELispExpressionNode inner = handlers[i];
+                                ELispExpressionNode inner = handlers[i];
                                 if (inner != null) {
                                     handlers[i] = new ScopeWrapperNode(inner, scope);
                                 }
@@ -1970,9 +1949,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             Object last = arguments[arguments.length - 1];
             if (!isNil(last)) {
-                for (Object o : asCons(last)) {
-                    objects.add(o);
-                }
+                objects.addAll(asCons(last));
             }
             arguments = objects.toArray();
             return dispatchNode.executeDispatch(this, arguments);
@@ -2012,15 +1989,9 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
                 Object o = nodes[nodes.length - 1].executeGeneric(frame);
                 if (!isNil(o)) {
-                    addAll(o, objects);
+                    objects.addAll(asCons(o));
                 }
                 return objects.toArray();
-            }
-
-            private static void addAll(Object o, ArrayList<Object> objects) {
-                for (Object item : asCons(o)) {
-                    objects.add(item);
-                }
             }
         }
     }
@@ -2283,10 +2254,8 @@ public class BuiltInEval extends ELispBuiltIns {
                 }
                 case ELispCons cons when cons.car() == LAMBDA ->
                         argList = cons.get(1); // fallthrough
-                case ELispInterpretedClosure closure -> //noinspection SequencedCollectionMethodCanBeUsed
-                        argList = closure.get(CLOSURE_ARGLIST); // fallthrough
-                case ELispBytecode byteCode -> //noinspection SequencedCollectionMethodCanBeUsed
-                        argList = byteCode.get(CLOSURE_ARGLIST);
+                case ELispInterpretedClosure closure -> argList = closure.get(CLOSURE_ARGLIST);
+                case ELispBytecode byteCode -> argList = byteCode.get(CLOSURE_ARGLIST);
                 default -> throw ELispSignals.invalidFunction(function);
             }
             ELispInterpretedClosure.ClosureArgs args = ELispInterpretedClosure.ClosureArgs.parse(argList);
@@ -2386,7 +2355,6 @@ public class BuiltInEval extends ELispBuiltIns {
                 Object base
         ) {
             // TODO: get stack function symbols
-            @Nullable
             Object result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                 int i = isNil(base) ? 0 : -1;
 

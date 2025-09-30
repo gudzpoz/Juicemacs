@@ -86,12 +86,10 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
         final int optionalArgCount;
         final int maxArgCount;
 
-        @SuppressWarnings("FieldMayBeFinal")
         @Children
-        private ReadFunctionArgNode[] optionalRestArgs;
-        @SuppressWarnings("FieldMayBeFinal")
+        ReadFunctionArgNode[] optionalRestArgs;
         @Child
-        private ELispBytecodeFallbackNode body;
+        ELispBytecodeFallbackNode body;
 
         BytecodeCallNode(ELispBytecode bytecode) {
             this.bytecode = bytecode;

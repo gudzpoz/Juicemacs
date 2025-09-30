@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
@@ -111,7 +110,7 @@ public class BuiltInPrint extends ELispBuiltIns {
                 printcharfun = ELispContext.get(null).currentBuffer();
             }
             // TODO
-            @Nullable MuleStringBuilder output = isT(printcharfun) ? new MuleStringBuilder() : null;
+            MuleStringBuilder output = isT(printcharfun) ? new MuleStringBuilder() : null;
             return switch (printcharfun) {
                 case ELispBuffer buffer -> ELispPrint.fromBuffer(buffer);
                 case ELispMarker marker -> ELispPrint.fromMarker(marker);

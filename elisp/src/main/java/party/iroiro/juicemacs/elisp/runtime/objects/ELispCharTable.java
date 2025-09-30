@@ -420,7 +420,6 @@ public final class ELispCharTable extends AbstractELispVector {
         }
 
         public static SubTable create(ArrayList<Object> objects) {
-            //noinspection SequencedCollectionMethodCanBeUsed
             int depth = (int) (long) objects.get(DEPTH_SLOT);
             int minChar = (int) (long) objects.get(MIN_CHAR_SLOT);
             if (

@@ -13,10 +13,6 @@
 /// So basically when I am working in IDEA, I just delete this file (without commiting it)
 /// and go on.
 module party.iroiro.juicemacs.elisp {
-    // Java
-    requires java.logging;
-    requires jdk.unsupported;
-
     // Utilities
     requires org.apache.commons.compress;
     requires org.apache.commons.lang3;
@@ -25,7 +21,6 @@ module party.iroiro.juicemacs.elisp {
     requires org.eclipse.collections.impl;
     requires org.graalvm.collections;
     requires com.github.albfernandez.juniversalchardet;
-    requires com.google.common;
     requires org.jspecify;
 
     // GraalVM/Truffle

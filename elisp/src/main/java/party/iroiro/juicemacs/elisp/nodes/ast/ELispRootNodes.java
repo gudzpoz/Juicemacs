@@ -51,9 +51,8 @@ public abstract class ELispRootNodes {
     }
 
     private final static class ELispRootExpressions extends ELispExpressionNode implements ELispLexical.ScopeProvider {
-        @SuppressWarnings("FieldMayBeFinal")
         @Child
-        private ELispExpressionNode node;
+        ELispExpressionNode node;
 
         private final ELispLexical.@Nullable Scope rootScope;
 
@@ -116,11 +115,10 @@ public abstract class ELispRootNodes {
     /// This node implements functionality done by `readevalloop_eager_expand_eval`
     /// in GNU Emacs.
     private final static class ELispMacroexpandExpressions extends ELispExpressionNode {
-        @SuppressWarnings("FieldMayBeFinal")
         @Child
-        private FuncallDispatchNode callNode;
+        FuncallDispatchNode callNode;
         @Children
-        private ELispExpressionNode[] nodes;
+        ELispExpressionNode[] nodes;
 
         @CompilerDirectives.CompilationFinal
         private boolean macroExpanded = false;

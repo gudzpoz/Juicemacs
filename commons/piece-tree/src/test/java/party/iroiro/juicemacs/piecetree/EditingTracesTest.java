@@ -113,7 +113,7 @@ public class EditingTracesTest {
                 state.file = file;
                 state.setUp();
                 long[] latency = new long[state.trace.edits.length];
-                @Nullable String result = testRunner.apply(state, latency);
+                String result = testRunner.apply(state, latency);
                 if (result == null) {
                     delete = true;
                 } else {

@@ -1,10 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.io.IOAccess;
 import org.junit.jupiter.api.Test;
-
-import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;

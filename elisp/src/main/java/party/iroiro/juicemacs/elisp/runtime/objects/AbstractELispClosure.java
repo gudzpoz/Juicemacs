@@ -111,10 +111,6 @@ public sealed abstract class AbstractELispClosure extends AbstractELispVector
         @Nullable
         Source source;
 
-        public @Nullable Source getSource() {
-            return source;
-        }
-
         public ClosureCommons() {
             this.source = null;
         }

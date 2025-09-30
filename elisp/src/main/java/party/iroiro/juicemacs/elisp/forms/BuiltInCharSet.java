@@ -95,7 +95,6 @@ public class BuiltInCharSet extends ELispBuiltIns {
 
     public static ELispCharset getCharset(Object symbol) {
         ELispVector vec = getCharsetAttr(symbol);
-        //noinspection SequencedCollectionMethodCanBeUsed
         int index = asInt(vec.get(CHARSET_ID));
         return getCharsetFromId(index);
     }
@@ -436,7 +435,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
                         ELispCons.listOf((long) id),
                 }));
             } else {
-                @Nullable ELispCons prev = null;
+                ELispCons prev = null;
                 ConsIterator i = asConsIter(charsetOrderedList);
                 while (i.hasNextCons()) {
                     ELispCons cons = i.nextCons();

@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
@@ -29,7 +28,7 @@ public class BuiltInMarker extends ELispBuiltIns {
     public abstract static class FMarkerBuffer extends ELispBuiltInBaseNode {
         @Specialization
         public static Object markerBuffer(ELispMarker marker) {
-            @Nullable ELispBuffer buffer = marker.getBuffer();
+            ELispBuffer buffer = marker.getBuffer();
             return buffer == null ? false : buffer;
         }
     }

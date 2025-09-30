@@ -6,7 +6,6 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.jspecify.annotations.Nullable;
 import org.graalvm.polyglot.SandboxPolicy;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -479,7 +478,6 @@ public class BuiltInEditFns extends ELispBuiltIns {
             public void executeVoid(VirtualFrame frame) {
                 ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
                 Object prevBuffer = forwarded.getValue();
-                @Nullable
                 ELispMarker point = prevBuffer instanceof ELispBuffer buffer
                         ? new ELispMarker(buffer, buffer.getPoint())
                         : null;
@@ -498,7 +496,6 @@ public class BuiltInEditFns extends ELispBuiltIns {
             public Object executeGeneric(VirtualFrame frame) {
                 ValueStorage.Forwarded forwarded = getLanguage().currentBuffer();
                 Object prevBuffer = forwarded.getValue();
-                @Nullable
                 ELispMarker point = prevBuffer instanceof ELispBuffer buffer
                         ? new ELispMarker(buffer, buffer.getPoint())
                         : null;
@@ -536,9 +533,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
         }
 
         private static class SaveCurrentBufferNode extends ELispExpressionNode {
-            @SuppressWarnings("FieldMayBeFinal")
             @Child
-            private ELispExpressionNode bodyNode;
+            ELispExpressionNode bodyNode;
 
             public SaveCurrentBufferNode(Object[] body) {
                 bodyNode = BuiltInEval.FProgn.progn(body);
@@ -905,7 +901,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 return false;
             }
             ELispContext context = getContext();
-            @Nullable String name = context.getEnv("LOGNAME");
+            String name = context.getEnv("LOGNAME");
             if (name == null) {
                 name = context.getEnv("USER");
             }

@@ -38,10 +38,6 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsItera
         return !isNil(tail);
     }
 
-    public Object current() {
-        return tail;
-    }
-
     @Override
     public ELispCons currentCons() {
         if (tail instanceof ELispCons cons) {

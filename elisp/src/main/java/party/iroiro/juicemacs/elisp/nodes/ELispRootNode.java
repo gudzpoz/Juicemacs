@@ -8,9 +8,8 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 
 public class ELispRootNode extends RootNode {
-    @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private ELispExpressionNode expression;
+    ELispExpressionNode expression;
 
     private final SourceSection sourceSection;
 

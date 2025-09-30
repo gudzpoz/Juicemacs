@@ -32,7 +32,8 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
         "PMD.UseUnderscoresInNumericLiterals",
         "RedundantCast",
         "UnnecessaryUnicodeEscape",
-        "UnnecessaryLocalVariable"
+        "UnnecessaryLocalVariable",
+        "EmptyMethod",
 })
 public final class ELispGlobals extends ELispGlobalsBase {
     public ELispGlobals(ELispContext context) {

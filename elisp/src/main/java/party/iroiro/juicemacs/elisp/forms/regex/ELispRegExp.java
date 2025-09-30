@@ -19,9 +19,8 @@ public abstract class ELispRegExp {
 
     public static final class RegExpFunctionNode extends RootNode {
 
-        @SuppressWarnings("FieldMayBeFinal")
         @Child
-        private ELispRegExpNode node;
+        ELispRegExpNode node;
         private final String regexp;
 
         RegExpFunctionNode(@Nullable TruffleLanguage<?> language, ELispRegExpNode node, String regexp) {

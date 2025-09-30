@@ -427,7 +427,7 @@ public final class PieceTreeBase {
                         bufferIndex,
                         insertPosInBuffer,
                         piece.end,
-                        getLineFeedCnt(piece.bufferIndex, insertPosInBuffer, piece.end),
+                        getLineFeedCnt(insertPosInBuffer, piece.end),
                         offsetInBuffer(bufferIndex, piece.end) - offsetInBuffer(bufferIndex, insertPosInBuffer)
                 );
                 // reuse node for content before insertion point.
@@ -562,24 +562,8 @@ public final class PieceTreeBase {
         return new BufferCursor(mid, offset - midStart);
     }
 
-    private int getLineFeedCnt(int bufferIndex, BufferCursor start, BufferCursor end) {
-        // we don't need to worry about start: abc\r|\n, or abc|\r, or abc|\n, or abc|\r\n doesn't change the fact that, there is one line break after start.
-        // now let's take care of end: abc\r|\n, if end is in between \r and \n, we need to add line feed count by 1
-        if (end.column == 0) {
-            return end.line - start.line;
-        }
-        LineStartList lineStarts = buffers.get(bufferIndex).lineStarts();
-        if (end.line == lineStarts.size() - 1) { // it means, there is no \n after end, otherwise, there will be one more lineStart.
-            return end.line - start.line;
-        }
-        long nextLineStartOffset = lineStarts.get(end.line + 1);
-        long endOffset = lineStarts.get(end.line) + end.column;
-        if (nextLineStartOffset > endOffset + 1) { // there are more than 1 character after end, which means it can't be \n
-            return end.line - start.line;
-        }
-        // endOffset + 1 == nextLineStartOffset
-        // character at endOffset is \n, so we check the character before first
-        // if character at endOffset is \r, end.column is 0 and we can't get here.
+    private int getLineFeedCnt(BufferCursor start, BufferCursor end) {
+        // vscode uses \r|\n|\r\n as line separator, while we use \n only
         return end.line - start.line;
     }
 
@@ -642,7 +626,7 @@ public final class PieceTreeBase {
                 level,
                 start,
                 endPos,
-                getLineFeedCnt(level, start, endPos),
+                getLineFeedCnt(start, endPos),
                 buffer.length() - startOffset + extraLength
         );
     }
@@ -734,7 +718,7 @@ public final class PieceTreeBase {
         int lineCnt = pos.line - piece.start.line;
         if (offsetInBuffer(piece.bufferIndex, piece.end) - offsetInBuffer(piece.bufferIndex, piece.start) == accumulatedValue) {
             // we are checking the end of this node, so a CRLF check is necessary.
-            int realLineCnt = getLineFeedCnt(node.piece.bufferIndex, piece.start, pos);
+            int realLineCnt = getLineFeedCnt(piece.start, pos);
             if (realLineCnt != lineCnt) {
                 return new Index(realLineCnt, 0);
             }
@@ -765,7 +749,7 @@ public final class PieceTreeBase {
         //noinspection UnnecessaryLocalVariable
         BufferCursor newEnd = pos;
         long newEndOffset = offsetInBuffer(piece.bufferIndex, newEnd);
-        int newLineFeedCnt = getLineFeedCnt(piece.bufferIndex, piece.start, newEnd);
+        int newLineFeedCnt = getLineFeedCnt(piece.start, newEnd);
         int lf_delta = newLineFeedCnt - originalLFCnt;
         long size_delta = newEndOffset - originalEndOffset;
         int newLength = Math.toIntExact(piece.length + size_delta);
@@ -785,7 +769,7 @@ public final class PieceTreeBase {
         long originalStartOffset = offsetInBuffer(piece.bufferIndex, piece.start);
         //noinspection UnnecessaryLocalVariable
         BufferCursor newStart = pos;
-        int newLineFeedCnt = getLineFeedCnt(piece.bufferIndex, newStart, piece.end);
+        int newLineFeedCnt = getLineFeedCnt(newStart, piece.end);
         long newStartOffset = offsetInBuffer(piece.bufferIndex, newStart);
         int lf_delta = newLineFeedCnt - originalLFCnt;
         long size_delta = originalStartOffset - newStartOffset;
@@ -809,7 +793,7 @@ public final class PieceTreeBase {
         int oldLFCnt = piece.lineFeedCnt;
         //noinspection UnnecessaryLocalVariable
         BufferCursor newEnd = start;
-        int newLineFeedCnt = getLineFeedCnt(piece.bufferIndex, piece.start, newEnd);
+        int newLineFeedCnt = getLineFeedCnt(piece.start, newEnd);
         int newLength = offsetInBuffer(piece.bufferIndex, start) - offsetInBuffer(piece.bufferIndex, originalStartPos);
         node.piece = new Piece(
                 piece.bufferIndex,
@@ -824,7 +808,7 @@ public final class PieceTreeBase {
                 piece.bufferIndex,
                 end,
                 originalEndPos,
-                getLineFeedCnt(piece.bufferIndex, end, originalEndPos),
+                getLineFeedCnt(end, originalEndPos),
                 offsetInBuffer(piece.bufferIndex, originalEndPos) - offsetInBuffer(piece.bufferIndex, end)
         );
         rbInsertRight(node, newPiece);

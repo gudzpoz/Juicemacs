@@ -1,7 +1,6 @@
 package party.iroiro.juicemacs.piecetree.meta;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.SENTINEL;

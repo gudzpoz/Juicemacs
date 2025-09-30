@@ -1,8 +1,5 @@
 package party.iroiro.juicemacs.elisp.forms;
 
-import org.graalvm.polyglot.Context;
-import org.junit.jupiter.api.Test;
-
 public class BuiltInFnsTest extends BaseFormTest {
     private static final Object[] TESTS = new Object[]{
             "(length nil)", 0L,

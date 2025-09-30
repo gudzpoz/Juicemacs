@@ -33,7 +33,6 @@ public class BuiltInSyntax extends ELispBuiltIns {
             syntaxCodeObject.set(i, ELispCons.listOf((long) i));
         }
         BuiltInFns.FPut.put(SYNTAX_TABLE, CHAR_TABLE_EXTRA_SLOTS, 0L);
-        //noinspection SequencedCollectionMethodCanBeUsed
         Object whitespace = syntaxCodeObject.get(SWHITESPACE);
         standardSyntaxTable = BuiltInCharTab.FMakeCharTable.makeCharTable(SYNTAX_TABLE, whitespace);
         context.globals().getBufferDefaults().setSyntaxTable(standardSyntaxTable);

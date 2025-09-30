@@ -5,7 +5,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 import org.mozilla.universalchardet.UniversalDetector;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
@@ -103,7 +102,7 @@ public class ELispParserTest {
         assertSame(FLOAT, noShorthand);
 
         ELispSymbol dot = assertInstanceOf(ELispSymbol.class, read("."));
-        assertEquals(".", dot.name().toString());
+        assertEquals(".", dot.name());
 
         ELispBoolVector bVec = assertInstanceOf(ELispBoolVector.class, read("#&2\"\\1\""));
         assertEquals(2, bVec.size());
@@ -116,7 +115,7 @@ public class ELispParserTest {
         Object[] array = cons.toArray();
         for (int i = 0; i < array.length; i++) {
             ELispSymbol symbol = assertInstanceOf(ELispSymbol.class, array[i]);
-            assertEquals(symbols[i], symbol.name().toString());
+            assertEquals(symbols[i], symbol.name());
         }
     }
 
@@ -179,7 +178,7 @@ public class ELispParserTest {
 
         ELispRecord rec = assertInstanceOf(ELispRecord.class, read("#1=#s(rec #1#)"));
         assertEquals(2, rec.size());
-        assertEquals("rec", assertInstanceOf(ELispSymbol.class, rec.getFirst()).name().toString());
+        assertEquals("rec", assertInstanceOf(ELispSymbol.class, rec.getFirst()).name());
         assertSame(rec, rec.get(1));
 
         // Emacs does not handle recursive references inside hash tables
@@ -191,11 +190,11 @@ public class ELispParserTest {
         assertEquals(3, table.size());
         assertEquals(
                 "v1",
-                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k1"))).name().toString()
+                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k1"))).name()
         );
         assertEquals(
                 "v2",
-                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k2"))).name().toString()
+                assertInstanceOf(ELispSymbol.class, table.get(context.intern("k2"))).name()
         );
         ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(context.intern("k3")));
          assertSame(NIL, placeholder.car());

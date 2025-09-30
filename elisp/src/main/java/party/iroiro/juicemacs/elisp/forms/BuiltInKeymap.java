@@ -4,7 +4,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
@@ -106,7 +105,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         @Override
         public Object get(Object key, boolean parentLookup) {
             ConsIterator i = cons.listIterator(1);
-            @Nullable ELispCons parent = null;
+            ELispCons parent = null;
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
                 if (current.car() == KEYMAP) {
@@ -148,7 +147,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
             } else {
                 Object newList;
                 ConsIterator i = cons.listIterator(1);
-                @Nullable ELispCons pair = null;
+                ELispCons pair = null;
                 while (i.hasNextCons()) {
                     ELispCons current = i.nextCons();
                     Object car = current.car();

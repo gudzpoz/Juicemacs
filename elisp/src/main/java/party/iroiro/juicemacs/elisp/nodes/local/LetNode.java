@@ -24,7 +24,6 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class LetNode extends ELispExpressionNode {
-    @SuppressWarnings("FieldMayBeFinal")
     @Children
     ELispExpressionNode[] letClauses = new ELispExpressionNode[0];
 
@@ -34,7 +33,6 @@ public class LetNode extends ELispExpressionNode {
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     ELispSymbol[] dynamicSymbols = new ELispSymbol[0];
 
-    @SuppressWarnings("FieldMayBeFinal")
     @Child
     @Nullable
     ELispExpressionNode bodyNode = null;

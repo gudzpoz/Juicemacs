@@ -350,7 +350,7 @@ public class PieceTreeBaseTest {
     }
 
     @Test
-    public void emacsCharTest() throws IOException {
+    public void emacsCharTest() {
         PieceTreeBase tree = new PieceTreeBase();
         TruffleString s = TruffleString.fromIntArrayUTF32Uncached(new int[]{
                 0x3FFF80,

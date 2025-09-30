@@ -131,9 +131,8 @@ public final class ConsInlinedAstNode extends ConsCallNode {
     }
 
     public static class VarargToArrayNode extends ELispExpressionNode {
-        @SuppressWarnings("FieldMayBeFinal")
         @Children
-        private ELispExpressionNode[] restArgs;
+        ELispExpressionNode[] restArgs;
 
         public VarargToArrayNode(List<ELispExpressionNode> restNodes) {
             restArgs = restNodes.toArray(ELispExpressionNode[]::new);

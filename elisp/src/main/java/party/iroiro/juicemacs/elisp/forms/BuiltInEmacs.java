@@ -32,7 +32,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
     /// @param empty when `true`, returns `nil` for empty paths; ".", otherwise
     /// @return a list of strings
     public static ELispCons decodeEnvPath(@Nullable String envVarName, String defaultValue, boolean empty) {
-        @Nullable ELispString emptyElement = empty ? null : new ELispString(".");
+        ELispString emptyElement = empty ? null : new ELispString(".");
         String path = Objects.requireNonNullElse(
                 envVarName == null ? null : ELispContext.get(null).getEnv(envVarName),
                 defaultValue

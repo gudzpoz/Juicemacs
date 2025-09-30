@@ -13,9 +13,8 @@ public class FunctionRootNode extends RootNode {
 
     private Object lispFunction;
 
-    @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private ReadFunctionArgNode.ArgCountVerificationNode functionBody;
+    ReadFunctionArgNode.ArgCountVerificationNode functionBody;
 
     public FunctionRootNode(ELispLanguage language,
                             Object lispFunction,

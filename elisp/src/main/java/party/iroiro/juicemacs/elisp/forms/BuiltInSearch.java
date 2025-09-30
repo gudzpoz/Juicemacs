@@ -209,7 +209,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             private boolean currentMatch(ELispBuffer buffer, long start, long end) {
                 PrimitiveIterator.OfInt iterator = pattern.iterator(0);
                 PrimitiveIterator.OfInt bufferI = buffer.iterator(start, end);
-                @Nullable ELispCharTable canon = caseFold ? asCharTable(buffer.getCaseCanonTable()) : null;
+                ELispCharTable canon = caseFold ? asCharTable(buffer.getCaseCanonTable()) : null;
                 long remaining = end - start;
                 while (iterator.hasNext()) {
                     if (remaining <= 0) {

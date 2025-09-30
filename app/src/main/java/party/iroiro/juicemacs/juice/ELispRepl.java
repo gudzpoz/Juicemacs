@@ -102,7 +102,7 @@ public class ELispRepl implements Callable<Integer> {
         }
         if (dumpEmacs != null) {
             if (dumpFile != null) {
-                System.err.println("--dump-file option ignored while dumping");;
+                System.err.println("--dump-file option ignored while dumping");
             }
             builder.option("elisp.portableDump", dumpEmacs);
         } else if (dumpFile != null) {

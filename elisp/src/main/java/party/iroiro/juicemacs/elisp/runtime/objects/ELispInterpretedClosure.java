@@ -124,9 +124,8 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
     public static final class ELispClosureCallNode extends ELispExpressionNode implements ELispLexical.ScopeProvider {
 
         private final ELispInterpretedClosure closure;
-        @SuppressWarnings("FieldMayBeFinal")
         @Children
-        private ELispExpressionNode[] readArgNodes;
+        ELispExpressionNode[] readArgNodes;
 
         private final ClosureArgs args;
         @CompilerDirectives.CompilationFinal(dimensions = 1)
@@ -134,9 +133,8 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
 
         private final boolean isLexical;
 
-        @SuppressWarnings("FieldMayBeFinal")
         @Child
-        private ELispExpressionNode body;
+        ELispExpressionNode body;
 
         private final ELispLexical.@Nullable Scope argScope;
 

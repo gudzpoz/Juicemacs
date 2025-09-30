@@ -777,7 +777,7 @@ final class ELispRegExpCompiler {
                         default -> throw new UnsupportedOperationException();
                     }
                 }
-                @Nullable TrieBranch next = branch.next;
+                TrieBranch next = branch.next;
                 if (next == null) {
                     int index =lengths.size();
                     lengths.add(length);

@@ -34,9 +34,8 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
     }
 
     public static class ArgCountVerificationNode extends ELispExpressionNode {
-        @SuppressWarnings("FieldMayBeFinal")
         @Child
-        private ELispExpressionNode function;
+        ELispExpressionNode function;
         private final int minArgs;
         private final int maxArgs;
 

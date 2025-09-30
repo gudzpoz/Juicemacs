@@ -61,7 +61,6 @@ public abstract class ELispCodingSystem {
             return attrs.get(CODING_ATTR_TYPE);
         }
         public Object getBaseName() {
-            //noinspection SequencedCollectionMethodCanBeUsed
             return attrs.get(CODING_ATTR_BASE_NAME);
         }
         public Object getPlist() {

@@ -430,9 +430,9 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         final ELispContext context = getContext();
         loop:
         while (bci < bytecode.length) {
-//            if (top != this.stackTops[bci]) {
-//                throw invalidFunction(frame);
-//            }
+            if (CompilerDirectives.inInterpreter() && top != this.stackTops[bci]) {
+                throw invalidFunction(frame);
+            }
             try {
                 CompilerAsserts.partialEvaluationConstant(bci);
                 CompilerAsserts.partialEvaluationConstant(top);

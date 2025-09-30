@@ -113,7 +113,7 @@ class MarkerPieceTreeTest {
         tree.insertString(0, 4);
         tree.insertMarker(0, new Marker(MarkerPieceTree.Affinity.RIGHT));
         tree.insertString(0, 4);
-        System.out.println(tree.toString());
+        System.out.println(tree);
         tree.insertMarker(4, new Marker(MarkerPieceTree.Affinity.LEFT));
         tree.insertString(4, 4);
         assertEquals("""

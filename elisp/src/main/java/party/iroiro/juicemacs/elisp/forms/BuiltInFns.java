@@ -1567,8 +1567,8 @@ public class BuiltInFns extends ELispBuiltIns {
                 if (args.length == 1) {
                     return new SortParameters(null, args[0], false, true);
                 }
-                @Nullable Object key = null;
-                @Nullable Object lessp = null;
+                Object key = null;
+                Object lessp = null;
                 boolean reverse = false;
                 boolean inPlace = false;
                 for (int i = 0; i < args.length; i += 2) {
@@ -1982,7 +1982,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return nconc2(lists[0], lists[1]);
             }
             Object result = false;
-            @Nullable Object prev = null;
+            Object prev = null;
             for (Object arg : lists) {
                 if (isNil(arg)) {
                     continue;
