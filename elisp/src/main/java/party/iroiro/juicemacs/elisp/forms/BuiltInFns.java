@@ -38,6 +38,19 @@ public class BuiltInFns extends ELispBuiltIns {
         super(true);
     }
 
+    public record CustomHashTableTest(Object eq, Object hash) {
+    }
+    private final HashMap<ELispSymbol, CustomHashTableTest> hashTableTests = new HashMap<>();
+    @TruffleBoundary
+    public void registerHashTableTest(ELispSymbol symbol, Object eq, Object hash) {
+        hashTableTests.put(symbol, new CustomHashTableTest(eq, hash));
+    }
+    @TruffleBoundary
+    @Nullable
+    public CustomHashTableTest getHashTableTest(ELispSymbol symbol) {
+        return hashTableTests.get(symbol);
+    }
+
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInFnsFactory.getFactories();
@@ -2732,8 +2745,9 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FClrhash extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void clrhash(Object table) {
-            throw new UnsupportedOperationException();
+        public static ELispHashtable clrhash(ELispHashtable table) {
+            table.clear();
+            return table;
         }
     }
 
@@ -2822,8 +2836,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDefineHashTableTest extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void defineHashTableTest(ELispSymbol name, Object test, Object hash) {
-            throw new UnsupportedOperationException();
+        public ELispSymbol defineHashTableTest(ELispSymbol name, Object test, Object hash) {
+            getContext().globals().builtInFns.registerHashTableTest(
+                    name, test, hash
+            );
+            return name;
         }
     }
 

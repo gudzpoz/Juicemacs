@@ -53,16 +53,6 @@ macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
 
 To support this, we will need to rethink how we handle our materialized frames.
 
-* TODO [#B] =cl--generic-cyclic-definition=
-
-There is definitely a bug, but it is rather unreproducible. Can't
-deterministically trigger it. Have no idea what could be the reason (maybe
-something depending on hash table iteration order?).
-
-#+begin_src elisp
-  (cl--generic-cyclic-definition cl-generic-generalizers)
-#+end_src
-
 * TODO [#B] Byte compiler warnings
 
 =(require 'bytecomp)= throws a bunch of errors, but =(byte-compile '(lambda ()
@@ -318,11 +308,16 @@ all symbols bare.
 So basically one can have autoload functions as well as autoload strings
 (docstrings). What else?
 
-- [ ] So we now handles autoload functions. However, the generated =loaddefs.el=
+- [X] So we now handles autoload functions. However, the generated =loaddefs.el=
   seems to invoke =rx= before its autoload definition. How does Emacs even
   support this?
-  - Answer: Emacs bootstraps itself and have =rx= in its heap dump. So after the
-    bootstrap, Emacs "remembers" =rx=.
+  - Answer: Emacs has two bootstrapping phases:
+    1. =pbootstrap=: It interprets =.el= files and uses a tailored
+       =ldefs-boot.el= that avoid this kind of use-before-definition situations.
+    2. =pdump=: =pbootstrap= will compile (almost) all code into bytecode =.elc=
+       files. Since =rx= is a macro, it gets expanded during bytecode
+       compilation. Then, =pdump= loads bytecode where
+       macro-use-before-definition will never happen.
 - [ ] Emacs autoload reads and sets several variables and supports undoing the
   loaded changes... How? (It seems related to feature unloading.)
 
@@ -472,6 +467,19 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#B] =cl--generic-cyclic-definition=
+
+There is definitely a bug, but it is rather unreproducible. Can't
+deterministically trigger it. Have no idea what could be the reason (maybe
+something depending on hash table iteration order?).
+
+#+begin_src elisp
+  (cl--generic-cyclic-definition cl-generic-generalizers)
+#+end_src
+
+Probably fixed: this seems related to wrong =defvar= semantics. I haven't seen
+the error ever since.
 
 ** CANCELLED [#B] CDR coding or alternatives
 

@@ -28,6 +28,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
     public final BuiltInCcl builtInCcl = new BuiltInCcl();
     public final BuiltInCharSet builtInCharSet = new BuiltInCharSet();
     public final BuiltInCoding builtInCoding = new BuiltInCoding();
+    public final BuiltInFns builtInFns = new BuiltInFns();
     public final BuiltInKeymap builtInKeymap = new BuiltInKeymap();
     public final BuiltInSearch builtInSearch = new BuiltInSearch();
     public final BuiltInSyntax builtInSyntax = new BuiltInSyntax();
@@ -59,7 +60,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
             new BuiltInFileIO(),
             new BuiltInFileLock(),
             new BuiltInFloatFns(),
-            new BuiltInFns(),
+            builtInFns,
             new BuiltInFrame(),
             new BuiltInIndent(),
             new BuiltInKeyboard(),

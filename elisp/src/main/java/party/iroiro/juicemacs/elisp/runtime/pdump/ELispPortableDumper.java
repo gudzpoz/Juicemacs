@@ -14,6 +14,7 @@ import org.apache.fory.logging.LoggerFactory;
 import org.apache.fory.serializer.ExternalizableSerializer;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.forms.BuiltInCcl.CclProgram;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.CustomHashTableTest;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical.Captured;
@@ -156,7 +157,7 @@ public final class ELispPortableDumper {
                 BuiltInFileIO.class,
                 BuiltInFileLock.class,
                 BuiltInFloatFns.class,
-                BuiltInFns.class,
+                BuiltInFns.class, CustomHashTableTest.class,
                 BuiltInFrame.class,
                 BuiltInIndent.class,
                 BuiltInKeyboard.class,
@@ -170,6 +171,7 @@ public final class ELispPortableDumper {
                 BuiltInProcess.class,
                 BuiltInSearch.class,
                 BuiltInSyntax.class,
+                BuiltInTerm.class,
                 BuiltInTerminal.class,
                 BuiltInTextProp.class,
                 BuiltInTimeFns.class,

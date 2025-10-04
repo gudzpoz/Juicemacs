@@ -14,6 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+/// The base class for built-in container classes like [BuiltInData]
+///
+/// NOTE: When subclassing this class, make sure to add the class to:
+/// - [party.iroiro.juicemacs.elisp.runtime.ELispGlobalsBase#builtIns]
+/// - [party.iroiro.juicemacs.elisp.runtime.pdump.ELispPortableDumper#FORY]
 public abstract class ELispBuiltIns {
 
     static final ConcurrentHashMap<String, Source> BUILT_IN_SOURCES = new ConcurrentHashMap<>();

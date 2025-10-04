@@ -6,7 +6,10 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.CustomHashTableTest;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
@@ -19,8 +22,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public sealed class ELispHashtable extends AbstractELispIdentityObject implements Iterable<Map.Entry<Object, Object>> {
 
@@ -48,9 +50,11 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
             test = new EqEquivalence();
         } else if (testSym == EQUAL) {
             test = new EqualEquivalence();
-        } else {
+        } else if (isNil(testSym) || testSym == EQL) {
             // Default: eql
             test = new EqlEquivalence();
+        } else {
+            test = new CustomEquivalence(asSym(testSym));
         }
         return test;
     }
@@ -389,6 +393,31 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         @TruffleBoundary
         public int hashCode(Object o) {
             return o.hashCode();
+        }
+    }
+
+    private static class CustomEquivalence extends Equivalence {
+        final CustomHashTableTest test;
+
+        // TODO: disallow editing the hashtable from eq/hash functions
+
+        CustomEquivalence(ELispSymbol testSym) {
+            BuiltInFns fns = ELispContext.get(null).globals().builtInFns;
+            CustomHashTableTest test = fns.getHashTableTest(testSym);
+            if (test == null) {
+                throw ELispSignals.error("Invalid hash table test");
+            }
+            this.test = test;
+        }
+
+        @Override
+        public boolean equals(Object a, Object b) {
+            return !isNil(FFuncall.funcall(null, test.eq(), a, b));
+        }
+
+        @Override
+        public int hashCode(Object o) {
+            return (int) asLong(FFuncall.funcall(null, test.hash(), o));
         }
     }
 }
