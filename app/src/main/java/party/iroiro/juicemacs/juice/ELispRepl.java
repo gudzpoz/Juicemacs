@@ -134,11 +134,17 @@ public class ELispRepl implements Callable<Integer> {
                     lineReader.printAbove("^C");
                     continue;
                 }
+                Value value;
                 try {
-                    Value value = context.eval("elisp", ";;; -*- lexical-binding: t -*-\n" + line);
+                    value = context.eval("elisp", ";;; -*- lexical-binding: t -*-\n" + line);
+                } catch (PolyglotException e) {
+                    printStackTrace(e, lineReader);
+                    continue;
+                }
+                try {
                     AttributedString output = lineReader.getHighlighter().highlight(lineReader, value.toString());
                     lineReader.printAbove(output.toAnsi());
-                } catch (PolyglotException e) {
+                } catch (Exception e) {
                     printStackTrace(e, lineReader);
                 }
             }
@@ -146,15 +152,17 @@ public class ELispRepl implements Callable<Integer> {
         return 0;
     }
 
-    private void printStackTrace(PolyglotException e, LineReader lineReader) {
+    private void printStackTrace(Exception e, LineReader lineReader) {
         lineReader.printAbove(e.getMessage());
         boolean guestFrame = false;
-        for (PolyglotException.StackFrame stackFrame : e.getPolyglotStackTrace()) {
-            lineReader.printAbove(stackFrame.toString());
-            if (stackFrame.isGuestFrame()) {
-                guestFrame = true;
-            } else if (guestFrame) {
-                break;
+        if (e instanceof PolyglotException poly) {
+            for (PolyglotException.StackFrame stackFrame : poly.getPolyglotStackTrace()) {
+                lineReader.printAbove(stackFrame.toString());
+                if (stackFrame.isGuestFrame()) {
+                    guestFrame = true;
+                } else if (guestFrame) {
+                    break;
+                }
             }
         }
     }

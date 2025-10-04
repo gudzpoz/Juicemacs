@@ -195,6 +195,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         processVars();
         searchVars();
         syntaxVars();
+        termVars();
         terminalVars();
         textpropVars();
         timefnsVars();
@@ -495,8 +496,8 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(COMPOSITION_FUNCTION_TABLE, compositionFunctionTable);
         initForwardTo(AUTO_COMPOSITION_EMOJI_ELIGIBLE_CODEPOINTS, autoCompositionEmojiEligibleCodepoints);
     }
-    private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded(2147483647L);
-    private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded(-2147483648L);
+    private final ValueStorage.Forwarded mostPositiveFixnum = new ValueStorage.Forwarded();
+    private final ValueStorage.Forwarded mostNegativeFixnum = new ValueStorage.Forwarded();
     private final ValueStorage.ForwardedBool symbolsWithPosEnabled = new ValueStorage.ForwardedBool(false);
     private void dataVars() {
         initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);
@@ -1149,6 +1150,18 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(FIND_WORD_BOUNDARY_FUNCTION_TABLE, findWordBoundaryFunctionTable);
         initForwardTo(COMMENT_END_CAN_BE_ESCAPED, commentEndCanBeEscaped);
     }
+    private final ValueStorage.ForwardedBool systemUsesTerminfo = new ValueStorage.ForwardedBool(false);
+    private final ValueStorage.Forwarded suspendTtyFunctions = new ValueStorage.Forwarded(false);
+    private final ValueStorage.Forwarded resumeTtyFunctions = new ValueStorage.Forwarded(false);
+    private final ValueStorage.ForwardedBool visibleCursor = new ValueStorage.ForwardedBool(true);
+    private final ValueStorage.ForwardedBool ttyMenuCallsMousePositionFunction = new ValueStorage.ForwardedBool(false);
+    private void termVars() {
+        initForwardTo(SYSTEM_USES_TERMINFO, systemUsesTerminfo);
+        initForwardTo(SUSPEND_TTY_FUNCTIONS, suspendTtyFunctions);
+        initForwardTo(RESUME_TTY_FUNCTIONS, resumeTtyFunctions);
+        initForwardTo(VISIBLE_CURSOR, visibleCursor);
+        initForwardTo(TTY_MENU_CALLS_MOUSE_POSITION_FUNCTION, ttyMenuCallsMousePositionFunction);
+    }
     private final ValueStorage.Forwarded ringBellFunction = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded deleteTerminalFunctions = new ValueStorage.Forwarded(false);
     private void terminalVars() {
@@ -1667,7 +1680,11 @@ public final class ELispGlobals extends ELispGlobalsBase {
         FPut.put(EXCESSIVE_LISP_NESTING, ERROR_MESSAGE, new ELispString("Lisp nesting exceeds `max-lisp-eval-depth'"));
         FPut.put(EXCESSIVE_VARIABLE_BINDING, ERROR_CONDITIONS, FCons.cons(EXCESSIVE_VARIABLE_BINDING, recursionTail));
         FPut.put(EXCESSIVE_VARIABLE_BINDING, ERROR_MESSAGE, new ELispString("Variable binding depth exceeds max-specpdl-size"));
+        var mostPositiveFixnumJInit = (long) (Long.MAX_VALUE);
+        mostPositiveFixnum.setValue(mostPositiveFixnumJInit);
         MOST_POSITIVE_FIXNUM.setConstant(true);
+        var mostNegativeFixnumJInit = (long) (Long.MIN_VALUE);
+        mostNegativeFixnum.setValue(mostNegativeFixnumJInit);
         MOST_NEGATIVE_FIXNUM.setConstant(true);
     }
     private void symsOfFns() {
@@ -5810,6 +5827,7 @@ character."""),
     public static final ELispSymbol SYSTEM_NAME = new ELispSymbol("system-name");
     public static final ELispSymbol SYSTEM_TIME_LOCALE = new ELispSymbol("system-time-locale");
     public static final ELispSymbol SYSTEM_TYPE = new ELispSymbol("system-type");
+    public static final ELispSymbol SYSTEM_USES_TERMINFO = new ELispSymbol("system-uses-terminfo");
     public static final ELispSymbol TAB_BAR_BORDER = new ELispSymbol("tab-bar-border");
     public static final ELispSymbol TAB_BAR_BUTTON_MARGIN = new ELispSymbol("tab-bar-button-margin");
     public static final ELispSymbol TAB_BAR_BUTTON_RELIEF = new ELispSymbol("tab-bar-button-relief");
@@ -5846,6 +5864,7 @@ character."""),
     public static final ELispSymbol TREESIT_THING_SETTINGS = new ELispSymbol("treesit-thing-settings");
     public static final ELispSymbol TRUNCATE_PARTIAL_WIDTH_WINDOWS = new ELispSymbol("truncate-partial-width-windows");
     public static final ELispSymbol TTY_ERASE_CHAR = new ELispSymbol("tty-erase-char");
+    public static final ELispSymbol TTY_MENU_CALLS_MOUSE_POSITION_FUNCTION = new ELispSymbol("tty-menu-calls-mouse-position-function");
     public static final ELispSymbol UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT = new ELispSymbol("unibyte-display-via-language-environment");
     public static final ELispSymbol UNICODE_CATEGORY_TABLE = new ELispSymbol("unicode-category-table");
     public static final ELispSymbol UNREAD_COMMAND_EVENTS = new ELispSymbol("unread-command-events");
@@ -5862,6 +5881,7 @@ character."""),
     public static final ELispSymbol VALUES = new ELispSymbol("values");
     public static final ELispSymbol VECTOR_CELLS_CONSED = new ELispSymbol("vector-cells-consed");
     public static final ELispSymbol VISIBLE_BELL = new ELispSymbol("visible-bell");
+    public static final ELispSymbol VISIBLE_CURSOR = new ELispSymbol("visible-cursor");
     public static final ELispSymbol VOID_TEXT_AREA_POINTER = new ELispSymbol("void-text-area-pointer");
     public static final ELispSymbol WHERE_IS_PREFERRED_MODIFIER = new ELispSymbol("where-is-preferred-modifier");
     public static final ELispSymbol WHILE_NO_INPUT_IGNORE_EVENTS = new ELispSymbol("while-no-input-ignore-events");
@@ -6277,6 +6297,7 @@ character."""),
             SYSTEM_NAME,
             SYSTEM_TIME_LOCALE,
             SYSTEM_TYPE,
+            SYSTEM_USES_TERMINFO,
             TAB_BAR_BORDER,
             TAB_BAR_BUTTON_MARGIN,
             TAB_BAR_BUTTON_RELIEF,
@@ -6313,6 +6334,7 @@ character."""),
             TREESIT_THING_SETTINGS,
             TRUNCATE_PARTIAL_WIDTH_WINDOWS,
             TTY_ERASE_CHAR,
+            TTY_MENU_CALLS_MOUSE_POSITION_FUNCTION,
             UNIBYTE_DISPLAY_VIA_LANGUAGE_ENVIRONMENT,
             UNICODE_CATEGORY_TABLE,
             UNREAD_COMMAND_EVENTS,
@@ -6329,6 +6351,7 @@ character."""),
             VALUES,
             VECTOR_CELLS_CONSED,
             VISIBLE_BELL,
+            VISIBLE_CURSOR,
             VOID_TEXT_AREA_POINTER,
             WHERE_IS_PREFERRED_MODIFIER,
             WHILE_NO_INPUT_IGNORE_EVENTS,

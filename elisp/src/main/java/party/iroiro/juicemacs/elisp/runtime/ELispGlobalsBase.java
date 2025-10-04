@@ -73,6 +73,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
             new BuiltInProcess(),
             builtInSearch,
             builtInSyntax,
+            new BuiltInTerm(),
             new BuiltInTerminal(),
             new BuiltInTextProp(),
             new BuiltInTimeFns(),
