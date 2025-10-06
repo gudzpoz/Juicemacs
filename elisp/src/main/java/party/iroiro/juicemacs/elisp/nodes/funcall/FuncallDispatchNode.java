@@ -22,7 +22,7 @@ public abstract class FuncallDispatchNode extends Node {
     }
 
     @Specialization
-    public static Object doDispatch(
+    static Object doDispatch(
             Node node,
             Object[] args,
             @Cached ReadFunctionObjectNodes.GetDynamicSymbolFunctionNode symbolGet,

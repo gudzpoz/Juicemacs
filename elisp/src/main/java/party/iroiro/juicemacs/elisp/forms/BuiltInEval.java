@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -25,6 +26,7 @@ import party.iroiro.juicemacs.elisp.nodes.ast.ELispRootNodes;
 import party.iroiro.juicemacs.elisp.nodes.ast.LazyConsExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical.Captured;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
@@ -737,48 +739,105 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             ELispCons body = iterator.hasNext() ? iterator.currentCons() : ELispCons.listOf(false);
             body.fillDebugInfo(def);
-            ELispExpressionNode finalDocString = docString;
             Object finalInteractive = interactive;
-            return new ELispExpressionNode() {
-                @Child
-                ELispExpressionNode doc = finalDocString;
-
-                private AbstractELispClosure.@Nullable ClosureCommons commons = null;
-
-                @Override
-                public void executeVoid(VirtualFrame frame) {
-                    executeGeneric(frame);
-                }
-
-                @Override
-                public Object executeGeneric(@Nullable VirtualFrame frame) {
-                    ELispLexical.@Nullable Scope scope = ELispLexical.getScope(this);
-                    Object env = scope == null || frame == null
-                            ? false
-                            : new ELispLexical.Captured(scope, frame.materialize());
-                    Object doc = this.doc.executeGeneric(frame);
-                    return createClosure(scope, doc, env);
-                }
-
-                private AbstractELispClosure createClosure(ELispLexical.@Nullable Scope scope, Object doc, Object env) {
-                    body.fillDebugInfo(getParent());
-                    if (commons == null) {
-                        commons = new AbstractELispClosure.ClosureCommons(getRootNode());
-                    }
-                    // TODO: make use of INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION to clean up frames
-                    ELispInterpretedClosure scopeHolder = FMakeInterpretedClosure.makeClosure(
-                            args,
-                            body,
-                            scope == null ? false : ELispCons.listOf(true),
-                            doc,
-                            finalInteractive,
-                            commons
-                    );
-                    scopeHolder.set(CLOSURE_CONSTANTS, env);
-                    return scopeHolder;
-                }
-            };
+            return new CconvMakeClosureNode(args, body, docString, interactive);
         }
+
+        private static final class CconvMakeClosureNode extends ELispExpressionNode {
+            private static final int CCONV_UNCHECKED = 0;
+            private static final int CCONV_DYNAMIC = 1;
+            private static final int CCONV_CAPTURING = 2;
+            private static final int CCONV_NON_CAPTURING = 3;
+
+            private final Object args;
+            private final ELispCons body;
+            @Child ELispExpressionNode doc;
+            private final Object interactive;
+            private AbstractELispClosure.@Nullable ClosureCommons commons;
+
+            @CompilationFinal
+            int cconvStatus;
+
+            CconvMakeClosureNode(Object args, ELispCons body, ELispExpressionNode doc, Object interactive) {
+                this.args = args;
+                this.body = body;
+                this.doc = doc;
+                this.interactive = interactive;
+
+                commons = null;
+                cconvStatus = CCONV_UNCHECKED;
+            }
+
+            @Override
+            public void executeVoid(VirtualFrame frame) {
+                executeGeneric(frame);
+            }
+
+            @Override
+            public Object executeGeneric(@Nullable VirtualFrame frame) {
+                int status = cconvStatus;
+                if (status == CCONV_UNCHECKED) {
+                    status = updateCconvStatus(frame);
+                }
+                ELispLexical.@Nullable Scope scope = null;
+                Object env = switch (cconvStatus) {
+                    case CCONV_DYNAMIC -> false;
+                    case CCONV_CAPTURING | CCONV_UNCHECKED -> {
+                        scope = ELispLexical.getScope(this);
+                        yield new Captured(Objects.requireNonNull(scope), frame.materialize());
+                    }
+                    case CCONV_NON_CAPTURING -> ELispCons.listOf(true);
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+                Object doc = this.doc.executeGeneric(frame);
+                return createClosure(scope, doc, env);
+            }
+
+            private int updateCconvStatus(@Nullable VirtualFrame frame) {
+                int status = CCONV_UNCHECKED;
+                ELispLexical.Scope scope = ELispLexical.getScope(this);
+                if (frame == null || scope == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    cconvStatus = status = CCONV_DYNAMIC;
+                } else {
+                    Object cconv = INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION.getValue();
+                    // TODO: make more use of INTERNAL_MAKE_INTERPRETED_CLOSURE_FUNCTION to clean up frames
+                    if (!isNil(cconv)) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object lambda = FFuncall.funcall(
+                                this, cconv,
+                                args, body, scope.toAssocList(frame), false, interactive
+                        );
+                        if (lambda instanceof ELispInterpretedClosure closure
+                                && closure.get(CLOSURE_CONSTANTS) instanceof ELispCons captured
+                                && isT(captured.car()) && isNil(captured.cdr())) {
+                            status = CCONV_NON_CAPTURING;
+                        } else {
+                            status = CCONV_CAPTURING;
+                        }
+                        cconvStatus = status;
+                    }
+                }
+                return status;
+            }
+
+            private AbstractELispClosure createClosure(ELispLexical.@Nullable Scope scope, Object doc, Object env) {
+                if (commons == null) {
+                    body.fillDebugInfo(getParent());
+                    commons = new AbstractELispClosure.ClosureCommons(getRootNode());
+                }
+                ELispInterpretedClosure scopeHolder = FMakeInterpretedClosure.makeClosure(
+                        args,
+                        body,
+                        scope == null ? false : ELispCons.listOf(true),
+                        doc,
+                        interactive,
+                        commons
+                );
+                scopeHolder.set(CLOSURE_CONSTANTS, env);
+                return scopeHolder;
+            }
+        };
     }
 
     /**
