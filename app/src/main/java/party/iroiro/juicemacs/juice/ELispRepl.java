@@ -27,11 +27,12 @@ import picocli.CommandLine.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Command(
         name = "elisp",
@@ -59,6 +60,8 @@ public class ELispRepl implements Callable<Integer> {
 
     @Option(names = {"--extra-option"}, description = "Extra options to pass to Truffle")
     String @Nullable[] extraOptions;
+
+    private final AtomicBoolean inContext = new AtomicBoolean(false);
 
     private final static String PROMPT_STRING = new AttributedStringBuilder()
             .style(AttributedStyle.DEFAULT.foreground(AttributedStyle.GREEN))
@@ -136,10 +139,13 @@ public class ELispRepl implements Callable<Integer> {
                 }
                 Value value;
                 try {
+                    inContext.set(true);
                     value = context.eval("elisp", ";;; -*- lexical-binding: t -*-\n" + line);
                 } catch (PolyglotException e) {
                     printStackTrace(e, lineReader);
                     continue;
+                } finally {
+                    inContext.set(false);
                 }
                 try {
                     AttributedString output = lineReader.getHighlighter().highlight(lineReader, value.toString());
@@ -170,7 +176,16 @@ public class ELispRepl implements Callable<Integer> {
     private LineReader getLineReader(Context context) throws IOException {
         Terminal terminal = TerminalBuilder.builder().build();
         Thread currentThread = Thread.currentThread();
-        terminal.handle(Terminal.Signal.INT, _ -> currentThread.interrupt());
+        terminal.handle(Terminal.Signal.INT, _ -> {
+            currentThread.interrupt();
+            if (inContext.get()) {
+                try {
+                    context.interrupt(Duration.ofMillis(500));
+                } catch (Exception e) {
+                    System.err.println(e.getMessage());
+                }
+            }
+        });
 
         LineReader reader = LineReaderBuilder.builder()
                 .appName("ELisp REPL")
@@ -215,14 +230,6 @@ public class ELispRepl implements Callable<Integer> {
                 // Unable to highlight due to complex input
                 return new AttributedString(buffer);
             }
-        }
-
-        @Override
-        public void setErrorPattern(Pattern errorPattern) {
-        }
-
-        @Override
-        public void setErrorIndex(int errorIndex) {
         }
     }
 
