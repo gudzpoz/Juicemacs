@@ -14,6 +14,24 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static party.iroiro.juicemacs.elisp.TestingUtils.createOut;
 import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 
+/// Benchmarking with [`elisp-benchmarks`](https://elpa.gnu.org/packages/elisp-benchmarks.html)
+///
+/// ## Preparing
+///
+/// I made several changes to the benchmarking suite to better
+/// reflect the performance characteristics of GNU Emacs and Juicemacs.
+/// Please copy the `.el` files under the `test/resources` folder to
+/// your `elisp-benchmarks` installation.
+///
+/// ## Running
+///
+/// To run the Emacs counter-part, run:
+///
+/// ```
+/// emacs -nw --batch -l ~/.emacs.d/init.el --eval '(elisp-benchmark-run ...)'
+/// ```
+///
+/// The required `(elisp-benchmark-run ...)` expression will be printed by this test.
 public class ELispBenchmarksTest {
     private static void executeIgnoreError(Context context, String code) {
         try {

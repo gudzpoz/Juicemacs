@@ -11,6 +11,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -2085,7 +2086,24 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMapcar extends ELispBuiltInBaseNode {
         @Specialization
-        public Object mapcar(Object function, Object sequence, @Cached(inline = true) FuncallDispatchNode dispatchNode) {
+        public Object mapcarList(
+                Object function, ELispCons sequence,
+                @Cached(inline = true) @Shared FuncallDispatchNode dispatchNode
+        ) {
+            ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
+            for (Object o : sequence) {
+                builder.add(dispatchNode.dispatch(this, function, o));
+            }
+            return builder.build();
+        }
+        @Specialization
+        public Object mapcar(
+                Object function, Object sequence,
+                @Cached(inline = true) @Shared FuncallDispatchNode dispatchNode
+        ) {
+            if (isNil(sequence)) {
+                return false;
+            }
             TruffleUtils.Iter<?> i = iterateSequence(sequence);
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
             while (i.hasNext()) {
