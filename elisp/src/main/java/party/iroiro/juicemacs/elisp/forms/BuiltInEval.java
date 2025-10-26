@@ -780,9 +780,9 @@ public class BuiltInEval extends ELispBuiltIns {
                     status = updateCconvStatus(frame);
                 }
                 ELispLexical.@Nullable Scope scope = null;
-                Object env = switch (cconvStatus) {
+                Object env = switch (status) {
                     case CCONV_DYNAMIC -> false;
-                    case CCONV_CAPTURING | CCONV_UNCHECKED -> {
+                    case CCONV_CAPTURING, CCONV_UNCHECKED -> {
                         scope = ELispLexical.getScope(this);
                         yield new Captured(Objects.requireNonNull(scope), frame.materialize());
                     }
