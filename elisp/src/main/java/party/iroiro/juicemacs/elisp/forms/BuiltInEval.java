@@ -122,7 +122,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Children
             ELispExpressionNode[] nodes;
 
-            public OrNode(Object[] conditions) {
+            OrNode(Object[] conditions) {
                 nodes = ELispInterpretedNode.create(conditions);
             }
 
@@ -171,7 +171,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Children
             ELispExpressionNode[] nodes;
 
-            public AndNode(Object[] conditions) {
+            AndNode(Object[] conditions) {
                 nodes = ELispInterpretedNode.create(conditions);
             }
 
@@ -229,7 +229,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
             final ConditionProfile conditionProfile;
 
-            public IfNode(Object cond, Object then, Object[] else_) {
+            IfNode(Object cond, Object then, Object[] else_) {
                 condition = ELispInterpretedNode.create(cond);
                 thenBranch = ELispInterpretedNode.create(then);
                 elseBranch = FProgn.progn(else_);
@@ -287,7 +287,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Children
             @Nullable ELispExpressionNode[] thenCases;
 
-            public CondNode(Object[] clauses) {
+            CondNode(Object[] clauses) {
                 ArrayList<ELispExpressionNode> conditionNodes = new ArrayList<>(clauses.length);
                 ArrayList<@Nullable ELispExpressionNode> cases = new ArrayList<>(clauses.length);
                 for (Object clause : clauses) {
@@ -447,7 +447,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode others;
 
-            public Prog1Node(Object first, Object[] body) {
+            Prog1Node(Object first, Object[] body) {
                 firstNode = ELispInterpretedNode.create(first);
                 others = FProgn.progn(body);
             }
@@ -739,7 +739,6 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             ELispCons body = iterator.hasNext() ? iterator.currentCons() : ELispCons.listOf(false);
             body.fillDebugInfo(def);
-            Object finalInteractive = interactive;
             return new CconvMakeClosureNode(args, body, docString, interactive);
         }
 
@@ -837,7 +836,7 @@ public class BuiltInEval extends ELispBuiltIns {
                 scopeHolder.set(CLOSURE_CONSTANTS, env);
                 return scopeHolder;
             }
-        };
+        }
     }
 
     /**
@@ -978,7 +977,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode init;
 
-            public DefVarNode(Object symbol, Object initvalue, boolean initValueMissing) {
+            DefVarNode(Object symbol, Object initvalue, boolean initValueMissing) {
                 this.symbol = symbol;
                 this.initValueMissing = initValueMissing;
                 init = ELispInterpretedNode.create(initvalue);
@@ -1060,7 +1059,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode init;
 
-            public DefConstNode(Object symbol, Object initvalue) {
+            DefConstNode(Object symbol, Object initvalue) {
                 this.symbol = symbol;
                 init = ELispInterpretedNode.create(initvalue);
             }
@@ -1358,7 +1357,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode bodyNodes;
 
-            public CatchNode(Object tag, Object[] body) {
+            CatchNode(Object tag, Object[] body) {
                 tagNode = ELispInterpretedNode.create(tag);
                 bodyNodes = FProgn.progn(body);
             }
@@ -1428,7 +1427,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Child
             ELispExpressionNode unwind;
 
-            public UnwindProtectNode(Object bodyform, Object[] unwindforms) {
+            UnwindProtectNode(Object bodyform, Object[] unwindforms) {
                 body = ELispInterpretedNode.create(bodyform);
                 unwind = FProgn.progn(unwindforms);
             }
@@ -1602,7 +1601,7 @@ public class BuiltInEval extends ELispBuiltIns {
             @Nullable
             private ELispLexical lexicalBlock = null;
 
-            public ConditionCaseNode(Object bodyform, int finalSuccessIndex, @Nullable Object[] handlerBodies, Object[] conditionNames, Object var) {
+            ConditionCaseNode(Object bodyform, int finalSuccessIndex, @Nullable Object[] handlerBodies, Object[] conditionNames, Object var) {
                 this.finalSuccessIndex = finalSuccessIndex;
                 this.handlerBodies = handlerBodies;
                 this.conditionNames = conditionNames;
@@ -2243,7 +2242,7 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             return (object instanceof ELispSubroutine sub && !sub.specialForm())
                     || object instanceof AbstractELispClosure
-                    || object instanceof ELispCons cons && cons.car() == LAMBDA;
+                    || (object instanceof ELispCons cons && cons.car() == LAMBDA);
         }
     }
 

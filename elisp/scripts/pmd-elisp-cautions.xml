@@ -279,7 +279,6 @@
     <rule ref="category/java/codestyle.xml/LambdaCanBeMethodReference"/>
     <rule ref="category/java/codestyle.xml/PrematureDeclaration"/>
     <rule ref="category/java/codestyle.xml/UnnecessaryCast"/>
-    <rule ref="category/java/codestyle.xml/UnnecessaryLocalBeforeReturn"/>
     <rule ref="category/java/codestyle.xml/UnnecessaryModifier"/>
     <rule ref="category/java/codestyle.xml/UnnecessaryReturn"/>
     <rule ref="category/java/codestyle.xml/UnnecessarySemicolon"/>

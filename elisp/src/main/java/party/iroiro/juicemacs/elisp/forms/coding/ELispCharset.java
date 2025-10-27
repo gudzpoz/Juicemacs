@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -344,7 +345,7 @@ public final class ELispCharset {
         if (path == null) {
             throw ELispSignals.fatal("unable to locate map file " + file);
         }
-        try (Scanner scanner = new Scanner(new FileInputStream(path.toString()))) {
+        try (Scanner scanner = new Scanner(new FileInputStream(path.toString()), StandardCharsets.UTF_8)) {
             scanner.useDelimiter("\\s+|\\b");
             scanner.useRadix(16);
             LongArrayList fromEntries = new LongArrayList();

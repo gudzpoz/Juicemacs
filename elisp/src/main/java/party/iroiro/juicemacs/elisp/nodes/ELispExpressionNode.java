@@ -5,6 +5,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.*;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystemGen;
 
@@ -37,6 +38,7 @@ public abstract class ELispExpressionNode extends ELispBaseNode implements Instr
     }
 
     @Override
+    @Nullable
     public SourceSection getSourceSection() {
         if (this instanceof ELispExpressionNodeWrapper wrapper) {
             return wrapper.getDelegateNode().getSourceSection();

@@ -171,9 +171,9 @@ public class BuiltInCaseTab extends ELispBuiltIns {
             Object canon = charTable.getExtra(1);
             Object eqv = charTable.getExtra(2);
             return (isNil(up) || BuiltInData.FCharTableP.charTableP(up))
-            && (isNil(canon) && isNil(eqv)
-                    || FCaseTableP.caseTableP(canon)
-                    && (isNil(eqv) || FCaseTableP.caseTableP(eqv)));
+                    && ((isNil(canon) && isNil(eqv))
+                    || (FCaseTableP.caseTableP(canon)
+                    && (isNil(eqv) || FCaseTableP.caseTableP(eqv))));
         }
     }
 

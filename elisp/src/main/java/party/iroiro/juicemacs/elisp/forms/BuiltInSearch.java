@@ -59,12 +59,12 @@ public class BuiltInSearch extends ELispBuiltIns {
 
     private static class RegexpCache extends LinkedHashMap<RegExpKey, ELispRegExp.CompiledRegExp> {
         private static final int COMPILED_REGEXP_CACHE_SIZE = 1024;
-        public static final int CACHE_SIZE_INC_STEP = 128;
+        static final int CACHE_SIZE_INC_STEP = 128;
 
         private int max;
         private int requests, misses;
 
-        public RegexpCache() {
+        RegexpCache() {
             super(COMPILED_REGEXP_CACHE_SIZE, 0.75f, true);
             max = COMPILED_REGEXP_CACHE_SIZE;
             requests = 0;
@@ -137,7 +137,7 @@ public class BuiltInSearch extends ELispBuiltIns {
 
     /// Skeleton interface with Emacs search convention util functions
     private sealed abstract static class SearchConvention<T> {
-        protected final T pattern;
+        final T pattern;
 
         private SearchConvention(T pattern) {
             this.pattern = pattern;
@@ -178,7 +178,7 @@ public class BuiltInSearch extends ELispBuiltIns {
         /// @return `-1` if not found; the end of the match if `forward`; `start - 1` if `!forward`
         abstract long searchOnce(ELispBuffer buffer, boolean forward, long start, long startEnd, long searchEnd);
 
-        protected void setMatchImpl(Node node, Object matchData) {
+        void setMatchImpl(Node node, Object matchData) {
             BuiltInSearch.setMatch(node, matchData, false);
         }
 

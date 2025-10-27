@@ -251,6 +251,7 @@ public class BuiltInFns extends ELispBuiltIns {
                         continue;
                     }
                 } catch (NoSuchElementException ignored) {
+                    // cyclic / invalid list: also break
                 }
                 break;
             }
@@ -1563,14 +1564,14 @@ public class BuiltInFns extends ELispBuiltIns {
                 boolean reverse,
                 boolean inPlace
         ) implements Comparator<Object> {
-            public Object getKey(Object element) {
+            Object getKey(Object element) {
                 if (key == null) {
                     return element;
                 }
                 return BuiltInEval.FFuncall.funcall(null, key, element);
             }
 
-            public boolean isLessThan(Object a, Object b) {
+            boolean isLessThan(Object a, Object b) {
                 return asBool(BuiltInEval.FFuncall.funcall(null, Objects.requireNonNullElse(lessp, VALUELT), a, b));
             }
 
@@ -1648,6 +1649,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     iterator.next();
                 }
             } catch (NoSuchElementException ignored) {
+                // cyclic or invalid list: return nil
             }
             return false;
         }

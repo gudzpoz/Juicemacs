@@ -115,7 +115,7 @@ public final class ELispContext implements ELispParser.InternContext {
     }
     //#endregion InternContext
 
-    public ELispLanguage.Env truffleEnv() {
+    public TruffleLanguage.Env truffleEnv() {
         return truffleEnv;
     }
     public TruffleFile getFile(Object file) {

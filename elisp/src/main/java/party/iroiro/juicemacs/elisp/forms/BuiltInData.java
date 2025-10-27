@@ -2745,6 +2745,7 @@ public class BuiltInData extends ELispBuiltIns {
                 }
                 return ELispParser.read(getContext(), "#" + iBase + "r" + s.substring(0, i));
             } catch (IOException | ELispSignals.ELispSignalException ignored) {
+                // returns 0 on invalid inputs
             }
             return 0L;
         }
@@ -2772,7 +2773,7 @@ public class BuiltInData extends ELispBuiltIns {
                         }
                     }
                     case Double _ -> {
-                        return tryAddDouble(toDouble(sum), i, numbersOrMarkers);
+                        return tryAddDouble((double) sum, i, numbersOrMarkers);
                     }
                     case ELispBigNum _ -> {
                         return tryAddBigNum(sum, i, numbersOrMarkers);
@@ -2865,7 +2866,7 @@ public class BuiltInData extends ELispBuiltIns {
                         }
                     }
                     case Double _ -> {
-                        return tryMinusDouble(toDouble(result), i, args);
+                        return tryMinusDouble((double) result, i, args);
                     }
                     case ELispBigNum _ -> {
                         return tryMinusBigNum(ELispBigNum.forceWrap(result), i, args);
@@ -2935,7 +2936,7 @@ public class BuiltInData extends ELispBuiltIns {
                         }
                     }
                     case Double _ -> {
-                        return tryTimesDouble(toDouble(product), i, numbersOrMarkers);
+                        return tryTimesDouble((double) product, i, numbersOrMarkers);
                     }
                     case ELispBigNum _ -> {
                         return tryTimesBigNum(product, i, numbersOrMarkers);

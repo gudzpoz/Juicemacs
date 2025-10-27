@@ -24,16 +24,16 @@ import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.FDefineCodingSyst
 import static party.iroiro.juicemacs.elisp.forms.BuiltInEmacs.decodeEnvPath;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
-
 @SuppressWarnings({
         "PMD.FieldNamingConventions",
         "PMD.UnnecessaryCast",
         "PMD.UseExplicitTypes",
         "PMD.UseUnderscoresInNumericLiterals",
-        "RedundantCast",
-        "UnnecessaryUnicodeEscape",
-        "UnnecessaryLocalVariable",
         "EmptyMethod",
+        "RedundantCast",
+        "UnnecessaryLocalVariable",
+        "UnnecessaryParentheses",
+        "UnnecessaryUnicodeEscape",
 })
 public final class ELispGlobals extends ELispGlobalsBase {
     public ELispGlobals(ELispContext context) {

@@ -124,6 +124,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
                 try {
                     this.wait();
                 } catch (InterruptedException ignored) {
+                    // continue the wait
                 }
             }
         }

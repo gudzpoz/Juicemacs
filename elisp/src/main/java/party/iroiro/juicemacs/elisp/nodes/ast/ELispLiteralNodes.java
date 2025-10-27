@@ -19,7 +19,7 @@ public abstract class ELispLiteralNodes {
     private static final class LongLiteralNode extends ELispExpressionNode {
         private final Long literal;
 
-        public LongLiteralNode(long literal) {
+        LongLiteralNode(long literal) {
             this.literal = literal;
         }
 
@@ -41,7 +41,7 @@ public abstract class ELispLiteralNodes {
     private static final class DoubleLiteralNode extends ELispExpressionNode {
         private final Double literal;
 
-        public DoubleLiteralNode(double literal) {
+        DoubleLiteralNode(double literal) {
             this.literal = literal;
         }
 
@@ -83,7 +83,7 @@ public abstract class ELispLiteralNodes {
     private static final class ObjectLiteralNode extends ELispExpressionNode {
         private final Object literal;
 
-        public ObjectLiteralNode(Object literal) {
+        ObjectLiteralNode(Object literal) {
             this.literal = literal;
         }
 

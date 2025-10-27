@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
@@ -802,7 +803,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public void setUndoList(Object value) { bufferLocalFields[BVAR_UNDO_LIST] = value; }
     //#endregion struct buffer
 
-    @SuppressWarnings("DuplicatedCode")
+    @SuppressWarnings({"DuplicatedCode", "UnnecessaryParentheses"})
     public static void initBufferLocalVars(ELispContext context, ELispBuffer defaultValues, BuiltInBuffer builtInBuffer) {
         //#region init_buffer_once
         defaultValues.setName(new ELispString(" *buffer-defaults*"));
@@ -968,7 +969,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
 
     @TruffleBoundary
     public static void initDirectory() {
-        ELispLanguage.Env env = ELispContext.get(null).truffleEnv();
+        TruffleLanguage.Env env = ELispContext.get(null).truffleEnv();
         String cwd = env.getCurrentWorkingDirectory() + env.getFileNameSeparator();
         ELispBuffer currentBuffer = currentBuffer();
         String dirString = Path.of(cwd).toAbsolutePath() + File.separator;

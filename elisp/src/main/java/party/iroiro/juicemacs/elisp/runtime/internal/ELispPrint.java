@@ -294,13 +294,13 @@ public final class ELispPrint {
     }
 
     private static abstract class BufferedPrintFunc implements PrintFunc {
-        protected final MuleStringBuilder buffer;
+        final MuleStringBuilder buffer;
 
-        protected BufferedPrintFunc() {
+        BufferedPrintFunc() {
             this(new MuleStringBuilder());
         }
 
-        protected BufferedPrintFunc(MuleStringBuilder buffer) {
+        BufferedPrintFunc(MuleStringBuilder buffer) {
             this.buffer = buffer;
         }
 
@@ -325,15 +325,15 @@ public final class ELispPrint {
         }
     }
     private static final class BufferPrintFunc extends BufferedPrintFunc {
-        private final ELispBuffer buffer;
+        private final ELispBuffer output;
 
-        private BufferPrintFunc(ELispBuffer buffer) {
-            this.buffer = buffer;
+        private BufferPrintFunc(ELispBuffer output) {
+            this.output = output;
         }
 
         @Override
         public void flush() {
-            buffer.insert(super.buffer.buildString());
+            output.insert(super.buffer.buildString());
         }
     }
 

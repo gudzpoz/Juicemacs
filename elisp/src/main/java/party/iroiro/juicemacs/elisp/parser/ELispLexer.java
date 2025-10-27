@@ -272,6 +272,7 @@ public class ELispLexer {
         }
     }
 
+    @SuppressWarnings("VariableNameSameAsType")
     private static final Token.EOF EOF = new Token.EOF();
     private static final Token.SkipToEnd SKIP_TO_END = new Token.SkipToEnd();
     private static final Token.Dot DOT = new Token.Dot();

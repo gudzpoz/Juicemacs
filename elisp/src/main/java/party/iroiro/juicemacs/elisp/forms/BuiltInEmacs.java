@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -31,6 +32,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
     /// @param defaultValue default value to use if the environment variable is not set
     /// @param empty when `true`, returns `nil` for empty paths; ".", otherwise
     /// @return a list of strings
+    @TruffleBoundary
     public static ELispCons decodeEnvPath(@Nullable String envVarName, String defaultValue, boolean empty) {
         ELispString emptyElement = empty ? null : new ELispString(".");
         String path = Objects.requireNonNullElse(

@@ -222,7 +222,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         if (this == T) {
             return Boolean.TRUE.hashCode();
         }
-        return super.hashCode();
+        return System.identityHashCode(this);
     }
 
     @Override

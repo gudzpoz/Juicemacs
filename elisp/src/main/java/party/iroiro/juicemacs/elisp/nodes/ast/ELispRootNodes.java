@@ -56,17 +56,17 @@ public abstract class ELispRootNodes {
 
         private final ELispLexical.@Nullable Scope rootScope;
 
-        public ELispRootExpressions(ELispExpressionNode node, boolean lexical) {
+        ELispRootExpressions(ELispExpressionNode node, boolean lexical) {
             this.node = node;
             this.rootScope = lexical ? ELispLexical.newRoot().newScope(0) : null;
         }
 
-        public ELispRootExpressions(Object[] body, ELispLexical.@Nullable Scope debugScope) {
+        ELispRootExpressions(Object[] body, ELispLexical.@Nullable Scope debugScope) {
             this.node = BuiltInEval.FProgn.progn(body);
             this.rootScope = debugScope;
         }
 
-        public ELispRootExpressions(Object[] expressions, boolean lexical) {
+        ELispRootExpressions(Object[] expressions, boolean lexical) {
             this(BuiltInEval.FProgn.progn(expressions), lexical);
         }
 

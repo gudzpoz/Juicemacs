@@ -634,7 +634,7 @@ public final class ELispCharTable extends AbstractELispVector {
     public record RefRangeResult(int start, int end, Object value) {
     }
 
-    /// Used by [#map(MapConsumer)]
+    /// Used by [ELispCharTable#map(MapConsumer,int)]
     public interface MapConsumer<T> {
         /// Gets called with the individual values the char table records
         ///

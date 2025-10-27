@@ -83,6 +83,11 @@ tasks.withType(JavaCompile).configureEach {
         // as much as possible: ArrayList over List, HashMap over Map, etc.
         // This is to cater for Truffle's handling of polymorphism.
         disable('NonApiType')
+        // We use a lot of reference equality comparisons, for symbols, for example.
+        disable('ReferenceEquality')
+        // If you are suggesting "using the value of the @return block as a summary fragment",
+        // then the rule is wrong.
+        disable('MissingSummary')
         // The current codebase is filled with function templates throwing
         // UnsupportedOperationExceptions.
         // TODO: remove this line after we finish the implementation

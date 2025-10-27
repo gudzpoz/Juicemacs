@@ -116,7 +116,7 @@ public sealed abstract class CodePointReader implements AutoCloseable {
     private static final class ReaderReader extends CodePointReader {
         private final Reader reader;
 
-        public ReaderReader(Reader reader) {
+        ReaderReader(Reader reader) {
             this.reader = reader;
         }
 

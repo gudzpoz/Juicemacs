@@ -293,7 +293,7 @@ final class ELispRegExpCompiler {
         opcodes.add(packNamedCharClassBitmap(namedClasses, invert));
         for (CharClassContent.Range range : charRanges) {
             if (charRangesFitInInt) {
-                opcodes.add((range.min()) | (range.max() << 16));
+                opcodes.add(range.min() | (range.max() << 16));
             } else {
                 opcodes.add(range.min());
                 opcodes.add(range.max());

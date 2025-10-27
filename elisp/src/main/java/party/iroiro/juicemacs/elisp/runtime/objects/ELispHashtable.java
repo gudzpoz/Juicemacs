@@ -334,7 +334,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         private static final class WeakKey extends WeakReference<Object> {
             private final int innerHash;
 
-            public WeakKey(Object referent, ReferenceQueue<Object> queue, int innerHash) {
+            WeakKey(Object referent, ReferenceQueue<Object> queue, int innerHash) {
                 super(referent, queue);
                 this.innerHash = innerHash;
             }
@@ -348,7 +348,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         private static final class WeakValue extends WeakReference<Object> {
             private final Object key;
 
-            public WeakValue(Object referent, Object key, ReferenceQueue<Object> queue) {
+            WeakValue(Object referent, Object key, ReferenceQueue<Object> queue) {
                 super(referent, queue);
                 this.key = key;
             }

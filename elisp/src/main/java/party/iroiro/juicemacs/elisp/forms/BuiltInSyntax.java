@@ -76,12 +76,14 @@ public class BuiltInSyntax extends ELispBuiltIns {
 
         Object symbol = syntaxCodeObject.get(SSYMBOL);
         String symbols = "_-+*/&|<>=";
-        for (char c : symbols.toCharArray()) {
+        for (int i = 0; i < symbols.length(); i++) {
+            char c = symbols.charAt(i);
             standardSyntaxTable.setChar(c, symbol);
         }
 
         String punctuations = ".,;:?!#@~^'`";
-        for (char c : punctuations.toCharArray()) {
+        for (int i = 0; i < punctuations.length(); i++) {
+            char c = punctuations.charAt(i);
             standardSyntaxTable.setChar(c, punctuation);
         }
 
