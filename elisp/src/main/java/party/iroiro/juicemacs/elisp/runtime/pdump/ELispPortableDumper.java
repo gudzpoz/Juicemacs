@@ -94,6 +94,10 @@ public final class ELispPortableDumper {
         fory.registerSerializer(ELispSubroutine[].class, DumpUtils.never(fory, ELispSubroutine[].class));
         fory.registerSerializer(JAVA_SOURCE.getClass(), new SourceSerializer(fory)); // SourceImpl
 
+        // FIXME: until fory fixes abstract object array serialization
+        //        https://github.com/apache/fory/issues/2695
+        fory.registerSerializer(ELispBuiltIns[].class, new ELispBuiltInsSerializer(fory));
+
         Class<?>[] classes = {
                 // Symbols
                 ELispSymbol[].class,
@@ -181,23 +185,15 @@ public final class ELispPortableDumper {
                 BuiltInXFaces.class,
         };
         for (Class<?> builtIn : classes) {
-            fory.register(builtIn, false);
+            fory.register(builtIn);
         }
         BuiltInSearch.registerSerializer(fory);
-        ELispCodings.registerSerializer(fory, false);
+        ELispCodings.registerSerializer(fory);
 
-        for (Class<?> builtIn : classes) {
-            fory.register(builtIn, true);
-        }
-        ELispCodings.registerSerializer(fory, true);
-
-        // No other objects should store refs to ELispGlobals and ELispContext
-        fory.register(ELispGlobals.class, false);
+        fory.register(ELispGlobals.class);
         fory.registerSerializer(ELispContext.class, new ContextSerializer(fory));
-        fory.register(ELispGlobals.class, true);
 
-        // TODO: until fory fixes this
-        //fory.ensureSerializersCompiled();
+        fory.ensureSerializersCompiled();
         FORY = fory;
     }
 

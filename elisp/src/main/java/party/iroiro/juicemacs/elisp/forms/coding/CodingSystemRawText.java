@@ -16,7 +16,7 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_AT
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CODING_CATEGORY_RAW_TEXT;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.RAW_TEXT;
 
-final class CodingSystemRawText implements ELispCodingSystemType {
+public final class CodingSystemRawText implements ELispCodingSystemType {
     @Override
     public ELispSymbol codingType() {
         return RAW_TEXT;
@@ -33,7 +33,7 @@ final class CodingSystemRawText implements ELispCodingSystemType {
         return new RawCoding(this, spec, eol);
     }
 
-    static final class RawCoding extends ELispCodingSystem {
+    public static final class RawCoding extends ELispCodingSystem {
         private RawCoding(CodingSystemRawText system, Spec spec, EolAwareStringBuilder.EndOfLine eol) {
             super(system, spec, eol);
         }

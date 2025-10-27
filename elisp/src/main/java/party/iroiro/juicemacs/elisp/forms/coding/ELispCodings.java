@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.apache.fory.Fory;
+import org.apache.fory.serializer.EnumSerializer;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemRawText.RawCoding;
@@ -198,9 +199,17 @@ public final class ELispCodings {
         }
     }
 
-    public static void registerSerializer(Fory fory, boolean gen) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static void registerSerializer(Fory fory) {
+        for (CharsetMethod method : CharsetMethod.values()) {
+            fory.register(method.getClass());
+        }
+        Class<?> clazz = CharsetMethod.class;
+        // TODO: until fory fixes abstract enum serialization
+        //       https://github.com/apache/fory/issues/2695
+        fory.registerSerializer(CharsetMethod.class, new EnumSerializer(fory, (Class<Enum>) clazz));
         for (Class<?> system : new Class<?>[]{
-                CharsetMethod.class,
+                // CharsetMethod.class,
                 ELispCodings.class,
                 ELispCharset.class,
                 ELispCodingDetector.class,
@@ -214,10 +223,10 @@ public final class ELispCodings {
 
                 EndOfLine.class,
         }) {
-            fory.register(system, gen);
+            fory.register(system);
         }
         for (ELispCodingSystemType type : CODING_SYSTEM_TYPES.values()) {
-            fory.register(type.getClass(), gen);
+            fory.register(type.getClass());
         }
     }
 }

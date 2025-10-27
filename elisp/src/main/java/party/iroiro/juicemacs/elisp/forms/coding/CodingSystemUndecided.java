@@ -33,7 +33,7 @@ public final class CodingSystemUndecided implements ELispCodingSystemType {
         return new DetectingCodingSystem(this, spec, eol, preferUtf8);
     }
 
-    static final class DetectingCodingSystem extends ELispCodingSystem {
+    public static final class DetectingCodingSystem extends ELispCodingSystem {
         private final boolean preferUtf8;
 
         DetectingCodingSystem(CodingSystemUndecided system, Spec spec, EolAwareStringBuilder.EndOfLine eol, boolean preferUtf8) {
