@@ -26,6 +26,21 @@ It seems... we also have this bug.
 Currently thread-local buffer-locals are treated as thread-locals. But they
 should be buffer-local thread-locals ;-) Buffalo buffalo buffalo.
 
+** Other local-locals
+
+So, other than buffer-locals (and our thread-locals), Emacs also has
+"frame-locals" and "terminal-locals". I think we might need to unify the API a
+bit to make things easier to implement. Currently, we do have this
+=ValueStorage.Value= interface though, so maybe:
+
+- =ThreadLocalStorage=: We treat this specially now, because probably we could
+  use a bit of performance for them.
+- =Value= interface for locals:
+  - =ForwardedPerBuffer=
+  - =BufferLocal=
+  - =ForwardedPerFrame=?
+  - =ForwardedPerTerminal=?
+
 * TODO [#B] =cconv.el=: Closure conversion for statically scoped Emacs Lisp
 
 Emacs offloads lexical scope analysis to =cconv.el=: =(function ...)= will call
@@ -52,6 +67,11 @@ macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
 1))= to =((x . 1) (y . 1))=.
 
 To support this, we will need to rethink how we handle our materialized frames.
+
+Currently, we use =internal-make-interpreted-closure-function= to determine
+whether a closure captures the external environment or not: if not, we don't
+need to materialized the parent frame. But otherwise, we really don't prune the
+captured variables, which might leak memory if there are unused upper variables.
 
 * TODO [#B] Byte compiler warnings
 
@@ -135,6 +155,19 @@ way.
   - Now thinking of it, no, it is straight out impossible to do this. Consider
     =buffer-undo-list=: nothing can save you if you are fully exposing your undo
     data.
+
+** Update on strings
+
+Emacs 31.1 is restricting modifications to strings: [[https://github.com/emacs-mirror/emacs/blob/ebcebaed69cbb2fa0e7206cb3dda910aca452d3b/etc/NEWS#L2927-L2942][Incompatible Lisp Changes in
+Emacs 31.1]]:
+
+#+begin_quote
+'aset' on unibyte strings now requires the new character to be a single byte
+(0-255). On multibyte strings the new character and the character being replaced
+must both be ASCII (0-127).
+#+end_quote
+
+I do think we are good to use =utf-8-emacs= and ditch =TruffleString= now.
 
 ** TODO [#B] Regexp redesign
 
@@ -221,17 +254,12 @@ in the git logs in case any one is interested.)
      "\\(.*\\(\\2\\).*\\)\\'")
   #+end_src
 
-* TODO [#A] Use =ert.el=
-
-I have stopped writing tests for newly implemented subroutines. We should
-definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
-
 * TODO [#B] Implement placeholder functions
 
 I've made lots of functions no-op in order to bootstrap =ert.el=. And we should
 probably return to them some time:
 
-- [ ] =decode-coding-string=
+- [X] =decode-coding-string=
 
 - [X] =kill-emacs=: This actually will not run code in =unwind-protect=, so a
   special exception probably will not do. See [[https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md][graal/truffle/docs/Exit.md]].
@@ -302,6 +330,11 @@ container. So it is probably fine.
 According to [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Symbols-with-Position.html][Symbols with Position (GNU Emacs Lisp Reference Manual)]], it seems
 only used in bytecode functions for debugging info. But I still hope we can make
 all symbols bare.
+
+Update: =emacs-devel= is currently discussing alternative strategies for keeping
+positions in bytecode compilation ([[https://lists.gnu.org/archive/html/emacs-devel/2025-10/msg00668.html][2025-10/msg00668]]). There are some ideas
+suggesting removing =symbol-with-pos= altogether from Emacs. We might as well
+wait a little bit and see where that discussion leads.
 
 * TODO [#B] Autoload
 
@@ -467,6 +500,11 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** DONE [#A] Use =ert.el=
+
+I have stopped writing tests for newly implemented subroutines. We should
+definitely try to load =ert.el= before continue to bootstrap =loadup.el=.
 
 ** DONE [#B] =cl--generic-cyclic-definition=
 

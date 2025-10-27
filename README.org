@@ -36,17 +36,31 @@ To run it:
 1. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
 2. Clone the repository, go to [[file:elisp/emacs/]] and build a GNU Emacs to have
    all the generated data/elisp files ready.
-3. Run src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd)"} (in the project root) for
+3. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"= (in the project root) for
    a REPL.
 
+#+begin_quote
+If you're on Windows or just can't run the command above, it basically just does
+the following:
+1. Run the =:app:jvmCmd= Gradle task, which will produce a command with the
+   correct JVM flags to make the JIT magic from Truffle work.
+2. Run the produced command under the =app/= directory, because we currently
+   hard-code the Emacs directory path to help with our tests. You can also use
+   the =-L/--directory= option to specify a Lisp source directory.
+#+end_quote
+
 By the way, you may also try:
-- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --help"}
-- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect=4242"} (for a
-  [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome DevTools protocol server]])
+- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --help"=
+- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --inspect=4242"= (for a [[https://www.graalvm.org/latest/tools/chrome-debugger/][Chrome
+  DevTools protocol server]])
 
 And specially, if you want to try out the experimental slowish pdump:
-- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"}
-- src_bash{sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump-file=../emacs.pdmp"}
+- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"=
+- =sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump-file ./emacs.pdmp"=
+
+We also support [[https://www.graalvm.org/latest/reference-manual/native-image/][Java native images]]:
+
+- =./gradlew :app:nativeCompile= (pdump is much faster with native images)
 
 ** ERT Testing
 

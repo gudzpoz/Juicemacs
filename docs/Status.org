@@ -196,7 +196,7 @@ and filled with actual code:
 #+RESULTS:
 |           | Implemented | Remaining | Total | Files |
 | GNU Emacs |        1798 |         0 |  1798 |   105 |
-| Juicemacs |         429 |       844 |  1273 |    47 |
+| Juicemacs |         432 |       853 |  1285 |    48 |
 
 * Remaining C Files
 
@@ -254,7 +254,6 @@ and filled with actual code:
 | sound.c            |
 | sqlite.c           |
 | sysdep.c           |
-| term.c             |
 | textconv.c         |
 | thread.c           |
 | undo.c             |
