@@ -1318,7 +1318,7 @@ public class BuiltInEval extends ELispBuiltIns {
 
         public static Object copySourceLocation(Object form, Object oldForm) {
             if (oldForm instanceof ELispCons original && original.hasLocation()) {
-                if (form instanceof ELispCons expanded && !original.hasLocation()) {
+                if (form instanceof ELispCons expanded && !expanded.hasLocation()) {
                     expanded.fillDebugInfo(original);
                 }
             }

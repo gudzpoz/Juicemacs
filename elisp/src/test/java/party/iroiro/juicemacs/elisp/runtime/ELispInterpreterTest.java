@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -149,27 +150,81 @@ public class ELispInterpreterTest {
     }
 
     @Test
-    public void testDebuggerBreakpoint() throws IOException {
+    public void testDefunStackTrace() throws IOException {
         Source source = Source.newBuilder("elisp", """
+                (defun f (x) (signal 'error x))
+                (f 'data)
+                """, "test-func").build();
+        try (Context context = getTestingContextBuilder().option("elisp.dumpFile", "emacs.pdmp").build()) {
+            PolyglotException e = assertThrows(PolyglotException.class, () -> context.eval(source));
+            Iterable<PolyglotException.StackFrame> trace = e.getPolyglotStackTrace();
+            List<PolyglotException.StackFrame> list = StreamSupport.stream(trace.spliterator(), false).toList();
+
+            assertEquals("signal", list.getFirst().getRootName());
+
+            assertEquals("f", list.get(1).getRootName());
+            assertEquals("test-func", list.get(1).getSourceLocation().getSource().getName());
+            assertEquals(1, list.get(1).getSourceLocation().getStartLine());
+        }
+    }
+
+    /// Tests debugger for lazy nodes
+    ///
+    /// Because of runtime macro expansion, we have to use lazy nodes in the AST.
+    /// This test tests three things:
+    /// - AST expansion during runtime.
+    /// - AST expansion during debugging.
+    /// - AST expansion during debugging with macro nodes.
+    ///
+    /// The difference is whether we execute the function body before debugging or not.
+    /// See also [party.iroiro.juicemacs.elisp.nodes.ast.LazyConsExpressionNode#materializeInstrumentableNodes(Set)].
+    @Test
+    public void testDebuggerBreakpoint() throws IOException {
+        testDebuggerBreakpoint("""
                 ;;; -*- lexical-binding: t -*-
                 (defvar b)
                 (defalias 'test #'(lambda (c)
                   (let ((a 1)
                         (b 2))
-                    (+ a b
+                    (+ a b        ; <- line 6: breakpoint
                        (1+ c)))))
+                """, "test-func-prerun", 6);
+        testDebuggerBreakpoint("""
+                ;;; -*- lexical-binding: t -*-
+                (defvar b)
+                (defalias 'test #'(lambda (c)
+                  (let ((a 1)
+                        (b 2))
+                    (+ a b        ; <- line 6: breakpoint
+                       (1+ c)))))
+                ;; Pre-evaluation is needed to expand the AST
                 (test 3)
-                """, "test-func").build();
+                """, "test-func", 6);
+        testDebuggerBreakpoint("""
+                ;;; -*- lexical-binding: t -*-
+                (defalias 'as-is (cons 'macro
+                  #'(lambda (form) form)))
+                (defvar b)
+                (defalias 'test #'(lambda (c)
+                  (as-is
+                    (let ((a 1)
+                          (b 2))
+                      (+ a b         ; <- line 9: breakpoint
+                         (1+ c))))))
+                """, "test-func-macro", 9);
+    }
+
+    private void testDebuggerBreakpoint(String code, String name, int line) throws IOException {
+        Source source = Source.newBuilder("elisp", code, name).build();
         try (
                 DebuggerTester tester = new DebuggerTester(getTestingContextBuilder().option("elisp.truffleDebug", "true"));
                 DebuggerSession session = tester.startSession()
         ) {
-            // Pre-evaluation is needed to expand the AST
             tester.startEval(source);
             tester.expectDone();
 
             session.suspendNextExecution();
-            session.install(Breakpoint.newBuilder(source.getURI()).lineIs(6).build());
+            session.install(Breakpoint.newBuilder(source.getURI()).lineIs(line).build());
             tester.startEval(Source.create("elisp", "(test 3)"));
 
             // Top level root node
@@ -179,13 +234,14 @@ public class ELispInterpreterTest {
             });
             // Multiple frames
             tester.expectSuspended(event -> {
-                assertEquals(6, event.getSourceSection().getStartLine());
+                assertEquals(line, event.getSourceSection().getStartLine());
                 List<DebugStackFrame> list = StreamSupport.stream(event.getStackFrames().spliterator(), false).toList();
                 assertEquals(2, list.size());
                 assertEquals(64, event.getTopStackFrame().eval("(expt 2 (+ a b c))").asLong());
 
                 DebugStackFrame frame = event.getTopStackFrame();
                 assertEquals("test", frame.getName());
+                assertEquals(name, frame.getSourceSection().getSource().getName());
                 DebugScope scope = frame.getScope();
                 assertNotNull(scope);
                 DebugValue a = scope.getDeclaredValue("a");
@@ -208,8 +264,7 @@ public class ELispInterpreterTest {
             });
             // Scope access
             tester.expectSuspended(event -> {
-                // FIXME: should be 7 instead of 1
-                assertEquals(1, event.getSourceSection().getStartLine());
+                assertEquals(line + 1, event.getSourceSection().getStartLine());
                 event.prepareContinue();
             });
             tester.expectDone();

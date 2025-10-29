@@ -5,7 +5,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -17,6 +20,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public final class ConsInlinedAstNode extends ConsCallNode {
     @Child
@@ -128,6 +132,16 @@ public final class ConsInlinedAstNode extends ConsCallNode {
     public ELispExpressionNode rewriteNode() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         return replace(new LazyConsExpressionNode(cons));
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        for (Node child : inlinedNode.getChildren()) {
+            if (child instanceof InstrumentableNode instrument) {
+                instrument.materializeInstrumentableNodes(materializedTags);
+            }
+        }
+        return this;
     }
 
     public static class VarargToArrayNode extends ELispExpressionNode {

@@ -5,8 +5,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode.SourceSectionWrapper;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNodeGen;
 import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionObjectNodes;
 import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
@@ -18,6 +20,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispInterpretedClosure;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSubroutine;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.util.Objects;
 import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.MACRO;
@@ -84,15 +87,23 @@ public final class LazyConsExpressionNode extends ELispExpressionNode implements
     }
 
     @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        expandAllChildren();
-        return this;
-    }
-
-    private void expandAllChildren() {
+    public ELispExpressionNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         try {
-            updateInnerNode(); // NOPMD
+            ELispExpressionNode next = updateInnerNode();
+            while (next instanceof LazyConsExpressionNode lazy) {
+                next = lazy.updateInnerNode();
+            }
+            for (Node child : next.getChildren()) {
+                if (child instanceof InstrumentableNode instrument) {
+                    instrument.materializeInstrumentableNodes(materializedTags);
+                }
+            }
+            if (!Objects.equals(next.getSourceSection(), getSourceSection())) {
+                next = next.replace(new SourceSectionWrapper(cons, next));
+            }
+            return next;
         } catch (Throwable ignored) {
+            return this;
         }
     }
 }

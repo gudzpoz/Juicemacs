@@ -5,6 +5,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import org.jspecify.annotations.Nullable;
+import party.iroiro.juicemacs.elisp.nodes.ast.ConsCallNode;
+import party.iroiro.juicemacs.elisp.nodes.ast.LazyConsExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 
@@ -29,17 +31,26 @@ public interface LocationProvider {
     }
     @TruffleBoundary
     default void fillDebugInfo(@Nullable Node parent) {
-        if (parent == null) {
-            return;
-        }
-        SourceSection source = parent.getSourceSection();
-        if (source != null && source.isAvailable()) {
-            setSourceLocation(
-                    source.getStartLine(),
-                    source.getStartColumn(),
-                    source.getEndLine(),
-                    source.getEndColumn()
-            );
+        while (parent != null) {
+            // Some parent nodes, like function root nodes, will call the children's
+            // getSourceSection method, so we need to make sure *not* to call those
+            // parent nodes' getSourceSection method, which might lead to stack overflow.
+            //
+            // Also, cons-related nodes are a good filter: most inlined nodes just has no
+            // source info.
+            if (parent instanceof LazyConsExpressionNode || parent instanceof ConsCallNode) {
+                SourceSection source = parent.getSourceSection();
+                if (source != null && source.isAvailable()) {
+                    setSourceLocation(
+                            source.getStartLine(),
+                            source.getStartColumn(),
+                            source.getEndLine(),
+                            source.getEndColumn()
+                    );
+                    return;
+                }
+            }
+            parent = parent.getParent();
         }
     }
     @Nullable
