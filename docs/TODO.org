@@ -254,6 +254,24 @@ in the git logs in case any one is interested.)
      "\\(.*\\(\\2\\).*\\)\\'")
   #+end_src
 
+* TODO [#C] Arithmetic operation compatibility
+
+Emacs has a few edge cases for arithmetic operations:
+
+- src_elisp{(should (< most-positive-fixnum (+ 1.0 most-positive-fixnum)))}
+
+  In many languages, comparison between floating numbers and integers is done by
+  first converting integers to floating numbers. However, this conversion can
+  potentially truncate the integer value. Emacs spends extra effort to make
+  comparisons like this exact.
+
+  However, in Java, this will be more costly, because our =most-positive-fixnum=
+  is exactly =Long.MAX_VALUE=, while Emacs has a few spare bits to accommodate
+  overflows. We can add more specializations, but is it really worth it?
+
+- The same applies to many other operations, as can be seen in the failing ERT
+  tests.
+
 * TODO [#B] Implement placeholder functions
 
 I've made lots of functions no-op in order to bootstrap =ert.el=. And we should

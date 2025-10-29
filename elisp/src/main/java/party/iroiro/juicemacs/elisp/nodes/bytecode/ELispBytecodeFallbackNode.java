@@ -52,6 +52,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 /// 2. Bytecode instructions must be compact. This means you cannot have bytecode
 ///    like `(goto :label) (0) (0) ... invalid ... (0) (0) (:label (valid code))`.
 ///    Again, this cannot be compiled and might require complex analysis to support.
+@SuppressWarnings("TraditionalSwitchExpression")
 public class ELispBytecodeFallbackNode extends ELispExpressionNode implements BytecodeOSRNode {
 
     private final int startStackTop;

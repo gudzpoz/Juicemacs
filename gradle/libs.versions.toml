@@ -16,7 +16,7 @@ commons-compress = "1.28.0"
 commons-lang3 = "3.19.0"
 commons-text = "1.14.0"
 eclipse-collections = '11.1.0'
-fory = "0.13.0-SNAPSHOT" # TODO: use maven central when bugs are fixed
+fory = "0.13.0"
 juniversalchardet = "2.5.0"
 
 # CLI

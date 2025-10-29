@@ -145,6 +145,9 @@ public abstract class ELispSignals {
     public static ELispSignalException argsOutOfRange(Object object, long left, long right) {
         return signal(ARGS_OUT_OF_RANGE, object, left, right);
     }
+    public static ELispSignalException cyclicFunctionIndirection(ELispSymbol symbol) {
+        return signal(CYCLIC_FUNCTION_INDIRECTION, symbol);
+    }
     @TruffleBoundary
     public static ELispSignalException wrongNumberOfArguments(Object function, long actual) {
         return signal(WRONG_NUMBER_OF_ARGUMENTS, function, actual);

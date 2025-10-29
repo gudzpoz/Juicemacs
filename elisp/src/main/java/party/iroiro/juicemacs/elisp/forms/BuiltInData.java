@@ -10,6 +10,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleString.GetCodeRangeImpreciseNode;
 import org.apache.commons.lang3.StringUtils;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectFunctionLookupNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalIndirectLookupNode;
@@ -1808,7 +1809,24 @@ public class BuiltInData extends ELispBuiltIns {
             if (symbol == NIL && !isNil(definition)) {
                 throw ELispSignals.settingConstant(symbol);
             }
+            if (toSym(definition) instanceof ELispSymbol indirection) {
+                checkCyclicAlias(symbol, indirection);
+            }
             context.getFunctionStorage(symbol).set(definition, symbol);
+        }
+
+        @TruffleBoundary
+        private static void checkCyclicAlias(ELispSymbol symbol, ELispSymbol indirection) {
+            while (!isNil(indirection)) {
+                if (indirection == symbol) {
+                    throw ELispSignals.cyclicFunctionIndirection(symbol);
+                }
+                if (toSym(indirection.getFunction()) instanceof ELispSymbol next) {
+                    indirection = next;
+                } else {
+                    break;
+                }
+            }
         }
     }
 
@@ -1831,7 +1849,15 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FDefalias extends ELispBuiltInBaseNode {
         @Specialization
         public ELispSymbol defalias(ELispSymbol symbol, Object definition, Object docstring) {
-            // TODO: Handle defalias-fset-function
+            // TODO: handle add_to_function_history & autoload_queue
+            Optional<ValueStorage> storage = getContext().getStorageLazy(symbol);
+            if (storage.isPresent()) {
+                Object hook = storage.get().getProperty(DEFALIAS_FSET_FUNCTION);
+                if (!isNil(hook)) {
+                    FFuncall.funcall(this, hook, symbol, definition);
+                    return symbol;
+                }
+            }
             FFset.fset(symbol, definition, getContext());
             return symbol;
         }
@@ -3429,6 +3455,26 @@ public class BuiltInData extends ELispBuiltIns {
                 throw ELispSignals.overflowError();
             }
             return value.shiftLeft(count);
+        }
+
+        @Fallback
+        public static Object ashEdgeCases(Object value, Object count) {
+            // @Fallback: we expect (long | ELispBigNum, ELispBigNum) as args
+            if (!(count instanceof ELispBigNum c)) {
+                throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, count);
+            }
+            int signum = switch (value) {
+                case Long l -> Long.signum(l);
+                case ELispBigNum n -> n.signum();
+                default -> throw ELispSignals.wrongTypeArgument(INTEGER_OR_MARKER_P, value);
+            };
+            if (signum == 0) {
+                return 0L;
+            }
+            if (c.signum() < 0) {
+                return signum < 0 ? -1L : 0L; // signbit
+            }
+            throw ELispSignals.overflowError();
         }
     }
 
