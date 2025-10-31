@@ -51,8 +51,8 @@ public final class ELispLexical {
         return builder.build();
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T fastCast(@Nullable Object value) {
+    @SuppressWarnings({"unchecked", "TypeParameterUnusedInFormals"})
+    private static <T> T fastCast(Object value) {
         return (T) value;
     }
 
@@ -61,6 +61,7 @@ public final class ELispLexical {
         return fastCast(o);
     }
 
+    @SuppressWarnings("TypeParameterUnusedInFormals")
     public static <T> T getCallee(Frame frame) {
         Object o = frame.getArguments()[0];
         return fastCast(o);

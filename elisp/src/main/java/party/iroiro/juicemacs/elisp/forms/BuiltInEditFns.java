@@ -470,7 +470,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             @Child
             private ELispExpressionNode bodyNode;
 
-            public SaveExcursionNode(Object[] body) {
+            SaveExcursionNode(Object[] body) {
                 bodyNode = BuiltInEval.FProgn.progn(body);
             }
 
@@ -536,7 +536,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
             @Child
             ELispExpressionNode bodyNode;
 
-            public SaveCurrentBufferNode(Object[] body) {
+            SaveCurrentBufferNode(Object[] body) {
                 bodyNode = BuiltInEval.FProgn.progn(body);
             }
 

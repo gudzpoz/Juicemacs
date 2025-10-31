@@ -537,7 +537,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                 matches.add(string);
             }
 
-            public Object reduce() {
+            Object reduce() {
                 if (matches.isEmpty()) {
                     return false;
                 }
@@ -646,7 +646,7 @@ public class BuiltInMiniBuf extends ELispBuiltIns {
                 matches.add(key);
             }
 
-            public Object reduce() {
+            Object reduce() {
                 ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
                 for (Object match : matches) {
                     builder.add(match);

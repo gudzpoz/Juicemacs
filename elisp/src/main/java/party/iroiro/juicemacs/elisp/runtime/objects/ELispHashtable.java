@@ -142,8 +142,8 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
                     value = ELispWeakHashtable.pruneWeakWrapper(entries.getValue());
                 }
                 if (hasNext) {
-                    this.key = key;
-                    this.value = value;
+                    this.key = assertNotNull(key);
+                    this.value = assertNotNull(value);
                 }
                 return hasNext;
             }

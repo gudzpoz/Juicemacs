@@ -49,6 +49,7 @@ public class FunctionRootNode extends RootNode {
         return lispFunction.toString();
     }
 
+    @Nullable
     @Override
     public SourceSection getSourceSection() {
         return functionBody.getSourceSection();

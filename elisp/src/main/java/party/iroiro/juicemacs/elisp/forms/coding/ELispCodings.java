@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.apache.fory.Fory;
 import org.apache.fory.serializer.EnumSerializer;
 import org.jspecify.annotations.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemRawText.RawCoding;
 import party.iroiro.juicemacs.elisp.forms.coding.CodingSystemUndecided.DetectingCodingSystem;
@@ -171,7 +172,11 @@ public final class ELispCodings {
     @TruffleBoundary
     public ELispCodingSystem resolveCodingSystem(ELispSymbol name) {
         ELispCodingSystem system = codingSpecTable.get(name);
-        return system == null ? codingSpecTable.get(UNDECIDED) : system;
+        system = system == null ? codingSpecTable.get(UNDECIDED) : system;
+        if (system == null) {
+            throw BuiltInEval.FSignal.signal(CODING_SYSTEM_ERROR, name);
+        }
+        return system;
     }
 
     @TruffleBoundary
@@ -199,13 +204,14 @@ public final class ELispCodings {
         }
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({"rawtypes", "unchecked", "GetClassOnEnum"})
     public static void registerSerializer(Fory fory) {
         for (CharsetMethod method : CharsetMethod.values()) {
             fory.register(method.getClass());
         }
         Class<?> clazz = CharsetMethod.class;
-        // TODO: until fory fixes abstract enum serialization
+        // TODO: until fory fixes abstract enum serialization;
+        //       remember to remove the @Suppress annotation then.
         //       https://github.com/apache/fory/issues/2695
         fory.registerSerializer(CharsetMethod.class, new EnumSerializer(fory, (Class<Enum>) clazz));
         for (Class<?> system : new Class<?>[]{

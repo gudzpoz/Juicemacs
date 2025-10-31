@@ -48,6 +48,7 @@ public class BuiltInPdumper extends ELispBuiltIns {
                     try {
                         file.delete();
                     } catch (IOException ignored) {
+                        // ongoing throw: reportFileError
                     }
                 }
             }

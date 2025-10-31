@@ -34,6 +34,10 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
         "UnnecessaryLocalVariable",
         "UnnecessaryParentheses",
         "UnnecessaryUnicodeEscape",
+
+        // TODO: maybe we do want errorprone to report these?
+        "UnusedVariable",
+        "ModifiedButNotUsed",
 })
 public final class ELispGlobals extends ELispGlobalsBase {
     public ELispGlobals(ELispContext context) {

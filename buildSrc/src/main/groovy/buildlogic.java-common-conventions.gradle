@@ -12,13 +12,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    // TODO: use maven central when bugs (in fory) are fixed
-    maven {
-        url = "https://repository.apache.org/content/repositories/snapshots/"
-        mavenContent {
-            snapshotsOnly()
-        }
-    }
 }
 
 boolean isGraalVM() {
@@ -76,6 +69,7 @@ java {
 
 tasks.withType(JavaCompile).configureEach {
     options.errorprone {
+        enabled = project.hasProperty('errorprone')
         disableWarningsInGeneratedCode = true
         option('NullAway:AnnotatedPackages', 'party.iroiro')
 
@@ -83,6 +77,9 @@ tasks.withType(JavaCompile).configureEach {
         // as much as possible: ArrayList over List, HashMap over Map, etc.
         // This is to cater for Truffle's handling of polymorphism.
         disable('NonApiType')
+        // We use this quite a lot, because Truffle @CompilationFinal only
+        // recognizes arrays.
+        disable('ArrayRecordComponent', 'MutablePublicArray')
         // We use a lot of reference equality comparisons, for symbols, for example.
         disable('ReferenceEquality')
         // If you are suggesting "using the value of the @return block as a summary fragment",

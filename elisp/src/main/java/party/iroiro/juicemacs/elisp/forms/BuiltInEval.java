@@ -709,7 +709,7 @@ public class BuiltInEval extends ELispBuiltIns {
             if (node != null) {
                 node.insert(definition);
             }
-            return definition.executeGeneric(null);
+            return definition.executeGeneric(nullableIsOk(null));
         }
 
         private static ELispExpressionNode getDefinition(ELispCons def) {
@@ -783,12 +783,12 @@ public class BuiltInEval extends ELispBuiltIns {
                     case CCONV_DYNAMIC -> false;
                     case CCONV_CAPTURING, CCONV_UNCHECKED -> {
                         scope = ELispLexical.getScope(this);
-                        yield new Captured(Objects.requireNonNull(scope), frame.materialize());
+                        yield new Captured(Objects.requireNonNull(scope), assertNotNull(frame).materialize());
                     }
                     case CCONV_NON_CAPTURING -> ELispCons.listOf(true);
                     default -> throw CompilerDirectives.shouldNotReachHere();
                 };
-                Object doc = this.doc.executeGeneric(frame);
+                Object doc = this.doc.executeGeneric(nullableIsOk(frame));
                 return createClosure(scope, doc, env);
             }
 

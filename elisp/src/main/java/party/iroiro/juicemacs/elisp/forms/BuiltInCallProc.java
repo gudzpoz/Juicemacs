@@ -12,6 +12,7 @@ import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
@@ -120,7 +121,7 @@ public class BuiltInCallProc extends ELispBuiltIns {
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, program);
             } catch (InterruptedException e) {
-                throw ELispSignals.kill(e.getMessage());
+                throw ELispSignals.kill(Objects.requireNonNullElse(e.getMessage(), "interrupted"));
             }
         }
     }

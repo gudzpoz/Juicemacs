@@ -7,6 +7,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode.SourceSectionWrapper;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNodeGen;
@@ -76,6 +77,7 @@ public final class LazyConsExpressionNode extends ELispExpressionNode implements
         return replace(created);
     }
 
+    @Nullable
     @Override
     public SourceSection getSourceSection() {
         return ELispInterpretedNode.getConsSourceSection(this, cons);

@@ -234,8 +234,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
         public Object buildWithCdr(Object tailCdr) {
             if (tail != null) {
                 this.tail.setCdr(tailCdr);
-                //noinspection DataFlowIssue: tail != null => cons != null
-                return cons;
+                return assertNotNull(cons);
             }
             return tailCdr;
         }

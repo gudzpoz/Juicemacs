@@ -124,8 +124,7 @@ public class LetNode extends ELispExpressionNode {
             boolean dynamic = block == null || block.slots()[i] == ELispLexical.DYNAMIC_VARIABLE_SLOT;
             ELispExpressionNode letClause = letClauses[i];
             if (dynamic) {
-                assert dynamicValues != null;
-                dynamicValues[dynamicI++] = letClause.executeGeneric(frame);
+                assertNotNull(dynamicValues)[dynamicI++] = letClause.executeGeneric(frame);
             } else {
                 letClause.executeVoid(frame);
             }
@@ -142,7 +141,7 @@ public class LetNode extends ELispExpressionNode {
     public void executeVoid(VirtualFrame frame) {
         ELispExpressionNode bodyNode = updateClauses();
         ELispLexical block = lexicalBlock;
-        if (lexicalBlock != null) {
+        if (block != null) {
             frame = block.newFrame(frame);
         }
         Dynamic scope = executeClauses(frame, block);
@@ -159,7 +158,7 @@ public class LetNode extends ELispExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         ELispExpressionNode bodyNode = updateClauses();
         ELispLexical block = lexicalBlock;
-        if (lexicalBlock != null) {
+        if (block != null) {
             frame = block.newFrame(frame);
         }
         Dynamic scope = executeClauses(frame, block);

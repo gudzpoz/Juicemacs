@@ -24,8 +24,7 @@ import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.upperCaseP;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.forms.regex.CharClassContent.Named.*;
 import static party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpOpcode.*;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCharTable;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 class ELispRegExpNode extends Node implements BytecodeOSRNode {
 
@@ -52,7 +51,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     private final int stackSize;
     private final boolean caseFold;
 
-    @SuppressWarnings("NotNullFieldNotInitialized")
+    @Nullable
     @CompilerDirectives.CompilationFinal
     Object osrMetadata;
 
@@ -109,6 +108,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
         return initStack;
     }
 
+    @Nullable
     @Override
     public Object getOSRMetadata() {
         return osrMetadata;
@@ -142,7 +142,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
                 return lastRun;
             }
             if (stacks.isEmpty()) {
-                return Boolean.FALSE;
+                return false;
             }
             // back-edge
             if (BytecodeOSRNode.pollOSRBackEdge(this)) {
@@ -343,7 +343,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
             }
             if (!success) {
                 stacks.returnStack(stack);
-                return Boolean.FALSE;
+                return false;
             }
         }
     }
@@ -472,7 +472,7 @@ class ELispRegExpNode extends Node implements BytecodeOSRNode {
     private int getCharCanon(Object input, long sp, @Nullable ELispCharTable canon) {
         int c = getCharNode.execute(input, sp);
         assert !caseFold || canon != null;
-        return caseFold ? translate(c, canon) : c;
+        return caseFold ? translate(c, assertNotNull(canon)) : c;
     }
 
     private boolean substringEquals(Object input, long sp, long groupStart, long groupLength,

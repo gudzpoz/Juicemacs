@@ -57,7 +57,6 @@ public abstract class ReadFunctionObjectNodes {
     public static Object getFunctionUncached(@Nullable Node node, Object function) {
         GetSymbolFunctionNode symbolGet = ReadFunctionObjectNodesFactory.GetDynamicSymbolFunctionNodeGen.getUncached();
         ConvertFunctionNode convertFunction = ReadFunctionObjectNodesFactory.ConvertFunctionNodeGen.getUncached();
-        //noinspection DataFlowIssue
         return convertFunction.executeConvert(node, symbolGet.execute(node, function));
     }
 
@@ -78,7 +77,7 @@ public abstract class ReadFunctionObjectNodes {
     }
 
     public abstract static class GetSymbolFunctionNode extends Node {
-        public abstract Object execute(Node node, Object symbol);
+        public abstract Object execute(@Nullable Node node, Object symbol);
 
         public static FunctionStorage getStorage(Node node, ELispSymbol symbol) {
             return ELispContext.get(node).getFunctionStorage(symbol);
@@ -160,7 +159,7 @@ public abstract class ReadFunctionObjectNodes {
     @GenerateInline
     @GenerateUncached
     public abstract static class ConvertFunctionNode extends Node {
-        public abstract Object executeConvert(Node node, Object function);
+        public abstract Object executeConvert(@Nullable Node node, Object function);
 
         public boolean isLambdaCons(ELispCons cons) {
             return cons.car() == LAMBDA;
@@ -183,7 +182,8 @@ public abstract class ReadFunctionObjectNodes {
                 @Cached("cons") ELispCons oldCons,
                 @Cached("createFunctionQuote(oldCons)") ELispExpressionNode functionNode
         ) {
-            return functionNode.executeGeneric(null);
+            //noinspection DataFlowIssue
+            return functionNode.executeGeneric(nullableIsOk(null));
         }
 
         @Specialization(replaces = "checkCons")

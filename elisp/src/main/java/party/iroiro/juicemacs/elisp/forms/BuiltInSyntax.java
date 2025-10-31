@@ -95,7 +95,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
         return BuiltInSyntaxFactory.getFactories();
     }
 
-    @SuppressWarnings("NotNullFieldNotInitialized")
+    @SuppressWarnings({"NotNullFieldNotInitialized", "NullAway.Init"})
     private ELispCharTable standardSyntaxTable;
 
     private final ELispVector syntaxCodeObject = new ELispVector(Collections.nCopies(SMAX, false));

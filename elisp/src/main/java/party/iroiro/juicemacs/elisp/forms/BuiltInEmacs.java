@@ -32,6 +32,7 @@ public class BuiltInEmacs extends ELispBuiltIns {
     /// @param defaultValue default value to use if the environment variable is not set
     /// @param empty when `true`, returns `nil` for empty paths; ".", otherwise
     /// @return a list of strings
+    @SuppressWarnings("StringSplitter")
     @TruffleBoundary
     public static ELispCons decodeEnvPath(@Nullable String envVarName, String defaultValue, boolean empty) {
         ELispString emptyElement = empty ? null : new ELispString(".");

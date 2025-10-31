@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
+import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExpCompiler.HalfCompiled.Dual;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
@@ -74,6 +75,10 @@ final class ELispRegExpCompiler {
                     return;
                 }
                 codes.set(i, packSingleArgOpcode(OP_SPLIT, jumpTableIndex));
+            }
+
+            @Override
+            public void visit(int i, Dual dualIntInstruction) {
             }
 
             @Override
@@ -736,7 +741,7 @@ final class ELispRegExpCompiler {
         @Nullable
         private final ELispCharTable canon;
 
-        public TrieBuilder(@Nullable ELispCharTable canon) {
+        TrieBuilder(@Nullable ELispCharTable canon) {
             this.canon = canon;
         }
 
@@ -862,7 +867,7 @@ final class ELispRegExpCompiler {
         }
     }
 
-    private sealed interface HalfCompiled {
+    sealed interface HalfCompiled {
         int length();
 
         void emit(IntArrayList codes);
@@ -943,8 +948,8 @@ final class ELispRegExpCompiler {
     }
 
     private interface AssemblyVisitor {
-        default void visit(int i, HalfCompiled.Single singleIntInstruction) {}
-        default void visit(int i, HalfCompiled.Dual dualIntInstruction) {}
-        default void visit(int i, HalfCompiled.Multiple multipleIntInstruction) {}
+        void visit(int i, HalfCompiled.Single singleIntInstruction);
+        void visit(int i, HalfCompiled.Dual dualIntInstruction);
+        void visit(int i, HalfCompiled.Multiple multipleIntInstruction);
     }
 }

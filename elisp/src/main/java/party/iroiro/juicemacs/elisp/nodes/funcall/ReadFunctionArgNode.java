@@ -5,6 +5,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltIn;
 import party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -81,6 +82,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             }
         }
 
+        @Nullable
         @Override
         public SourceSection getSourceSection() {
             return function.getSourceSection();

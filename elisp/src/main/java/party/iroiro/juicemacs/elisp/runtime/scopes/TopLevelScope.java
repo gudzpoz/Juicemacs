@@ -17,6 +17,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Optional;
 
 @ExportLibrary(InteropLibrary.class)
@@ -96,11 +97,13 @@ public final class TopLevelScope implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         try {
-            Object v = cache.get(member).getValue(symbolCache.get(member));
+            Object v = Objects.requireNonNull(cache.get(member))
+                    .getValue(Objects.requireNonNull(symbolCache.get(member)));
             if (InteropLibrary.isValidValue(v)) {
                 return v;
             }
         } catch (ELispSignals.ELispSignalException ignored) {
+            // ignored
         }
         return ELispGlobals.NIL;
     }
@@ -113,13 +116,13 @@ public final class TopLevelScope implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMemberModifiable(String member) {
-        return isMemberReadable(member) && !cache.get(member).isConstant();
+        return isMemberReadable(member) && !Objects.requireNonNull(cache.get(member)).isConstant();
     }
 
     @ExportMessage
     @TruffleBoundary
     void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
-        ELispSymbol symbol = symbolCache.get(member);
+        ELispSymbol symbol = Objects.requireNonNull(symbolCache.get(member));
         ValueStorage storage = cache.get(member);
         if (storage == null) {
             symbol = context.obarray().intern(member);

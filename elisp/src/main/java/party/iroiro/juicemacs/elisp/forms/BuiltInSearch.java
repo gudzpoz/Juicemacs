@@ -220,8 +220,9 @@ public class BuiltInSearch extends ELispBuiltIns {
                     int c1 = iterator.nextInt();
                     int c2 = bufferI.nextInt();
                     if (caseFold) {
-                        c1 = (int) notNilOr(canon.getChar(c1), c1);
-                        c2 = (int) notNilOr(canon.getChar(c2), c2);
+                        ELispCharTable canonNonNull = assertNotNull(canon);
+                        c1 = (int) notNilOr(canonNonNull.getChar(c1), c1);
+                        c2 = (int) notNilOr(canonNonNull.getChar(c2), c2);
                     }
                     if (c1 != c2) {
                         return false;

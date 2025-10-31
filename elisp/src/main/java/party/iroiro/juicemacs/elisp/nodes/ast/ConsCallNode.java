@@ -83,6 +83,7 @@ public abstract class ConsCallNode extends ELispExpressionNode implements Instru
                || tag == StandardTags.ExpressionTag.class;
     }
 
+    @Nullable
     @Override
     public SourceSection getSourceSection() {
         return ELispInterpretedNode.getConsSourceSection(this, cons);
@@ -90,13 +91,13 @@ public abstract class ConsCallNode extends ELispExpressionNode implements Instru
 
     //#region NodeLibrary
     @ExportMessage
-    public boolean hasScope(Frame frame) {
+    public boolean hasScope(@Nullable Frame frame) {
         ELispLexical.@Nullable Scope lexical = ELispLexical.getScope(this);
         return frame != null && lexical != null;
     }
 
     @ExportMessage
-    public Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+    public Object getScope(@Nullable Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
         ELispLexical.@Nullable Scope lexical = ELispLexical.getScope(this);
         if (frame == null || lexical == null) {
             throw UnsupportedMessageException.create();

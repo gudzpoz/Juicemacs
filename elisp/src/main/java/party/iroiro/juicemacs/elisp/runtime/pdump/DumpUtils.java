@@ -188,7 +188,7 @@ public abstract class DumpUtils {
     }
 
     private static final class NeverSerializer<T> extends Serializer<T> {
-        public NeverSerializer(Fory fory, Class<T> type) {
+        NeverSerializer(Fory fory, Class<T> type) {
             super(fory, type);
         }
 

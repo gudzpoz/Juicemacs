@@ -63,6 +63,7 @@ public abstract class ELispInterpretedNode {
         return function;
     }
 
+    @Nullable
     public static SourceSection getConsSourceSection(Node node, ELispCons cons) {
         RootNode rootNode = node.getRootNode();
         if (rootNode == null) {

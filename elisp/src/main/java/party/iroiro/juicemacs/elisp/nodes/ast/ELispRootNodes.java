@@ -95,6 +95,7 @@ public abstract class ELispRootNodes {
             return rootScope;
         }
 
+        @Nullable
         @Override
         public SourceSection getSourceSection() {
             RootNode rootNode = getRootNode();

@@ -19,6 +19,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
+@SuppressWarnings("WaitNotInLoop") // Copied from TruffleRuby
 public abstract class ConcurrentOperations {
 
     /** Replaces {@link ConcurrentHashMap#computeIfAbsent(Object, Function)} as it does not scale. The JDK method takes

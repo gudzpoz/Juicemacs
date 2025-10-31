@@ -16,6 +16,7 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -375,7 +376,8 @@ public final class ELispCharset {
             }
             return new CharsetMap(fromEntries, toEntries, valueEntries);
         } catch (FileNotFoundException e) {
-            throw ELispSignals.fileMissing(e, e.getMessage());
+            String message = e.getMessage();
+            throw ELispSignals.fileMissing(e, message == null ? path.toString() : message);
         }
     }
 
@@ -425,6 +427,7 @@ public final class ELispCharset {
             maxChar = Math.max(maxChar, toChar);
             // Decoding
             if (method == CharsetMethod.MAP) {
+                Objects.requireNonNull(decodingMap);
                 for (long j = fromIndex, c = fromChar;j < limIndex; j++, c++) {
                     decodingMap.set(Math.toIntExact(j), c);
                 }

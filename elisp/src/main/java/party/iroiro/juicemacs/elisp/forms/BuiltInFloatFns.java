@@ -422,7 +422,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
      */
     @ELispBuiltIn(name = "expt", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
-    public abstract static class FExpt extends ELispFloatFnsNode {
+    public abstract static class FExpt extends ELispBuiltInBaseNode {
         @Specialization
         public static double expt(double arg1, double arg2) {
             return Math.pow(arg1, arg2);
@@ -516,7 +516,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
         }
         @Specialization(guards = "arg > 0")
         public static long logbLongPos(long arg) {
-            return Long.SIZE - 1 - Long.numberOfLeadingZeros(arg);
+            return Long.SIZE - 1L - Long.numberOfLeadingZeros(arg);
         }
         @Specialization(replaces = "logbLongPos")
         public static Object logbLong(long arg) {

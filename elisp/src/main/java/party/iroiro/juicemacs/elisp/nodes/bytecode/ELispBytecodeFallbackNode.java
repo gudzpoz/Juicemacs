@@ -72,7 +72,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     /// indices array.
     ///
     /// For another, each [ByteCode#SWITCH] instruction wants separate jump tables,
-    /// so for them, the array stores jump table indices to [#jumpTables].
+    /// so for them, the array stores jump table indices to [#switchJumpTables].
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     final int[] indices;
     /// Specialized nodes for some instructions
@@ -93,8 +93,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
     @CompilerDirectives.CompilationFinal(dimensions = 1)
     final int @Nullable[] exceptionJumpsStackTop;
 
-    @SuppressWarnings("NotNullFieldNotInitialized")
     @CompilerDirectives.CompilationFinal
+    @Nullable
     private Object osrMetadata;
 
     public ELispBytecodeFallbackNode(ELispBytecode bytecode, int argsOnStack) {
@@ -344,7 +344,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 }
                 default: {
                     if ((op & CONSTANT) == CONSTANT) {
-                        ref = op & (~CONSTANT);
+                        ref = ~CONSTANT & op;
                         newConstantI = ref;
                     }
                     yield 0;
@@ -387,6 +387,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         }
     }
 
+    @Nullable
     @Override
     public Object getOSRMetadata() {
         return osrMetadata;
@@ -530,10 +531,11 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     {
                         assert exceptionJumps != null;
                         assert exceptionJumpsStackTop != null;
+                        int[] jumps = assertNotNull(exceptionJumps);
                         ref = Byte.toUnsignedInt(bytecode[bci + 1]) + (Byte.toUnsignedInt(bytecode[bci + 2]) << 8);
                         int target = -1;
-                        for (int i = 0; i < exceptionJumps.length; i++) {
-                            if (exceptionJumps[i] == ref) {
+                        for (int i = 0; i < jumps.length; i++) {
+                            if (jumps[i] == ref) {
                                 target = i;
                             }
                         }
@@ -996,7 +998,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     case CONSTANT:                     // 0300
                     default:
                         if ((op & CONSTANT) == CONSTANT) {
-                            ref = op & (~CONSTANT);
+                            ref = ~CONSTANT & op;
                             frame.setObject(top, constants[ref]);
                         } else {
                             throw invalidFunction(frame);
@@ -1129,7 +1131,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         @Nullable
         private ELispExpressionNode callNode = null;
 
-        public InlinableCallNode(int top, int n) {
+        InlinableCallNode(int top, int n) {
             this.base = top - n;
             this.n = n;
         }
@@ -1277,8 +1279,6 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             return frame.getObject(i);
         }
     }
-    /// Writes value produced by [#supplier] to the stack
-    ///
     /// See [ReadStackSlotNode] for comments.
     @NodeChild(value = "value", type = ELispExpressionNode.class)
     abstract static class WriteStackSlotNode extends ELispExpressionNode {

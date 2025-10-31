@@ -139,7 +139,8 @@ public class BuiltInTimeFns extends ELispBuiltIns {
         }
 
         public Object toTime(Instant instant) {
-            Object transition = currentTimeList.executeGeneric(null);
+            //noinspection DataFlowIssue
+            Object transition = currentTimeList.executeGeneric(nullableIsOk(null));
             if (isT(transition)) {
                 return toTimeList(instant);
             }

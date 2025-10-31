@@ -600,6 +600,8 @@ public class BuiltInLRead extends ELispBuiltIns {
                         try {
                             source = builder.build();
                         } catch (IOException ignored) {
+                            // ignored: ok because we have the contents in buffer
+                            // (Source is only for debug info)
                         }
                     }
                     if (source == null) {

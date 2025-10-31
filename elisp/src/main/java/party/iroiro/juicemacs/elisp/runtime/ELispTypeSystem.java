@@ -2,6 +2,8 @@ package party.iroiro.juicemacs.elisp.runtime;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
@@ -353,6 +355,29 @@ public abstract class ELispTypeSystem {
             return f;
         }
         throw ELispSignals.wrongTypeArgument(FRAMEP, frame);
+    }
+
+    /// Prevent NullAway to warn about using nullable virtual frames
+    ///
+    /// So we have a lot of code assuming a non-null virtual frame passed from
+    /// [party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode#executeGeneric(VirtualFrame)].
+    /// However, for some particular pathways (esp. those do not need to access arguments
+    /// and stack traces), a nullable one is fine.
+    ///
+    /// NullAway does not support inline suppressions via comments, so here we have this
+    /// method.
+    @SuppressWarnings({"NullAway", "DataFlowIssue"})
+    public static VirtualFrame nullableIsOk(@Nullable VirtualFrame object) {
+        return object;
+    }
+
+    /// NullAway does not support assertions??
+    ///
+    /// And this is a method to work around it.
+    @SuppressWarnings({"NullAway"})
+    public static <T> T assertNotNull(@Nullable T object) {
+        assert object != null;
+        return object;
     }
 
     @TypeSystem({boolean.class, long.class, double.class, ELispValue.class})

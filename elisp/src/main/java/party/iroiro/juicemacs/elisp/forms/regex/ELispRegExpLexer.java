@@ -359,27 +359,27 @@ final class ELispRegExpLexer implements Iterator<REToken> {
             this.string = string;
         }
 
-        public boolean hasNext() {
+        boolean hasNext() {
             return index < string.length();
         }
 
-        public int next() {
+        int next() {
             if (!hasNext()) {
                 throw ELispSignals.invalidRegexp("Premature end of regular expression");
             }
             return string.codePointAt(index++);
         }
 
-        public void consume(int n) {
+        void consume(int n) {
             index += n;
         }
 
-        public int peek() {
+        int peek() {
             return index < string.length() ? string.codePointAt(index) : -1;
         }
 
-        public boolean unexpectedNext(byte b1, byte b2) {
-            long rest = string.length() - index;
+        boolean unexpectedNext(byte b1, byte b2) {
+            long rest = (long) string.length() - index;
             if (rest < 2) {
                 return true;
             }
