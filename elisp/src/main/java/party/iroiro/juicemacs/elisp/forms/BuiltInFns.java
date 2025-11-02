@@ -123,8 +123,11 @@ public class BuiltInFns extends ELispBuiltIns {
             if (isT(limit)) {
                 r.setSeed(secureSeed());
             }
+            if (limit instanceof ELispString seed) {
+                r.setSeed(seed.lispHashCode(0));
+            }
             if (limit instanceof Long l) {
-                return r.nextLong(l);
+                return r.nextLong(asRanged(l, 1, Long.MAX_VALUE));
             }
             if (limit instanceof ELispBigNum big) {
                 return randomBigInteger(big);
@@ -166,7 +169,7 @@ public class BuiltInFns extends ELispBuiltIns {
             do {
                 random = new BigInteger(bits, FRandom.random);
             } while (random.compareTo(bigInteger) >= 0);
-            return random;
+            return ELispBigNum.wrap(random);
         }
 
         @TruffleBoundary
@@ -952,6 +955,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     end = length + end;
                 }
             }
+            // TODO: properties
             return new ELispString(
                     s.substringUncached(start, end - start, StringSupport.UTF_32, true),
                     string.state()
@@ -1331,7 +1335,8 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ELispCons cons = asCons(list);
-            while (BuiltInData.FEq.eq(cons.car(), elt)) {
+            ConsIterator iter = cons.iterator();
+            while (BuiltInData.FEq.eq(elt, iter.next())) {
                 Object cdr = cons.cdr();
                 if (isNil(cdr)) {
                     return false;
@@ -1380,15 +1385,16 @@ public class BuiltInFns extends ELispBuiltIns {
         @TruffleBoundary
         @Specialization
         public static Object deleteList(Object elt, ELispCons seq) {
-            while (FEqual.equal(elt, seq.car())) {
-                Object cdr = seq.cdr();
+            ELispCons prev = seq;
+            ConsIterator iter = seq.iterator();
+            while (FEqual.equal(elt, iter.next())) {
+                Object cdr = prev.cdr();
                 if (isNil(cdr)) {
                     return false;
                 }
-                seq = asCons(cdr);
+                prev = asCons(cdr);
             }
-            ConsIterator i = seq.listIterator(1);
-            ELispCons prev = seq;
+            ConsIterator i = prev.listIterator(1);
             while (i.hasNextCons()) {
                 ELispCons current = i.nextCons();
                 if (FEqual.equal(elt, current.car())) {
@@ -1397,7 +1403,7 @@ public class BuiltInFns extends ELispBuiltIns {
                     prev = current;
                 }
             }
-            return seq;
+            return prev;
         }
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
@@ -1440,7 +1446,8 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispBoolVector nreverseBoolVec(ELispBoolVector seq) {
-            return seq.reverse();
+            seq.nReverse();
+            return seq;
         }
 
         @Specialization
@@ -1538,11 +1545,18 @@ public class BuiltInFns extends ELispBuiltIns {
         public static boolean sortNil(ELispSymbol seq, Object[] args) {
             return expectNil(seq);
         }
+        @TruffleBoundary
         @Specialization
         public static ELispVector sortVector(ELispVector seq, Object[] args) {
             SortParameters params = SortParameters.parse(args);
-            // TODO
-            throw new UnsupportedOperationException();
+            if (params.inPlace) {
+                Arrays.sort(seq.inner(), params);
+                return seq;
+            } else {
+                ELispVector copy = FCopySequence.copySequenceVector(seq);
+                Arrays.sort(copy.inner(), params);
+                return copy;
+            }
         }
         @TruffleBoundary
         @Specialization
@@ -1754,11 +1768,14 @@ public class BuiltInFns extends ELispBuiltIns {
             ELispCons tail;
             do {
                 Object key = i.next();
+                if (!i.hasNext()) {
+                    throw ELispSignals.wrongTypeArgument(PLISTP, plist);
+                }
                 tail = i.currentCons();
                 if (BuiltInData.FEq.eq(key, prop)) {
                     tail.setCar(val);
                     return list;
-                    }
+                }
                 i.next();
             } while (i.hasNext());
             tail.setCdr(ELispCons.listOf(prop, val));
@@ -1890,6 +1907,10 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization
         public static boolean equalString(ELispString o1, ELispString o2) {
             return o1.value().equals(o2.value());
+        }
+        @Specialization
+        public static boolean equal(ELispCons o1, ELispCons o2) {
+            return o1.lispEquals(o2);
         }
         @TruffleBoundary
         @Specialization(replaces = {"equalLong", "equalDouble", "equalString"})

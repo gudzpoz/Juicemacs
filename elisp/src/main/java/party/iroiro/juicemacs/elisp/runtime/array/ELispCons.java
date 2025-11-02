@@ -18,8 +18,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 @ExportLibrary(InteropLibrary.class)
 public final class ELispCons implements ELispValue, ListIteratorList, TruffleObject, LocationProvider {
@@ -77,9 +76,22 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
         if (this == other) {
             return true;
         }
-        return other instanceof ELispCons cons
-                && BuiltInFns.FEqual.equal(car(), cons.car())
-                && BuiltInFns.FEqual.equal(cdr(), cons.cdr());
+        if (!(other instanceof ELispCons oCons)) {
+            return false;
+        }
+        ConsIterator i = this.iterator();
+        ConsIterator j = oCons.iterator();
+        while (i.hasNextCons() && j.hasNextCons()) {
+            ELispCons iCons = i.nextCons();
+            ELispCons jCons = j.nextCons();
+            if (iCons == jCons) {
+                return true;
+            }
+            if (!BuiltInFns.FEqual.equal(iCons.car, jCons.car)) {
+                return false;
+            }
+        }
+        return BuiltInFns.FEqual.equal(i.tail(), j.tail());
     }
     @Override
     public int lispHashCode(int depth) {

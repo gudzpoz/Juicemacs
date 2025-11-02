@@ -61,7 +61,18 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
 
     @TruffleBoundary
     public void put(Object key, Object value) {
-        inner.put(key, value);
+        try {
+            inner.put(key, value);
+        } catch (NullPointerException ignored) {
+            // So Emacs allows using a custom hash function, and it chooses
+            // to safeguard against the possibility that a user modifies the
+            // hash table during the test.
+            // Personally I don't like this safeguard-everything approach:
+            // if your "hash" function is not stateless nor pure, then
+            // please expect an Emacs crash.
+            // So here we only do a simple, fast check.
+            throw ELispSignals.error("hash table test modifies table");
+        }
     }
 
     @TruffleBoundary
@@ -84,6 +95,7 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         return Objects.requireNonNullElse(inner.removeKey(key), false);
     }
 
+    @TruffleBoundary
     public void clear() {
         inner.clear();
     }

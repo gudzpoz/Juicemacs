@@ -8,4 +8,6 @@ public sealed interface ConsIterator extends ListIterator<Object> permits BrentT
     ELispCons currentCons();
 
     ELispCons nextCons();
+
+    Object tail();
 }

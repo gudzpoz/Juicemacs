@@ -5,6 +5,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FCopySequence;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
 import party.iroiro.juicemacs.elisp.parser.CodePointReader;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
@@ -132,8 +133,14 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSyntaxTableP extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void syntaxTableP(Object object) {
-            throw new UnsupportedOperationException();
+        public static boolean syntaxTableP(Object object) {
+            return object instanceof ELispCharTable table && table.getPurpose() == SYNTAX_TABLE;
+        }
+
+        public static void checkSyntaxTable(Object object) {
+            if (!syntaxTableP(object)) {
+                throw ELispSignals.wrongTypeArgument(SYNTAX_TABLE_P, object);
+            }
         }
     }
 
@@ -177,8 +184,20 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCopySyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void copySyntaxTable(Object table) {
-            throw new UnsupportedOperationException();
+        public ELispCharTable copySyntaxTable(Object table) {
+            ELispCharTable standard = getContext().globals().builtInSyntax.standardSyntaxTable;
+            ELispCharTable original = table instanceof ELispCharTable t ? t : standard;
+            FSyntaxTableP.checkSyntaxTable(original);
+            return copySyntaxTable(original, standard);
+        }
+
+        public static ELispCharTable copySyntaxTable(ELispCharTable table, ELispCharTable standard) {
+            ELispCharTable copy = FCopySequence.copySequenceCharTable(table);
+            copy.setDefault(false);
+            if (isNil(copy.getParent())) {
+                copy.setParent(standard);
+            }
+            return copy;
         }
     }
 

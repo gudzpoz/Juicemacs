@@ -816,6 +816,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         CompilerAsserts.partialEvaluationConstant(top);
                         break;
                     case RETURN:                       // 0207
+                        assert bindings.signalHandlers.isEmpty();
                         return top < 0 ? false : frame.getObject(top);
                     case DISCARD:                      // 0210
                         break;
@@ -1012,6 +1013,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 bci = nextBci;
             } catch (AbstractTruffleException e) {
                 if (exceptionJumps == null || exceptionJumpsStackTop == null) {
+                    assert bindings.signalHandlers.isEmpty();
                     throw e;
                 }
                 int target = getHandlingTarget(this, e, bindings);
@@ -1019,7 +1021,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                     bci = exceptionJumps[target];
                     top = exceptionJumpsStackTop[target];
                     frame.setObject(top, getExceptionData(e));
-                   continue;
+                    continue;
                 } else {
                     for (int i = 0; i < exceptionJumps.length; i++) {
                         if (i == target) {
@@ -1056,6 +1058,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             }
         }
         if (handler == null) {
+            assert bindings.signalHandlers.isEmpty();
             throw rethrow;
         }
         return handler.target;
@@ -1377,6 +1380,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                 tag = c.getTag();
                 catchThrow = true;
             } else {
+                signalHandlers.clear();
                 return null;
             }
             while (!signalHandlers.isEmpty()) {

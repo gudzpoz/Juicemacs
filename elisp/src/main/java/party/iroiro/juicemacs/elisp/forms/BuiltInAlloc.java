@@ -84,8 +84,12 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBoolVector extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void boolVector(Object[] objects) {
-            throw new UnsupportedOperationException();
+        public static ELispBoolVector boolVector(Object[] objects) {
+            ELispBoolVector vec = FMakeBoolVector.makeBoolVector(objects.length, false);
+            for (int i = 0; i < objects.length; i++) {
+                vec.set(i, !isNil(objects[i]));
+            }
+            return vec;
         }
     }
 

@@ -8,10 +8,12 @@ import org.junit.jupiter.api.Test;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ELispLanguageTest {
     public static boolean hasDump(boolean bootstrap) {
@@ -57,8 +59,14 @@ public class ELispLanguageTest {
             } else {
                 // During pdump, Emacs also renames the emacs binary,
                 // which, of course, our Juicemacs does not provide.
-                assertTrue(message.startsWith("(file-error "), message);
-                assertTrue(message.endsWith("/emacs\")"), message);
+                assertTrue(
+                        message.startsWith("(file-error ")
+                                && message.endsWith("/emacs\")"),
+                        () -> {
+                            e.printStackTrace(System.err);
+                            return message;
+                        }
+                );
             }
         }
     }
@@ -95,13 +103,33 @@ public class ELispLanguageTest {
 
                         (require 'ert)
                         (load "../test/src/data-tests")
+                        (load "../test/src/fns-tests")
                         (load "../test/src/floatfns-tests")
                         (null (ert-run-tests-batch)) ; don't print the huge info object
                         """);
             } catch (PolyglotException e) {
                 e.printStackTrace(out);
             }
-            // TODO: Make the test fail when there are errors, after we fully bootstrap loadup.el.
+        }
+        // Extract failed tests
+        // TODO: maybe use ert-write-junit-test-report later
+        Pattern resultPattern = Pattern.compile(
+                "^\\s+(passed|FAILED)\\s+(\\d+/\\d+)\\s+([^ ]+)"
+        );
+        try (BufferedReader reader = Files.newBufferedReader(file)) {
+            record TestResult(String name, @Nullable String info, boolean passed) {}
+            ArrayList<TestResult> tests = new ArrayList<>();
+            String lastLine = null;
+            String line;
+            while ((line = reader.readLine()) != null) {
+                Matcher matcher = resultPattern.matcher(line);
+                if (matcher.find()) {
+                    tests.add(new TestResult(matcher.group(3), lastLine, matcher.group(1).equals("passed")));
+                }
+                lastLine = line;
+            }
+            assertAll(tests.stream().map(test -> () ->
+                    assertTrue(test.passed, test.name + (test.info == null ? "" : ": " + test.info))));
         }
     }
 }

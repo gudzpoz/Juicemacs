@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -265,7 +266,7 @@ public abstract class ELispSignals {
                     }
                 }
                 BuiltInEditFns.FMessage.message(ELispContext.get(null), "unrecognized class cast: " + e.getMessage());
-                yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
+                yield ELispSignals.wrongTypeArgument(UNSPECIFIED, Objects.requireNonNull(e.getMessage()));
             }
             case UnsupportedSpecializationException dsl -> {
                 Method[] methods = dsl.getNode().getClass().getMethods();
@@ -288,7 +289,7 @@ public abstract class ELispSignals {
                         }
                     }
                 }
-                yield ELispSignals.wrongTypeArgument(UNSPECIFIED, e.getMessage());
+                yield ELispSignals.wrongTypeArgument(UNSPECIFIED, Objects.requireNonNull(e.getMessage()));
             }
             case ELispSignals.ELispSignalException signal -> ELispSignals.attachLocation(signal, location);
             case ArithmeticException _ -> ELispSignals.arithError();

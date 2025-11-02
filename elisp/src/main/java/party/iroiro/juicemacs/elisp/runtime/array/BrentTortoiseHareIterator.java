@@ -51,6 +51,11 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsItera
         return nextCons().car;
     }
 
+    @Override
+    public Object tail() {
+        return tail;
+    }
+
     @TruffleBoundary
     @Override
     public ELispCons nextCons() {

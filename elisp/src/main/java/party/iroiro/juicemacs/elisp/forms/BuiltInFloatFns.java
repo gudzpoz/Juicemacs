@@ -14,8 +14,8 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asNum;
-import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.NUMBERP;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInFloatFns extends ELispBuiltIns {
     public BuiltInFloatFns() {
@@ -426,6 +426,75 @@ public class BuiltInFloatFns extends ELispBuiltIns {
         @Specialization
         public static double expt(double arg1, double arg2) {
             return Math.pow(arg1, arg2);
+        }
+        @Specialization(guards = "arg2 < 0")
+        public static double exptNeg(double arg1, long arg2) {
+            return Math.pow(arg1, (double) arg2);
+        }
+        @Specialization(guards = "arg2 >= 0", rewriteOn = ArithmeticException.class)
+        public static long exptLong(long arg1, long arg2) {
+            return Math.powExact(arg1, Math.toIntExact(arg2));
+        }
+        @TruffleBoundary
+        @Specialization
+        public static Object exptGeneric(Object arg1, Object arg2) {
+            if (!(arg1 instanceof Number n1)) {
+                throw ELispSignals.wrongTypeArgument(NUMBERP, arg1);
+            }
+            if (!(arg2 instanceof Number n2)) {
+                throw ELispSignals.wrongTypeArgument(NUMBERP, arg2);
+            }
+            if (n1 instanceof Long l1 && n2 instanceof Long l2) {
+                try {
+                    return Math.powExact(l1, Math.toIntExact(l2));
+                } catch (ArithmeticException e) {
+                    // fall through
+                }
+            }
+            if (n1 instanceof Double || n2 instanceof Double) {
+                double d1 = FloatFnsTypeSystemGen.asImplicitDouble(n1);
+                double d2 = FloatFnsTypeSystemGen.asImplicitDouble(n2);
+                return Math.pow(d1, d2);
+            }
+            return exptBigNum(n1, n2);
+        }
+
+        private static Object exptBigNum(Number base, Number exp) {
+            if (exp instanceof Long e && e < 0) {
+                return Math.pow(base.doubleValue(), (double) e);
+            } else if (asBigNum(exp).signum() < 0) {
+                return Math.pow(base.doubleValue(), exp.doubleValue());
+            }
+            // exp >= 0:
+            if (base instanceof Long b) {
+                if (b == 0) { // exp == 0: handled by expGeneric
+                    return 0;
+                } else if (b == 1) {
+                    return 1;
+                } else if (b == -1) {
+                    boolean odd = exp instanceof ELispBigNum bigNum
+                            ? bigNum.asBigInteger().testBit(0)
+                            : (asLong(exp) & 1) != 0;
+                    return odd ? -1 : 1;
+                }
+            }
+
+            int expI;
+            if (exp instanceof ELispBigNum) {
+                throw ELispSignals.overflowError();
+            }
+            long expL = asLong(exp);
+            if (expL > Integer.MAX_VALUE) {
+                throw ELispSignals.overflowError();
+            }
+            expI = (int) expL;
+
+            BigInteger big1 = base instanceof ELispBigNum big ? big.asBigInteger() : BigInteger.valueOf(asLong(base));
+            try {
+                return big1.pow(expI);
+            } catch (ArithmeticException overflow) {
+                throw ELispSignals.overflowError();
+            }
         }
     }
 

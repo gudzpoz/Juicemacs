@@ -102,6 +102,14 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         return reversed;
     }
 
+    public void nReverse() {
+        for (int i = 0; i < size / 2; i++) {
+            boolean tmp = get(i);
+            set(i, get(size - i - 1));
+            set(size - i - 1, tmp);
+        }
+    }
+
     public long[] getBits() {
         return bits;
     }
