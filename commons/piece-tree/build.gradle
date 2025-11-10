@@ -1,7 +1,3 @@
-/*
- * This project uses @Incubating APIs which are subject to change.
- */
-
 plugins {
     id 'buildlogic.java-library-conventions'
     id 'me.champeau.jmh' version '0.7.2'
@@ -15,6 +11,8 @@ repositories {
 
 dependencies {
     implementation libs.bundles.eclipse.collections
+
+    implementation project(':commons:mule-utils')
 
     api libs.graalvm.truffle.api
 

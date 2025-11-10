@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -94,13 +95,8 @@ public class EditingTracesTest {
         }
     }
 
-    private static final TruffleString.FromJavaStringNode FROM_JAVA = TruffleString.FromJavaStringNode.create();
-    private static final TruffleString.FromCodePointNode FROM_INT = TruffleString.FromCodePointNode.create();
-    private static TruffleString fromString(String s) {
-        if (s.length() == 1) {
-            return FROM_INT.execute(s.charAt(0), TruffleString.Encoding.UTF_32);
-        }
-        return FROM_JAVA.execute(s, TruffleString.Encoding.UTF_32);
+    public static byte[] fromString(String s) {
+        return s.getBytes(StandardCharsets.UTF_8);
     }
 
     private void testEntry(String name, BiFunction<PieceState, long[], @Nullable String> testRunner) throws IOException {
@@ -136,8 +132,8 @@ public class EditingTracesTest {
 
     @Test
     public void testTraces() throws IOException {
-        testEntry("editing-traces", (state, latency) -> {
-            PieceTreeBase tree = new PieceTreeBase(fromString(state.trace.start));
+        testEntry("editing-traces-piece-table", (state, latency) -> {
+            PieceTreeBase tree = new PieceTreeBase(false, fromString(state.trace.start));
             Edit[] edits = state.trace.edits;
             for (int i = 0; i < edits.length; i++) {
                 Edit edit = edits[i];
@@ -150,7 +146,7 @@ public class EditingTracesTest {
                             + ", ins=" + edit.insertedContent.length() + " (" + ((double) delta) / 1000_000 + " ms)");
                 }
             }
-            return tree.getLinesRawContent().toString();
+            return new String(tree.getLinesRawContent(), StandardCharsets.UTF_8);
         });
     }
 
@@ -321,7 +317,7 @@ public class EditingTracesTest {
         @Setup(Level.Iteration)
         public void setUp() {
             trace = parseTrace(readFromGzResource(file));
-            tree = new PieceTreeBase(fromString(trace.start));
+            tree = new PieceTreeBase(false, trace.start.getBytes(StandardCharsets.UTF_8));
             gapBuffer = new GapBuffer(trace.start);
         }
 

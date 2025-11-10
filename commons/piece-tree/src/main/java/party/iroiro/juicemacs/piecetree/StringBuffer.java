@@ -1,152 +1,177 @@
 package party.iroiro.juicemacs.piecetree;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.InternalByteArray;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
+import party.iroiro.juicemacs.mule.ByteArrayBuilder;
+import party.iroiro.juicemacs.mule.CodingUtils;
+import party.iroiro.juicemacs.mule.Utf8Utils;
 
-/// A hacky string buffer for [TruffleString]
-///
-/// [TruffleString] does not expect modifications to its internal byte array,
-/// while its mutable variant [com.oracle.truffle.api.strings.MutableTruffleString]
-/// does not support string compaction. This class tries to hack through these
-/// limitations by modifying the internal array in a way that is compatible with
-/// Truffle internal compaction.
-final class StringBuffer {
-    private final LineStartList lineStarts;
-    private final TruffleString buffer;
-    /// The internal array of [#buffer], not null if the buffer is mutable
-    private final byte @Nullable [] bytes;
-    private int size;
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 
-    /// Creates an immutable string buffer
-    public StringBuffer(TruffleString buffer) {
-        this(buffer, PieceTreeBase.createLineStartsFast(buffer));
-    }
+final class StringBuffer extends ByteArrayBuilder {
+    private static final int CHAR_SEGMENT_LENGTH = 1 << 8;
+    static final byte[] EMPTY_STRING = new byte[0];
 
-    /// Creates an immutable string buffer
-    public StringBuffer(TruffleString buffer, LineStartList lineStarts) {
-        this.buffer = buffer;
-        this.lineStarts = lineStarts;
-        this.bytes = null;
-        this.size = StringNodes.length(buffer);
-    }
+    /// Char offsets into each line starts
+    private final IndexList lineStarts;
+    /// Byte offsets into each substring segment for non-raw buffers
+    ///
+    /// For raw buffers, this should be null.
+    @Nullable
+    private final IndexList charStarts;
+    private int chars;
+    private int cachedCharIndex;
+    private int cachedByteIndex;
 
-    /// Creates a mutable string buffer
-    public StringBuffer(TruffleString.CompactionLevel level) {
-        this(level, new LineStartList(), 128);
+    private StringBuffer(byte[] storage, boolean raw) {
+        super(storage, 0);
+        this.lineStarts = new IndexList();
         lineStarts.add(0);
+        if (raw) {
+            this.charStarts = null;
+        } else {
+            this.charStarts = new IndexList();
+        }
+        this.chars = 0;
+    }
+
+    /// Creates an immutable string buffer
+    public static StringBuffer immutable(byte[] init, boolean raw) {
+        StringBuffer buffer = mutable(init, raw);
+        buffer.lineStarts.trimToSize();
+        if (buffer.charStarts != null) {
+            buffer.charStarts.trimToSize();
+        }
+        return buffer;
     }
 
     /// Creates a mutable string buffer
-    private StringBuffer(TruffleString.CompactionLevel level, LineStartList lines, int newLength) {
-        int unit = level.getBytes();
-        this.bytes = new byte[unit * newLength];
-        for (int i = 0; i < unit; i++) {
-            bytes[i] = (byte) (unit | 0x80);
+    public static StringBuffer mutable(byte[] init, boolean raw) {
+        StringBuffer buffer = new StringBuffer(init, raw);
+        buffer.usedBytes = init.length;
+        buffer.updateAppended(0, init.length);
+        return buffer;
+    }
+
+    /// Creates a mutable string buffer
+    public static StringBuffer mutable(int capacity, boolean raw) {
+        return new StringBuffer(new byte[capacity], raw);
+    }
+
+    public boolean isRaw() {
+        return charStarts == null;
+    }
+
+    private void updateAppended(int from, int to) {
+        byte[] bytes = this.bytes;
+        checkRange(bytes, from, to);
+        int chars = this.chars;
+        int i = from;
+        boolean raw = charStarts == null;
+        while (true) {
+            while (true) {
+                if (i >= to) {
+                    this.chars = chars;
+                    return;
+                }
+                if (!raw && (chars & (CHAR_SEGMENT_LENGTH - 1)) == 0) {
+                    charStarts.add(i);
+                }
+                chars++;
+                int b;
+                if ((b = Byte.toUnsignedInt(bytes[i++])) >= 0x80) {
+                    break;
+                }
+                if (b == '\n') {
+                    lineStarts.add(chars);
+                }
+            }
+
+            if (raw) {
+                continue;
+            }
+            // skip UTF-8 continuation bytes
+            while (i < to && (bytes[i] & 0b1100_0000) == 0b1000_0000) {
+                i++;
+            }
         }
-        this.buffer = switch (level) {
-            case S1 -> TruffleString.fromByteArrayUncached(bytes, TruffleString.Encoding.ISO_8859_1, false)
-                    .switchEncodingUncached(TruffleString.Encoding.UTF_32);
-            case S2 -> TruffleString.fromByteArrayUncached(bytes, TruffleString.Encoding.UTF_16, false)
-                    .switchEncodingUncached(TruffleString.Encoding.UTF_32);
-            case S4 -> TruffleString.fromByteArrayUncached(bytes, TruffleString.Encoding.UTF_32, false);
-        };
-        assert buffer.getStringCompactionLevelUncached(TruffleString.Encoding.UTF_32) == level;
-        this.lineStarts = lines;
-        this.size = 1;
     }
 
     public boolean isEmpty() {
-        return buffer.isEmpty();
+        return chars == 0;
     }
 
-    public LineStartList lineStarts() {
+    public IndexList lineStarts() {
         return lineStarts;
     }
 
-    public TruffleString.@Nullable CompactionLevel compactionLevel() {
-        if (bytes == null) {
-            return null;
-        }
-        return buffer.getStringCompactionLevelUncached(TruffleString.Encoding.UTF_8);
+    public int bytes() {
+        return usedBytes;
     }
 
     public int length() {
-        return size;
+        return chars;
     }
 
-    public TruffleString substring(int start, int length) {
-        return StringNodes.substring(buffer, start, length);
-    }
-
-    public int charAt(int index) {
-        return StringNodes.charAt(buffer, index);
-    }
-
-    private StringBuffer ensureCapacity(int extra) {
-        int length = StringNodes.length(buffer);
-        if (size + extra > length) {
-            do {
-                length *= 2;
-            } while (size + extra > length);
-            StringBuffer expanded = new StringBuffer(
-                    buffer.getStringCompactionLevelUncached(TruffleString.Encoding.UTF_32),
-                    this.lineStarts,
-                    length
-            );
-            assert this.bytes != null;
-            assert expanded.bytes != null;
-            System.arraycopy(this.bytes, 0, expanded.bytes, 0, this.bytes.length);
-            expanded.size = this.size;
-            return expanded;
+    public byte[] substring(int startChars, int lengthChars) {
+        if (lengthChars == 0) {
+            return EMPTY_STRING;
         }
-        return this;
+        int start = charIndexToByteIndex(startChars);
+        int end = charIndexToByteIndex(startChars + lengthChars);
+        return Arrays.copyOfRange(bytes, start, end);
     }
 
-    public StringBuffer append(AbstractTruffleString text, int level) {
-        int extra = StringNodes.length(text);
-        if (extra == 0) {
+    public void substring(int startChars, int lengthChars, ByteArrayOutputStream output) {
+        if (lengthChars == 0) {
+            return;
+        }
+        int start = charIndexToByteIndex(startChars);
+        int end = charIndexToByteIndex(startChars + lengthChars);
+        output.write(bytes, start, end - start);
+    }
+
+    public int charIndexToByteIndex(int index) {
+        if (charStarts == null || index <= 0) {
+            return index;
+        }
+
+        if (index == cachedCharIndex) {
+            return cachedByteIndex;
+        }
+
+        int segment = (index - 1) >> 8;
+        int priorByteIndex = charStarts.get(segment);
+        int remainingChars = index - (segment << 8);
+        int byteIndex;
+        if (remainingChars == 0) {
+            byteIndex = priorByteIndex;
+        } else {
+            byteIndex = Utf8Utils.codepointIndexToByteIndex(
+                    bytes, false,
+                    remainingChars, priorByteIndex
+            );
+        }
+        cachedCharIndex = index;
+        cachedByteIndex = byteIndex;
+        return byteIndex;
+    }
+
+    public int charAtSlow(int index) {
+        if (charStarts == null) {
+            return bytes[index] & 0xFF;
+        }
+        int i = charIndexToByteIndex(index);
+        return (int) CodingUtils.readCodepoint(bytes, i);
+    }
+
+    public StringBuffer append(byte[] bytes) {
+        if (bytes.length == 0) {
             return this;
         }
-        StringBuffer buffer = ensureCapacity(extra);
-        assert buffer.bytes != null;
-        assert (buffer.bytes[0] & 0x0F) == (1 << level);
-        switch (level) {
-            case 0 -> {
-                InternalByteArray array = StringNodes.bytes(text, TruffleString.Encoding.ISO_8859_1);
-                System.arraycopy(
-                        array.getArray(),
-                        array.getOffset(),
-                        buffer.bytes,
-                        buffer.size,
-                        array.getLength()
-                );
-            }
-            case 1 -> {
-                InternalByteArray array = StringNodes.bytes(text, TruffleString.Encoding.UTF_16);
-                System.arraycopy(
-                        array.getArray(),
-                        array.getOffset(),
-                        buffer.bytes,
-                        buffer.size * 2,
-                        array.getLength()
-                );
-            }
-            case 2 -> {
-                InternalByteArray array = StringNodes.bytes(text, TruffleString.Encoding.UTF_32);
-                System.arraycopy(
-                        array.getArray(),
-                        array.getOffset(),
-                        buffer.bytes,
-                        buffer.size * 4,
-                        array.getLength()
-                );
-            }
-            default -> throw CompilerDirectives.shouldNotReachHere();
-        }
-        buffer.size += extra;
-        return buffer;
+        int from = this.usedBytes;
+        writeBytes(bytes, 0, bytes.length);
+        updateAppended(from, usedBytes);
+        return this;
     }
 }

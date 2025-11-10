@@ -1,13 +1,13 @@
 plugins {
     id 'java'
     id 'net.ltgt.errorprone'
-    // // JaCoCo transforms the bytecode, which severely impacts how
-    // // Graal/Truffle JIT compile the program.
-    // // (For example, it introduces concurrency constructs to pass
-    // // signals for code coverage, which Graal/Truffle will try to
-    // // inline-&-compile and will eventually bail out because it is
-    // // just too complex.)
-    // id 'jacoco'
+//    // JaCoCo transforms the bytecode, which severely impacts how
+//    // Graal/Truffle JIT compile the program.
+//    // (For example, it introduces concurrency constructs to pass
+//    // signals for code coverage, which Graal/Truffle will try to
+//    // inline-&-compile and will eventually bail out because it is
+//    // just too complex.)
+//    id 'jacoco'
 }
 
 repositories {

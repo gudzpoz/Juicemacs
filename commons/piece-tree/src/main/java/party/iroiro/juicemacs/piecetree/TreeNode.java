@@ -408,12 +408,14 @@ final class TreeNode {
         x.size_left += delta;
         x.lf_left += deltaLf;
 
-        while (x != tree.root && (delta != 0 || deltaLf != 0)) {
-            if (x == x.parent.left) {
-                x.parent.size_left += delta;
-                x.parent.lf_left += deltaLf;
+        if (delta != 0 || deltaLf != 0) {
+            while (x != tree.root) {
+                if (x == x.parent.left) {
+                    x.parent.size_left += delta;
+                    x.parent.lf_left += deltaLf;
+                }
+                x = x.parent;
             }
-            x = x.parent;
         }
     }
 }
