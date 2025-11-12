@@ -89,16 +89,19 @@ public final class LazyConsExpressionNode extends ELispExpressionNode implements
     }
 
     @Override
+    @SuppressWarnings("PMD.TruffleNodeUseInsertToAdoptDynamicChildren")
     public ELispExpressionNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         try {
-            ELispExpressionNode next = updateInnerNode();
+            ELispExpressionNode next = this;
             while (next instanceof LazyConsExpressionNode lazy) {
                 next = lazy.updateInnerNode();
             }
+            InstrumentableNode expanded = next.materializeInstrumentableNodes(materializedTags);
+            if (expanded != next) {
+                next = (ELispExpressionNode) expanded;
+            }
             for (Node child : next.getChildren()) {
-                if (child instanceof InstrumentableNode instrument) {
-                    instrument.materializeInstrumentableNodes(materializedTags);
-                }
+                ConsInlinedAstNode.deepMaterializeNode(child, materializedTags);
             }
             if (!Objects.equals(next.getSourceSection(), getSourceSection())) {
                 next = next.replace(new SourceSectionWrapper(cons, next));

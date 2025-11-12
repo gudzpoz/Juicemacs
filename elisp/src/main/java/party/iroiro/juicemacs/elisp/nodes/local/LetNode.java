@@ -2,8 +2,6 @@ package party.iroiro.juicemacs.elisp.nodes.local;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.jspecify.annotations.Nullable;
 import org.graalvm.collections.Pair;
@@ -18,7 +16,6 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 
 import java.util.ArrayList;
-import java.util.Set;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.LISTP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -169,12 +166,6 @@ public class LetNode extends ELispExpressionNode {
                 scope.close();
             }
         }
-    }
-
-    @Override
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        updateClauses();
-        return this;
     }
 
     private static Pair<ELispExpressionNode[], ELispSymbol[]> parseClauses(Object varlist) {

@@ -137,11 +137,26 @@ public final class ConsInlinedAstNode extends ConsCallNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         for (Node child : inlinedNode.getChildren()) {
-            if (child instanceof InstrumentableNode instrument) {
-                instrument.materializeInstrumentableNodes(materializedTags);
-            }
+            deepMaterializeNode(child, materializedTags);
         }
         return this;
+    }
+
+    public static void deepMaterializeNode(Node child, Set<Class<? extends Tag>> materializedTags) {
+        Node node = child;
+        if (node instanceof LazyConsExpressionNode cons) {
+            node.replace(cons.materializeInstrumentableNodes(materializedTags));
+            return;
+        }
+        if (node instanceof InstrumentableNode instrument) {
+            node = (Node) instrument.materializeInstrumentableNodes(materializedTags);
+        }
+        for (Node childChild : node.getChildren()) {
+            deepMaterializeNode(childChild, materializedTags);
+        }
+        if (node != child) {
+            child.replace(node);
+        }
     }
 
     public static class VarargToArrayNode extends ELispExpressionNode {
