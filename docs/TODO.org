@@ -1,12 +1,5 @@
 #+title: TODO
 
-* TODO [#A] Start-up Performance Regression?
-
-In the past few months I've done quite some things to the codebase, including
-adding array cons and removing it, moving from mule-string to truffle strings,
-etc. Now, =ELispLanguageTest= has become very slow. I suspect that it is due to
-string-related commits, leading to increasing buffer load/parse time.
-
 * TODO [#A] =let/let*= Buffer Local Logic
 
 So, old Emacs had a bug:
@@ -90,86 +83,21 @@ we will need a UI eventually and it /will/ heavily influence our designs. Let's
 build a GUI client and a C/S protocol (like neovim) before we go down the wrong
 way.
 
-* TODO [#A] Buffer & string redesign
+* TODO [#B] Optimize string operations
 
-- Rationale #1: Personally I would like the renderer to be in Rust (because of
-  the vast number of UI libraries there). However, there is a fundamental
-  problem here: most Rust libraries (including std ones) assume UTF-8 coding,
-  while we currently use a compressed UTF-32-like coding, not to mention our
-  code points can go up to =#x3FFFFF=.
-  - Edit: I don't think most of the Rust libraries are that good though. We want
-    out of box support for:
-    - Platform-native font fallback
-    - [[https://www.w3.org/International/articles/inline-bidi-markup/uba-basics][BIDI]] display
-    - [[https://en.wikipedia.org/wiki/Input_method][IME]] support
-    - Glyph level manipulation
-    - Good accessibility
-    I don't think these requirements are nitpicking, but, I mean, not even GTK
-    supports them all (see [[https://www.boringcactus.com/2025/04/13/2025-survey-of-rust-gui-libraries.html][A 2025 Survey of Rust GUI Libraries (13 Apr 2025)]]).
-    Just WTF.
-  - Another problem is that we need to pass strings to Rust via UTF-8 (or Java
-    via UTF-16), and there will be a huge performance penalty if we are to
-    encode strings every single time we redisplay things.
-- Rationale #2: Both Emacs buffers and strings have text properties attached to
-  them, and when a string gets inserted into a buffer, so does its properties.
-  So we definitely do not want two separate interval tree implementation for
-  buffers and strings.
-- Rationale #3: We have a tree for our ropes, and we want another tree for
-  intervals and maybe one more for our marks. What if we merge them?
+There are a few optimizations for string operations:
 
-** Problems
+** Lazy data
 
-1. Since redisplay relies on text properties, I want to make the fields that it
-   relies on "special", like:
+Lazy data for =concat=, useful for nested =concat/format/...= calls.
 
-   #+begin_src java
-     record Interval(@Nullable boolean fontified,
-                     @Nullable Object font,
-                     /* ... */
-                     ELispCons otherProperties
-                     ) {
-     }
-   #+end_src
+** JIT-capable =format=
 
-   However, this can add quite some cost to intervals in strings.
+=format= function calls very often comes with constant format strings. It might
+help if we can turn =(format "example: %d" var)= into =(concat "example"
+(format-%d var)= during JIT.
 
-2. Text properties are mutable, and we hope to get an immutable tree for
-   concurrent redisplay.
-
-3. Performant regexps mandates quick access to buffer texts and string
-   characters. Since we are hoping to JIT-compile regexps, we should also
-   provide inlinable nodes for string/buffer access. Currently there is none and
-   the thing is highly polymorphic and inefficient.
-
-** Thoughts
-
-- Maybe use UTF-8 after all.
-  - We need to support =string-bytes= and =position-bytes=.
-  - Truffle UTF-8 encoding have specialization for ASCII text so it is not that
-    bad?
-- You don't need an actually-immutable tree. Instead you can have a mostly
-  immutable tree where things used in redisplay are immutable (or volatile).
-- Besides redisplay, we also want to ensure we can have concurrent thread (that
-  are guaranteed to never be parallel) editing the same buffer, with the
-  redisplay engine rendering their merged results.
-  - Now thinking of it, no, it is straight out impossible to do this. Consider
-    =buffer-undo-list=: nothing can save you if you are fully exposing your undo
-    data.
-
-** Update on strings
-
-Emacs 31.1 is restricting modifications to strings: [[https://github.com/emacs-mirror/emacs/blob/ebcebaed69cbb2fa0e7206cb3dda910aca452d3b/etc/NEWS#L2927-L2942][Incompatible Lisp Changes in
-Emacs 31.1]]:
-
-#+begin_quote
-'aset' on unibyte strings now requires the new character to be a single byte
-(0-255). On multibyte strings the new character and the character being replaced
-must both be ASCII (0-127).
-#+end_quote
-
-I do think we are good to use =utf-8-emacs= and ditch =TruffleString= now.
-
-** TODO [#B] Regexp redesign
+* TODO [#B] Regexp redesign
 
 So Emacs regexps can change depending on their contexts (e.g., the case tables
 and syntax tables of the current buffer), which makes it a no-go for NFA or DFA
@@ -327,6 +255,8 @@ replace everything on the C end for our own implementation:
 Also, Truffle bytecode DSL supports serialization, which means we might even be
 able to dump the bytecode into =.eln= files and simulate exactly =native-comp=
 behaviors.
+
+** Advantages
 
 * TODO [#C] =add-variable-watcher=
 
@@ -518,6 +448,141 @@ interop, but otherwise simply using some classes with public member should do.
 
 
 * Considered Done (For Now)
+
+** CANCELLED [#A] Start-up Performance Regression?
+
+In the past few months I've done quite some things to the codebase, including
+adding array cons and removing it, moving from mule-string to truffle strings,
+etc. Now, =ELispLanguageTest= has become very slow. I suspect that it is due to
+string-related commits, leading to increasing buffer load/parse time.
+
+** DONE [#A] Buffer & string redesign
+
+- Rationale #1: Personally I would like the renderer to be in Rust (because of
+  the vast number of UI libraries there). However, there is a fundamental
+  problem here: most Rust libraries (including std ones) assume UTF-8 coding,
+  while we currently use a compressed UTF-32-like coding, not to mention our
+  code points can go up to =#x3FFFFF=.
+  - Edit: I don't think most of the Rust libraries are that good though. We want
+    out of box support for:
+    - Platform-native font fallback
+    - [[https://www.w3.org/International/articles/inline-bidi-markup/uba-basics][BIDI]] display
+    - [[https://en.wikipedia.org/wiki/Input_method][IME]] support
+    - Glyph level manipulation
+    - Good accessibility
+    I don't think these requirements are nitpicking, but, I mean, not even GTK
+    supports them all (see [[https://www.boringcactus.com/2025/04/13/2025-survey-of-rust-gui-libraries.html][A 2025 Survey of Rust GUI Libraries (13 Apr 2025)]]).
+    Just WTF.
+  - Another problem is that we need to pass strings to Rust via UTF-8 (or Java
+    via UTF-16), and there will be a huge performance penalty if we are to
+    encode strings every single time we redisplay things.
+- Rationale #2: Both Emacs buffers and strings have text properties attached to
+  them, and when a string gets inserted into a buffer, so does its properties.
+  So we definitely do not want two separate interval tree implementation for
+  buffers and strings.
+- Rationale #3: We have a tree for our ropes, and we want another tree for
+  intervals and maybe one more for our marks. What if we merge them?
+
+*** CANCELLED Problems
+
+1. Since redisplay relies on text properties, I want to make the fields that it
+   relies on "special", like:
+
+   #+begin_src java
+     record Interval(@Nullable boolean fontified,
+                     @Nullable Object font,
+                     /* ... */
+                     ELispCons otherProperties
+                     ) {
+     }
+   #+end_src
+
+   However, this can add quite some cost to intervals in strings.
+
+2. Text properties are mutable, and we hope to get an immutable tree for
+   concurrent redisplay.
+
+3. Performant regexps mandates quick access to buffer texts and string
+   characters. Since we are hoping to JIT-compile regexps, we should also
+   provide inlinable nodes for string/buffer access. Currently there is none and
+   the thing is highly polymorphic and inefficient.
+
+*** Thoughts
+
+- Maybe use UTF-8 after all.
+  - We need to support =string-bytes= and =position-bytes=.
+  - Truffle UTF-8 encoding have specialization for ASCII text so it is not that
+    bad?
+- You don't need an actually-immutable tree. Instead you can have a mostly
+  immutable tree where things used in redisplay are immutable (or volatile).
+- Besides redisplay, we also want to ensure we can have concurrent thread (that
+  are guaranteed to never be parallel) editing the same buffer, with the
+  redisplay engine rendering their merged results.
+  - Now thinking of it, no, it is straight out impossible to do this. Consider
+    =buffer-undo-list=: nothing can save you if you are fully exposing your undo
+    data.
+
+*** Update on strings
+
+Emacs 31.1 is restricting modifications to strings: [[https://github.com/emacs-mirror/emacs/blob/ebcebaed69cbb2fa0e7206cb3dda910aca452d3b/etc/NEWS#L2927-L2942][Incompatible Lisp Changes in
+Emacs 31.1]]:
+
+#+begin_quote
+'aset' on unibyte strings now requires the new character to be a single byte
+(0-255). On multibyte strings the new character and the character being replaced
+must both be ASCII (0-127).
+#+end_quote
+
+I do think we are good to use =utf-8-emacs= and ditch =TruffleString= now.
+
+*** Plan
+
+I'll start with a third refactoring of strings... A bit of history: we started
+with =TruffleString=, replaced it with our =MuleString= (with a auto-compacting
+UTF-32 encoding) to handle =utf-8-emacs= encoding, and switched back to
+=TruffleString= for better JIT support. However, it turns out that
+=TruffleString= is really cumbersome to use: it doesn't handle =utf-8-emacs= and
+we have to do a bunch of nasty things; it hides its internals really well,
+meaning that we are limited by what its API exposes, which is not much
+considering the flexibility of Emacs.
+
+So here is the plan:
+
+- Use =utf-8-emacs= as the encoding.
+
+  We will no longer use our auto-compacting UTF-32 coding, but instead switch to
+  the coding used by GNU Emacs. This gives us the following benefits:
+
+  - Copy-only or even copy-free string creation is now possible if the text (or
+    probably files) are encoded in UTF-8, which is very likely.
+
+  - Some Emacs API can be easier to implement, like =string-bytes=.
+
+  - We can still use =TruffleString= nodes for some strictly UTF-8 string
+    operations. For example, when reading from files, we can use
+    =TruffleString.FromByteArrayNode= to test if the string is in UTF-8, so as
+    to use the vectorized intrinsics provided by Truffle/Graal.
+
+- We will have lazy string creation/concatenation nodes, just like
+  =TruffleString=, but much simpler.
+
+  Looking at some ELisp code, it is really common to have non-trivial string
+  creation. And this should also help with =(insert (format "..."))=.
+
+*** DONE Object Design
+
+- Specialized data
+  - Bytes
+  - Lazy nodes (todo)
+    - Lazy concat
+    - Lazy integer
+    - Lazy repeat
+    - Lazy substring
+  - Off-heap memory (todo)
+- Hash caching
+- State: =ASCII=, =UTF-8=, =utf-8-emacs=
+  - Maybe we should merge hash & state into a single field.
+- Length (=long=)
 
 ** DONE [#A] Use =ert.el=
 

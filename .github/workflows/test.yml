@@ -19,6 +19,8 @@ on:
 permissions:
   checks: write
   pull-requests: write
+  deployments: write
+  contents: write
 
 jobs:
   elisp-test:
@@ -97,16 +99,40 @@ jobs:
           ./gradlew --info --stacktrace :commons:piece-tree:test   || true
           ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true
           ./gradlew --info --stacktrace :elisp:test                || true
-      - name: Native Image Generation
-        run: |
-          ./gradlew :app:nativeCompile || true
-
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: (!cancelled())
         with:
           files: |
-              **/build/test-results/**/*.xml
+            **/build/test-results/**/*.xml
+
+      - name: Prepare Benchmark Data
+        run: |
+          cd elisp
+          jq -s add build/reports/elisp/benchmarks-*.json > build/reports/elisp/benchmarks.json
+      - name: Download Previous Benchmark Data
+        uses: actions/cache@v4
+        with:
+          path: ./build/reports/elisp/prev
+          key: ${{ runner.os }}-benchmark
+      - name: Store Benchmark Results
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name != 'pull_request'
+        with:
+          tool: 'customSmallerIsBetter'
+          output-file-path: elisp/build/reports/elisp/benchmarks.json
+          external-data-json-path: elisp/build/reports/elisp/prev/benchmarks.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+
+      - name: Native Image Generation
+        run: |
+          ./gradlew :app:nativeCompile || true
+      - name: Test Native Image
+        run: |
+          cd app
+          build/native/nativeCompile/elisp-repl --dump=pdump
+          echo "(byte-compile '(lambda () 42))" | build/native/nativeCompile/elisp-repl --dump-file=./emacs.pdmp
 
       - name: Build Shadow Jar
         run: |

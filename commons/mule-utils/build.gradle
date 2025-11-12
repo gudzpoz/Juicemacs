@@ -1,0 +1,8 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+dependencies {
+    api libs.graalvm.truffle.api
+    annotationProcessor libs.graalvm.dsl.processor
+}

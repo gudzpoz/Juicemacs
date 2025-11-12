@@ -4,13 +4,17 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.TestingUtils.createOut;
 import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 
@@ -140,6 +144,63 @@ public class ELispBenchmarksTest {
                         (setq load-suffixes '(".el"))""");
             }
             context.eval("elisp", benchmarkRun);
+            exportBenchmarkOutput(out, byteCompile);
         }
+    }
+
+    private void exportBenchmarkOutput(ByteArrayOutputStream out, boolean byteCompile) throws IOException {
+        String output = out.toString(StandardCharsets.UTF_8);
+        String heading = "* Results";
+        int start = output.lastIndexOf(heading);
+        assertNotEquals(-1, start);
+        start += heading.length();
+        String table = output.substring(start).trim();
+        String[] rows = table.split("\n");
+        assertEquals("|test|non-gc avg (s)|gc avg (s)|gcs avg|tot avg (s)|tot avg err (s)", rows[0].trim());
+
+        List<BenchmarkCase> cases = new ArrayList<>();
+        for (int i = 1; i < rows.length; i++) {
+            String row = rows[i].trim();
+            if (row.equals("|-")) {
+                continue;
+            }
+            String[] columns = row.split("\\|");
+            assertEquals("", columns[0]);
+            String name = columns[1].trim();
+            double nonGcAvg = Double.parseDouble(columns[2].trim());
+            double gcAvg = Double.parseDouble(columns[3].trim());
+            int gcs = Integer.parseInt(columns[4].trim());
+            double totAvg = Double.parseDouble(columns[5].trim());
+            double totAvgErr = Double.parseDouble(columns[6].trim());
+            cases.add(new BenchmarkCase(name, nonGcAvg, gcAvg, gcs, totAvg, totAvgErr));
+        }
+
+        String variant = byteCompile ? "elc" : "el";
+        Path jsonPath = Paths.get(
+                "build", "reports", "elisp",
+                "benchmarks-" + variant + ".json"
+        );
+        assertDoesNotThrow(() -> jsonPath.getParent().toFile().mkdirs());
+        try (BufferedWriter writer = Files.newBufferedWriter(jsonPath)) {
+            writer.write("[\n");
+            for (int i = 0; i < cases.size(); i++) {
+                BenchmarkCase bench = cases.get(i);
+                writer.write("""
+                          {
+                            "name": "%s-%s",
+                            "unit": "s",
+                            "value": %f
+                          }%s
+                        """.formatted(
+                        bench.name, variant,
+                        bench.totAvg,
+                        i == cases.size() - 1 ? "" : ","
+                ));
+            }
+            writer.write("]\n");
+        }
+    }
+
+    record BenchmarkCase(String name, double nonGcAvg, double gcAvg, int gcs, double totAvg, double totAvgErr) {
     }
 }
