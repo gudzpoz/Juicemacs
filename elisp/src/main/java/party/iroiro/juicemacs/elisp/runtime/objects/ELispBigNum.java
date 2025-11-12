@@ -117,7 +117,7 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
 
     @TruffleBoundary
     public Number reciprocal() {
-        return BigInteger.ONE.divide(value);
+        return wrap(BigInteger.ONE.divide(value));
     }
 
     @TruffleBoundary

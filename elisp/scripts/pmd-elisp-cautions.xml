@@ -76,7 +76,7 @@
                 [./ExtendsList/ClassType[pmd-java:typeIs("party.iroiro.juicemacs.elisp.forms.ELispBuiltIns")]]
                 //CastExpression
                 [not(
-                  ./PrimitiveType[@Kind="int" or @Kind="long" or @Kind="byte"]
+                  ./PrimitiveType[@Kind="int" or @Kind="long" or @Kind="byte" or @Kind="double"]
                   or ./ClassType[pmd-java:typeIs("java.lang.Object")]
                 )]
                 /*[2][pmd-java:typeIs("java.lang.Object")]

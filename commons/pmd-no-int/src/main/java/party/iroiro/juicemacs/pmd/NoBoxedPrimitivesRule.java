@@ -9,7 +9,7 @@ import net.sourceforge.pmd.lang.java.types.JTypeMirror;
 import net.sourceforge.pmd.lang.rule.RuleTargetSelector;
 import net.sourceforge.pmd.properties.PropertyDescriptor;
 import net.sourceforge.pmd.properties.PropertyFactory;
-import org.checkerframework.checker.nullness.qual.NonNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 import java.util.Objects;
@@ -36,7 +36,8 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
     }
 
     @Override
-    protected @NonNull RuleTargetSelector buildTargetSelector() {
+    @NonNull
+    protected RuleTargetSelector buildTargetSelector() {
         return RuleTargetSelector.forTypes(
                 ASTArgumentList.class,
                 ASTArrayInitializer.class,
@@ -233,10 +234,6 @@ public class NoBoxedPrimitivesRule extends AbstractJavaRule {
 
         public String getName() {
             return name;
-        }
-
-        public JPrimitiveType.PrimitiveTypeKind getKind() {
-            return kind;
         }
     }
 }

@@ -459,6 +459,7 @@ public class BuiltInFloatFns extends ELispBuiltIns {
             return exptBigNum(n1, n2);
         }
 
+        @TruffleBoundary
         private static Object exptBigNum(Number base, Number exp) {
             if (exp instanceof Long e && e < 0) {
                 return Math.pow(base.doubleValue(), (double) e);
@@ -468,18 +469,17 @@ public class BuiltInFloatFns extends ELispBuiltIns {
             // exp >= 0:
             if (base instanceof Long b) {
                 if (b == 0) { // exp == 0: handled by expGeneric
-                    return 0;
+                    return 0L;
                 } else if (b == 1) {
-                    return 1;
+                    return 1L;
                 } else if (b == -1) {
                     boolean odd = exp instanceof ELispBigNum bigNum
                             ? bigNum.asBigInteger().testBit(0)
                             : (asLong(exp) & 1) != 0;
-                    return odd ? -1 : 1;
+                    return odd ? -1L : 1L;
                 }
             }
 
-            int expI;
             if (exp instanceof ELispBigNum) {
                 throw ELispSignals.overflowError();
             }
@@ -487,11 +487,11 @@ public class BuiltInFloatFns extends ELispBuiltIns {
             if (expL > Integer.MAX_VALUE) {
                 throw ELispSignals.overflowError();
             }
-            expI = (int) expL;
+            int expI = (int) expL;
 
             BigInteger big1 = base instanceof ELispBigNum big ? big.asBigInteger() : BigInteger.valueOf(asLong(base));
             try {
-                return big1.pow(expI);
+                return ELispBigNum.wrap(big1.pow(expI));
             } catch (ArithmeticException overflow) {
                 throw ELispSignals.overflowError();
             }
