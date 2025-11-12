@@ -24,6 +24,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentFrame;
@@ -633,6 +634,33 @@ public final class ValueStorage implements Externalizable {
         @Override
         Object typeCheck(Object o) {
             return o;
+        }
+    }
+
+    public static final class ComputedForward extends AbstractForwarded<Object> {
+        private final Supplier<?> updater;
+
+        @TruffleBoundary
+        public ComputedForward(Supplier<?> updater) {
+            super(updater.get());
+            this.updater = updater;
+        }
+
+        @Override
+        Object defaultValue() {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        Object typeCheck(Object o) {
+            return o;
+        }
+
+        @Override
+        @TruffleBoundary
+        public Object getValue() {
+            value = updater.get();
+            return value;
         }
     }
 

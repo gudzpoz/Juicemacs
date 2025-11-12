@@ -387,10 +387,10 @@ public class BuiltInAlloc extends ELispBuiltIns {
     public abstract static class FGarbageCollect extends ELispBuiltInBaseNode {
         @TruffleBoundary
         @Specialization
-        public static ELispCons garbageCollect() {
+        public static boolean garbageCollect() {
             Runtime.getRuntime().gc();
             // TODO: Return info
-            return ELispCons.listOf(false);
+            return false;
         }
     }
 

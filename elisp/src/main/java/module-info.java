@@ -27,6 +27,9 @@ module party.iroiro.juicemacs.elisp {
     requires org.graalvm.truffle;
     requires org.graalvm.polyglot;
 
+    // Java
+    requires java.management;
+
     // Juicemacs
     requires party.iroiro.juicemacs.piecetree;
     requires party.iroiro.juicemacs.mule;

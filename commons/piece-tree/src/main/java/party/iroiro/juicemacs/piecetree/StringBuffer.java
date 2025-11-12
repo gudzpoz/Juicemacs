@@ -113,6 +113,10 @@ final class StringBuffer extends ByteArrayBuilder {
         return chars;
     }
 
+    public byte[] inner() {
+        return bytes;
+    }
+
     public byte[] substring(int startChars, int lengthChars) {
         if (lengthChars == 0) {
             return EMPTY_STRING;

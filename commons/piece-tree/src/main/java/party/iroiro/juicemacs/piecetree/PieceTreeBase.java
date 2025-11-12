@@ -985,13 +985,13 @@ public final class PieceTreeBase {
     private record Index(int index, int remainder) {
     }
 
-    private class CharIterator implements PrimitiveIterator.OfInt {
+    public final class NodeIterator implements PrimitiveIterator.OfInt {
         private TreeNode currentNode;
         private int cachedStartOffset;
         private int current;
         private long remainder;
 
-        public CharIterator(long start, long end) {
+        public NodeIterator(long start, long end) {
             NodePosition startPosition = nodeAt(start);
             currentNode = startPosition.node;
             cachedStartOffset = -1;
@@ -1001,14 +1001,7 @@ public final class PieceTreeBase {
 
         @Override
         public int nextInt() {
-            if (!hasNext()) {
-                throw new NoSuchElementException();
-            }
-            // currentNode must have extra chars after calling hasNext
-            Piece piece = currentNode.piece;
-            if (cachedStartOffset == -1) {
-                cachedStartOffset = offsetInBuffer(piece.bufferIndex, piece.start);
-            }
+            Piece piece = checkPieceHasNext();
             StringBuffer buffer = buffers.get(piece.bufferIndex);
             remainder--;
             return buffer.charAtSlow(cachedStartOffset + current++);
@@ -1030,16 +1023,43 @@ public final class PieceTreeBase {
             }
             return false;
         }
+
+        public NodePiece nextNode() {
+            Piece piece = checkPieceHasNext();
+            StringBuffer buffer = buffers.get(piece.bufferIndex);
+            int startByte = buffer.charIndexToByteIndex(cachedStartOffset + current);
+            int currentRemaining = (int) Math.min(piece.length - current, remainder);
+            int endByte = buffer.charIndexToByteIndex(cachedStartOffset + currentRemaining);
+            int codePoints = currentRemaining - current;
+            current += currentRemaining;
+            remainder -= currentRemaining;
+            return new NodePiece(buffer.inner(), startByte, endByte, codePoints);
+        }
+
+        private Piece checkPieceHasNext() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            // currentNode must have extra chars after calling hasNext
+            Piece piece = currentNode.piece;
+            if (cachedStartOffset == -1) {
+                cachedStartOffset = offsetInBuffer(piece.bufferIndex, piece.start);
+            }
+            return piece;
+        }
+
+        public record NodePiece(byte[] bytes, int startByte, int endByte, int codePoints) {
+        }
     }
 
-    public PrimitiveIterator.OfInt iterator(long start, long end) {
-        return new CharIterator(start, end);
+    public NodeIterator iterator(long start, long end) {
+        return new NodeIterator(start, end);
     }
 
     public IntStream chars() {
         return StreamSupport.intStream(() ->
                         Spliterators.spliterator(
-                                new CharIterator(0, getLength()),
+                                new NodeIterator(0, getLength()),
                                 getLength(),
                                 Spliterator.ORDERED),
                 Spliterator.SUBSIZED | Spliterator.SIZED | Spliterator.ORDERED,

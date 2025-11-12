@@ -127,7 +127,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         )));
     }
 
-    public PrimitiveIterator.OfInt iterator(long start, long end) {
+    public PieceTreeBase.NodeIterator iterator(long start, long end) {
         return content.iterator(start - 1, end - 1);
     }
 

@@ -101,6 +101,7 @@ public final class ELispPortableDumper {
                 // Symbols
                 ELispSymbol[].class,
                 PlainValue.class,
+                ComputedForward.class,
                 Forwarded.class,
                 ForwardedBool.class,
                 ForwardedLong.class,
@@ -181,6 +182,8 @@ public final class ELispPortableDumper {
                 BuiltInWindow.class,
                 BuiltInXDisp.class,
                 BuiltInXFaces.class,
+                ELispGlobals.GcElapsed.class,
+                ELispGlobals.GcsDone.class,
         };
         for (Class<?> builtIn : classes) {
             fory.register(builtIn);

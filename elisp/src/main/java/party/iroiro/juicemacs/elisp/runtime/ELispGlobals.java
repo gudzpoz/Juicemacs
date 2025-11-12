@@ -17,7 +17,10 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.File;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Paths;
+import java.util.function.Supplier;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.FDefineCodingSystemInternal.defineCodingSystemInternal;
@@ -155,6 +158,27 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private void makeInitialWindowFrame() {
         ctx.language().currentFrame().setValue(new ELispFrame());
     }
+
+    public static final class GcsDone implements Supplier<Long> {
+        @Override
+        public Long get() {
+            long done = 0;
+            for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                done += gc.getCollectionCount();
+            }
+            return done;
+        }
+    }
+    public static final class GcElapsed implements Supplier<Double> {
+        @Override
+        public Double get() {
+            double elapsed = 0;
+            for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+                elapsed += gc.getCollectionTime() / 1000.0;
+            }
+            return elapsed;
+        }
+    }
     //#endregion extra globals
 
     //#region initGlobalVariables
@@ -176,6 +200,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
         compVars();
         compositeVars();
         dataVars();
+        decompressVars();
         diredVars();
         dispnewVars();
         docVars();
@@ -223,8 +248,8 @@ public final class ELispGlobals extends ELispGlobalsBase {
     private final ValueStorage.Forwarded postGcHook = new ValueStorage.Forwarded(false);
     private final ValueStorage.Forwarded memorySignalData = new ValueStorage.Forwarded();
     private final ValueStorage.Forwarded memoryFull = new ValueStorage.Forwarded(false);
-    private final ValueStorage.Forwarded gcElapsed = new ValueStorage.Forwarded(0.0);
-    private final ValueStorage.ForwardedLong gcsDone = new ValueStorage.ForwardedLong(0);
+    private final ValueStorage.ComputedForward gcElapsed = new ValueStorage.ComputedForward(new GcElapsed());
+    private final ValueStorage.ComputedForward gcsDone = new ValueStorage.ComputedForward(new GcsDone());
     private final ValueStorage.ForwardedLong integerWidth = new ValueStorage.ForwardedLong();
     private void allocVars() {
         initForwardTo(GC_CONS_THRESHOLD, gcConsThreshold);
@@ -507,6 +532,10 @@ public final class ELispGlobals extends ELispGlobalsBase {
         initForwardTo(MOST_POSITIVE_FIXNUM, mostPositiveFixnum);
         initForwardTo(MOST_NEGATIVE_FIXNUM, mostNegativeFixnum);
         initForwardTo(SYMBOLS_WITH_POS_ENABLED, symbolsWithPosEnabled);
+    }
+
+    private void decompressVars() {
+
     }
     private final ValueStorage.Forwarded completionIgnoredExtensions = new ValueStorage.Forwarded(false);
     private void diredVars() {
