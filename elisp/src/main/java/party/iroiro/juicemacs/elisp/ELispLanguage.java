@@ -80,6 +80,14 @@ public final class ELispLanguage extends TruffleLanguage<ELispContext> {
     )
     public static final OptionKey<Boolean> TRUFFLE_DEBUG = new OptionKey<>(false);
 
+    @Option(
+            name = "convertUnsupportedException",
+            help = "Convert UnsupportedOperationException to a signal.",
+            category = OptionCategory.EXPERT,
+            stability = OptionStability.EXPERIMENTAL
+    )
+    public static final OptionKey<Boolean> CONVERT_UNSUPPORTED_EXCEPTION = new OptionKey<>(false);
+
     private static final LanguageReference<ELispLanguage> REFERENCE = LanguageReference.create(ELispLanguage.class);
 
     public final SharedIndicesMap globalVariablesMap = new SharedIndicesMap();

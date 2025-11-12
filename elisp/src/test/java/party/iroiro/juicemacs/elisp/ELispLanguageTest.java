@@ -78,7 +78,10 @@ public class ELispLanguageTest {
             System.out.println("Output: " + file);
             tryDump(true, out);
             tryDump(false, out);
-            try (Context context = TestingUtils.getContextBuilder(out).option("elisp.dumpFile", "emacs.pdmp").build()) {
+            try (Context context = TestingUtils.getContextBuilder(out)
+                    .option("elisp.dumpFile", "emacs.pdmp")
+                    .option("elisp.convertUnsupportedException", "true")
+                    .build()) {
                 try {
                     context.eval("elisp", "(eval top-level)");
                 } catch (PolyglotException e) {

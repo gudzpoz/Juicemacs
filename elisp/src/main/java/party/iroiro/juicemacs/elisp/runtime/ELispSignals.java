@@ -293,6 +293,16 @@ public abstract class ELispSignals {
             }
             case ELispSignals.ELispSignalException signal -> ELispSignals.attachLocation(signal, location);
             case ArithmeticException _ -> ELispSignals.arithError();
+            case UnsupportedOperationException _ -> {
+                // - If Juicemacs ever gets mature enough, we should make this a lisp error.
+                // - But currently, for development purposes, knowing exactly where this exception
+                //   is thrown is very useful, so, by default, UnsupportedOperationException is
+                //   non-catchable from lisp code, to provide a clear stack trace.
+                if (ELispContext.get(location).options().catchUnsupported()) {
+                    yield ELispSignals.error(Objects.requireNonNullElse(e.getMessage(), "unsupported"));
+                }
+                yield null;
+            }
             default -> null;
         };
         return mapped == null ? e : ELispSignals.attachLocation(mapped, location);

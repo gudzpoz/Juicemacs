@@ -234,7 +234,8 @@ public final class ELispContext implements ELispParser.InternContext {
             boolean hardExit,
             String pdump,
             @Nullable String dumpFile,
-            boolean debug
+            boolean debug,
+            boolean catchUnsupported
     ) {
         public static Options load(TruffleLanguage.Env env) {
             OptionValues options = env.getOptions();
@@ -244,8 +245,9 @@ public final class ELispContext implements ELispParser.InternContext {
             String dumpFile = options.get(ELispLanguage.DUMP_FILE);
             dumpFile = dumpFile.isEmpty() ? null : dumpFile;
             boolean debug = options.get(ELispLanguage.TRUFFLE_DEBUG);
+            boolean catchUnsupported = options.get(ELispLanguage.CONVERT_UNSUPPORTED_EXCEPTION);
 
-            return new Options(invalidations, hardExit, pdump, dumpFile, debug);
+            return new Options(invalidations, hardExit, pdump, dumpFile, debug, catchUnsupported);
         }
     }
 
