@@ -39,12 +39,11 @@ List<String> getGraalVMArgs() {
 }
 int preferredJvmVersion() {
     if (!isGraalVM()) {
-        // org.graalvm.compiler:compiler does not seem to support JDK 24 yet.
-        return 23
+        return 25
     }
     String version = System.getProperty("java.version")
     String major = version.split("\\.")[0]
-    return Math.max(Integer.parseInt(major), 23)
+    return Math.max(Integer.parseInt(major), 25)
 }
 
 ext {

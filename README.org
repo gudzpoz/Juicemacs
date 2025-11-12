@@ -1,7 +1,7 @@
 #+title: Juicemacs - An absolutely-not-solid Emacs implementation
 
 [[https://justforfunnoreally.dev][https://img.shields.io/badge/justforfunnoreally-dev-9ff.svg]]
-[[https://openjdk.org/projects/jdk/23/][https://img.shields.io/badge/Java-23-orange.svg?logo=openjdk&ext=.svg]]
+[[https://openjdk.org/projects/jdk/25/][https://img.shields.io/badge/Java-25-orange.svg?logo=openjdk&ext=.svg]]
 [[https://github.com/gudzpoz/Juicemacs/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/gudzpoz/Juicemacs/test.yml?ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
@@ -33,7 +33,7 @@ bytecode) and enough built-in routines implemented to handle =pdump=. It
 usually stops when =top-level= tries to use unimplemented UI subroutines.
 
 To run it:
-1. Make sure to have JDK 23 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
+1. Make sure to have JDK 25 installed (preferably [[https://github.com/graalvm/graalvm-ce-builds/releases/][graalvm-ce]]).
 2. Clone the repository, go to [[file:elisp/emacs/]] and build a GNU Emacs to have
    all the generated data/elisp files ready.
 3. Run =sh -c "cd app && $(./gradlew -q :app:jvmCmd)"= (in the project root) for
