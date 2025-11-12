@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.elisp.forms;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
@@ -7,23 +8,30 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.polyglot.SandboxPolicy;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FConcat;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FSubstring;
+import party.iroiro.juicemacs.elisp.forms.BuiltInPrint.FPrin1ToString;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
+import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.PrimitiveIterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CASE_FOLD_SEARCH;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SYSTEM_NAME;
@@ -33,6 +41,222 @@ public class BuiltInEditFns extends ELispBuiltIns {
     @Override
     protected List<? extends NodeFactory<? extends ELispBuiltInBaseNode>> getNodeFactories() {
         return BuiltInEditFnsFactory.getFactories();
+    }
+
+    sealed interface FormatPiece {}
+
+    /// @param from index of the first character
+    /// @param to   index of the last character plus one
+    record FormatText(long from, long to) implements FormatPiece {}
+
+    /// See [FFormat] for more info
+    /// @param from the index of the `@` character, from where text properties should be copied
+    record FormatSub(int field, int flags, int width, int precision, int type, int from) implements FormatPiece {
+        private static final Pattern SPECIFIER_PATTERN =
+                Pattern.compile("^([0-9]+\\$)?([+ #0-]+)?([0-9]+)?(\\.[0-9]+)?");
+        private static final int FLAG_PLUS = 1;
+        private static final int FLAG_SPACE = 2;
+        private static final int FLAG_ALT = 4;
+        private static final int FLAG_ZERO = 8;
+        private static final int FLAG_MINUS = 16;
+        private static boolean isSpecifier(int c) {
+            return "0123456789$ #0-.".indexOf(c) != -1;
+        }
+
+        static FormatSub parse(Matcher matcher, int type, int from) {
+            String fieldS = matcher.group(1);
+            int field = fieldS == null ? -1 : Integer.parseInt(fieldS.substring(0, fieldS.length() - 1));
+            int flags = parseFlags(matcher);
+            String widthS = matcher.group(3);
+            int width = widthS == null ? -1 : Integer.parseInt(widthS);
+            String precisionS = matcher.group(4);
+            int precision = precisionS == null ? -1 : Integer.parseInt(precisionS.substring(1));
+            if ("sdoxXefgcS".indexOf(type) == -1) {
+                throw ELispSignals.error("Invalid format operation: " + (char) type);
+            }
+            return new FormatSub(field, flags, width, precision, type, from);
+        }
+
+        private static int parseFlags(Matcher matcher) {
+            int flags = 0;
+            String flagsS = matcher.group(2);
+            if (flagsS != null) {
+                if (flagsS.contains("0")) { flags = FLAG_ZERO;  } // left-pad zeroes
+                if (flagsS.contains("-")) { flags = FLAG_MINUS; } // right-pad space, precedence over zero
+                if (flagsS.contains("+")) { flags |= FLAG_PLUS; }
+                else if (flagsS.contains(" ")) { flags |= FLAG_SPACE; } // plus precedes space
+                if (flagsS.contains("#")) { flags |= FLAG_ALT; }
+            }
+            return flags;
+        }
+
+        @TruffleBoundary
+        ELispString format(Object arg) {
+            return switch (type) {
+                case 'c', 's', 'S' -> {
+                    ELispString s = switch (type) {
+                        case 'S' -> FPrin1ToString.prin1ToString(arg, false, false);
+                        case 's' -> switch (arg) {
+                            case ELispString string -> string;
+                            case ELispSymbol symbol -> symbol.name();
+                            default -> ELispPrint.toString(arg);
+                        };
+                        case 'c' -> {
+                            if (!(arg instanceof Long l)) {
+                                throw ELispSignals.error("Invalid format argument: " + arg);
+                            }
+                            yield new ELispString.Builder().append(asChar(l)).build();
+                        }
+                        default -> throw CompilerDirectives.shouldNotReachHere();
+                    };
+                    if (width != -1 && s.length() < width) {
+                        ELispString spaces = new ELispString(" ".repeat(width - s.length()));
+                        Object[] segments = (flags & FLAG_MINUS) == 0
+                                ? new Object[]{spaces, s}
+                                : new Object[]{s, spaces};
+                        yield FConcat.concat(segments);
+                    }
+                    yield s;
+                }
+                case 'd', 'o', 'x', 'X' -> {
+                    Object num = switch (arg) {
+                        case Long l -> l;
+                        case ELispBigNum n -> n.asBigInteger();
+                        case Double d -> new BigDecimal(d).toBigInteger();
+                        default -> throw ELispSignals.error("Invalid format argument: " + arg);
+                    };
+                    yield new ELispString(String.format(getJavaFormat(), num));
+                }
+                case 'e', 'f', 'g' -> {
+                    if (!(arg instanceof Number n)) {
+                        throw ELispSignals.error("Invalid format argument: " + arg);
+                    }
+                    double d = n.doubleValue();
+                    yield new ELispString(String.format(getJavaFormat(), d));
+                }
+                default -> throw ELispSignals.error("Invalid format operation: " + (char) type);
+            };
+        }
+
+        String getJavaFormat() {
+            StringBuilder sb = new StringBuilder("%");
+            if ((flags & FLAG_ALT) != 0) { sb.append('#'); }
+            if ((flags & FLAG_PLUS) != 0) { sb.append('+'); }
+            else if ((flags & FLAG_SPACE) != 0) { sb.append(' '); }
+            if ((flags & FLAG_MINUS) != 0) { sb.append('-'); }
+            else if ((flags & FLAG_ZERO) != 0) { sb.append('0'); }
+            if (width != -1) { sb.append(width); }
+            sb.append((char) type);
+            return sb.toString();
+        }
+    }
+
+    private static final class FormatStringParser {
+        private final ELispString string;
+
+        private static final int STATE_TEXT = 0;
+        private static final int STATE_PEEK = 1;
+        private final ArrayList<FormatPiece> pieces = new ArrayList<>();
+        private int from = 0;
+        private int to = 0;
+
+        private FormatStringParser(ELispString string) {
+            this.string = string;
+        }
+
+        private int nextChar() {
+            if (to == string.length()) {
+                throw ELispSignals.error("Format string ends in middle of format specifier");
+            }
+            return string.codePointAt(to++);
+        }
+
+        private void commitText(int actualTo) {
+            if (from < actualTo) {
+                pieces.add(new FormatText(from, actualTo));
+            }
+            from = to;
+        }
+
+        FormatPiece[] parse() {
+            // TODO: allow JIT-compiling
+            int state = 0;
+            int peek = 0;
+            while (true) {
+                switch (state) {
+                    case STATE_TEXT -> {
+                        if (to == string.length()) {
+                            commitText(to);
+                            return pieces.toArray(new FormatPiece[0]);
+                        }
+                        peek = nextChar();
+                        if (peek == '%') {
+                            state = STATE_PEEK;
+                        }
+                    }
+                    case STATE_PEEK -> {
+                        peek = nextChar();
+                        if (peek == '%') {
+                            commitText(to - 1);
+                        } else {
+                            commitText(to - 2);
+                            parseSubstitution(peek);
+                        }
+                        state = STATE_TEXT;
+                    }
+                }
+            }
+        }
+
+        private void parseSubstitution(int c) {
+            StringBuilder specBuilder = new StringBuilder();
+            while (FormatSub.isSpecifier(c)) {
+                specBuilder.appendCodePoint(c);
+                c = nextChar();
+            }
+            Matcher matcher = FormatSub.SPECIFIER_PATTERN.matcher(specBuilder);
+            boolean matches = matcher.matches();
+            assert matches; // zero-width always possible
+            if (matcher.end() != specBuilder.length()) {
+                throw ELispSignals.error("Invalid format operation %" + specBuilder.charAt(matcher.end()));
+            }
+            pieces.add(FormatSub.parse(matcher, c, from - 2));
+            from = to;
+        }
+    }
+
+    private record Formatter(ELispString source, FormatPiece[] pieces) {
+        ELispString format(Object[] args) {
+            long[] propertiesTargetIndices = new long[pieces.length];
+            ELispString.Builder sb = new Builder();
+            int argI = 0;
+            long at = 0;
+            for (int i = 0; i < pieces.length; i++) {
+                FormatPiece piece = pieces[i];
+                propertiesTargetIndices[i] = at;
+                switch (piece) {
+                    case FormatText text -> {
+                        at += text.to - text.from;
+                        sb.append(FSubstring.substring(source, text.from, text.to));
+                    }
+                    case FormatSub sub -> {
+                        Object arg;
+                        if (sub.field == -1) {
+                            arg = args[argI++];
+                        } else if (sub.field > 0) {
+                            arg = args[sub.field - 1];
+                        } else {
+                            arg = source;
+                        }
+                        ELispString formatted = sub.format(arg);
+                        at += formatted.length();
+                        sb.append(formatted);
+                    }
+                }
+            }
+            // TODO: copy properties
+            return sb.build();
+        }
     }
 
     /**
@@ -1851,16 +2075,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @TruffleBoundary
         @Specialization
         public static ELispString format(ELispString string, Object[] objects) {
-            // TODO
-            String s = string.toString();
-            for (int i = 0; i < objects.length; i++) {
-                Object o = objects[i];
-                if (o instanceof Long l && 0 <= l && l <= MAX_CHAR) {
-                    objects[i] = l.intValue(); // NOPMD
-                }
-            }
-            s = s.replace("%S", "%s");
-            return new ELispString(String.format(s, objects));
+            ELispString s = asStr(string);
+            FormatPiece[] pieces = new FormatStringParser(s).parse();
+            return new Formatter(s, pieces).format(objects);
         }
     }
 
