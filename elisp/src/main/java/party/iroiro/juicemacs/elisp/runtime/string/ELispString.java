@@ -152,20 +152,23 @@ public final class ELispString implements TruffleObject, ELispValue {
     }
 
     @Override
+    @TruffleBoundary
     public String toString() {
-        if ((state & STATE_BYTES) != 0) {
-            return toDisplayString(true);
+        int state = state();
+        if (state == STATE_ASCII || state == STATE_UTF_8) {
+            return new String(bytes(), StandardCharsets.UTF_8);
         }
-        return new String(bytes(), StandardCharsets.UTF_8);
+        return toDisplayString(true);
     }
 
     @Override
     public void display(ELispPrint print) {
         print.startString();
+        boolean bytes = state() == STATE_BYTES;
         CharIterator i = iterator(0);
         while (i.hasNext()) {
             int c = i.nextInt();
-            print.print(state == STATE_BYTES && c >= 0x80 ? c + 0x3FFF00 : c);
+            print.print(bytes && c >= 0x80 ? c + 0x3FFF00 : c);
         }
         print.endString();
     }

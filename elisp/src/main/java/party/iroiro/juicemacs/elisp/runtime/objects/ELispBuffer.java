@@ -119,6 +119,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return ELispString.ofUtf8(string);
     }
 
+    @TruffleBoundary
     public ELispString subString(long start, long end) {
         PieceTreeBase.Position left = getPosition(start);
         PieceTreeBase.Position right = getPosition(end);
@@ -196,6 +197,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         content.insert(start - 1, text.bytes());
     }
 
+    @TruffleBoundary
     public void erase() {
         intervals.delete(0, content.getLength());
         markers.delete(0, content.getLength());

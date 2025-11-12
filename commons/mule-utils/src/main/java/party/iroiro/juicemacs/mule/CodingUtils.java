@@ -1,5 +1,6 @@
 package party.iroiro.juicemacs.mule;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
@@ -255,6 +256,7 @@ public abstract class CodingUtils {
         return STATE_ASCII;
     }
 
+    @TruffleBoundary
     public static byte[] fromString(String s) {
         return s.getBytes(StandardCharsets.UTF_8);
     }

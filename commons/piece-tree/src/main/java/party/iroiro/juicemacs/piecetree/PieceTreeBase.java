@@ -378,6 +378,7 @@ public final class PieceTreeBase {
     //#endregion
 
     //#region Piece Table
+    @TruffleBoundary
     public void insert(long offset, byte[] value) {
         lastVisitedLine = 0;
         lastVisitedLineValue = StringBuffer.EMPTY_STRING;
@@ -437,6 +438,7 @@ public final class PieceTreeBase {
         computeBufferMetadata();
     }
 
+    @TruffleBoundary
     public void delete(long offset, long cnt) {
         lastVisitedLine = 0;
         lastVisitedLineValue = StringBuffer.EMPTY_STRING;
