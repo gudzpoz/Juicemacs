@@ -3,17 +3,19 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.mule.CodingUtils;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CLOSURE_CONSTANTS;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.BYTE_CODE_FUNCTION_P;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.WHOLENUMP;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
+import static party.iroiro.juicemacs.mule.CodingUtils.*;
 
 public class BuiltInAlloc extends ELispBuiltIns {
     @Override
@@ -33,23 +35,34 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @ELispBuiltIn(name = "make-string", minArgs = 2, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FMakeString extends ELispBuiltInBaseNode {
+        @Specialization(guards = {"0 <= length", "length <= 0x7FFFFFFF", "init < 128"})
+        public static ELispString makeString(long length, long init, boolean multibyte) {
+            byte[] bytes = new byte[(int) length];
+            Arrays.fill(bytes, (byte) init);
+            return ELispString.ofAsciiBytes(bytes);
+        }
         @Specialization
-        public static ELispString makeString(
-                long length, long init, boolean multibyte,
-                @Cached TruffleString.FromCodePointNode fromCodePoint,
-                @Cached TruffleString.RepeatNode repeat
-        ) {
-            if (length <= 0) {
-                return new ELispString("");
+        public static ELispString makeStringMultibyte(long length, long init, boolean multibyte) {
+            if (length < 0 || Integer.MAX_VALUE / 8 < length) {
+                throw ELispSignals.wrongTypeArgument(WHOLENUMP, length);
             }
+            if (length == 0) {
+                return ELispString.EMPTY;
+            }
+            int iLength = (int) length;
             int c = asChar(init);
-            int iLength = asRanged(length, 0, Integer.MAX_VALUE / 4);
-            TruffleString inner = repeat.execute(
-                    fromCodePoint.execute(c, TruffleString.Encoding.UTF_32),
-                    iLength,
-                    TruffleString.Encoding.UTF_32
+            int charLength = CodingUtils.codepointUtf8ByteLength(c);
+            byte[] bytes = new byte[iLength * charLength];
+            CodingUtils.writeCodepoint(c, bytes, 0);
+            for (int i = 1; i < iLength; i++) {
+                System.arraycopy(bytes, 0, bytes, i * charLength, charLength);
+            }
+            return ELispString.ofKnown(
+                    bytes, iLength,
+                    c < 0x80 ? STATE_ASCII
+                            : c < 0x200000 ? STATE_UTF_8
+                            : STATE_EMACS
             );
-            return new ELispString(inner);
         }
     }
 
@@ -289,11 +302,8 @@ public class BuiltInAlloc extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeSymbol extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispSymbol makeSymbol(
-                ELispString name,
-                @Cached TruffleString.ToJavaStringNode asJava
-        ) {
-            return new ELispSymbol(asJava.execute(name.value()), false);
+        public static ELispSymbol makeSymbol(ELispString name) {
+            return new ELispSymbol(name, false);
         }
     }
 

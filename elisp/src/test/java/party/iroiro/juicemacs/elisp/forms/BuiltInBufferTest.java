@@ -13,10 +13,10 @@ public class BuiltInBufferTest {
     @Test
     public void bufferStringTest() {
         try (Context context = getTestingContext()) {
-            File file = new File("emacs/lisp/ldefs-boot.el");
+            File file = new File("emacs/lisp/loadup.el");
             Value value = context.eval("elisp", """
                     (set-buffer (get-buffer-create " *test*"))
-                    (insert-file-contents "elisp/emacs/lisp/ldefs-boot.el")
+                    (insert-file-contents "elisp/emacs/lisp/loadup.el")
                     (length (buffer-string))
                     """);
             assertEquals(file.length(), value.asLong());

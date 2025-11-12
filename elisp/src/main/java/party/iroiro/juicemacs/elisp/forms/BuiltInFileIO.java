@@ -21,7 +21,6 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.BufferedWriter;
@@ -213,10 +212,12 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileNameAsDirectory extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString fileNameAsDirectory(Object file) {
-            return new MuleStringBuilder()
-                    .appendString(asStr(file))
-                    .appendCodePoint(File.separatorChar)
-                    .buildString();
+            // Note that we don't use fileNameAsDirectory(ELispString file) as signature,
+            // because it is used in generated code in ELispGlobal.
+            return new ELispString.Builder()
+                    .append(asStr(file))
+                    .append(File.separatorChar)
+                    .build();
         }
     }
 
@@ -1108,7 +1109,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
                     ELispCodingSystem coding = codings.resolveCodingSystem(asSym(codingSystem));
 
                     ValueStorage.Forwarded container = new ValueStorage.Forwarded();
-                    buffer.insert(codings.decode(coding, channel, start, limit, container).buildString());
+                    buffer.insert(codings.decode(coding, channel, start, limit, container).build());
                     if (visit) {
                         BUFFER_FILE_CODING_SYSTEM.setValue(container.getValue());
                         BUFFER_FILE_NAME.setValue(new ELispString(file.getName()));
@@ -1163,7 +1164,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             try (CurrentBufferScope current = withInternalBufferReset(" *code-conversion-work*")) {
                 ELispBuffer buffer = current.current();
                 buffer.setEnableMultibyteCharacters(false);
-                buffer.insert(new ELispString(StringSupport.fromRaw(headAndTail), StringSupport.STATE_BYTES));
+                buffer.insert(StringSupport.fromRaw(headAndTail));
                 buffer.setPoint(1);
                 return BuiltInEval.FFuncall.funcall(this, autoCodingFunction, filename, read);
             }

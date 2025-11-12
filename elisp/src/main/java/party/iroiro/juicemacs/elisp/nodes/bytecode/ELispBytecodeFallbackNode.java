@@ -411,6 +411,14 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
             return executeBodyFromBci(frame, 0, startStackTop, constants, bindings); // NOPMD
         } catch (OsrResultException result) {
             return result.result;
+        } catch (Exception e) {
+            CompilerDirectives.transferToInterpreter();
+            // A non-lisp exception is thrown, unprocessed by signalHandlers.
+            // The following lines are to help debugging and preserve stack traces.
+            if (!bindings.signalHandlers.isEmpty()) {
+                bindings.signalHandlers.clear();
+            }
+            throw e;
         } finally {
             bindings.close();
         }

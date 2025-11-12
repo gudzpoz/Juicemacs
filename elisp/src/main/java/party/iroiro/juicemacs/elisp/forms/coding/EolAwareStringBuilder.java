@@ -1,9 +1,10 @@
 package party.iroiro.juicemacs.elisp.forms.coding;
 
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 public final class EolAwareStringBuilder {
-    private final MuleStringBuilder buffer = new MuleStringBuilder();
+    private final ELispString.Builder buffer = new Builder();
     private final int eol;
     private boolean crExpectLf = false;
 
@@ -44,7 +45,7 @@ public final class EolAwareStringBuilder {
         return this;
     }
 
-    public MuleStringBuilder build() {
+    public Builder build() {
         if (crExpectLf) {
             buffer.appendRawByte((byte) '\r');
             crExpectLf = false;

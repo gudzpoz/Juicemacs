@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.mule.CodingUtils.*;
@@ -256,6 +257,18 @@ public class CodingUtilsTest {
                 byte[] decoded = attrs.bytes();
                 assertEquals(10, decoded.length);
             }
+        }
+    }
+
+    @Test
+    void testAllCodepoints() {
+        for (int c = 0; c <= 0x3FFF7F; c++) {
+            byte[] bytes = new byte[5];
+            int len = writeCodepoint(c, bytes, 0);
+            assertEquals(codepointUtf8ByteLength(c), len);
+            long res = readCodepointAndByteLength(Arrays.copyOfRange(bytes, 0, len), 0);
+            assertEquals(c, res & Integer.MAX_VALUE);
+            assertEquals(len, res >> 32);
         }
     }
 }

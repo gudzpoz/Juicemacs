@@ -1,15 +1,14 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.InternalByteArray;
 import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.jspecify.annotations.Nullable;
 import org.graalvm.collections.Pair;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FCopySequence;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.*;
@@ -375,21 +374,23 @@ public class BuiltInCoding extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDecodeCodingString extends ELispBuiltInBaseNode {
         @Specialization
-        public Object decodeCodingString(
-                ELispString string, ELispSymbol codingSystem, Object nocopy, Object buffer,
-                @Cached StringSupport.GetInternalBytesNode getInternal
-        ) {
+        public Object decodeCodingString(ELispString string, ELispSymbol codingSystem, Object nocopy, Object buffer) {
             FCheckCodingSystem.checkCodingSystem(codingSystem);
             ELispCodings codings = getThis(this);
             ELispCodingSystem coding = codings.resolveCodingSystem(codingSystem);
-            InternalByteArray bytes = getInternal.execute(this, string);
+            if (coding.getSpec().isAsciiCompat() && string.isAscii()) {
+                return isNil(nocopy) ? FCopySequence.copySequenceString(string) : string;
+            }
+
+            // TODO: handle decoding multibyte strings, like "中\377"
+
             ValueStorage.Forwarded container = new ValueStorage.Forwarded();
             SeekableInMemoryByteChannel channel = null;
             try {
-                channel = new SeekableInMemoryByteChannel(bytes.getArray());
+                channel = new SeekableInMemoryByteChannel(string.bytes());
                 return codings.decode(
-                        coding, channel, bytes.getOffset(), bytes.getEnd(), container
-                ).buildString();
+                        coding, channel, 0, string.bytes().length, container
+                ).build();
             } catch (IOException e) {
                 throw ELispSignals.reportFileError(e, ELispGlobals.STRING);
             } finally {
@@ -749,11 +750,11 @@ public class BuiltInCoding extends ELispBuiltIns {
         }
 
         private static ELispSymbol[] makeSubsidiaries(ELispSymbol baseString) {
-            String base = baseString.name();
+            ELispString base = baseString.name();
             ELispSymbol[] symbols = new ELispSymbol[3];
             String[] suffixes = {"-unix", "-dos", "-mac"};
             for (int i = 0; i < suffixes.length; i++) {
-                symbols[i] = ELispContext.get(null).intern(base + suffixes[i]);
+                symbols[i] = ELispContext.get(null).intern(StringSupport.appendAscii(base, suffixes[i]));
             }
             return symbols;
         }
@@ -802,7 +803,7 @@ public class BuiltInCoding extends ELispBuiltIns {
                     safeCharsetsBytes[asInt(id)] = 0;
                 }
             }
-            ELispString safeCharsets = new ELispString(safeCharsetsBytes);
+            ELispString safeCharsets = ELispString.ofBytes(safeCharsetsBytes);
             return Pair.create(list == null ? false : list, safeCharsets);
         }
 

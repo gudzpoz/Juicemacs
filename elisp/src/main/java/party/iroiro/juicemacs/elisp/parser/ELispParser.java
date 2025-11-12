@@ -3,8 +3,6 @@ package party.iroiro.juicemacs.elisp.parser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
@@ -29,6 +27,7 @@ import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asRanged;
 
 /**
  * A ELisp parser and reader
@@ -42,7 +41,7 @@ import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 public class ELispParser {
     public interface InternContext {
         ELispSymbol intern(String name);
-        ELispSymbol intern(TruffleString name);
+        ELispSymbol intern(ELispString name);
         String applyShorthands(String symbol);
     }
 
@@ -114,7 +113,7 @@ public class ELispParser {
             case BigNum(BigInteger value) -> ELispBigNum.wrap(value);
             case FloatNum(double value) -> value;
             case Char(int value) -> (long) value;
-            case Str(TruffleString value, int state) -> new ELispString(value, state);
+            case Str(ELispString s) -> s;
             case Symbol(String value, boolean intern, boolean shorthand) -> {
                 String symbol = value;
                 if (shorthand) {
@@ -132,23 +131,17 @@ public class ELispParser {
                 }
                 yield new ELispSymbol(symbol);
             }
-            case BoolVec(long length, TruffleString value) -> {
-                byte[] bytes = new byte[(int) Math.ceilDiv(length, 8)];
-                TruffleStringIterator iterator = value.createCodePointIteratorUncached(TruffleString.Encoding.UTF_32);
-                for (int i = 0; i < length; i += 8) {
-                    if (!iterator.hasNext()) {
-                        throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
-                    }
-                    int codepoint = iterator.nextUncached();
-                    if (codepoint > 0xFF) {
-                        throw ELispSignals.invalidReadSyntax("Expected raw byte string");
-                    }
-                    bytes[i / 8] = (byte) codepoint;
+            case BoolVec(long length, ELispString value) -> {
+                int len = asRanged(length, 0, Integer.MAX_VALUE);
+                if (!value.isUnibyte()) {
+                    throw ELispSignals.invalidReadSyntax("Expected raw byte string");
                 }
-                if (iterator.hasNext()) {
-                    throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
+                byte[] bytes = value.bytes();
+                int bits = bytes.length * 8;
+                if (bits - 8 < len && len <= bits) {
+                    yield ELispBoolVector.fromBytes(bytes, len);
                 }
-                yield ELispBoolVector.fromBytes(bytes, (int) length);
+                throw ELispSignals.invalidReadSyntax("Unmatched bit vector length");
             }
             case Quote() -> quote(QUOTE, token); // 'a -> (quote a)
             case Function() -> quote(FUNCTION, token); // #'a -> (function a)

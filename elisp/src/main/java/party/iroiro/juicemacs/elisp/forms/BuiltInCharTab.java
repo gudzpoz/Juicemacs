@@ -8,6 +8,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -291,7 +292,7 @@ public class BuiltInCharTab extends ELispBuiltIns {
                 boolean result = BuiltInLRead.loadFile(
                         getLanguage(),
                         this,
-                        new ELispString("international/" + path.value()),
+                        StringSupport.prependAscii(path, "international/"),
                         false
                 );
                 if (!result) {

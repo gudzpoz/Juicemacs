@@ -4,8 +4,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.strings.MutableTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.apache.fory.Fory;
 import org.apache.fory.config.Language;
@@ -66,6 +64,7 @@ public final class ELispPortableDumper {
 
         // Symbols
         fory.registerSerializer(ELispObarray.class, new ELispObarraySerializer(fory));
+        fory.registerSerializer(ELispObarray.HashStringMap.class, new ELispObarraySerializer.HashSerializer(fory));
         fory.registerSerializer(ELispSymbol.class, new ELispSymbolSerializer(fory));
         // Symbol values
         fory.registerSerializer(ThreadLocalStorage.class,
@@ -111,16 +110,17 @@ public final class ELispPortableDumper {
                 BufferLocal.class,
                 TrappedWrite.class,
                 FunctionStorage.class,
+                // Closures
+                ELispBytecode.class,
+                ELispInterpretedClosure.class,
                 // Objects
-                ELispString.class,
+                ELispBoolVector.class,
                 ELispCharTable.class,
                 ELispCharTable.SubTable.class,
                 ELispCharTable.CompressedUnipropSubTable.class,
-                ELispBoolVector.class,
-                ELispVector.class,
                 ELispRecord.class,
-                ELispInterpretedClosure.class,
-                ELispBytecode.class,
+                ELispString.class,
+                ELispVector.class,
                 // Buffers
                 ELispBuffer.class,
                 MarkerMoveNotifier.class,
@@ -131,8 +131,6 @@ public final class ELispPortableDumper {
                 ClosureCommons.class,
                 // Truffle internals
                 FrameDescriptor.class,
-                TruffleString.class,
-                MutableTruffleString.class,
                 // Context
                 ELispBuiltIns[].class,
                 BuiltInAlloc.class,

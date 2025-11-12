@@ -259,7 +259,7 @@ public abstract class CodingUtils {
         return s.getBytes(StandardCharsets.UTF_8);
     }
 
-    public static int codepointUtf8Bytes(int c) {
+    public static int codepointUtf8ByteLength(int c) {
         return c < 0x80 ? 1
                 : c < 0x800 ? 2
                 : c < 0x10000 ? 3
@@ -330,7 +330,7 @@ public abstract class CodingUtils {
     /// - `(int) (ret >> 32)`: the number of bytes read
     ///
     /// It assumes valid utf-8-emacs sequence.
-    public static long readCodepoint(byte[] bytes, int i) {
+    public static long readCodepointAndByteLength(byte[] bytes, int i) {
         int b = bytes[i] & 0xFF;
         if (b < 0x80) {
             return b | 0x1_0000_0000L;

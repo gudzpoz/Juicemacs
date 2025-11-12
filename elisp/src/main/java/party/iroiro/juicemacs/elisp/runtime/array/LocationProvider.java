@@ -30,6 +30,7 @@ public interface LocationProvider {
         }
     }
     @TruffleBoundary
+    @SuppressWarnings("PMD.TruffleNodeUseInsertToAdoptDynamicChildren")
     default void fillDebugInfo(@Nullable Node parent) {
         while (parent != null) {
             // Some parent nodes, like function root nodes, will call the children's

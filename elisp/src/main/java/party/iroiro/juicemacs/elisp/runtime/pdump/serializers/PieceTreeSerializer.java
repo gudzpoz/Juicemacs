@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.runtime.pdump.serializers;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.apache.fory.Fory;
 import org.apache.fory.memory.MemoryBuffer;
 import org.apache.fory.serializer.Serializer;
@@ -21,14 +20,19 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
 
     @Override
     public void write(MemoryBuffer buffer, PieceTreeBase value) {
-        fory.writeRef(buffer, value.getLinesRawContent());
+        buffer.writeBoolean(value.isRaw());
+        byte[] bytes = value.getLinesRawContent();
+        buffer.writeInt32(bytes.length);
+        buffer.writeBytes(bytes);
     }
 
     @Override
     public PieceTreeBase read(MemoryBuffer buffer) {
         fory.getRefResolver().reference(null);
-        TruffleString content = (TruffleString) fory.readRef(buffer);
-        return new PieceTreeBase(content);
+        boolean raw = buffer.readBoolean();
+        int length = buffer.readInt32();
+        byte[] content = buffer.readBytes(length);
+        return new PieceTreeBase(raw, content);
     }
 
     @SuppressWarnings("rawtypes")

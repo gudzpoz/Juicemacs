@@ -2,8 +2,6 @@ package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 
 import java.io.File;
@@ -18,7 +16,6 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
@@ -54,7 +51,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         // TODO: Should not be public
         this(
                 bufferLocalFields,
-                new PieceTreeBase(),
+                new PieceTreeBase(false),
                 true
         );
     }
@@ -62,7 +59,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public ELispBuffer(ELispBuffer defaults, boolean inhibitBufferHooks) {
         this(
                 Arrays.copyOf(defaults.bufferLocalFields, defaults.bufferLocalFields.length),
-                new PieceTreeBase(),
+                new PieceTreeBase(false),
                 inhibitBufferHooks
         );
     }
@@ -115,14 +112,11 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return content.getCharCode(point - 1);
     }
 
-    private ELispString wrap(AbstractTruffleString string) {
+    private ELispString wrap(byte[] string) {
         if (isNil(getEnableMultibyteCharacters())) {
-            return new ELispString(
-                    string.switchEncodingUncached(TruffleString.Encoding.BYTES),
-                    StringSupport.STATE_BYTES
-            );
+            return ELispString.ofBytes(string);
         }
-        return new ELispString(string);
+        return ELispString.ofUtf8(string);
     }
 
     public ELispString subString(long start, long end) {
@@ -179,10 +173,10 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             return;
         }
         if (isNil(getEnableMultibyteCharacters()) && BuiltInData.isMultibyte(text)) {
-            text = wrap(text.value());
+            text = wrap(text.bytes());
         }
         long position = point - 1;
-        content.insert(position, text.value());
+        content.insert(position, text.bytes());
         intervals.insert(position, text.length(), null);
         markers.insertString(position, text.length());
     }
@@ -199,7 +193,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     /// Replaces text without messing up intervals and markers
     public void replace(long start, ELispString text) {
         content.delete(start - 1, text.length());
-        content.insert(start - 1, text.value());
+        content.insert(start - 1, text.bytes());
     }
 
     public void erase() {
@@ -217,7 +211,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     }
 
     public ELispString bufferString() {
-        return new ELispString(content.getLinesRawContent());
+        return wrap(content.getLinesRawContent());
     }
 
     public IntervalPieceTree<Object> getIntervals() {

@@ -58,7 +58,7 @@ public final class CodingSystemCcl implements ELispCodingSystemType {
                 }
             }
         }
-        attrs.set(CODING_ATTR_CCL_VALIDS, new ELispString(valids));
+        attrs.set(CODING_ATTR_CCL_VALIDS, ELispString.ofBytes(valids));
         return CODING_CATEGORY_CCL;
     }
 }

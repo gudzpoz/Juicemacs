@@ -14,7 +14,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.net.InetAddress;
@@ -46,7 +46,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FCharToString extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString charToString(long char_) {
-            return new MuleStringBuilder().appendCodePoint(asChar(char_)).buildString();
+            return new ELispString.Builder().append(asChar(char_)).build();
         }
     }
 
@@ -1109,7 +1109,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 if (arg instanceof ELispString s) {
                     buffer.insert(s);
                 } else {
-                    buffer.insert(new MuleStringBuilder().appendCodePoint(asInt(arg)).buildString());
+                    buffer.insert(new ELispString.Builder().append(asChar(arg)).build());
                 }
             }
             return false;
@@ -1425,7 +1425,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FSubstCharInRegion extends ELispBuiltInBaseNode {
         @Specialization
         public boolean substCharInRegion(long start, long end, long fromchar, long tochar, Object noundo) {
-            MuleStringBuilder builder = new MuleStringBuilder();
+            ELispString.Builder builder = new ELispString.Builder();
             ELispBuffer buffer = getContext().currentBuffer();
             PrimitiveIterator.OfInt i = buffer.iterator(start, end);
             boolean changed = false;
@@ -1436,7 +1436,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
                 builder.appendCodePoint(c == from ? to : c);
             }
             if (changed) {
-                buffer.replace(start, builder.buildString());
+                buffer.replace(start, builder.build());
             }
             return false;
         }

@@ -1,27 +1,16 @@
 package party.iroiro.juicemacs.elisp.runtime.string;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.InternalByteArray;
-import com.oracle.truffle.api.strings.TruffleString;
-import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
-import party.iroiro.juicemacs.piecetree.StringNodes;
+import party.iroiro.juicemacs.mule.CodingUtils;
+import party.iroiro.juicemacs.mule.Utf8Utils;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asRanged;
+import static party.iroiro.juicemacs.mule.CodingUtils.*;
 
 public abstract class StringSupport {
-    public static final int STATE_ASCII = 0;
-    public static final int STATE_BYTES = 1;
-    public static final int STATE_UTF32 = 2;
-    public static final int STATE_EMACS = 3;
-    public static final TruffleString.Encoding UTF_32 = TruffleString.Encoding.UTF_32;
-
     private StringSupport() {
     }
 
@@ -29,85 +18,100 @@ public abstract class StringSupport {
         return 0 <= c && c <= MAX_CHAR;
     }
 
-    public static TruffleString toMultibyte(TruffleString s) {
-        assert s.getStringCompactionLevelUncached(UTF_32) == TruffleString.CompactionLevel.S1;
-
-        // A hack to get the internal byte array as is.
-        // Note that we use ISO-8859-1 (latin-1) here instead of UTF-32
-        // to ensure Truffle does not inflate the array.
-        InternalByteArray bytes = s.getInternalByteArrayUncached(TruffleString.Encoding.ISO_8859_1);
-        assert bytes.getLength() == s.codePointLengthUncached(UTF_32);
-
-        int length = bytes.getLength();
-        int[] codePoints = new int[length];
-        for (int i = 0; i < length; i++) {
-            byte b = bytes.get(i);
-            codePoints[i] = b >= 0 ? b : (0x400000 + b);
+    public static ELispString appendAscii(ELispString base, String... strings) {
+        byte[] bytes = base.bytes();
+        int extra = 0;
+        for (String s : strings) {
+            extra += s.length();
         }
-        return TruffleString.fromIntArrayUTF32Uncached(codePoints);
-    }
-
-    private static final TruffleString.FromByteArrayNode FROM_RAW = TruffleString.FromByteArrayNode.create();
-    private static final TruffleString.SwitchEncodingNode SWITCH_IDENTICAL = TruffleString.SwitchEncodingNode.create();
-    public static TruffleString fromBytes(byte[] bytes) {
-        return SWITCH_IDENTICAL.execute(FROM_RAW.execute(bytes, TruffleString.Encoding.ISO_8859_1, false), UTF_32);
-    }
-
-    public static TruffleString fromRaw(ByteBuffer buffer) {
-        byte[] bytes = new byte[buffer.remaining()];
-        TruffleUtils.bufGet(buffer, bytes);
-        return fromBytes(bytes);
-    }
-
-    private static final TruffleString.FromJavaStringNode FROM_JAVA = TruffleString.FromJavaStringNode.create();
-    public static ELispString fromString(String s) {
-        return new ELispString(FROM_JAVA.execute(s, UTF_32));
-    }
-
-    private static final TruffleString.IntIndexOfAnyIntUTF32Node INDEX_OF_ANY = TruffleString.IntIndexOfAnyIntUTF32Node.create();
-    public static int indexOfAny(AbstractTruffleString haystack, int[] needles, int start, int end) {
-        if (start == end) {
-            return -1;
+        byte[] concat = new byte[bytes.length + extra];
+        System.arraycopy(bytes, 0, concat, 0, bytes.length);
+        int offset = bytes.length;
+        for (String s : strings) {
+            for (int i = 0; i < s.length(); i++) {
+                concat[offset++] = (byte) s.charAt(i);
+            }
         }
-        return INDEX_OF_ANY.execute(haystack, start, end, needles);
+        return ELispString.ofKnown(concat, base.length() + extra, base.state());
     }
 
-    public static TruffleString tString(String string) {
-        return TruffleString.fromJavaStringUncached(string, TruffleString.Encoding.UTF_32);
-    }
-
-    @GenerateUncached
-    @GenerateInline(inlineByDefault = true)
-    public abstract static class GetInternalBytesNode extends Node {
-        public abstract InternalByteArray execute(Node node, ELispString s);
-
-        @Specialization(guards = "s.state() <= 1")
-        public static InternalByteArray getBytes(
-                ELispString s,
-                @Cached(inline = false) TruffleString.GetInternalByteArrayNode get
-        ) {
-            return get.execute(s.value(), TruffleString.Encoding.ISO_8859_1);
+    public static ELispString prependAscii(ELispString base, String... strings) {
+        byte[] bytes = base.bytes();
+        int extra = 0;
+        for (String s : strings) {
+            extra += s.length();
         }
+        byte[] concat = new byte[bytes.length + extra];
+        int offset = 0;
+        for (String s : strings) {
+            for (int i = 0; i < s.length(); i++) {
+                concat[offset++] = (byte) s.charAt(i);
+            }
+        }
+        System.arraycopy(bytes, 0, concat, offset, bytes.length);
+        return ELispString.ofKnown(concat, base.length() + extra, base.state());
     }
 
-    @GenerateUncached
-    @GenerateInline(inlineByDefault = true)
-    public abstract static class StartsWithStringNode extends Node {
-        public abstract boolean execute(Node node, ELispString haystack, ELispString needle);
+    public static int codepointIndexToByteIndex(ELispString base, int index, int byteOffset) {
+        return Utf8Utils.codepointIndexToByteIndex(base.bytes(), base.isUnibyte(), index, byteOffset);
+    }
 
-        @Specialization
-        public static boolean startsWith(
-                ELispString haystack, ELispString needle,
-                @Cached(inline = false) TruffleString.RegionEqualNode equalNode
-        ) {
-            return equalNode.execute(
-                    haystack.value(),
-                    0,
-                    needle.value(),
-                    0,
-                    StringNodes.length(needle.value()),
-                    StringSupport.UTF_32
+    public static int countCodepoints(ELispString base, int byteOffset, int byteEnd) {
+        return Utf8Utils.countCodepoints(base.bytes(), base.isUnibyte(), byteOffset, byteEnd);
+    }
+
+    public static ELispString substring(ELispString base, long start, long end) {
+        int startI = asRanged(start, 0, Integer.MAX_VALUE);
+        int endI = asRanged(end, 0, Integer.MAX_VALUE);
+        if (base.isUnibyte()) {
+            return ELispString.ofKnown(
+                    Arrays.copyOfRange(base.bytes(), startI, endI),
+                    endI - startI,
+                    base.state()
             );
         }
+        int startByte = codepointIndexToByteIndex(base, startI, 0);
+        int endByte = codepointIndexToByteIndex(base, endI - startI, startByte);
+        return ELispString.ofKnown(
+                Arrays.copyOfRange(base.bytes(), startByte, endByte),
+                endI - startI,
+                base.state()
+        );
+    }
+
+    public static ELispString reverse(ELispString seq) {
+        byte[] bytes = seq.bytes();
+        byte[] revCopy = new byte[bytes.length];
+        if (seq.isUnibyte()) {
+            for (int i = 0; i < bytes.length; i++) {
+                revCopy[i] = bytes[bytes.length - i - 1];
+            }
+            return ELispString.ofKnown(revCopy, revCopy.length, seq.state());
+        }
+        int copyFrom = 0;
+        int copyTo = bytes.length;
+        while (copyFrom < bytes.length) {
+            int step = (int) (readCodepointAndByteLength(bytes, copyFrom) >> 32);
+            copyTo -= step;
+            System.arraycopy(bytes, copyFrom, revCopy, copyTo, step);
+            copyFrom += step;
+        }
+        return ELispString.ofKnown(revCopy, seq.length(), seq.state());
+    }
+
+    public static boolean isCompatible(ELispString needle, ELispString haystack) {
+        int state1 = needle.state();
+        int state2 = haystack.state();
+        boolean raw1 = (state1 & STATE_BYTES) != 0;
+        boolean raw2 = (state2 & STATE_BYTES) != 0;
+        boolean uni1 = CodingUtils.isUnibyteState(state1);
+        boolean uni2 = CodingUtils.isUnibyteState(state2);
+        return raw1 ? uni2 : (raw2 ? uni1 : true);
+    }
+
+    public static ELispString fromRaw(ByteBuffer buffer) {
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        return ELispString.ofKnown(bytes, bytes.length, STATE_BYTES);
     }
 }

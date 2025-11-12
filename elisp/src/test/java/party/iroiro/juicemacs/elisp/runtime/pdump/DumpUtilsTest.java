@@ -11,7 +11,9 @@ import party.iroiro.juicemacs.elisp.collections.SharedIndicesMap;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispRecord;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
+import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.PieceTreeSerializer.Intervals;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
@@ -58,6 +60,7 @@ public class DumpUtilsTest {
                 .requireClassRegistration(false)
                 .withRefTracking(true)
                 .build();
+        fory.registerSerializer(IntervalPieceTree.class, new Intervals(fory));
 
         MemoryBuffer buffer = MemoryBuffer.newHeapBuffer(10);
 

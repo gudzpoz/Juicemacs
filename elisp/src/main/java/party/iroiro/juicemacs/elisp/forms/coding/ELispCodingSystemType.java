@@ -7,7 +7,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import java.io.IOException;
 
@@ -73,7 +73,7 @@ sealed interface ELispCodingSystemType
         }
 
         @Override
-        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+        Builder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
             int eolSeen = 0;
             int count = 0;
             while (input.hasNext() && count < PEEK_LIMIT) {

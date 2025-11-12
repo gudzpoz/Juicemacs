@@ -3,7 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FCopySequence;
 import party.iroiro.juicemacs.elisp.forms.regex.ELispRegExp;
@@ -15,7 +14,6 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -184,7 +182,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCopySyntaxTable extends ELispBuiltInBaseNode {
         @Specialization
-        public ELispCharTable copySyntaxTable(Object table) {
+        public ELispCharTable copySyntaxTableGeneric(Object table) {
             ELispCharTable standard = getContext().globals().builtInSyntax.standardSyntaxTable;
             ELispCharTable original = table instanceof ELispCharTable t ? t : standard;
             FSyntaxTableP.checkSyntaxTable(original);
@@ -446,12 +444,12 @@ public class BuiltInSyntax extends ELispBuiltIns {
             // TODO: Better escape
             ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
                     language,
-                    new MuleStringBuilder()
-                            .appendCodePoint('[')
-                            .appendString(string)
-                            .appendCodePoint(']')
-                            .appendCodePoint('+')
-                            .buildString(),
+                    new ELispString.Builder()
+                            .append('[')
+                            .append(string)
+                            .append(']')
+                            .append('+')
+                            .build(),
                     null
             );
             long oldPoint = buffer.getPoint();
@@ -487,11 +485,11 @@ public class BuiltInSyntax extends ELispBuiltIns {
             // TODO: Better escape
             ELispRegExp.CompiledRegExp regExp = BuiltInSearch.compileRegExp(
                     language,
-                    new MuleStringBuilder()
-                            .appendCodePoint('[')
-                            .appendString(string)
-                            .appendCodePoint(']')
-                            .buildString(),
+                    new ELispString.Builder()
+                            .append('[')
+                            .append(string)
+                            .append(']')
+                            .build(),
                     null
             );
             long oldPoint = buffer.getPoint();
@@ -652,7 +650,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
             }
 
             @Override
-            public ELispSymbol intern(TruffleString name) {
+            public ELispSymbol intern(ELispString name) {
                 return NIL;
             }
 

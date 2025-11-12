@@ -19,8 +19,8 @@ import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.EOFException;
@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -119,8 +118,8 @@ public class BuiltInLRead extends ELispBuiltIns {
         boolean absolute = completeFilenameP(name);
         ELispString original = name;
         ELispString result = null;
-        ELispCons pathList = paths instanceof ELispCons cons ? cons : ELispCons.listOf(new ELispString("."));
-        ELispCons suffixList = ELispCons.cons(new ELispString(""), suffixes);
+        ELispCons pathList = paths instanceof ELispCons cons ? cons : ELispCons.listOf(ELispString.ofJava("."));
+        ELispCons suffixList = ELispCons.cons(ELispString.EMPTY, suffixes);
         ELispContext context = ELispContext.get(null);
         for (Object path : pathList) {
             ELispString directory = asStr(path);
@@ -133,16 +132,15 @@ public class BuiltInLRead extends ELispBuiltIns {
             }
             // Emacs: Copy FILENAME's data to FN but remove starting /: if any.
             // TODO: Why?
-            if (name.startsWithUncached("/:")) {
+            if (name.startsWithAscii("/:")) {
                 name = BuiltInFns.FSubstring.substring(name, 2L, false);
             }
             for (Object suffix : suffixList) {
                 ELispString suffixString = asStr(suffix);
-                ELispString test = new ELispString(
-                        new MuleStringBuilder()
-                                .appendString(name)
-                                .appendString(suffixString)
-                                .build());
+                ELispString test = new ELispString.Builder()
+                        .append(name)
+                        .append(suffixString)
+                        .build();
                 Object handler = BuiltInFileIO.FFindFileNameHandler.findFileNameHandler(test, FILE_EXISTS_P, null);
                 boolean exists;
                 if (isNil(handler) && (isNil(predicate) || isT(predicate))) {
@@ -717,10 +715,10 @@ public class BuiltInLRead extends ELispBuiltIns {
         public Object readFromString(ELispString string, Object start, Object end) {
             long from = notNilOr(start, 0L);
             long to = notNilOr(end, string.length());
-            TruffleString sub = string.value().substringUncached((int) from, (int) (to - from), StringSupport.UTF_32, true);
+            ELispString sub = isNil(start) && isNil(end) ? string : StringSupport.substring(string, from, to);
             try {
-                Source elisp = TruffleUtils.buildSource(Source.newBuilder("elisp", sub.toString(), "read-from-string"));
-                ELispParser parser = new ELispParser(getContext(), elisp);
+                ELispLexer lexer = new ELispLexer(CodePointReader.from(sub));
+                ELispParser parser = new ELispParser(getContext(), lexer);
                 Object o = parser.nextLisp();
                 return ELispCons.cons(o, from + parser.getCodepointOffset());
             } catch (IOException e) {
@@ -767,7 +765,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                 @Cached TruffleString.AsTruffleStringNode asTruffle
         ) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            return array.intern(asTruffle.execute(string.value(), StringSupport.UTF_32));
+            return array.intern(string);
         }
     }
 
@@ -790,12 +788,9 @@ public class BuiltInLRead extends ELispBuiltIns {
             return name == found ? name : false;
         }
         @Specialization
-        public Object internSoft(
-                ELispString name, Object obarray,
-                @Cached TruffleString.ToJavaStringNode asJava
-        ) {
+        public Object internSoft(ELispString name, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            ELispSymbol symbol = array.internSoft(asJava.execute(name.value()));
+            ELispSymbol symbol = array.internSoft(name);
             return Objects.requireNonNullElse(symbol, false);
         }
     }
@@ -814,17 +809,9 @@ public class BuiltInLRead extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FUnintern extends ELispBuiltInBaseNode {
         @Specialization
-        public boolean unintern(
-                Object name, Object obarray,
-                @Cached TruffleString.ToJavaStringNode asJava
-        ) {
+        public boolean unintern(Object name, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            String s;
-            if (name instanceof ELispString string) {
-                s = asJava.execute(string.value());
-            } else {
-                s = asSym(name).name();
-            }
+            ELispString s = name instanceof ELispString string ? string : asSym(name).name();
             return array.unintern(s) != null;
         }
     }
@@ -842,7 +829,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         @TruffleBoundary
         @Specialization
         public static ELispObarray obarrayMake(Object size) {
-            return new ELispObarray(new HashMap<>((int) notNilOr(size, 0)));
+            return new ELispObarray(new HashStringMap<>((int) notNilOr(size, 0)));
         }
     }
 
@@ -889,7 +876,7 @@ public class BuiltInLRead extends ELispBuiltIns {
         @Specialization
         public boolean mapatoms(Object function, Object obarray) {
             ELispObarray array = isNil(obarray) ? getContext().obarray() : asObarray(obarray);
-            for (ELispSymbol symbol : array.symbols().values()) {
+            for (ELispSymbol symbol : array.symbols().map().getValues()) {
                 BuiltInEval.FFuncall.funcall(null, function, symbol);
             }
             return false;

@@ -38,8 +38,6 @@ import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree.Marker;
 
-import java.util.HashMap;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInBaseNode.JAVA_SOURCE;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.EQ;
@@ -236,13 +234,13 @@ public class SerializersTest {
 
     @Test
     public void testELispObarray() {
-        ELispObarray obarray = new ELispObarray(new HashMap<>());
+        ELispObarray obarray = new ELispObarray(new ELispObarray.HashStringMap<>(0));
         obarray.intern("test1");
         obarray.intern("test2");
 
         ELispObarray restored = roundTrip(obarray);
         assertEquals(obarray.symbols().size(), restored.symbols().size());
-        assertNotNull(restored.internSoft("test1"));
-        assertNotNull(restored.internSoft("test2"));
+        assertNotNull(restored.internSoft(ELispString.ofJava("test1")));
+        assertNotNull(restored.internSoft(ELispString.ofJava("test2")));
     }
 }

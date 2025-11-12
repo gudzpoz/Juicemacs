@@ -3,12 +3,6 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.strings.InternalByteArray;
-import com.oracle.truffle.api.strings.MutableTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleString.CodeRange;
-import com.oracle.truffle.api.strings.TruffleString.GetCodeRangeImpreciseNode;
 import org.apache.commons.lang3.StringUtils;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval.FFuncall;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -24,12 +18,11 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.mule.CodingUtils;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.IOException;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.math.BigInteger;
 import java.util.BitSet;
 import java.util.List;
@@ -55,7 +48,7 @@ public class BuiltInData extends ELispBuiltIns {
     }
 
     public static boolean isMultibyte(ELispString value) {
-        return value.state() > StringSupport.STATE_BYTES;
+        return !value.isUnibyte();
     }
 
     @ReportPolymorphism
@@ -1719,7 +1712,7 @@ public class BuiltInData extends ELispBuiltIns {
     public abstract static class FSymbolName extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString symbolName(ELispSymbol symbol) {
-            return new ELispString(symbol.name());
+            return symbol.name();
         }
     }
 
@@ -2374,53 +2367,25 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "aref", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FAref extends ELispBuiltInBaseNode {
-        @Idempotent
-        static boolean isValid(GetCodeRangeImpreciseNode node, ELispString s) {
-            return node.execute(s.value(), StringSupport.UTF_32) != CodeRange.BROKEN;
-        }
-
-        @Specialization(guards = "valid")
-        public static long arefStringValid(
-                ELispString array, long idx,
-                @Cached @Shared GetCodeRangeImpreciseNode range,
-                @Bind("isValid(range, array)") boolean valid,
-                @Cached TruffleString.CodePointAtIndexNode charAt
-        ) {
-            checkRange(array.length(), idx);
-            return charAt.execute(array.value(), (int) idx, StringSupport.UTF_32);
-        }
-        @Specialization(guards = "!valid")
-        public static long arefStringRaw(
-                ELispString array, long idx,
-                @Cached @Shared TruffleString.GetCodeRangeImpreciseNode range,
-                @Bind("isValid(range, array)") boolean valid,
-                @Cached TruffleString.GetInternalByteArrayNode getInternal
-        ) {
-            checkRange(array.length(), idx);
-            InternalByteArray inner = getInternal.execute(array.value(), StringSupport.UTF_32);
-            return getIntAtIndex(idx, inner);
+        @Specialization(guards = "array.isUnibyte()")
+        public static long arefStringUnibyte(ELispString array, long idx) {
+            byte[] bytes = array.bytes();
+            checkRange(bytes.length, idx);
+            return bytes[(int) idx] & 0xFF;
         }
         @TruffleBoundary
-        private static int getIntAtIndex(long idx, InternalByteArray inner) {
-            return MemorySegment.ofArray(inner.getArray()).get(
-                    ValueLayout.JAVA_INT_UNALIGNED,
-                    (int) (idx << 2) + inner.getOffset()
-            );
+        @Specialization(guards = "!array.isUnibyte()")
+        public static long arefStringUtf8(ELispString array, long idx) {
+            checkRange(array.length(), idx);
+            // TODO: cache index
+            int byteIdx = StringSupport.codepointIndexToByteIndex(array, (int) idx, 0);
+            return (int) CodingUtils.readCodepointAndByteLength(array.bytes(), byteIdx);
         }
         public static long arefStringUncached(ELispString array, long idx) {
-            GetCodeRangeImpreciseNode range = GetCodeRangeImpreciseNode.getUncached();
-            if (isValid(range, array)) {
-                return arefStringValid(
-                        array, idx,
-                        range, true,
-                        TruffleString.CodePointAtIndexNode.getUncached()
-                );
+            if (array.isUnibyte()) {
+                return arefStringUnibyte(array, idx);
             } else {
-                return arefStringRaw(
-                        array, idx,
-                        range, false,
-                        TruffleString.GetInternalByteArrayNode.getUncached()
-                );
+                return arefStringUtf8(array, idx);
             }
         }
 
@@ -2480,19 +2445,14 @@ public class BuiltInData extends ELispBuiltIns {
     @ELispBuiltIn(name = "aset", minArgs = 3, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FAset extends ELispBuiltInBaseNode {
-        @Specialization(guards = "array.state() <= 1")
-        public static long asetString(
-                ELispString array, long idx, long newelt,
-                @Cached MutableTruffleString.AsMutableTruffleStringNode convert,
-                @Cached MutableTruffleString.WriteByteNode write
-        ) {
+        @Specialization(guards = "array.isUnibyte()")
+        public static long asetString(ELispString array, long idx, long newelt) {
             FAref.checkRange(array.length(), idx);
-            write.execute(
-                    array.asMutableTruffleString(convert),
-                    (int) idx,
-                    (byte) newelt,
-                    StringSupport.UTF_32
-            );
+            byte v = (byte) newelt;
+            if (array.isUtf8() && v < 0) {
+                throw ELispSignals.argsOutOfRange(CHARACTERP, newelt);
+            }
+            array.asMutable()[(int) idx] = v;
             return newelt;
         }
 

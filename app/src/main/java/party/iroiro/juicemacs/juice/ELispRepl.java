@@ -1,7 +1,6 @@
 package party.iroiro.juicemacs.juice;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -21,6 +20,7 @@ import party.iroiro.juicemacs.elisp.parser.ELispParser;
 import party.iroiro.juicemacs.elisp.runtime.ELispGlobals;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import picocli.CommandLine;
 import picocli.CommandLine.*;
 
@@ -241,7 +241,7 @@ public class ELispRepl implements Callable<Integer> {
             }
 
             @Override
-            public ELispSymbol intern(TruffleString name) {
+            public ELispSymbol intern(ELispString name) {
                 return ELispGlobals.NIL;
             }
 

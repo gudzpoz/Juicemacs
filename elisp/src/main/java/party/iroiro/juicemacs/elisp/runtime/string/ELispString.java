@@ -2,12 +2,12 @@ package party.iroiro.juicemacs.elisp.runtime.string;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.*;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData.FAref;
@@ -15,115 +15,140 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
-import party.iroiro.juicemacs.piecetree.StringNodes;
+import party.iroiro.juicemacs.mule.CodingUtils;
+import party.iroiro.juicemacs.mule.CodingUtils.StringAttrs;
+import party.iroiro.juicemacs.mule.MuleStringBuilder;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 
-import java.util.Iterator;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
-import java.util.PrimitiveIterator;
 
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asRanged;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
-import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.*;
+import static party.iroiro.juicemacs.elisp.runtime.string.StringSupport.codepointIndexToByteIndex;
+import static party.iroiro.juicemacs.mule.CodingUtils.*;
 
+/// ELisp strings, encoded in `utf-8-emacs`
+///
+/// @see CodingUtils
 @ExportLibrary(InteropLibrary.class)
 public final class ELispString implements TruffleObject, ELispValue {
-    private static final TruffleString.CodePointLengthNode LENGTH_NODE = TruffleString.CodePointLengthNode.create();
+    public static final ELispString EMPTY = new ELispString(new byte[0], 0, 0);
 
-    private AbstractTruffleString value;
+    private static final int STATE_HASHED_MASK = 0b0100;
+    private static final int STATE_MUTABLE_MASK = 0b1000;
+
+    private final int length;
+    private byte[] value;
     private int state;
 
     @Nullable
     private IntervalPieceTree<Object> intervals = null;
 
-    /**
-     * @param init the string value, no copy is performed
-     * @param state the string state
-     */
-    public ELispString(AbstractTruffleString init, int state) {
-        this.value = init;
+    //#region constructors
+    private ELispString(byte[] bytes, int codepoints, int state) {
+        this.value = bytes;
+        this.length = codepoints;
         this.state = state;
     }
 
-    public ELispString(AbstractTruffleString init) {
-        this.value = init;
-        if (value.getStringCompactionLevelUncached(TruffleString.Encoding.UTF_32) == TruffleString.CompactionLevel.S1) {
-            TruffleString.CodeRange range = value.getCodeRangeUncached(TruffleString.Encoding.UTF_32);
-            state = range == TruffleString.CodeRange.ASCII ? StringSupport.STATE_ASCII : StringSupport.STATE_UTF32;
-        } else {
-            state = StringSupport.STATE_UTF32;
-        }
-    }
-
-    public ELispString(byte[] unibyteBytes) {
-        this.value = StringSupport.fromBytes(unibyteBytes);
-        this.state = STATE_BYTES;
+    public ELispString(StringAttrs attrs) {
+        this.value = attrs.bytes();
+        this.state = attrs.state();
+        this.length = attrs.codepointLength();
     }
 
     public ELispString(String init) {
-        this(StringSupport.tString(init));
+        this(StringAttrs.calculate(CodingUtils.fromString(init)));
     }
 
-    public AbstractTruffleString value() {
-        return value;
+    public static ELispString ofJava(String init) {
+        return new ELispString(StringAttrs.calculate(CodingUtils.fromString(init)));
     }
+
+    public static ELispString ofBytes(byte[] unibyteBytes) {
+        return new ELispString(
+                unibyteBytes,
+                unibyteBytes.length,
+                CodingUtils.calculateUnibyteState(unibyteBytes)
+        );
+    }
+
+    public static ELispString ofAsciiBytes(byte[] unibyteBytes) {
+        return new ELispString(
+                unibyteBytes,
+                unibyteBytes.length,
+                0
+        );
+    }
+
+    public static ELispString ofUtf8(byte[] bytes) {
+        return new ELispString(StringAttrs.calculate(bytes));
+    }
+
+    public static ELispString ofKnown(byte[] bytes, int codepoints, int state) {
+        return new ELispString(bytes, codepoints, state);
+    }
+    //#endregion constructors
 
     public int state() {
-        return state;
+        return state & STATE_MASK;
+    }
+
+    public boolean isUnibyte() {
+        return isUnibyteState(state) || value.length == length;
+    }
+
+    public boolean isAscii() {
+        int state = state();
+        return state == STATE_ASCII || (state != STATE_BYTES && value.length == length);
+    }
+
+    public boolean isUtf8() {
+        return state() != STATE_ASCII;
     }
 
     public int length() {
-        return LENGTH_NODE.execute(value, TruffleString.Encoding.UTF_32);
+        return length;
     }
 
-    public MutableTruffleString asMutableTruffleString(MutableTruffleString.AsMutableTruffleStringNode convert) {
-        MutableTruffleString mut = convert.execute(value, TruffleString.Encoding.UTF_32);
-        value = mut;
-        return mut;
+    public byte[] bytes() {
+        return value;
+    }
+
+    public byte[] asMutable() {
+        if ((state & STATE_MUTABLE_MASK) == 0) {
+            if ((state & STATE_HASHED_MASK) != 0) {
+                throw ELispSignals.error("must not modify a hashed string");
+            }
+            value = value.clone();
+            state |= STATE_MUTABLE_MASK;
+        }
+        return value;
+    }
+
+    /// Used by symbols, setting hash and forbidding modification
+    public void setImmutable() {
+        this.lispHashCode(0);
     }
 
     public int codePointAt(int index) {
         return (int) FAref.arefStringUncached(this, index);
     }
 
-    public Iterator<Long> iteratorUncached() {
-        return new Iterator<>() {
-            final TruffleStringIterator i = value.createCodePointIteratorUncached(UTF_32);
-
-            @Override
-            public boolean hasNext() {
-                return i.hasNext();
-            }
-
-            @Override
-            public Long next() {
-                int c = i.nextUncached();
-                if (state == STATE_BYTES) {
-                    return (long) (c < 128 ? c : c + 0x3FFF00);
-                }
-                return (long) c;
-            }
-        };
+    public CharIterator iterator(int start) {
+        CharIterator i = new CharIterator(bytes(), isUnibyte());
+        if (start < 0) {
+            start = length + start;
+        }
+        start = asRanged(start, 0, length);
+        i.skipChars(start);
+        return i;
     }
 
-    public PrimitiveIterator.OfInt iterator(int start) {
-        int length = length();
-        return new PrimitiveIterator.OfInt() {
-            int i = start;
-
-            @Override
-            public int nextInt() {
-                int c = StringNodes.charAt(value, i++);
-                if (state == STATE_BYTES) {
-                    return c < 128 ? c : c + 0x3FFF00;
-                }
-                return c;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return i < length;
-            }
-        };
+    public CharIterator reverseIterator() {
+        return new CharIterator(bytes(), isUnibyte(), length, value.length);
     }
 
     @Override
@@ -131,15 +156,15 @@ public final class ELispString implements TruffleObject, ELispValue {
         if ((state & STATE_BYTES) != 0) {
             return toDisplayString(true);
         }
-        return value().toJavaStringUncached();
+        return new String(bytes(), StandardCharsets.UTF_8);
     }
 
     @Override
     public void display(ELispPrint print) {
         print.startString();
-        TruffleStringIterator i = value.createCodePointIteratorUncached(TruffleString.Encoding.UTF_32);
+        CharIterator i = iterator(0);
         while (i.hasNext()) {
-            int c = i.nextUncached();
+            int c = i.nextInt();
             print.print(state == STATE_BYTES && c >= 0x80 ? c + 0x3FFF00 : c);
         }
         print.endString();
@@ -197,11 +222,8 @@ public final class ELispString implements TruffleObject, ELispValue {
         return toString();
     }
     @ExportMessage
-    public TruffleString asTruffleString(@Cached TruffleString.AsTruffleStringNode convertNode) {
-        return convertNode.execute(value, TruffleString.Encoding.UTF_32);
-    }
-    public TruffleString asTruffleStringUncached() {
-        return TruffleString.AsTruffleStringNode.getUncached().execute(value, TruffleString.Encoding.UTF_32);
+    public TruffleString asTruffleString() {
+        return TruffleString.fromByteArrayUncached(value, Encoding.UTF_8);
     }
     @ExportMessage
     @TruffleBoundary
@@ -223,16 +245,88 @@ public final class ELispString implements TruffleObject, ELispValue {
         if (!(other instanceof ELispString s)) {
             return false;
         }
-        return (state == s.state || (state | s.state) != STATE_BYTES)
-                && value.equalsUncached(s.value, TruffleString.Encoding.UTF_32);
+        int state = state();
+        int oState = s.state();
+        return (
+                (state | oState) == STATE_BYTES // both are unibyte strings
+                        || (state != STATE_BYTES) == (oState != STATE_BYTES) // both utf
+        ) && Arrays.equals(value, s.value);
     }
     @Override
     public int lispHashCode(int depth) {
-        return (state == STATE_BYTES ? 31 : 0) + value.hashCode();
+        if ((state & STATE_HASHED_MASK) != 0) {
+            return state >> 4;
+        }
+        if ((state & STATE_MUTABLE_MASK) != 0) {
+            state = state & ~STATE_MUTABLE_MASK;
+        }
+        int computed = (state() == STATE_BYTES ? 31 : 0) + Arrays.hashCode(value);
+        computed = computed << 4;
+        state = (state & 0b1111) | STATE_HASHED_MASK | computed;
+        return computed >> 4;
     }
 
-    public boolean startsWithUncached(String s) {
-        StringSupport.StartsWithStringNode uncached = StringSupportFactory.StartsWithStringNodeGen.getUncached();
-        return uncached.execute(uncached, this, new ELispString(s));
+    public boolean startsWithAscii(String s) {
+        if (s.length() > value.length) {
+            return false;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            if (value[i] != s.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static final class Builder extends MuleStringBuilder {
+        public Builder() {
+            super(32);
+        }
+        public Builder(int initialCapacity) {
+            super(initialCapacity);
+        }
+
+        public Builder append(ELispString s) {
+            return appendInner(s, s.length(), 0, s.bytes().length);
+        }
+
+        public Builder append(int codePoint) {
+            appendCodePoint(codePoint);
+            return this;
+        }
+
+        public Builder append(ELispString s, int start, int end) {
+            int startByte = codepointIndexToByteIndex(s, start, 0);
+            int endByte = codepointIndexToByteIndex(s, end - start, startByte);
+            return appendInner(s, end - start, startByte, endByte);
+        }
+
+        private Builder appendInner(ELispString s, int codepoints, int startBytes, int endBytes) {
+            byte[] bytes = s.bytes();
+            checkRange(bytes, startBytes, endBytes);
+            this.codepoints += codepoints;
+            int oState = s.state();
+            int newState = oState | this.state;
+            if (newState == STATE_EMACS) {
+                if (this.state == STATE_BYTES) {
+                    convertToMultibyte();
+                }
+                if (oState == STATE_BYTES) {
+                    this.state = STATE_EMACS;
+                    for (int i = startBytes; i < endBytes; i++) {
+                        byte b = bytes[i];
+                        writeRawByte(b, this);
+                    }
+                    return this;
+                }
+            }
+            this.state = newState;
+            writeBytes(bytes, startBytes, endBytes - startBytes);
+            return this;
+        }
+
+        public ELispString build() {
+            return ELispString.ofKnown(toByteArray(), codepoints, state);
+        }
     }
 }

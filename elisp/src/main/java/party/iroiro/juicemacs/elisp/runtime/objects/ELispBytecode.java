@@ -8,7 +8,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.strings.InternalByteArray;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.ELispExpressionNode;
@@ -19,8 +18,6 @@ import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.array.LocationProvider;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
-import party.iroiro.juicemacs.elisp.runtime.string.StringSupportFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,12 +35,8 @@ public final class ELispBytecode extends AbstractELispClosure implements Locatio
 
     public byte[] getBytecode() {
         ELispString s = (ELispString) get(CLOSURE_CODE);
-        StringSupport.GetInternalBytesNode uncached = StringSupportFactory.GetInternalBytesNodeGen.getUncached();
-        InternalByteArray array = uncached.execute(uncached, s);
-        if (array.getOffset() != 0) {
-            throw new UnsupportedOperationException();
-        }
-        return array.getArray();
+        s.setImmutable();
+        return s.bytes();
     }
 
     public Object[] getConstants() {

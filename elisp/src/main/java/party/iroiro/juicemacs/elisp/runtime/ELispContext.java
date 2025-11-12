@@ -7,7 +7,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import org.apache.fory.Fory;
 import org.apache.fory.memory.MemoryBuffer;
@@ -105,7 +104,7 @@ public final class ELispContext implements ELispParser.InternContext {
         return obarray().intern(name);
     }
     @Override
-    public ELispSymbol intern(TruffleString name) {
+    public ELispSymbol intern(ELispString name) {
         return obarray().intern(name);
     }
     @Override

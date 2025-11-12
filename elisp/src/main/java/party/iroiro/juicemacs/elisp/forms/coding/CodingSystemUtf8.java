@@ -4,7 +4,7 @@ import party.iroiro.juicemacs.elisp.forms.coding.EolAwareStringBuilder.EndOfLine
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import java.io.IOException;
 
@@ -59,7 +59,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         }
 
         @Override
-        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+        Builder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
             if (input.hasNext() && input.next() == (byte) UTF_8_BOM_1) {
                 if (input.hasNext() && input.next() == (byte) UTF_8_BOM_2) {
                     if (input.hasNext() && input.next() == (byte) UTF_8_BOM_3) {
@@ -77,7 +77,7 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
         }
 
         @Override
-        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+        Builder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
             // TODO: BOM, etc.
             EolAwareStringBuilder output = newStringBuilder();
             byte[] nonAsciiSequence = new byte[5];
@@ -99,7 +99,8 @@ final class CodingSystemUtf8 implements ELispCodingSystemType {
                             for (int j = 0; j < i; j++) {
                                 output.appendRawByte(nonAsciiSequence[j]);
                             }
-                            if (octet != -1) { output.appendRawByte((byte) octet);
+                            if (octet != -1) {
+                                output.appendRawByte((byte) octet);
                             }
                             continue next;
                         }

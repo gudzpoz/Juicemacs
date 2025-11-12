@@ -5,8 +5,9 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.apache.commons.text.WordUtils;
+import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import java.util.List;
 import java.util.PrimitiveIterator;
@@ -44,12 +45,12 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString upcaseString(ELispString obj) {
-            MuleStringBuilder builder = new MuleStringBuilder();
-            PrimitiveIterator.OfInt iterator = obj.iterator(0);
+            ELispString.Builder builder = new Builder(obj.bytes().length);
+            CharIterator iterator = obj.iterator(0);
             while (iterator.hasNext()) {
                 builder.appendCodePoint(Math.toIntExact(upcaseChar(iterator.nextInt())));
             }
-            return builder.buildString();
+            return builder.build();
         }
     }
 
@@ -78,12 +79,12 @@ public class BuiltInCaseFiddle extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString downcaseString(ELispString obj) {
-            MuleStringBuilder builder = new MuleStringBuilder();
+            ELispString.Builder builder = new ELispString.Builder();
             PrimitiveIterator.OfInt iterator = obj.iterator(0);
             while (iterator.hasNext()) {
                 builder.appendCodePoint(Math.toIntExact(downcaseChar(iterator.nextInt())));
             }
-            return builder.buildString();
+            return builder.build();
         }
     }
 

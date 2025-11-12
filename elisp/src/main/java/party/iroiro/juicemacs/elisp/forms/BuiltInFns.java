@@ -13,8 +13,6 @@ import com.oracle.truffle.api.dsl.*;
 
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
@@ -24,8 +22,9 @@ import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.mule.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -64,11 +63,26 @@ public class BuiltInFns extends ELispBuiltIns {
         Iterator<?> inner = switch (sequence) {
             case ELispCons cons -> cons.iterator();
             case ELispVector vector -> vector.iterator();
-            case ELispString string -> string.iteratorUncached();
+            case ELispString string -> stringGeneralIter(string);
             case ELispBoolVector boolVector -> boolVector.iterator();
             default -> throw ELispSignals.wrongTypeArgument(SEQUENCEP, sequence);
         };
         return TruffleUtils.Iter.of(inner);
+    }
+
+    private static Iterator<Long> stringGeneralIter(ELispString string) {
+        CharIterator i = string.iterator(0);
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return i.hasNext();
+            }
+
+            @Override
+            public Long next() {
+                return (long) i.nextInt();
+            }
+        };
     }
 
     private static boolean expectNil(ELispSymbol seq) {
@@ -382,15 +396,20 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringEqual extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean stringEqual(Object s1, Object s2) {
-            return getInner(s1).equalsUncached(getInner(s2), StringSupport.UTF_32);
+        public static boolean stringEqual(ELispString s1, ELispString s2) {
+            return s1.lispEquals(s2);
         }
 
-        private static AbstractTruffleString getInner(Object object) {
+        @Specialization
+        public static boolean stringEqual(Object s1, Object s2) {
+            return getInner(s1).lispEquals(getInner(s2));
+        }
+
+        public static ELispString getInner(Object object) {
             if (toSym(object) instanceof ELispSymbol symbol) {
-                return StringSupport.tString(symbol.name());
+                return symbol.name();
             }
-            return asStr(object).value();
+            return asStr(object);
         }
     }
 
@@ -483,25 +502,34 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringLessp extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean stringLesspCached(
-                Object string1, Object string2,
-                @Cached TruffleString.CompareIntsUTF32Node compare
-        ) {
-            AbstractTruffleString value1 = asTruffleString(string1);
-            AbstractTruffleString value2 = asTruffleString(string2);
-            return compare.execute(value1, value2) < 0;
+        public static boolean stringLessp(ELispString string1, ELispString string2) {
+            return stringCompare(string1, string2) < 0;
         }
 
-        private static AbstractTruffleString asTruffleString(Object string1) {
-            if (string1 instanceof ELispString s) {
-                return s.value();
-            } else {
-                return StringSupport.tString(asSym(string1).name());
+        public static int stringCompare(ELispString string1, ELispString string2) {
+            if (string1.isUnibyte() && string2.isUnibyte()) {
+                return Arrays.compare(string1.bytes(), string2.bytes());
             }
+            CharIterator i1 = string1.iterator(0);
+            CharIterator i2 = string2.iterator(0);
+            while (i1.hasNext() && i2.hasNext()) {
+                int cmp = Integer.compare(i1.nextInt(), i2.nextInt());
+                if (cmp != 0) {
+                    return cmp;
+                }
+            }
+            return i1.hasNext() ? 1 : i2.hasNext() ? -1 : 0;
+        }
+
+        @Specialization
+        public static boolean stringLesspSymbols(Object string1, Object string2) {
+            ELispString s1 = FStringEqual.getInner(string1);
+            ELispString s2 = FStringEqual.getInner(string2);
+            return stringLessp(s1, s2);
         }
 
         public static boolean stringLessp(Object string1, Object string2) {
-            return stringLesspCached(string1, string2, TruffleString.CompareIntsUTF32Node.getUncached());
+            return stringLesspSymbols(string1, string2);
         }
     }
 
@@ -661,15 +689,15 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FConcat extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString concat(Object[] sequences) {
-            MuleStringBuilder builder = new MuleStringBuilder();
+            ELispString.Builder builder = new ELispString.Builder();
             for (Object arg : sequences) {
                 if (arg instanceof ELispString s) {
-                    builder.appendString(s);
+                    builder.append(s);
                 } else {
                     appendSequence(builder, arg);
                 }
             }
-            return builder.buildString();
+            return builder.build();
         }
 
         @TruffleBoundary
@@ -935,31 +963,8 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString substring(ELispString string, Object from, Object to) {
-            AbstractTruffleString s = string.value();
-            int length = s.codePointLengthUncached(StringSupport.UTF_32);
-            int start;
-            if (isNil(from)) {
-                start = 0;
-            } else {
-                start = asInt(from);
-                if (start < 0) {
-                    start = length + start;
-                }
-            }
-            int end;
-            if (isNil(to)) {
-                end = length;
-            } else {
-                end = asInt(to);
-                if (end < 0) {
-                    end = length + end;
-                }
-            }
             // TODO: properties
-            return new ELispString(
-                    s.substringUncached(start, end - start, StringSupport.UTF_32, true),
-                    string.state()
-            );
+            return FSubstringNoProperties.substringNoProperties(string, from, to);
         }
     }
 
@@ -978,12 +983,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSubstringNoProperties extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString substringNoProperties(
-                ELispString string, Object from, Object to,
-                @Cached TruffleString.CodePointLengthNode lengthNode,
-                @Cached TruffleString.SubstringNode substringNode
-        ) {
-            long length = lengthNode.execute(string.value(), StringSupport.UTF_32);
+        public static ELispString substringNoProperties(ELispString string, Object from, Object to) {
+            long length = string.length();
             long start = notNilOr(from, 0);
             long end = notNilOr(to, length);
             if (start < 0) {
@@ -992,10 +993,7 @@ public class BuiltInFns extends ELispBuiltIns {
             if (end < 0) {
                 end = length + end;
             }
-            return new ELispString(
-                    substringNode.execute(string.value(), asInt(start), asInt(end - start), StringSupport.UTF_32, true),
-                    string.state()
-            );
+            return StringSupport.substring(string, start, end);
         }
     }
 
@@ -1407,15 +1405,15 @@ public class BuiltInFns extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString deleteStr(Object elt, ELispString seq) {
-            PrimitiveIterator.OfInt i = seq.iterator(0);
-            MuleStringBuilder builder = new MuleStringBuilder();
+            CharIterator i = seq.iterator(0);
+            ELispString.Builder builder = new ELispString.Builder();
             while (i.hasNext()) {
                 int codepoint = i.nextInt();
                 if (!(elt instanceof Long l && l == codepoint)) {
                     builder.appendCodePoint(codepoint);
                 }
             }
-            return builder.buildString();
+            return builder.build();
         }
         @Specialization
         public static ELispVector deleteVec(Object elt, ELispVector seq) {
@@ -1457,11 +1455,7 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString nreverseString(ELispString seq) {
-            MuleStringBuilder builder = new MuleStringBuilder();
-            for (int i = (seq.length() - 1); i >= 0; i--) {
-                builder.appendCodePoint(seq.codePointAt(i));
-            }
-            return new ELispString(builder.build());
+            return FReverse.reverseString(seq);
         }
 
         @TruffleBoundary
@@ -1494,7 +1488,7 @@ public class BuiltInFns extends ELispBuiltIns {
         }
         @Specialization
         public static ELispString reverseString(ELispString seq) {
-            return FNreverse.nreverseString(seq);
+            return StringSupport.reverse(seq);
         }
         @Specialization
         public static ELispCons reverseList(ELispCons seq) {
@@ -1906,7 +1900,7 @@ public class BuiltInFns extends ELispBuiltIns {
         }
         @Specialization
         public static boolean equalString(ELispString o1, ELispString o2) {
-            return o1.value().equals(o2.value());
+            return FStringEqual.stringEqual(o1, o2);
         }
         @Specialization
         public static boolean equal(ELispCons o1, ELispCons o2) {
@@ -2080,21 +2074,21 @@ public class BuiltInFns extends ELispBuiltIns {
                 @Cached(inline = true) FuncallDispatchNode dispatchNode
         ) {
             TruffleUtils.Iter<?> i = iterateSequence(sequence);
-            MuleStringBuilder builder = new MuleStringBuilder();
+            ELispString.Builder builder = new ELispString.Builder();
             while (i.hasNext()) {
                 Object result = dispatchNode.dispatch(this, function, i.next());
                 if (!isNil(result)) {
                     if (result instanceof ELispString s) {
-                        builder.appendString(s);
+                        builder.append(s);
                     } else {
                         FConcat.appendSequence(builder, result);
                     }
                 }
                 if (!isNil(separator) && i.hasNext()) {
-                    builder.appendString(asStr(separator));
+                    builder.append(asStr(separator));
                 }
             }
-            return new ELispString(builder.build());
+            return builder.build();
         }
     }
 
@@ -2325,7 +2319,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             ELispString file;
             if (isNil(filename)) {
-                file = new ELispString(feature.name());
+                file = feature.name();
             } else {
                 file = asStr(filename);
             }
@@ -3087,16 +3081,31 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FStringSearch extends ELispBuiltInBaseNode {
         @Specialization
         public static Object stringSearch(
-                ELispString needle, ELispString haystack, Object startPos,
-                @Cached TruffleString.IndexOfStringNode indexOf
+                ELispString needle, ELispString haystack, Object startPos
         ) {
-            // TODO: This is slow.
-            AbstractTruffleString needleS = needle.value();
-            AbstractTruffleString haystackS = haystack.value();
-            int start = asInt(notNilOr(startPos, 0));
-            int end = haystack.length();
-            int index = indexOf.execute(haystackS, needleS, start, end, StringSupport.UTF_32);
-            return index < 0 ? false : (long) index;
+            if (!StringSupport.isCompatible(needle, haystack)) {
+                return false;
+            }
+            byte[] needleS = needle.bytes();
+            byte[] haystackS = haystack.bytes();
+            int startIdx = asInt(notNilOr(startPos, 0));
+            if (needleS.length == 0) {
+                return (long) startIdx;
+            }
+            int start = StringSupport.codepointIndexToByteIndex(haystack, startIdx, 0);
+            int end = haystackS.length;
+            for (int i = start; i <= end - needleS.length; i++) {
+                if (haystackS[i] == needleS[0]) {
+                    int j = 1;
+                    while (j < needleS.length && haystackS[i + j] == needleS[j]) {
+                        j++;
+                    }
+                    if (j == needleS.length) {
+                        return (long) (startIdx + StringSupport.countCodepoints(haystack, start, i));
+                    }
+                }
+            }
+            return false;
         }
     }
 

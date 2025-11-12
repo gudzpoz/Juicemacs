@@ -11,6 +11,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -27,16 +28,21 @@ import static party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.UNBOUND;
 /// in the symbol, but in the Truffle context to allow parallel context usages.
 @ExportLibrary(InteropLibrary.class)
 public final class ELispSymbol implements ELispValue, TruffleObject {
-    private final String name;
+    private final ELispString name;
     private final boolean isKeyword;
 
     public ELispSymbol(String name) {
-        this(name, !name.isEmpty() && name.charAt(0) == ':');
+        this(new ELispString(name), !name.isEmpty() && name.charAt(0) == ':');
     }
 
-    public ELispSymbol(String name, boolean isKeyword) {
+    public ELispSymbol(ELispString name) {
+        this(name, name.bytes().length > 0 && name.bytes()[0] == ':');
+    }
+
+    public ELispSymbol(ELispString name, boolean isKeyword) {
         this.name = name;
         this.isKeyword = isKeyword;
+        name.setImmutable();
     }
 
     private Optional<ValueStorage> tryGetStorage() {
@@ -76,6 +82,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
      * It might expose the internally used {@code UNBOUND} value, so the caller should make sure
      * to either dispose the returned value or only swap it back afterward.
      * </p>
+     *
      * @param value the new thread-local value
      * @return the previous thread-local value, which should be treated as non-transparent
      */
@@ -176,7 +183,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         ELispContext.get(null).getFunctionStorage(this).set(function, this);
     }
 
-    public String name() {
+    public ELispString name() {
         return name;
     }
 
@@ -242,7 +249,7 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
 
     @Override
     public String toString() {
-        return name;
+        return name.asString();
     }
 
     //#region InteropLibrary
@@ -250,9 +257,10 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
     public boolean isString() {
         return true;
     }
+
     @ExportMessage
     public String asString() {
-        return name;
+        return name.asString();
     }
     //#endregion InteropLibrary
 

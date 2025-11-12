@@ -5,7 +5,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.util.List;
 
@@ -156,11 +155,11 @@ public class BuiltInCharacter extends ELispBuiltIns {
     public abstract static class FString extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString string(Object[] characters) {
-            MuleStringBuilder builder = new MuleStringBuilder();
+            ELispString.Builder builder = new ELispString.Builder();
             for (Object c : characters) {
-                builder.appendCodePoint(asInt(c));
+                builder.appendCodePoint(asChar(c));
             }
-            return builder.buildString();
+            return builder.build();
         }
     }
 
@@ -179,7 +178,7 @@ public class BuiltInCharacter extends ELispBuiltIns {
             for (int i = 0; i < bytes.length; i++) {
                 b[i] = (byte) asRanged(bytes[i], 0L, 255L);
             }
-            return new ELispString(b);
+            return ELispString.ofBytes(b);
         }
     }
 

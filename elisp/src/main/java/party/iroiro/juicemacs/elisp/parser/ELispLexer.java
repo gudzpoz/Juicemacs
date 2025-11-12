@@ -9,10 +9,10 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
 import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
@@ -250,7 +250,15 @@ public class ELispLexer {
         record Char(int value) implements Token {
         }
 
-        record Str(TruffleString value, int state) implements Token {
+        record Str(ELispString string) implements Token {
+            @Override
+            public boolean equals(Object obj) {
+                return obj instanceof Str(ELispString other) && string.lispEquals(other);
+            }
+            @Override
+            public int hashCode() {
+                return string.lispHashCode(0);
+            }
         }
 
         record FixNum(long value) implements Token {
@@ -268,7 +276,16 @@ public class ELispLexer {
         /**
          * Bool vector as is in {@code #&10"value"}
          */
-        record BoolVec(long length, TruffleString value) implements Token {
+        record BoolVec(long length, ELispString value) implements Token {
+            @Override
+            public boolean equals(Object o) {
+                return o instanceof BoolVec(long otherLength, ELispString otherValue)
+                        && length == otherLength && value.lispEquals(otherValue);
+            }
+            @Override
+            public int hashCode() {
+                return (int) (length * 31 + value.lispHashCode(0));
+            }
         }
     }
 
@@ -608,13 +625,13 @@ public class ELispLexer {
      * Read the remaining ELisp string after the initial {@code "} character.
      */
     private Token.Str readStr() throws IOException {
-        MuleStringBuilder sb = new MuleStringBuilder();
+        ELispString.Builder sb = new Builder();
         while (true) {
             int c = noEOF(reader.peek());
             switch (c) {
                 case '"' -> {
                     reader.read();
-                    return new Token.Str(sb.build(), sb.getState());
+                    return new Token.Str(sb.build());
                 }
                 case '\\' -> {
                     c = readChar(true);
@@ -624,7 +641,8 @@ public class ELispLexer {
                     if (c < 0) {
                         sb.appendRawByte((byte) -c);
                     } else {
-                        sb.appendCodePoint(c);
+                        // "\x3FFFFF" produces a unibyte string in emacs.
+                        sb.appendCodePointOrRaw(c);
                     }
                 }
                 default -> {
@@ -811,7 +829,7 @@ public class ELispLexer {
                             throw ELispSignals.invalidReadSyntax("Expected '\"'");
                         }
                         Token.Str str = readStr();
-                        yield new Token.BoolVec(length, str.value);
+                        yield new Token.BoolVec(length, str.string);
                     }
                     case '!' -> {
                         skipLine();

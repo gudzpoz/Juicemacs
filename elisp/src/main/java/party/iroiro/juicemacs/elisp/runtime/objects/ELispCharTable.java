@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.*;
@@ -586,7 +587,7 @@ public final class ELispCharTable extends AbstractELispVector {
         }
 
         private SubTable decompressTable(ELispString compressed, int minChar) {
-            PrimitiveIterator.OfInt i = compressed.iterator(0);
+            CharIterator i = compressed.iterator(0);
             int type = i.nextInt();
             SubTable table = new SubTable(3, minChar, false);
             if (type == 1) {
@@ -618,7 +619,7 @@ public final class ELispCharTable extends AbstractELispVector {
                             }
                         }
                         while (count-- > 0) {
-                            table.setContentSlot(index, v > 0 ? (long) v : false);
+                            table.setContentSlot(index, (long) v);
                             index++;
                         }
                         break;

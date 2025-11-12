@@ -9,7 +9,7 @@ errorprone-nullaway = "0.12.10"
 
 # Core
 jspecify = "1.0.0"
-truffle = "25.0.0"
+truffle = "25.0.1"
 
 # Libraries
 commons-compress = "1.28.0"

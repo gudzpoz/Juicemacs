@@ -29,7 +29,14 @@ module party.iroiro.juicemacs.elisp {
 
     // Juicemacs
     requires party.iroiro.juicemacs.piecetree;
+    requires party.iroiro.juicemacs.mule;
 
     provides com.oracle.truffle.api.provider.TruffleLanguageProvider
             with party.iroiro.juicemacs.elisp.ELispLanguageProvider;
+
+    exports party.iroiro.juicemacs.elisp.parser;
+    exports party.iroiro.juicemacs.elisp.runtime;
+    exports party.iroiro.juicemacs.elisp.runtime.array;
+    exports party.iroiro.juicemacs.elisp.runtime.objects;
+    exports party.iroiro.juicemacs.elisp.runtime.string;
 }

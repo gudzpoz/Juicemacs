@@ -6,7 +6,6 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
@@ -14,11 +13,10 @@ import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
-import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.util.*;
 
@@ -34,10 +32,10 @@ public class BuiltInBuffer extends ELispBuiltIns {
     //#region buffer_local_flags
     public final byte[] bufferLocalFlags = new byte[77];
     //#endregion buffer_local_flags
-    private final HashMap<TruffleString, ELispBuffer> buffers = new HashMap<>();
+    private final HashStringMap<ELispBuffer> buffers = new HashStringMap<>();
     private final ValueStorage.Forwarded minibufferList = new ValueStorage.Forwarded();
 
-    private static HashMap<TruffleString, ELispBuffer> getBuffers(@Nullable Node node) {
+    private static HashStringMap<ELispBuffer> getBuffers(@Nullable Node node) {
         return ELispContext.get(node).globals().builtInBuffer.buffers;
     }
 
@@ -45,16 +43,16 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @Nullable
     private static ELispBuffer getBuffer(ELispString name) {
         // TODO: Handle name changes?
-        return getBuffers(null).get(name.asTruffleStringUncached());
+        return getBuffers(null).get(name);
     }
     @TruffleBoundary
     private static void putBuffer(ELispString name, ELispBuffer buffer) {
-        getBuffers(null).put(name.asTruffleStringUncached(), buffer);
+        getBuffers(null).put(name, buffer);
     }
 
     @TruffleBoundary
     private static Object getBufferList() {
-        return ELispCons.listOf(getBuffers(null).values().toArray());
+        return getBuffers(null).valueList();
     }
 
     public static int downCase(int c, ELispBuffer buffer) {
@@ -85,7 +83,10 @@ public class BuiltInBuffer extends ELispBuiltIns {
             buf.resetLocalVariables(true);
             return buf;
         } else {
-            ELispBuffer newBuffer = FGetBufferCreate.getBufferCreate(new ELispString(" *Minibuf-" + depth + "*"), false);
+            ELispBuffer newBuffer = FGetBufferCreate.getBufferCreate(
+                    ELispString.ofJava(" *Minibuf-" + depth + "*"),
+                    false
+            );
             asCons(tail).setCar(newBuffer);
             FBufferEnableUndo.bufferEnableUndo(newBuffer);
             return newBuffer;
@@ -231,9 +232,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
             ELispBuffer buffer = new ELispBuffer(bufferDefaults, !isNil(inhibitBufferHooks));
             buffer.setWidthTable(false);
             // TODO: Texts
-            buffer.setName(new ELispString(name.asTruffleStringUncached()));
+            buffer.setName(name);
             buffer.setLastName(buffer.getName());
-            buffer.setUndoList(StringNodes.charAt(name.value(), 0) == ' ');
+            buffer.setUndoList(name.startsWithAscii(" "));
 
             buffer.reset();
             buffer.resetLocalVariables(true);
@@ -305,28 +306,17 @@ public class BuiltInBuffer extends ELispBuiltIns {
             if (BuiltInFns.FStringEqual.stringEqual(name, ignore)) {
                 return name;
             }
-            if (charAt.execute(name.value(), 0, StringSupport.UTF_32) == ' ') {
+            if (name.bytes()[0] == ' ') {
                 int i = new Random().nextInt(1_000_000);
-                AbstractTruffleString base = new MuleStringBuilder()
-                        .appendString(name)
-                        .appendCodePoint('-')
-                        .append(longToString.execute(i, StringSupport.UTF_32, true), 0)
-                        .build();
-                name = new ELispString(base, name.state());
+                name = StringSupport.appendAscii(name, "-", Long.toString(i));
                 if (getBuffer(name) != null) {
-                    return new ELispString(base);
+                    return name;
                 }
             }
             for (int i = 2; i < Integer.MAX_VALUE; i++) {
-                AbstractTruffleString gen = new MuleStringBuilder()
-                        .appendString(name)
-                        .appendCodePoint('<')
-                        .append(longToString.execute(i, StringSupport.UTF_32, true), 0) // NOPMD: no need to explode node execution
-                        .appendCodePoint('>')
-                        .build();
-                name = new ELispString(gen, name.state());
-                if (BuiltInFns.FStringEqual.stringEqual(name, ignore) || getBuffer(name) == null) {
-                    return name;
+                ELispString gen = StringSupport.appendAscii(name, "<", Long.toString(i), ">");
+                if (BuiltInFns.FStringEqual.stringEqual(gen, ignore) || getBuffer(gen) == null) {
+                    return gen;
                 }
             }
             throw ELispSignals.error("Unable to find a new buffer name");
@@ -662,28 +652,20 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @TruffleBoundary
         @Specialization
         public boolean killBuffer(Object bufferOrName) {
-            HashMap<TruffleString, ELispBuffer> buffers = getBuffers(this);
+            HashStringMap<ELispBuffer> buffers = getBuffers(this);
             if (bufferOrName instanceof ELispString name) {
-                return buffers.remove(name.asTruffleStringUncached()) != null;
+                return buffers.removeKey(name) != null;
             }
             ELispBuffer buffer = asBuffer(bufferOrName);
             if (buffer.getName() instanceof ELispString name) {
-                TruffleString inner = name.asTruffleStringUncached();
-                ELispBuffer match = buffers.get(inner);
+                ELispBuffer match = buffers.get(name);
                 if (match == buffer) {
-                    buffers.remove(inner);
+                    buffers.removeKey(name);
                     return true;
                 }
             }
-            Optional<Map.Entry<TruffleString, ELispBuffer>> entry = buffers.entrySet().stream()
-                    .filter(e -> e.getValue() == buffer)
-                    .findFirst();
-            if (entry.isPresent()) {
-                buffers.remove(entry.get().getKey());
-                return true;
-            }
+            return buffers.removeValue(buffer);
             // TODO
-            return false;
         }
     }
 
@@ -899,7 +881,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
         @Specialization
         public static Object makeOverlay(Object beg, Object end, Object buffer, Object frontAdvance, Object rearAdvance) {
             // TODO
-            return new ELispString("");
+            return ELispString.EMPTY;
         }
     }
 

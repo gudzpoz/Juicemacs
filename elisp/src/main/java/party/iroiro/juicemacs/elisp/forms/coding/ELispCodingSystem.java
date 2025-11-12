@@ -4,7 +4,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.IOException;
 
@@ -39,7 +39,7 @@ public abstract class ELispCodingSystem {
         return new EolAwareStringBuilder(eol);
     }
 
-    abstract MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException;
+    abstract ELispString.Builder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException;
 
     public static final class OtherCodingDetectedException extends ControlFlowException {
         private final ELispSymbol coding;
@@ -77,6 +77,9 @@ public abstract class ELispCodingSystem {
         }
         public long isoFlags() {
             return asLong(attrs.get(CODING_ATTR_ISO_FLAGS));
+        }
+        public boolean isAsciiCompat() {
+            return !isNil(attrs.get(CODING_ATTR_ASCII_COMPAT));
         }
         public Object charsetList() {
             return attrs.get(CODING_ATTR_CHARSET_LIST);

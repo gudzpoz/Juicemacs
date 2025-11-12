@@ -4,7 +4,7 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 
 import java.util.List;
@@ -219,11 +219,11 @@ public class BuiltInCmds extends ELispBuiltIns {
             if (count == 1) {
                 return BuiltInEditFns.FInsert.insert(new Object[]{character});
             }
-            MuleStringBuilder buffer = new MuleStringBuilder();
+            ELispString.Builder buffer = new ELispString.Builder((int) (5 * count));
             for (int i = 0; i < count; i++) {
                 buffer.appendCodePoint((int) character);
             }
-            return BuiltInEditFns.FInsert.insert(new Object[]{buffer.buildString()});
+            return BuiltInEditFns.FInsert.insert(new Object[]{buffer.build()});
         }
     }
 }

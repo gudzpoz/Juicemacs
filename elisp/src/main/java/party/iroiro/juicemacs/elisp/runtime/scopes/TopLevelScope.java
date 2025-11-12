@@ -64,8 +64,8 @@ public final class TopLevelScope implements TruffleObject {
     @TruffleBoundary
     public Object getMembers(boolean includeInternal) {
         ArrayList<ELispString> members = new ArrayList<>();
-        language.globalVariablesMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
-        language.globalFunctionsMap.keySet().forEach((sym) -> members.add(new ELispString(sym.name())));
+        language.globalVariablesMap.keySet().forEach((sym) -> members.add(sym.name()));
+        language.globalFunctionsMap.keySet().forEach((sym) -> members.add(sym.name()));
         return new ELispVector(members.toArray());
     }
 
@@ -74,7 +74,7 @@ public final class TopLevelScope implements TruffleObject {
     boolean isMemberReadable(String member) {
         ValueStorage storage = cache.get(member);
         if (storage == null) {
-            ELispSymbol symbol = context.obarray().internSoft(member);
+            ELispSymbol symbol = context.obarray().internSoft(ELispString.ofJava(member));
             if (symbol == null) {
                 return false;
             }

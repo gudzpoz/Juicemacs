@@ -2,16 +2,15 @@ package party.iroiro.juicemacs.elisp.runtime.internal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import party.iroiro.juicemacs.elisp.forms.BuiltInData;
 import party.iroiro.juicemacs.elisp.forms.BuiltInEval;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
-import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import java.lang.constant.Constable;
 import java.util.ArrayList;
@@ -122,7 +121,7 @@ public final class ELispPrint {
     }
 
     public ELispPrint printInt(int i) {
-        print(new ELispString(Integer.toString(i)).asTruffleStringUncached());
+        print(new ELispString(Integer.toString(i)));
         return this;
     }
 
@@ -170,8 +169,13 @@ public final class ELispPrint {
         return '0' <= c && c <= '9';
     }
 
-    private boolean isNumber(String str) {
-        return ELispLexer.INTEGER_PATTERN.matcher(str).matches() || ELispLexer.FLOAT_PATTERN.matcher(str).matches();
+    private boolean isNumber(ELispString str) {
+        if (!str.isAscii()) {
+            return false;
+        }
+        String s = str.toString();
+        return ELispLexer.INTEGER_PATTERN.matcher(s).matches()
+                || ELispLexer.FLOAT_PATTERN.matcher(s).matches();
     }
 
     private boolean isSpecialChar(int c) {
@@ -184,21 +188,21 @@ public final class ELispPrint {
 
     public void printSymbol(ELispSymbol symbol) {
         // TODO: symbol interned -> #: prefix
-        String name = symbol.name();
+        ELispString name = symbol.name();
         int length = name.length();
         if (length == 0) {
             print('#').print('#');
             return;
         }
         // If the symbol looks similar to a number, prefix it with a backslash
-        int c1 = name.charAt(0);
+        int c1 = name.bytes()[0];
         int numStart = ((c1 == '-' || c1 == '+') && name.length() > 1) ? 1 : 0;
-        int c2 = name.charAt(numStart);
+        int c2 = name.bytes()[numStart];
         if (((isDigit(c2) || c2 == '.') && isNumber(name)) || c1 == '?') {
             print('\\');
         }
 
-        PrimitiveIterator.OfInt iterator = name.codePoints().iterator();
+        CharIterator iterator = name.iterator(0);
         while (iterator.hasNext()) {
             int c = iterator.nextInt();
             if (isSpecialChar(c)) {
@@ -231,11 +235,9 @@ public final class ELispPrint {
             } else if (o == Boolean.TRUE) {
                 print("t");
             } else if (o instanceof Long l) {
-                TruffleString s = TruffleString.FromLongNode.getUncached().execute(l, TruffleString.Encoding.UTF_32, false);
-                func.print(new ELispString(s, StringSupport.STATE_ASCII));
+                func.print(ELispString.ofJava(Long.toString(l)));
             } else if (o instanceof Double d) {
-                TruffleString s = BuiltInData.FNumberToString.numberToStringFloat(d).asTruffleStringUncached();
-                func.print(new ELispString(s, StringSupport.STATE_ASCII));
+                func.print(ELispString.ofJava(Double.toString(d)));
             } else {
                 throw ELispSignals.error("unable to print: " + o + "(" + o.getClass() + ")");
             }
@@ -248,7 +250,7 @@ public final class ELispPrint {
         }
         switch (o) {
             case ELispValue v -> v.display(this);
-            case TruffleString s -> func.print(new ELispString(s));
+            case TruffleString s -> func.print(ELispString.ofJava(s.toJavaStringUncached()));
             default -> throw ELispSignals.error("unable to print: " + o + "(" + o.getClass() + ")");
         }
         return this;
@@ -270,12 +272,12 @@ public final class ELispPrint {
         return new ELispPrint(new FuncPrintFunc(func));
     }
 
-    public static ELispPrint fromBuilder(MuleStringBuilder buffer) {
+    public static ELispPrint fromBuilder(ELispString.Builder buffer) {
         return new ELispPrint(new StringPrintFunc(buffer));
     }
 
-    public static TruffleString toString(Object o) {
-        MuleStringBuilder buffer = new MuleStringBuilder();
+    public static ELispString toString(Object o) {
+        ELispString.Builder buffer = new Builder();
         fromBuilder(buffer).print(o).flush();
         return buffer.build();
     }
@@ -294,13 +296,13 @@ public final class ELispPrint {
     }
 
     private static abstract class BufferedPrintFunc implements PrintFunc {
-        final MuleStringBuilder buffer;
+        final ELispString.Builder buffer;
 
         BufferedPrintFunc() {
-            this(new MuleStringBuilder());
+            this(new ELispString.Builder());
         }
 
-        BufferedPrintFunc(MuleStringBuilder buffer) {
+        BufferedPrintFunc(ELispString.Builder buffer) {
             this.buffer = buffer;
         }
 
@@ -311,12 +313,12 @@ public final class ELispPrint {
 
         @Override
         public void print(ELispString s) {
-            buffer.appendString(s);
+            buffer.append(s);
         }
     }
 
     private static final class StringPrintFunc extends BufferedPrintFunc {
-        StringPrintFunc(MuleStringBuilder buffer) {
+        StringPrintFunc(ELispString.Builder buffer) {
             super(buffer);
         }
 
@@ -333,7 +335,7 @@ public final class ELispPrint {
 
         @Override
         public void flush() {
-            output.insert(super.buffer.buildString());
+            output.insert(super.buffer.build());
         }
     }
 
@@ -354,7 +356,7 @@ public final class ELispPrint {
             ELispBuffer b = getBuffer();
             // TODO: Restore?
             b.setPoint(marker.point());
-            b.insert(super.buffer.buildString());
+            b.insert(super.buffer.build());
         }
     }
 

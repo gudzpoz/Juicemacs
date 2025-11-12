@@ -1,12 +1,10 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.apache.fory.Fory;
 import org.apache.fory.memory.MemoryBuffer;
 import org.apache.fory.serializer.collection.MapSerializer;
@@ -20,9 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
-import party.iroiro.juicemacs.piecetree.StringNodes;
 
 import java.util.*;
 
@@ -151,7 +147,8 @@ public class BuiltInSearch extends ELispBuiltIns {
             long at = buffer.getPoint();
             long startEnd, end;
             if (forward) {
-                startEnd = end = notNilOr(bound, buffer.pointMax());
+                long max = buffer.pointMax();
+                startEnd = end = Math.min(notNilOr(bound, max), max);
             } else {
                 startEnd = notNilOr(bound, buffer.pointMin());
                 end = buffer.getPoint();
@@ -648,8 +645,7 @@ public class BuiltInSearch extends ELispBuiltIns {
     public abstract static class FReplaceMatch extends ELispBuiltInBaseNode {
         @Specialization
         public ELispString replaceMatch(
-                ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp,
-                @Cached TruffleString.SubstringNode substring
+                ELispString newtext, Object fixedcase, Object literal, Object string, Object subexp
         ) {
             // TODO: fixedcase, literal...
             long subexpN = notNilOr(subexp, 0);
@@ -657,14 +653,14 @@ public class BuiltInSearch extends ELispBuiltIns {
             ConsIterator cons = asCons(matchData(this)).listIterator((int) (subexpN * 2));
             int start = asInt(cons.next());
             int end = asInt(cons.next());
-            int length = StringNodes.length(s.value());
-            TruffleString before = substring.execute(s.value(), 0, start, StringSupport.UTF_32, true);
-            TruffleString after = substring.execute(s.value(), end, length - end, StringSupport.UTF_32, true);
-            return new MuleStringBuilder()
-                    .append(before, s.state())
-                    .appendString(newtext)
-                    .append(after, s.state())
-                    .buildString();
+            int length = s.length();
+            ELispString before = StringSupport.substring(s, 0, start);
+            ELispString after = StringSupport.substring(s, end, length);
+            return new ELispString.Builder()
+                    .append(before)
+                    .append(newtext)
+                    .append(after)
+                    .build();
         }
     }
 

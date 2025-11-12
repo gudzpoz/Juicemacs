@@ -162,7 +162,7 @@ final class StringBuffer extends ByteArrayBuilder {
             return bytes[index] & 0xFF;
         }
         int i = charIndexToByteIndex(index);
-        return (int) CodingUtils.readCodepoint(bytes, i);
+        return (int) CodingUtils.readCodepointAndByteLength(bytes, i);
     }
 
     public StringBuffer append(byte[] bytes) {

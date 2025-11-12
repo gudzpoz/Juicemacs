@@ -1,21 +1,19 @@
 package party.iroiro.juicemacs.elisp.parser;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.junit.jupiter.api.Test;
 import org.mozilla.universalchardet.UniversalDetector;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,29 +23,26 @@ import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.CHAR_TABL
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isT;
+import static party.iroiro.juicemacs.elisp.runtime.string.ELispString.ofJava;
 
 public class ELispParserTest {
-    private static TruffleString fromString(String input) {
-        return TruffleString.fromJavaStringUncached(input, StringSupport.UTF_32);
-    }
-
     private static final ELispParser.InternContext context = new ELispParser.InternContext() {
-        final Map<TruffleString, ELispSymbol> symbolMap = new HashMap<>(Map.of(
-                fromString("t"), T,
-                fromString("nil"), NIL,
-                fromString("float"), FLOAT,
-                fromString("hash-table"), HASH_TABLE,
-                fromString("data"), DATA,
-                fromString("key"), KEY
+        final HashStringMap<ELispSymbol> symbolMap = new HashStringMap<>(Map.of(
+                ofJava("t"), T,
+                ofJava("nil"), NIL,
+                ofJava("float"), FLOAT,
+                ofJava("hash-table"), HASH_TABLE,
+                ofJava("data"), DATA,
+                ofJava("key"), KEY
         ));
 
         @Override
         public ELispSymbol intern(String name) {
-            return intern(fromString(name));
+            return intern(ofJava(name));
         }
 
         @Override
-        public ELispSymbol intern(TruffleString name) {
+        public ELispSymbol intern(ELispString name) {
             ELispSymbol symbol = symbolMap.get(name);
             if (symbol == null) {
                 symbol = new ELispSymbol(name.toString());
@@ -67,6 +62,10 @@ public class ELispParserTest {
                 context,
                 Source.newBuilder("elisp", content, null).build()
         );
+    }
+
+    private static void assertLispEquals(ELispValue expected, ELispValue actual) {
+        assertTrue(expected.lispEquals(actual), () -> "Expected: " + expected + ", Actual: " + actual);
     }
 
     private static final Object[] ATOM_TOKEN_TESTS = new Object[] {
@@ -97,12 +96,12 @@ public class ELispParserTest {
         assertSame(FLOAT, interned);
         ELispSymbol uninterned = assertInstanceOf(ELispSymbol.class, read("#:float"));
         assertNotSame(FLOAT, uninterned);
-        assertEquals(FLOAT.name(), uninterned.name());
+        assertLispEquals(FLOAT.name(), uninterned.name());
         ELispSymbol noShorthand = assertInstanceOf(ELispSymbol.class, read("#_float"));
         assertSame(FLOAT, noShorthand);
 
         ELispSymbol dot = assertInstanceOf(ELispSymbol.class, read("."));
-        assertEquals(".", dot.name());
+        assertEquals(".", dot.name().toString());
 
         ELispBoolVector bVec = assertInstanceOf(ELispBoolVector.class, read("#&2\"\\1\""));
         assertEquals(2, bVec.size());
@@ -115,7 +114,7 @@ public class ELispParserTest {
         Object[] array = cons.toArray();
         for (int i = 0; i < array.length; i++) {
             ELispSymbol symbol = assertInstanceOf(ELispSymbol.class, array[i]);
-            assertEquals(symbols[i], symbol.name());
+            assertEquals(symbols[i], symbol.name().toString());
         }
     }
 
@@ -178,7 +177,7 @@ public class ELispParserTest {
 
         ELispRecord rec = assertInstanceOf(ELispRecord.class, read("#1=#s(rec #1#)"));
         assertEquals(2, rec.size());
-        assertEquals("rec", assertInstanceOf(ELispSymbol.class, rec.getFirst()).name());
+        assertLispEquals(ofJava("rec"), assertInstanceOf(ELispSymbol.class, rec.getFirst()).name());
         assertSame(rec, rec.get(1));
 
         // Emacs does not handle recursive references inside hash tables
@@ -188,12 +187,12 @@ public class ELispParserTest {
                 read("#2=#s(hash-table not-a-field #1=(k1 v1 k2 v2 k3 #2#) data #1#)")
         );
         assertEquals(3, table.size());
-        assertEquals(
-                "v1",
+        assertLispEquals(
+                ofJava("v1"),
                 assertInstanceOf(ELispSymbol.class, table.get(context.intern("k1"))).name()
         );
-        assertEquals(
-                "v2",
+        assertLispEquals(
+                ofJava("v2"),
                 assertInstanceOf(ELispSymbol.class, table.get(context.intern("k2"))).name()
         );
         ELispCons placeholder = assertInstanceOf(ELispCons.class, table.get(context.intern("k3")));

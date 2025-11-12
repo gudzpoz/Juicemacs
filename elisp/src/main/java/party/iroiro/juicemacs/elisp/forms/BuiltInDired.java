@@ -12,7 +12,6 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
 
 import java.io.IOException;
 import java.nio.file.attribute.PosixFilePermission;
@@ -81,10 +80,10 @@ public class BuiltInDired extends ELispBuiltIns {
                     }).filter(CompletionRegexpFilter.create(context))
                     .map((entry) -> {
                         if (entry.isDirectory()) {
-                            return new MuleStringBuilder()
-                                    .appendString(new ELispString(entry.getName()))
-                                    .appendCodePoint('/')
-                                    .buildString();
+                            return new ELispString.Builder()
+                                    .append(new ELispString(entry.getName()))
+                                    .append('/')
+                                    .build();
                         } else {
                             return new ELispString(entry.getPath());
                         }
@@ -316,7 +315,7 @@ public class BuiltInDired extends ELispBuiltIns {
                         // #7: size
                         file.size(),
                         // #8: mode
-                        new ELispString(permissionString(file)),
+                        ELispString.ofAsciiBytes(permissionString(file)),
                         // #9: ?
                         false,
                         // #10: TODO: inode

@@ -7,6 +7,13 @@ public class MuleStringBuilder extends ByteArrayBuilder {
     protected int state = STATE_ASCII;
     protected int codepoints = 0;
 
+    public MuleStringBuilder() {
+        super();
+    }
+    public MuleStringBuilder(int capacity) {
+        super(capacity);
+    }
+
     /// Appends a raw byte character
     ///
     /// State transitions:

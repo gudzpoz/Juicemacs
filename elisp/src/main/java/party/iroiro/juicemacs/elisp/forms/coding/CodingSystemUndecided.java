@@ -2,7 +2,7 @@ package party.iroiro.juicemacs.elisp.forms.coding;
 
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispVector;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import java.io.IOException;
 
@@ -42,7 +42,7 @@ public final class CodingSystemUndecided implements ELispCodingSystemType {
         }
 
         @Override
-        MuleStringBuilder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
+        Builder decode(ELispCodings codings, ByteIterator input) throws OtherCodingDetectedException, IOException {
             ELispSymbol detected = codings.getDetector().detect(input);
             if (detected == RAW_TEXT && preferUtf8) {
                 detected = UTF_8;

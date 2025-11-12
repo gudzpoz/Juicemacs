@@ -41,7 +41,6 @@ import static party.iroiro.juicemacs.piecetree.TreeNode.*;
 /// pieceTreeBase.ts @ vscode</a>
 ///
 /// Those lowercase `to do` comments are from the original code.
-@SuppressWarnings({"UnnecessaryLocalVariable"})
 public final class PieceTreeBase {
     public static final int AVERAGE_BUFFER_SIZE = 0x10000;
 
@@ -508,10 +507,9 @@ public final class PieceTreeBase {
     private void insertContentToNodeRight(byte[] value, TreeNode node) {
         // we are inserting to the right of this node.
         ArrayList<Piece> newPieces = createNewPieces(value);
-        TreeNode newNode = rbInsertRight(node, newPieces.getFirst());
-        TreeNode tmpNode = newNode;
+        node = rbInsertRight(node, newPieces.getFirst());
         for (int k = 1; k < newPieces.size(); k++) {
-            tmpNode = rbInsertRight(tmpNode, newPieces.get(k));
+            node = rbInsertRight(node, newPieces.get(k));
         }
     }
 
@@ -893,7 +891,7 @@ public final class PieceTreeBase {
     @TruffleBoundary
     private boolean iterate(TreeNode node, Predicate<TreeNode> callback) {
         if (node == SENTINEL) {
-            return callback.test(SENTINEL);
+            return true;
         }
         boolean leftRet = iterate(node.left, callback);
         if (!leftRet) {

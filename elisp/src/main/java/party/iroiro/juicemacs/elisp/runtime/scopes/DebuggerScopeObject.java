@@ -64,7 +64,7 @@ public record DebuggerScopeObject(
             int limit = scope.limit();
             for (int i = limit - 1; i >= 0; i--) {
                 if (scope.block().slots()[i] != ELispLexical.DYNAMIC_VARIABLE_SLOT) {
-                    members.add(new ELispString(scope.block().getSymbol(i).name()));
+                    members.add(scope.block().getSymbol(i).name());
                 }
             }
             scope = scope.block().upperScope();

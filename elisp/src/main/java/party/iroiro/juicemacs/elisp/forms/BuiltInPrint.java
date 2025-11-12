@@ -8,7 +8,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
 import java.util.List;
 
@@ -110,7 +110,7 @@ public class BuiltInPrint extends ELispBuiltIns {
                 printcharfun = ELispContext.get(null).currentBuffer();
             }
             // TODO
-            MuleStringBuilder output = isT(printcharfun) ? new MuleStringBuilder() : null;
+            ELispString.Builder output = isT(printcharfun) ? new ELispString.Builder() : null;
             return switch (printcharfun) {
                 case ELispBuffer buffer -> ELispPrint.fromBuffer(buffer);
                 case ELispMarker marker -> ELispPrint.fromMarker(marker);
@@ -140,7 +140,7 @@ public class BuiltInPrint extends ELispBuiltIns {
     public abstract static class FPrin1ToString extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString prin1ToString(Object object, Object noescape, Object overrides) {
-            return new ELispString(ELispPrint.toString(object));
+            return ELispPrint.toString(object);
         }
     }
 
@@ -176,7 +176,7 @@ public class BuiltInPrint extends ELispBuiltIns {
         public static Object princ(Object object, Object printcharfun) {
             // TODO
             switch (toSym(object)) {
-                case ELispString s -> FPrin1.getPrint(printcharfun).print(s.value()).flush();
+                case ELispString s -> FPrin1.getPrint(printcharfun).print(s).flush();
                 case ELispSymbol s -> FPrin1.getPrint(printcharfun).print(s.name()).flush();
                 default -> FPrin1.prin1(object, printcharfun, false);
             }
@@ -284,7 +284,7 @@ public class BuiltInPrint extends ELispBuiltIns {
             if (isNil(message) && error == ERROR) {
                 message = asCons(obj.cdr()).car();
             }
-            MuleStringBuilder buffer = new MuleStringBuilder();
+            ELispString.Builder buffer = new Builder();
             ELispPrint print = ELispPrint.fromBuilder(buffer);
             if (isNil(message)) {
                 print.print("peculiar error");
@@ -302,7 +302,7 @@ public class BuiltInPrint extends ELispBuiltIns {
                 print.print(o);
             }
             print.flush();
-            return new ELispString(buffer.build());
+            return buffer.build();
         }
     }
 

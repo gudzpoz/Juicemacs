@@ -5,15 +5,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.strings.AbstractTruffleString;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispCharTable;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
-import party.iroiro.juicemacs.elisp.runtime.string.MuleStringBuilder;
-import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
-import party.iroiro.juicemacs.piecetree.StringNodes;
+
+import java.io.ByteArrayOutputStream;
 
 public abstract class ELispRegExp {
 
@@ -72,24 +71,28 @@ public abstract class ELispRegExp {
     }
 
     @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private static final int[] ESCAPE_NEEDED = {'^', '$', '+', '?', '*', '.', '[', '\\'};
-    public static ELispString quote(ELispString string) {
-        AbstractTruffleString inner = string.value();
-        int length = StringNodes.length(inner);
-        int at = 0, prev = 0;
-        MuleStringBuilder quoted = new MuleStringBuilder();
-        while (prev < length) {
-            at = StringSupport.indexOfAny(inner, ESCAPE_NEEDED, at, length);
-            int end = at < 0 ? length : at;
-            quoted.append(StringNodes.substring(inner, prev, end - prev), string.state());
-            prev = end;
-            if (at < 0) {
-                break;
+    private static final byte[] ESCAPE_NEEDED = {'^', '$', '+', '?', '*', '.', '[', '\\'};
+    @ExplodeLoop
+    private static boolean shouldEscape(byte b) {
+        for (byte c : ESCAPE_NEEDED) {
+            if (c == b) {
+                return true;
             }
-            quoted.appendCodePoint('\\');
-            at++;
         }
-        return new ELispString(quoted.build());
+        return false;
+    }
+    public static ELispString quote(ELispString string) {
+        byte[] inner = string.bytes();
+        ByteArrayOutputStream out = new ByteArrayOutputStream(inner.length);
+        int added = 0;
+        for (byte b : inner) {
+            if (shouldEscape(b)) {
+                out.write((byte) '\\');
+                added++;
+            }
+            out.write(b);
+        }
+        return ELispString.ofKnown(out.toByteArray(), string.length() + added, string.state());
     }
 
     static ELispRegExpCompiler.Compiled getCompiled(ELispString string,

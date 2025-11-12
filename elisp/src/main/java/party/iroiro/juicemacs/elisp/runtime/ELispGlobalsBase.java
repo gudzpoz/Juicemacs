@@ -5,10 +5,10 @@ import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.forms.*;
 import party.iroiro.juicemacs.elisp.forms.coding.ELispCodings;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -88,7 +88,7 @@ public sealed abstract class ELispGlobalsBase permits ELispGlobals {
 
     protected ELispGlobalsBase(ELispContext context) {
         this.ctx = context;
-        this.globalObarray = new ELispObarray(new HashMap<>(4096));
+        this.globalObarray = new ELispObarray(new HashStringMap<>(4096));
     }
 
     public final ELispBuffer getBufferDefaults() {

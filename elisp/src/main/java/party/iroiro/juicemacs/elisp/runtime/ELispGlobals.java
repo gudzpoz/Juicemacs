@@ -12,12 +12,12 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispFrame;
 import party.iroiro.juicemacs.elisp.runtime.internal.ELispKboard;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.HashMap;
 
 import static party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.getMiniBuffer;
 import static party.iroiro.juicemacs.elisp.forms.BuiltInCoding.FDefineCodingSystemInternal.defineCodingSystemInternal;
@@ -59,7 +59,7 @@ public final class ELispGlobals extends ELispGlobalsBase {
     }
 
     private void internSymbols(ELispSymbol[] symbols) {
-        HashMap<String, ELispSymbol> map = globalObarray.symbols();
+        HashStringMap<ELispSymbol> map = globalObarray.symbols();
         for (ELispSymbol symbol : symbols) {
             map.put(symbol.name(), symbol);
         }

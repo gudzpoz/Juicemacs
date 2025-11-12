@@ -4,6 +4,7 @@ import org.apache.fory.Fory;
 import org.apache.fory.memory.MemoryBuffer;
 import org.apache.fory.serializer.Serializer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 public final class ELispSymbolSerializer extends Serializer<ELispSymbol> {
     public ELispSymbolSerializer(Fory fory) {
@@ -18,6 +19,6 @@ public final class ELispSymbolSerializer extends Serializer<ELispSymbol> {
     @Override
     public ELispSymbol read(MemoryBuffer buffer) {
         fory.getRefResolver().reference(null);
-        return new ELispSymbol((String) fory.readRef(buffer));
+        return new ELispSymbol((ELispString) fory.readRef(buffer));
     }
 }

@@ -23,7 +23,13 @@ dependencies {
     pmd project(':commons:pmd-no-int')
     pmd libs.bundles.pmd
 
-    implementation project(':commons:piece-tree')
+    // JDK 23 requires using "api" instead of "implementation" for this;
+    // otherwise we end up with a "Cannot attach type annotations" error.
+    // It seems that when a member is annotated with @Nullable (or others),
+    // the compiler will need the member type to be on classpath, even if
+    // the member is private.
+    api project(':commons:mule-utils')
+    api project(':commons:piece-tree')
 
     implementation libs.commons.compress
     implementation libs.commons.lang3

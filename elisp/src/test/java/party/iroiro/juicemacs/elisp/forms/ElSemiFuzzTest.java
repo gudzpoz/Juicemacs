@@ -160,7 +160,7 @@ public class ElSemiFuzzTest {
                     break;
                 }
                 byte[] bytes = is.readNBytes(len);
-                ELispString expr = new ELispString(bytes);
+                ELispString expr = ELispString.ofUtf8(bytes);
                 try {
                     count++;
                     bindings.putMember("args", expr);
