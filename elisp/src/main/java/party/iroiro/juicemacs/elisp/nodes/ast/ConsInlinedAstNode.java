@@ -142,6 +142,7 @@ public final class ConsInlinedAstNode extends ConsCallNode {
         return this;
     }
 
+    @TruffleBoundary
     public static void deepMaterializeNode(Node child, Set<Class<? extends Tag>> materializedTags) {
         Node node = child;
         if (node instanceof LazyConsExpressionNode cons) {

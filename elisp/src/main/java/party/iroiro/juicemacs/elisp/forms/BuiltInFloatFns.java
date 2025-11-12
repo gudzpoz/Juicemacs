@@ -92,10 +92,10 @@ public class BuiltInFloatFns extends ELispBuiltIns {
                 long r2 = r << 1;
                 int cmp;
                 if (r2 >> 1 == r) {
-                    if (d != Long.MIN_VALUE) {
-                        cmp = Long.compare(Math.abs(r2), Math.abs(d));
-                    } else {
+                    if (d == Long.MIN_VALUE) {
                         cmp = r2 == Long.MIN_VALUE ? 0 : -1;
+                    } else {
+                        cmp = Long.compare(Math.abs(r2), Math.abs(d));
                     }
                 } else {
                     cmp = 1;

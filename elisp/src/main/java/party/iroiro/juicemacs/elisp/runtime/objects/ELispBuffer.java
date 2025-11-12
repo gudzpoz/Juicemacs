@@ -177,7 +177,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             text = wrap(text.bytes());
         }
         long position = point - 1;
-        content.insert(position, text.bytes());
+        content.insert(position, text.bytes(), text.isAscii());
         intervals.insert(position, text.length(), null);
         markers.insertString(position, text.length());
     }
@@ -194,7 +194,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     /// Replaces text without messing up intervals and markers
     public void replace(long start, ELispString text) {
         content.delete(start - 1, text.length());
-        content.insert(start - 1, text.bytes());
+        content.insert(start - 1, text.bytes(), text.isAscii());
     }
 
     @TruffleBoundary

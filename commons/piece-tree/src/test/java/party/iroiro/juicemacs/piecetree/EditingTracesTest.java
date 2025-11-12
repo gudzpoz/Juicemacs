@@ -91,7 +91,7 @@ public class EditingTracesTest {
             state.delete(edit.position, edit.numDeleted);
         }
         if (!edit.insertedContent.isEmpty()) {
-            state.insert(edit.position, fromString(edit.insertedContent));
+            state.insert(edit.position, fromString(edit.insertedContent), false);
         }
     }
 

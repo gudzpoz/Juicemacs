@@ -80,7 +80,7 @@ public final class PieceTreeBase {
     private final ArrayList<StringBuffer> buffers;
     private int lineCnt;
     private long length;
-    private final BufferCursor[] lastChangeBufferPos = new BufferCursor[1];
+    private final BufferCursor[] lastChangeBufferPos = new BufferCursor[2];
     private final PieceTreeSearchCache searchCache;
     private int lastVisitedLine;
     private byte[] lastVisitedLineValue = StringBuffer.EMPTY_STRING;
@@ -103,7 +103,9 @@ public final class PieceTreeBase {
     private void create(boolean raw, StringBuffer[] chunks) {
         buffers.clear();
         buffers.add(StringBuffer.mutable(1024, raw));
+        buffers.add(StringBuffer.mutable(1024, true));
         lastChangeBufferPos[0] = new BufferCursor(0, 0);
+        lastChangeBufferPos[1] = new BufferCursor(0, 0);
         root = SENTINEL;
         lineCnt = 1;
         length = 0;
@@ -378,8 +380,11 @@ public final class PieceTreeBase {
     //#endregion
 
     //#region Piece Table
-    @TruffleBoundary
     public void insert(long offset, byte[] value) {
+        insert(offset, value, false);
+    }
+    @TruffleBoundary
+    public void insert(long offset, byte[] value, boolean ascii) {
         lastVisitedLine = 0;
         lastVisitedLineValue = StringBuffer.EMPTY_STRING;
         if (root != SENTINEL) {
@@ -390,19 +395,20 @@ public final class PieceTreeBase {
             Piece piece = node.piece;
             int bufferIndex = piece.bufferIndex;
             BufferCursor insertPosInBuffer = positionInBuffer(node, remainder);
-            if (node.piece.bufferIndex == 0 &&
-                    piece.end.line == lastChangeBufferPos[0].line &&
-                    piece.end.column == lastChangeBufferPos[0].column &&
+            int level = ascii ? 1 : 0;
+            if (node.piece.bufferIndex == level &&
+                    piece.end.line == lastChangeBufferPos[level].line &&
+                    piece.end.column == lastChangeBufferPos[level].column &&
                     (nodeStartOffset + piece.length == offset) &&
                     value.length < AVERAGE_BUFFER_SIZE
             ) {
                 // changed buffer
-                appendToNode(node, value);
+                appendToNode(node, value, ascii);
                 computeBufferMetadata();
                 return;
             }
             if (nodeStartOffset == offset) {
-                insertContentToNodeLeft(value, node);
+                insertContentToNodeLeft(value, ascii, node);
                 searchCache.validate(offset);
             } else if (nodeStartOffset + node.piece.length > offset) {
                 // we are inserting into the middle of a node.
@@ -415,7 +421,7 @@ public final class PieceTreeBase {
                 );
                 // reuse node for content before insertion point.
                 deleteNodeTail(node, insertPosInBuffer);
-                ArrayList<Piece> newPieces = createNewPieces(value);
+                ArrayList<Piece> newPieces = createNewPieces(value, ascii);
                 if (newRightPiece.length > 0) {
                     rbInsertRight(node, newRightPiece);
                 }
@@ -424,11 +430,11 @@ public final class PieceTreeBase {
                     tmpNode = rbInsertRight(tmpNode, newPiece);
                 }
             } else {
-                insertContentToNodeRight(value, node);
+                insertContentToNodeRight(value, ascii, node);
             }
         } else {
             // insert new node
-            ArrayList<Piece> pieces = createNewPieces(value);
+            ArrayList<Piece> pieces = createNewPieces(value, ascii);
             TreeNode node = rbInsertLeft(null, pieces.getFirst());
             for (int k = 1; k < pieces.size(); k++) {
                 node = rbInsertRight(node, pieces.get(k));
@@ -495,10 +501,10 @@ public final class PieceTreeBase {
         computeBufferMetadata();
     }
 
-    private void insertContentToNodeLeft(byte[] value, TreeNode node) {
+    private void insertContentToNodeLeft(byte[] value, boolean ascii, TreeNode node) {
         // we are inserting content to the beginning of node
         ArrayList<TreeNode> nodesToDel = new ArrayList<>();
-        ArrayList<Piece> newPieces = createNewPieces(value);
+        ArrayList<Piece> newPieces = createNewPieces(value, ascii);
         TreeNode newNode = rbInsertLeft(node, newPieces.getLast());
         for (int k = newPieces.size() - 2; k >= 0; k--) {
             newNode = rbInsertLeft(newNode, newPieces.get(k));
@@ -506,9 +512,9 @@ public final class PieceTreeBase {
         deleteNodes(nodesToDel);
     }
 
-    private void insertContentToNodeRight(byte[] value, TreeNode node) {
+    private void insertContentToNodeRight(byte[] value, boolean ascii, TreeNode node) {
         // we are inserting to the right of this node.
-        ArrayList<Piece> newPieces = createNewPieces(value);
+        ArrayList<Piece> newPieces = createNewPieces(value, ascii);
         node = rbInsertRight(node, newPieces.getFirst());
         for (int k = 1; k < newPieces.size(); k++) {
             node = rbInsertRight(node, newPieces.get(k));
@@ -561,7 +567,7 @@ public final class PieceTreeBase {
         }
     }
 
-    private ArrayList<Piece> createNewPieces(byte[] text) {
+    private ArrayList<Piece> createNewPieces(byte[] text, boolean ascii) {
         int textLength = text.length;
         if (textLength > AVERAGE_BUFFER_SIZE) {
             boolean raw = buffers.getFirst().isRaw();
@@ -579,7 +585,7 @@ public final class PieceTreeBase {
                 int charLength = Utf8Utils.countCodepoints(text, raw, start, start + byteLength);
                 byte[] splitText = Arrays.copyOfRange(text, start, start + byteLength);
                 start += byteLength;
-                StringBuffer piece = StringBuffer.immutable(splitText, raw);
+                StringBuffer piece = StringBuffer.immutable(splitText, raw || byteLength == charLength);
                 IndexList lineStarts = piece.lineStarts();
                 newPieces.add(new Piece(
                         buffers.size(),
@@ -592,23 +598,24 @@ public final class PieceTreeBase {
             }
             return newPieces;
         }
-        Piece newPiece = appendBuffer(text, lastChangeBufferPos[0], 0);
+        Piece newPiece = appendBuffer(text, ascii, lastChangeBufferPos[ascii ? 1 : 0], 0);
         ArrayList<Piece> newPieces = new ArrayList<>(1);
         newPieces.add(newPiece);
         return newPieces;
     }
 
     @TruffleBoundary // TODO: why native-image reports parsing error?
-    private Piece appendBuffer(byte[] text, BufferCursor start, int extraLength) {
-        StringBuffer buffer = buffers.getFirst();
+    private Piece appendBuffer(byte[] text, boolean ascii, BufferCursor start, int extraLength) {
+        int level = ascii ? 1 : 0;
+        StringBuffer buffer = buffers.get(level);
         int startOffset = buffer.length();
         buffer.append(text);
         int endIndex = buffer.lineStarts().size() - 1;
         int endColumn = buffer.length() - buffer.lineStarts().get(endIndex);
         BufferCursor endPos = new BufferCursor(endIndex, endColumn);
-        lastChangeBufferPos[0] = endPos;
+        lastChangeBufferPos[level] = endPos;
         return new Piece(
-                0,
+                level,
                 start,
                 endPos,
                 getLineFeedCnt(start, endPos),
@@ -799,8 +806,8 @@ public final class PieceTreeBase {
         rbInsertRight(node, newPiece);
     }
 
-    private void appendToNode(TreeNode node, byte[] text) {
-        Piece piece = appendBuffer(text, node.piece.start, node.piece.length);
+    private void appendToNode(TreeNode node, byte[] text, boolean ascii) {
+        Piece piece = appendBuffer(text, ascii, node.piece.start, node.piece.length);
         int lf_delta = piece.lineFeedCnt - node.piece.lineFeedCnt;
         int size_delta = piece.length - node.piece.length;
         node.piece = piece;

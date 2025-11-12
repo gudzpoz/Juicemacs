@@ -60,7 +60,7 @@ public final class ELispObarraySerializer extends Serializer<ELispObarray> {
         @SuppressWarnings("unchecked")
         public HashStringMap read(MemoryBuffer buffer) {
             int size = buffer.readVarUint32();
-            HashStringMap map = new HashStringMap(size);
+            HashStringMap map = new HashStringMap<>(size);
             fory.getRefResolver().reference(map);
             for (int i = 0; i < size; i++) {
                 ELispString key = (ELispString) fory.readRef(buffer);
