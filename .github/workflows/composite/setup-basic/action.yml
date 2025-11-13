@@ -1,0 +1,47 @@
+name: 'Setup project'
+description: 'Install dependencies, build the Emacs git submodule and install it to the PATH'
+branding:
+  icon: globe
+  color: purple
+
+inputs: {}
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK 25
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'graalvm'
+        java-version: '25'
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
+    - name: Install Emacs Dependencies
+      shell: bash
+      run: |
+        echo "GNU_EMACS_COMMIT=$(cd elisp/emacs && git rev-parse HEAD)" >> $GITHUB_ENV
+        # Emacs dependencies
+        sudo apt-get update
+        sudo apt-get install libgnutls28-dev
+    - name: Restore GNU Emacs Build Cache
+      id: cache-emacs-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: elisp/emacs
+        key: ${{ env.GNU_EMACS_COMMIT }}-gnu-emacs
+    - name: Build GNU Emacs
+      if: steps.cache-emacs-restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cd elisp/emacs
+        make
+    - name: Cache GNU Emacs Build
+      uses: actions/cache/save@v4
+      if: steps.cache-emacs-restore.outputs.cache-hit != 'true'
+      with:
+        path: elisp/emacs
+        key: ${{ steps.cache-emacs-restore.outputs.cache-primary-key }}
+    - name: Install Emacs to PATH
+      shell: bash
+      run: |
+        cd elisp/emacs
+        sudo make install

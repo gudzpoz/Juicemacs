@@ -107,7 +107,7 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-tasks.named('test') {
+tasks.named('test', Test) {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
     if (runCoverage()) {

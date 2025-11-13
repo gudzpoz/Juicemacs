@@ -282,7 +282,7 @@ public abstract class ELispSignals {
                             Class<?> expected = types[typeI];
                             try {
                                 value.as(expected);
-                            } catch (Exception ignored) {
+                            } catch (Throwable ignored) {
                                 ELispSymbol predicate = CLASS_CAST_MAP.getOrDefault(expected.getName(), UNSPECIFIED);
                                 yield ELispSignals.wrongTypeArgument(predicate, supplied[i]);
                             }

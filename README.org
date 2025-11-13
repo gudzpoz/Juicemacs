@@ -5,6 +5,7 @@
 [[https://github.com/gudzpoz/Juicemacs/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/gudzpoz/Juicemacs/test.yml?ext=.svg]]
 [[https://app.codecov.io/gh/gudzpoz/Juicemacs/][https://img.shields.io/codecov/c/github/gudzpoz/Juicemacs?label=coverage&ext=.svg]]
 [[https://gudzpoz.github.io/Juicemacs/dev/bench/][https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fgudzpoz.github.io%2FJuicemacs%2Fdev%2Fbench%2Fdata.js&search=%5Cd*-%5Cd*-%5Cd*&label=benchmarks&ext=.svg]]
+[[https://juice.zulipchat.com][https://img.shields.io/badge/chat-white?style=social&logo=zulip&ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
 that over-ambitiously aims to explore the following:
@@ -117,7 +118,7 @@ things that need more work.
 
 - https://github.com/federicotdn/pimacs
 
-- https://codeberg.org/ramin_hal9001/gypsum
+- https://codeberg.org/ramin_hal9001/schemacs
 
 - [[https://www.cliki.net/cl-emacs][CL-Emacs]]: “Various people have proposed an emacs-like editor written in Common
   Lisp. This page collects together a few possibilities.”

@@ -1,8 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import java.math.BigInteger;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -14,6 +13,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.Node;
 import org.jspecify.annotations.Nullable;
+import party.iroiro.juicemacs.elisp.forms.BuiltInBuffer.FGetBuffer;
 import party.iroiro.juicemacs.elisp.nodes.funcall.FuncallDispatchNode;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
@@ -28,6 +28,8 @@ import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 import party.iroiro.juicemacs.mule.CodingUtils;
 import party.iroiro.juicemacs.mule.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase.NodeIterator;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase.NodeIterator.NodePiece;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -259,20 +261,14 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @TruffleBoundary
         private static long safeLengthCons(ELispCons cons) {
-            HashSet<ELispCons> distinct = new HashSet<>();
             long count = 0;
             ConsIterator i = cons.listIterator(0);
-            while (i.hasNextCons()) {
-                try {
-                    ELispCons next = i.nextCons();
-                    if (distinct.add(next)) {
-                        count++;
-                        continue;
-                    }
-                } catch (NoSuchElementException ignored) {
-                    // cyclic / invalid list: also break
+            while (i.hasProperNext()) {
+                ELispCons next = i.nextConsOrCircular();
+                if (next == null) {
+                    break;
                 }
-                break;
+                count++;
             }
             return count;
         }
@@ -340,15 +336,18 @@ public class BuiltInFns extends ELispBuiltIns {
             if (!(object instanceof ELispCons cons)) {
                 return isNil(object) ? 0L : false;
             }
-            try {
-                return (long) cons.size();
-            } catch (ELispSignals.ELispSignalException e) {
-                Object error = e.getTag();
-                if (error == WRONG_TYPE_ARGUMENT || error == CIRCULAR_LIST) {
+            ConsIterator iterator = cons.iterator();
+            long i = 0;
+            while (iterator.hasNext()) {
+                if (!iterator.hasProperNext()) {
                     return false;
                 }
-                throw e;
+                i++;
+                if (iterator.nextConsOrCircular() == null) {
+                    return false;
+                }
             }
+            return i;
         }
     }
 
@@ -362,8 +361,8 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringBytes extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringBytes(Object string) {
-            throw new UnsupportedOperationException();
+        public static long stringBytes(ELispString string) {
+            return string.bytes().length;
         }
     }
 
@@ -449,15 +448,13 @@ public class BuiltInFns extends ELispBuiltIns {
                 ELispString str2, Object start2, Object end2,
                 boolean ignoreCase
         ) {
-            long start1Int = notNilOr(start1, 0L);
-            PrimitiveIterator.OfInt chars1 = str1.iterator(asInt(start1Int));
-            long start2Int = notNilOr(start2, 0L);
-            PrimitiveIterator.OfInt chars2 = str2.iterator(asInt(start2Int));
-            long end1Int = Math.min(notNilOr(end1, str1.length()), str1.length());
-            long end2Int = Math.min(notNilOr(end2, str2.length()), str2.length());
-            long len1 = end1Int - start1Int;
-            long len2 = end2Int - start2Int;
-            long limit = Math.min(len1 , len2);
+            int[] str1Range = checkStringRange(str1, start1, end1);
+            int[] str2Range = checkStringRange(str2, start2, end2);
+            PrimitiveIterator.OfInt chars1 = str1.iterator(str1Range[0]);
+            PrimitiveIterator.OfInt chars2 = str2.iterator(str2Range[0]);
+            int len1 = str1Range[1] - str1Range[0];
+            int len2 = str2Range[1] - str2Range[0];
+            int limit = Math.min(len1 , len2);
             long count = 0;
             while (count < limit) {
                 if (chars1.hasNext() && chars2.hasNext()) {
@@ -491,6 +488,24 @@ public class BuiltInFns extends ELispBuiltIns {
                 return count + 1;
             }
             return true;
+        }
+
+        private static int[] checkStringRange(ELispString s, Object start, Object end) {
+            int length = s.length();
+
+            long startL = notNilOr(start, 0);
+            if (startL < 0) {
+                startL = length + startL;
+            }
+            int startI = asRanged(startL, 0, length);
+
+            long endL = notNilOr(end, length);
+            if (endL < 0) {
+                endL = length + endL;
+            }
+            int endI = (int) Math.min(asRanged(endL, startI, Long.MAX_VALUE), length);
+
+            return new int[]{startI, endI};
         }
     }
 
@@ -1263,7 +1278,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator iterator = asCons(list).listIterator(0);
-            while (!iterator.endOfList()) {
+            while (iterator.hasNext()) {
                 ELispCons next = iterator.nextCons();
                 if (FEqual.equal(next.car(), elt)) {
                     return next;
@@ -1289,7 +1304,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator iterator = asCons(list).listIterator(0);
-            while (!iterator.endOfList()) {
+            while (iterator.hasNext()) {
                 ELispCons next = iterator.nextCons();
                 if (BuiltInData.FEq.eq(next.car(), elt)) {
                     return next;
@@ -1315,7 +1330,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator i = asCons(list).listIterator(0);
-            while (!i.endOfList()) {
+            while (i.hasNext()) {
                 ELispCons current = i.nextCons();
                 if (FEql.eql(current.car(), elt)) {
                     return current;
@@ -1437,8 +1452,16 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FRassoc extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void rassoc(Object key, Object alist) {
-            throw new UnsupportedOperationException();
+        public static Object rassoc(Object key, Object alist) {
+            if (isNil(alist)) {
+                return false;
+            }
+            for (Object pair : asCons(alist)) {
+                if (pair instanceof ELispCons cons && BuiltInFns.FEqual.equal(key, cons.cdr())) {
+                    return cons;
+                }
+            }
+            return false;
         }
     }
 
@@ -1475,7 +1498,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             ConsIterator i = cons.listIterator(1);
             ELispCons prev = cons;
-            while (!i.endOfList()) {
+            while (i.hasNext()) {
                 ELispCons current = i.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), elt)) {
                     prev.setCdr(current.cdr());
@@ -1525,7 +1548,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 prev = asCons(cdr);
             }
             ConsIterator i = prev.listIterator(1);
-            while (!i.endOfList()) {
+            while (i.hasNext()) {
                 ELispCons current = i.nextCons();
                 if (FEqual.equal(elt, current.car())) {
                     prev.setCdr(current.cdr());
@@ -1582,7 +1605,14 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispVector nreverseVec(ELispVector seq) {
-            return seq.reverse();
+            Object[] inner = seq.inner();
+            for (int i = 0; i < inner.length / 2; i++) {
+                Object tmp = inner[i];
+                int opposite = inner.length - i - 1;
+                inner[i] = inner[opposite];
+                inner[opposite] = tmp;
+            }
+            return seq;
         }
 
         @Specialization
@@ -1697,6 +1727,10 @@ public class BuiltInFns extends ELispBuiltIns {
                 return ELispCons.listOf(sorted.toArray());
             }
         }
+        @Fallback
+        public static Object sortOther(Object seq, Object args) {
+            throw ELispSignals.wrongTypeArgument(LIST_OR_VECTOR_P, seq);
+        }
 
         private record SortParameters(
                 @Nullable Object key,
@@ -1780,16 +1814,17 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator iterator = cons.listIterator(0);
-            try {
-                while (iterator.hasNext()) {
-                    Object key = iterator.next();
-                    if (BuiltInData.FEq.eq(prop, key)) {
-                        return iterator.next();
-                    }
-                    iterator.next();
+            while (iterator.hasProperNext()) {
+                Object key = iterator.nextOrCircular();
+                if (key == null) {
+                    return false;
                 }
-            } catch (NoSuchElementException ignored) {
-                // cyclic or invalid list: return nil
+                if (BuiltInData.FEq.eq(prop, key)) {
+                    return iterator.nextOr(false);
+                }
+                if (!iterator.hasNext() || iterator.nextOrCircular() == null) {
+                    return false;
+                }
             }
             return false;
         }
@@ -1806,19 +1841,21 @@ public class BuiltInFns extends ELispBuiltIns {
             if (useEq(predicate)) {
                 return plistGetEq(plist, prop, predicate);
             }
-            try {
-                Iterator<Object> iterator = cons.iterator();
-                while (iterator.hasNext()) {
-                    // Undocumented convention: must call (predicate key prop) instead of (predicate prop key)
-                    if (!isNil(dispatchNode.dispatch(node, predicate, iterator.next(), prop))) {
-                        return iterator.next();
-                    }
-                    iterator.next();
+            ConsIterator iterator = cons.iterator();
+            while (iterator.hasProperNext()) {
+                Object key = iterator.nextOrCircular();
+                if (key == null) {
+                    return false;
                 }
-                return false;
-            } catch (NoSuchElementException e) {
-                return false;
+                // Undocumented convention: must call (predicate key prop) instead of (predicate prop key)
+                if (!isNil(dispatchNode.dispatch(node, predicate, key, prop))) {
+                    return iterator.nextOr(false);
+                }
+                if (!iterator.hasNext() || iterator.nextOrCircular() == null) {
+                    return false;
+                }
             }
+            return false;
         }
     }
 
@@ -1979,7 +2016,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator iterator = asCons(plist).listIterator(0);
-            while (iterator.hasNextCons()) {
+            while (iterator.hasNext()) {
                 ELispCons current = iterator.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), prop)) {
                     return current;
@@ -2002,7 +2039,7 @@ public class BuiltInFns extends ELispBuiltIns {
             predicate = isNil(predicate) ? EQ : predicate;
             ELispCons cons = asCons(plist);
             ConsIterator iterator = cons.listIterator(0);
-            while (iterator.hasNextCons()) {
+            while (iterator.hasNext()) {
                 ELispCons current = iterator.nextCons();
                 // Undocumented convention: must call (predicate key prop) instead of (predicate prop key)
                 if (!isNil(dispatchNode.dispatch(node, predicate, current.car(), prop))) {
@@ -2214,7 +2251,7 @@ public class BuiltInFns extends ELispBuiltIns {
         private static ELispCons tail(ELispCons cons) {
             ConsIterator i = cons.listIterator(0);
             ELispCons tail = cons;
-            while (i.hasNextCons()) {
+            while (i.hasProperNext()) {
                 tail = i.nextCons();
             }
             return tail;
@@ -3102,16 +3139,14 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "secure-hash-algorithms", minArgs = 0, maxArgs = 0)
     @GenerateNodeFactory
     public abstract static class FSecureHashAlgorithms extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public static Object secureHashAlgorithms() {
-            return ELispCons.listOf(
-                    MD5,
-                    SHA1,
-                    SHA224,
-                    SHA256,
-                    SHA384,
-                    SHA512
-            );
+            Set<String> algorithms = Security.getAlgorithms("MessageDigest");
+            return ELispCons.listOf(algorithms.stream()
+                    .filter((s) -> !s.contains("/"))
+                    .map((s) -> ELispString.ofJava(s.replace("-", "").toLowerCase(Locale.ROOT)))
+                    .toArray());
         }
     }
 
@@ -3153,8 +3188,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMd5 extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void md5(Object object, Object start, Object end, Object codingSystem, Object noerror) {
-            throw new UnsupportedOperationException();
+        public static ELispString md5(ELispString object, Object start, Object end, Object codingSystem, Object noerror) {
+            // TODO: coding system?
+            return FSecureHash.secureHash(MD5, object, start, end, false);
+        }
+
+        @Specialization
+        public static ELispString md5(ELispBuffer object, Object start, Object end, Object codingSystem, Object noerror) {
+            // TODO: coding system?
+            return FSecureHash.secureHashBuffer(MD5, object, start, end, false);
         }
     }
 
@@ -3187,9 +3229,85 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "secure-hash", minArgs = 2, maxArgs = 5)
     @GenerateNodeFactory
     public abstract static class FSecureHash extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
-        public static Void secureHash(Object algorithm, Object object, Object start, Object end, Object binary) {
-            throw new UnsupportedOperationException();
+        public static ELispString secureHash(
+                ELispSymbol algorithm, ELispString object,
+                Object start, Object end, Object binary
+        ) {
+            byte[] bytes = object.bytes();
+            int startI = asRanged(notNilOr(start, 0), 0, bytes.length);
+            int endI = asRanged(notNilOr(end, bytes.length), startI, bytes.length);
+            MessageDigest digest = getDigest(algorithm);
+            // I don't know why, but strings are indexed by bytes;
+            // while buffers are indexed by characters.
+            digest.update(bytes, startI, endI - startI);
+            return output(digest.digest(), binary);
+        }
+
+        @TruffleBoundary
+        @Specialization
+        public static ELispString secureHashBuffer(
+                ELispSymbol algorithm, ELispBuffer object,
+                Object start, Object end, Object binary
+        ) {
+            long min = object.pointMin();
+            long max = object.pointMax();
+            long startI = asRanged(notNilOr(start, min), 0, min);
+            long endI = asRanged(notNilOr(end, max), startI, max);
+            NodeIterator iterator = object.iterator(startI, endI);
+            MessageDigest digest = getDigest(algorithm);
+            while (iterator.hasNext()) {
+                NodePiece piece = iterator.nextNode();
+                digest.update(piece.bytes(), piece.startByte(), piece.endByte() - piece.startByte());
+            }
+            return output(digest.digest(), binary);
+        }
+        @TruffleBoundary
+        @Specialization
+        public static ELispString secureHashRandom(
+                ELispSymbol algorithm, ELispSymbol object,
+                Object start, Object end, Object binary
+        ) {
+            if (object != IV_AUTO) {
+                throw ELispSignals.wrongTypeArgument(BUFFER_OR_STRING_P, object);
+            }
+            int length = asInt(start);
+            try {
+                byte[] bytes = new byte[length];
+                SecureRandom.getInstanceStrong().nextBytes(bytes);
+                return secureHash(algorithm, ELispString.ofBytes(bytes), false, false, binary);
+            } catch (NoSuchAlgorithmException e) {
+                throw ELispSignals.error(e.getMessage());
+            }
+        }
+
+        private static ELispString output(byte[] digest, Object binary) {
+            if (isNil(binary)) {
+                ELispString.Builder sb = new Builder(digest.length * 2);
+                for (byte b : digest) {
+                    String hex = Integer.toHexString(b & 0xFF);
+                    if (hex.length() == 1) {
+                        sb.append('0');
+                        sb.append(hex.charAt(0));
+                    } else {
+                        sb.append(hex.charAt(0));
+                        sb.append(hex.charAt(1));
+                    }
+                }
+                return sb.build();
+            } else {
+                return ELispString.ofBytes(digest);
+            }
+        }
+
+        @TruffleBoundary
+        private static MessageDigest getDigest(ELispSymbol algorithm) {
+            try {
+                return MessageDigest.getInstance(algorithm.name().toString());
+            } catch (NoSuchAlgorithmException e) {
+                throw ELispSignals.error("Invalid algorithm arg");
+            }
         }
     }
 
@@ -3212,8 +3330,11 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferHash extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferHash(Object bufferOrName) {
-            throw new UnsupportedOperationException();
+        public ELispString bufferHash(Object bufferOrName) {
+            ELispBuffer buffer = isNil(bufferOrName)
+                    ? getContext().currentBuffer()
+                    : asBuffer(FGetBuffer.getBuffer(bufferOrName));
+            return FSecureHash.secureHashBuffer(SHA1, buffer, false, false, false);
         }
     }
 
@@ -3230,8 +3351,15 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferLineStatistics extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferLineStatistics(Object bufferOrName) {
-            throw new UnsupportedOperationException();
+        public ELispCons bufferLineStatistics(Object bufferOrName) {
+            ELispBuffer buffer = isNil(bufferOrName)
+                    ? getContext().currentBuffer()
+                    : asBuffer(FGetBuffer.getBuffer(bufferOrName));
+            long lines = buffer.getLineCount();
+            long chars = buffer.pointMax() - buffer.pointMin();
+            double mean = chars / (double) lines;
+            // TODO: max line length? in bytes?
+            return ELispCons.listOf(lines, (long) Math.ceil(mean), mean);
         }
     }
 

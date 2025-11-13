@@ -3,6 +3,7 @@ package party.iroiro.juicemacs.elisp.benchmarks;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.openjdk.jmh.annotations.*;
@@ -21,6 +22,7 @@ import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 @Measurement(iterations = 3, time = 5)
 @State(Scope.Benchmark)
 @DisabledIfSystemProperty(named = "coverage", matches = "true")
+@Tag("benchmarks")
 public class FibBenchmarkTest {
     public static final String FIB = """
             ;;; -*- lexical-binding: t -*-

@@ -547,7 +547,11 @@ public class BuiltInFloatFns extends ELispBuiltIns {
             if (isNil(base)) {
                 return Math.log(arg);
             }
-            return Math.log(arg) / Math.log(FloatFnsTypeSystemGen.asImplicitDouble(base));
+            double b = FloatFnsTypeSystemGen.asImplicitDouble(base);
+            if (b == 10.0) {
+                return Math.log10(arg);
+            }
+            return Math.log(arg) / Math.log(b);
         }
     }
 

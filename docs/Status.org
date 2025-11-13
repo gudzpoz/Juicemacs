@@ -196,7 +196,7 @@ and filled with actual code:
 #+RESULTS:
 |           | Implemented | Remaining | Total | Files |
 | GNU Emacs |        1798 |         0 |  1798 |   105 |
-| Juicemacs |         432 |       853 |  1285 |    48 |
+| Juicemacs |         445 |       842 |  1287 |    49 |
 
 * Remaining C Files
 

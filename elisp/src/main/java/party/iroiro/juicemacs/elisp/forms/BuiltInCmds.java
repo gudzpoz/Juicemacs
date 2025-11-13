@@ -190,6 +190,11 @@ public class BuiltInCmds extends ELispBuiltIns {
         public boolean deleteChar(long n, Object killflag) {
             ELispBuffer buffer = getContext().currentBuffer();
             long point = buffer.getPoint();
+            if (n < 0) {
+                FBackwardChar.backwardCharBuffer(-n, buffer);
+                n = Math.absExact(n);
+                point -= n;
+            }
             buffer.delete(point, n);
             return false;
         }

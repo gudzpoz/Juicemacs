@@ -106,7 +106,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         public Object get(Object key, boolean parentLookup) {
             ConsIterator i = cons.listIterator(1);
             ELispCons parent = null;
-            while (i.hasNextCons()) {
+            while (i.hasProperNext()) {
                 ELispCons current = i.nextCons();
                 if (current.car() == KEYMAP) {
                     parent = current;
@@ -125,7 +125,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         private void remove(Object key) {
             ConsIterator i = cons.listIterator(1);
             ELispCons prev = cons;
-            while (i.hasNextCons()) {
+            while (i.hasProperNext()) {
                 ELispCons current = i.nextCons();
                 Object car = current.car();
                 if (car == KEYMAP) {
@@ -148,7 +148,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
                 Object newList;
                 ConsIterator i = cons.listIterator(1);
                 ELispCons pair = null;
-                while (i.hasNextCons()) {
+                while (i.hasProperNext()) {
                     ELispCons current = i.nextCons();
                     Object car = current.car();
                     if (car == KEYMAP) {
@@ -173,7 +173,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         @Override
         public Object map(Object function) {
             ConsIterator i = cons.listIterator(1);
-            while (i.hasNextCons()) {
+            while (i.hasProperNext()) {
                 ELispCons current = i.nextCons();
                 Object car = current.car();
                 if (car == KEYMAP) {
@@ -308,7 +308,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         @Specialization
         public static Object keymapParent(ELispCons keymap) {
             ConsIterator i = keymap.listIterator(1);
-            while (i.hasNextCons()) {
+            while (i.hasProperNext()) {
                 ELispCons next = i.nextCons();
                 if (FKeymapp.keymapp(next)) {
                     return next;
@@ -331,7 +331,7 @@ public class BuiltInKeymap extends ELispBuiltIns {
         public static Object setKeymapParent(ELispCons keymap, Object parent) {
             ConsIterator i = keymap.listIterator(1);
             ELispCons prev = keymap;
-            while (i.hasNextCons()) {
+            while (i.hasProperNext()) {
                 ELispCons current = i.nextCons();
                 if (FKeymapp.keymapp(current)) {
                     break;

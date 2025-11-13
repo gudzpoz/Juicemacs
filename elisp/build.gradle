@@ -87,3 +87,12 @@ tasks.register("emacsGen", Exec) {
             '-C', file("${base}/forms/ELispBuiltInConstants.java"),
             '-d', file("${base}/forms")
 }
+
+tasks.register("elispBenchmarks", Test) {
+    useJUnitPlatform {
+        includeTags 'benchmarks'
+    }
+    testClassesDirs = testing.suites.test.sources.output.classesDirs
+    classpath = testing.suites.test.sources.runtimeClasspath
+    outputs.upToDateWhen { false }
+}

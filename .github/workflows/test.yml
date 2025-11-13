@@ -29,13 +29,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'graalvm'
-          java-version: '25'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Basic setup
+        uses: ./.github/workflows/composite/setup-basic
+
+      # Linting
       - name: Set up PDM
         uses: pdm-project/setup-pdm@v4
         with:
@@ -43,72 +40,50 @@ jobs:
           cache: true
           cache-dependency-path: |
             ./elisp/scripts/emacs-extractor/pdm.lock
-      - name: Set up Emacs
-        uses: purcell/setup-emacs@master
-        with:
-          version: 30.1
       - name: Set up emacs-extractor
         run: |
           cd elisp/scripts/emacs-extractor
           pdm install
-
-      - name: Install Dependencies
-        run: |
-          echo "GNU_EMACS_COMMIT=$(cd elisp/emacs && git rev-parse HEAD)" >> $GITHUB_ENV
-          # Please please do not install Firefox during CI.
-          sudo apt autoremove --purge snapd firefox || true
-          sudo apt-mark hold snapd
-          # Emacs dependencies
-          sudo apt-get update && sudo apt-get upgrade
-          sudo apt-get install libgnutls28-dev
-          # Emacs packages
-          emacs --batch --eval "(progn (package-initialize) (use-package elisp-benchmarks :ensure))"
-          emacs --batch -L elisp/scripts/emacs-extractor -l el-semi-fuzz
-      - name: Restore GNU Emacs Build Cache
-        id: cache-emacs-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: elisp/emacs
-          key: ${{ env.GNU_EMACS_COMMIT }}-gnu-emacs
-      - name: Build GNU Emacs
-        if: steps.cache-emacs-restore.outputs.cache-hit != 'true'
-        run: |
-          cd elisp/emacs
-          make
-      - name: Cache GNU Emacs Build
-        uses: actions/cache/save@v4
-        if: steps.cache-emacs-restore.outputs.cache-hit != 'true'
-        with:
-          path: elisp/emacs
-          key: ${{ steps.cache-emacs-restore.outputs.cache-primary-key }}
-
       - name: Syntax Check (emacs-extractor)
         run: |
           ./gradlew :elisp:emacsGen
+          git restore . # emacs-extractor might be different on different machines
       - name: Syntax Check (pmd)
         run: |
           ./gradlew :elisp:pmdMain
 
-      - name: Juicemacs Bootstrapping
-        run: |
-          ./gradlew compileJava compileTestJava
-          sh -c "cd app && $(./gradlew -q :app:jvmCmd) --dump=pdump"
+      # Unit tests
       - name: Unit Tests
         run: |
-          ./gradlew cleanTest
-          ./gradlew --info --stacktrace :commons:mule-utils:test   || true
-          ./gradlew --info --stacktrace :commons:piece-tree:test   || true
-          ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true
-          ./gradlew --info --stacktrace :elisp:test                || true
+          emacs --batch -L elisp/scripts/emacs-extractor -l el-semi-fuzz
+          ./gradlew -Pcoverage :commons:mule-utils:test || true
+          ./gradlew -Pcoverage :commons:piece-tree:test || true
+          ./gradlew -Pcoverage :commons:pmd-no-int:test || true
+          ./gradlew -Pcoverage :elisp:test              || true
+          ./gradlew -Pcoverage jacocoTestReport
+      - name: Publish Code Coverage
+        uses: codecov/codecov-action@v5
+        if: (!cancelled())
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Publish Test Results
         uses: codecov/test-results-action@v1
         if: (!cancelled())
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  elisp-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Basic setup
+        uses: ./.github/workflows/composite/setup-basic
+
       - name: Native Image Generation
         run: |
-          ./gradlew :app:nativeCompile || true
+          ./gradlew :app:nativeCompile
       - name: Test Native Image
         run: |
           cd app
@@ -119,19 +94,40 @@ jobs:
         run: |
           ./gradlew :app:shadowJar
       - name: Upload Shadow Jar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: repl
           path: |
             app/build/libs/app-all.jar
             app/build/native/nativeCompile/elisp-repl
+            app/emacs.pdmp
           retention-days: 30
 
+  elisp-benchmarks:
+    runs-on: ubuntu-latest
+    needs: [elisp-build]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+      - name: Basic setup
+        uses: ./.github/workflows/composite/setup-basic
+
+
+      - name: Install elisp-benchmarks
+        run: |
+          emacs --batch --eval "(progn (package-initialize) (use-package elisp-benchmarks :ensure))"
+      - name: Download pdump
+        uses: actions/download-artifact@v4
+        with:
+          name: repl
+      - name: Run Benchmarks
+        run: |
+          ./gradlew :elisp:elispBenchmarks
       - name: Prepare Benchmark Data
         run: |
           cd elisp
           jq -s add build/reports/elisp/benchmarks-*.json > build/reports/elisp/benchmarks.json
-          git stash push # ELispGlobals.java might be different on different machines
       - name: Store Benchmark Results
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name != 'pull_request'
@@ -141,16 +137,3 @@ jobs:
           output-file-path: elisp/build/reports/elisp/benchmarks.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
-
-      - name: Code Coverage
-        run: |
-          ./gradlew --info --stacktrace -Pcoverage :commons:mule-utils:test || true
-          ./gradlew --info --stacktrace -Pcoverage :commons:piece-tree:test || true
-          ./gradlew --info --stacktrace -Pcoverage :commons:pmd-no-int:test || true
-          ./gradlew --info --stacktrace -Pcoverage :elisp:test || true
-          ./gradlew -Pcoverage jacocoTestReport
-      - name: Publish Code Coverage
-        uses: codecov/codecov-action@v5
-        if: (!cancelled())
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}

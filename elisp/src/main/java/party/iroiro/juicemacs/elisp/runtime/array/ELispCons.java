@@ -52,7 +52,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
 
     @Override
     public ConsIterator listIterator(int index) {
-        BrentTortoiseHareIterator i = new BrentTortoiseHareIterator(this);
+        ConsIterator i = new ConsIterator(this);
         if (index == 0) {
             return i;
         }
@@ -81,7 +81,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
         }
         ConsIterator i = this.iterator();
         ConsIterator j = oCons.iterator();
-        while (i.hasNextCons() && j.hasNextCons()) {
+        while (i.hasProperNext() && j.hasProperNext()) {
             ELispCons iCons = i.nextCons();
             ELispCons jCons = j.nextCons();
             if (iCons == jCons) {
@@ -101,7 +101,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
         int result = 1;
         ConsIterator i = listIterator(0);
         ELispCons last = this;
-        while (i.hasNextCons()) {
+        while (i.hasProperNext()) {
             last = i.nextCons();
             result = 31 * result + ELispValue.lispHashCode(last.car, depth + 1);
         }
@@ -218,7 +218,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
         return asCons(cons);
     }
     public static ConsIterator emptyIterator() {
-        return new BrentTortoiseHareIterator(false);
+        return new ConsIterator(false);
     }
     //#endregion Utilities
 

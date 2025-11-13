@@ -42,7 +42,7 @@ public final class CodingSystemCharset implements ELispCodingSystemType {
                 } else {
                     ELispCons prevCons = null;
                     ConsIterator iterator = asCons(idSlot).listIterator(0);
-                    while (iterator.hasNextCons()) {
+                    while (iterator.hasProperNext()) {
                         ELispCons current = iterator.nextCons();
                         int currentDim = BuiltInCharSet.getCharsetFromId(asInt(current.car())).dimension;
                         if (dim < currentDim) {

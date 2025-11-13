@@ -176,13 +176,13 @@ public class SerializersTest {
         }
         ELispCons list = (ELispCons) builder.build();
         ConsIterator i = list.listIterator(0);
-        while (i.hasNextCons()) {
+        while (i.hasProperNext()) {
             i.nextCons().setSourceLocation(1, 2, 3, 4);
         }
         ELispCons listRestored = roundTrip(list);
         assertTrue(listRestored.lispEquals(list));
         i = listRestored.listIterator(0);
-        while (i.hasNextCons()) {
+        while (i.hasProperNext()) {
             ELispCons cons = i.nextCons();
             assertEquals(
                     new SourceLocation(1, 2, 3, 4),

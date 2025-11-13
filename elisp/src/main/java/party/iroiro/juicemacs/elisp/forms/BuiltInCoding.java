@@ -783,7 +783,7 @@ public class BuiltInCoding extends ELispBuiltIns {
             } else {
                 list = BuiltInFns.FCopySequence.copySequenceList(asCons(arg));
                 ConsIterator iterator = list.listIterator(0);
-                while (iterator.hasNextCons()){
+                while (iterator.hasProperNext()){
                     ELispCons current = iterator.nextCons();
                     Object charset = current.car();
                     ELispCharset cs = BuiltInCharSet.getCharset(charset);

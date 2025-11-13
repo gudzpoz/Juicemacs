@@ -18,6 +18,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.mule.CodingUtils;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
@@ -2690,7 +2691,7 @@ public class BuiltInData extends ELispBuiltIns {
         @TruffleBoundary
         @Specialization
         public Object stringToNumber(ELispString string, Object base) {
-            String s = StringUtils.strip(string.toString(), " \t");
+            String s = StringUtils.strip(asciiPrefix(string), " \t");
             long iBase = notNilOr(base, 10);
             try {
                 if (iBase == 10) {
@@ -2734,6 +2735,23 @@ public class BuiltInData extends ELispBuiltIns {
                 // returns 0 on invalid inputs
             }
             return 0L;
+        }
+
+        private static String asciiPrefix(ELispString s) {
+            if (s.isAscii()) {
+                return new String(s.bytes());
+            }
+            StringBuilder sb = new StringBuilder(s.length());
+            CharIterator iterator = s.iterator(0);
+            while (iterator.hasNext()) {
+                int c = iterator.nextInt();
+                if (c < 0x80) {
+                    sb.append((char) c);
+                } else {
+                    break;
+                }
+            }
+            return sb.toString();
         }
     }
 

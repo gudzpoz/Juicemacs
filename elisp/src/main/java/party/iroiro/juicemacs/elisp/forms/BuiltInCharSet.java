@@ -437,7 +437,7 @@ public class BuiltInCharSet extends ELispBuiltIns {
             } else {
                 ELispCons prev = null;
                 ConsIterator i = asConsIter(charsetOrderedList);
-                while (i.hasNextCons()) {
+                while (i.hasProperNext()) {
                     ELispCons cons = i.nextCons();
                     ELispCharset cs = getCharsetFromId(asInt(cons.car()));
                     if (cs.supplementaryP) {

@@ -2,6 +2,7 @@ package party.iroiro.juicemacs.elisp.benchmarks;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
@@ -39,6 +40,7 @@ import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 ///
 /// The required `(elisp-benchmark-run ...)` expression will be printed by this test.
 @DisabledIfSystemProperty(named = "coverage", matches = "true")
+@Tag("benchmarks")
 public class ELispBenchmarksTest {
     private static void executeIgnoreError(Context context, String code) {
         try {

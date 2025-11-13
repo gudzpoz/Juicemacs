@@ -817,7 +817,7 @@ public class BuiltInSearch extends ELispBuiltIns {
             Object value = matchData(this);
             if (value instanceof ELispCons cons) {
                 ConsIterator i = cons.listIterator(0);
-                while (i.hasNextCons()) {
+                while (i.hasProperNext()) {
                     ELispCons current = i.nextCons();
                     if (current.car() instanceof Long l) {
                         current.setCar(Math.max(0, l + n));
