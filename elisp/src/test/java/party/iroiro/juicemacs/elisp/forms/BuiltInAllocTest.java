@@ -18,7 +18,7 @@ public class BuiltInAllocTest extends BaseFormTest {
             "(nth 2 (list 1 2 3))", 3L,
             "(eq 'test (make-symbol \"test\"))", false,
             "(eq (purecopy 'symbol) 'symbol)", true,
-            "(null (garbage-collect)) ;; no-warm-up-test", false, // TODO: implement
+            "(garbage-collect) ;; no-warm-up-test", false, // TODO: implement
     };
 
     @Override

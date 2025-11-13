@@ -3,10 +3,12 @@ package party.iroiro.juicemacs.elisp.benchmarks;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -36,12 +38,32 @@ import static party.iroiro.juicemacs.elisp.TestingUtils.getContextBuilder;
 /// ```
 ///
 /// The required `(elisp-benchmark-run ...)` expression will be printed by this test.
+@DisabledIfSystemProperty(named = "coverage", matches = "true")
 public class ELispBenchmarksTest {
     private static void executeIgnoreError(Context context, String code) {
         try {
             context.eval("elisp", code);
         } catch (PolyglotException e) {
             System.err.println(e.getMessage());
+        }
+    }
+
+    private static final String[] EXTRA_BENCHMARKS = {
+            "/benchmarks/fibn.el",
+            "/benchmarks/inclist-type-hints.el",
+            "/benchmarks/mandelbrot.el",
+    };
+
+    private static void copyExtraBenchmarksTo(Path dir) throws IOException {
+        for (String benchmark : EXTRA_BENCHMARKS) {
+            Class<ELispBenchmarksTest> clazz = ELispBenchmarksTest.class;
+            try (InputStream bench = clazz.getResourceAsStream(benchmark)) {
+                assertNotNull(bench);
+                Files.copy(
+                        bench, dir.resolve(benchmark.substring(1)),
+                        StandardCopyOption.REPLACE_EXISTING
+                );
+            }
         }
     }
 
@@ -61,7 +83,10 @@ public class ELispBenchmarksTest {
                     return FileVisitResult.CONTINUE;
                 }
             });
-            return Objects.requireNonNull(found[0]).getParent().toAbsolutePath();
+            assertNotNull(found[0], "please install elisp-benchmarks first");
+            Path dir = Objects.requireNonNull(found[0]).getParent().toAbsolutePath();
+            copyExtraBenchmarksTo(dir);
+            return dir;
         } catch (IOException e) {
             fail("please install elisp-benchmarks first", e);
             throw new RuntimeException(e);
@@ -128,13 +153,14 @@ public class ELispBenchmarksTest {
                     "inclist",
                     // "listlen-tc",
                     // > The elisp-benchmarks package does not provide the mandelbrot benchmark.
-                    // > To run this, copy resources/mandelbrot.el into elisp-benchmarks/benchmarks,
+                    // > To run this, copy resources/benchmarks/mandelbrot.el into elisp-benchmarks/benchmarks,
                     // > byte-compile the file before running the benchmarks.
                     "mandelbrot",
                     "map-closure",
                     "nbody",
                     // "pack-unpack",
                     "pidigits",
+                    // "tree-iter",
             };
             String selector = String.join("\\\\|", benchmarks);
             String benchmarkRun = "(elisp-benchmarks-run \"" + selector + "\")";

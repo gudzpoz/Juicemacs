@@ -48,7 +48,7 @@ public final class ELispBoolVector extends ELispVectorLike<Boolean> {
         }
         if (bits.length != 0) {
             int lastBits = size - last * 64;
-            bits[last] &= (1L << lastBits) - 1;
+            bits[last] &= (lastBits >= 64 ? 0 : 1L << lastBits) - 1;
         }
     }
 

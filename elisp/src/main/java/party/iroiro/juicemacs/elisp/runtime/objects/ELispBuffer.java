@@ -153,7 +153,8 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
             Object newPlist = BuiltInFns.FPlistPut.plistPutEq(
                     isNil(props) ? false : BuiltInFns.FCopySequence.copySequenceList(asCons(props)),
                     property,
-                    value
+                    value,
+                    false
             );
             intervals.delete(offset, intervalEnd - offset);
             intervals.insert(offset, intervalEnd, newPlist);

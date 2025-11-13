@@ -718,7 +718,7 @@ public class BuiltInEval extends ELispBuiltIns {
             Object args = iterator.next();
             ELispExpressionNode docString = null;
             if (iterator.hasNext()) {
-                docString = switch (iterator.currentCons().car()) {
+                docString = switch (iterator.peekNextCons().car()) {
                     case ELispString s -> ELispInterpretedNode.create(s);
                     case ELispCons cons when cons.car() == CDOCUMENTATION && cons.cdr() instanceof ELispCons doc ->
                             ELispInterpretedNode.create(doc.car());
@@ -732,12 +732,12 @@ public class BuiltInEval extends ELispBuiltIns {
             }
             Object interactive = NIL;
             if (iterator.hasNext()) {
-                if (iterator.currentCons().car() instanceof ELispCons cons && cons.car() == INTERACTIVE) {
+                if (iterator.peekNextCons().car() instanceof ELispCons cons && cons.car() == INTERACTIVE) {
                     interactive = cons;
                     iterator.next();
                 }
             }
-            ELispCons body = iterator.hasNext() ? iterator.currentCons() : ELispCons.listOf(false);
+            ELispCons body = iterator.hasNext() ? iterator.peekNextCons() : ELispCons.listOf(false);
             body.fillDebugInfo(def);
             return new CconvMakeClosureNode(args, body, docString, interactive);
         }

@@ -4,17 +4,18 @@ import org.jspecify.annotations.Nullable;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/// Basic tests like pdump and byte-compile
 public class ELispLanguageTest {
     public static boolean hasDump(boolean bootstrap) {
         File file = TestingUtils.getFileSystem().toAbsolutePath(Path.of(bootstrap ? "bootstrap-emacs.pdmp" : "emacs.pdmp")).toFile();
@@ -71,12 +72,16 @@ public class ELispLanguageTest {
         }
     }
 
-    @Test
-    public void test() throws IOException {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testDump(boolean bootstrap) {
+        tryDump(bootstrap, null);
+    }
+
+    public static void testWithDumped(Consumer<Context> test, Consumer<Path> resultHandler) throws IOException {
         Path file = Files.createTempFile("juicemacs-ert", ".txt");
         try (PrintStream out = TestingUtils.createOut(file.toFile())) {
             System.out.println("Output: " + file);
-            tryDump(true, out);
             tryDump(false, out);
             try (Context context = TestingUtils.getContextBuilder(out)
                     .option("elisp.dumpFile", "emacs.pdmp")
@@ -87,8 +92,20 @@ public class ELispLanguageTest {
                 } catch (PolyglotException e) {
                     e.printStackTrace(out);
                 }
-                // Test bytecode compiler
-                context.eval("elisp", """
+                test.accept(context);
+            } catch (PolyglotException e) {
+                e.printStackTrace(out);
+            }
+        }
+        resultHandler.accept(file);
+        file.toFile().deleteOnExit(); // only deletes if no exceptions
+    }
+
+    @Test
+    public void testBasicByteCompile() throws IOException {
+        testWithDumped((context) -> {
+            // Test bytecode compiler
+            context.eval("elisp", """
                         ;; -*- lexical-binding: t -*-
                         (require 'bytecomp)
                         (setq byte-compile-debug t)
@@ -96,43 +113,6 @@ public class ELispLanguageTest {
                         (message "%s" (byte-compile (lambda (x) (1+ x))))
                         (message "%s" (byte-compile (lambda (x) (+ x 2))))
                         """);
-                // Try to run ERT
-                context.eval("elisp", """
-                        ;; TODO: pp requires a bunch of sexp parsing functions
-                        (require 'pp)
-                        (defalias 'pp 'princ)
-                        ;; ert asserts about newlines produced by pp
-                        (defun cl--assertion-failed (&rest _) t)
-
-                        (require 'ert)
-                        (load "../test/src/data-tests")
-                        (load "../test/src/fns-tests")
-                        (load "../test/src/floatfns-tests")
-                        (null (ert-run-tests-batch)) ; don't print the huge info object
-                        """);
-            } catch (PolyglotException e) {
-                e.printStackTrace(out);
-            }
-        }
-        // Extract failed tests
-        // TODO: maybe use ert-write-junit-test-report later
-        Pattern resultPattern = Pattern.compile(
-                "^\\s+(passed|FAILED)\\s+(\\d+/\\d+)\\s+([^ ]+)"
-        );
-        try (BufferedReader reader = Files.newBufferedReader(file)) {
-            record TestResult(String name, @Nullable String info, boolean passed) {}
-            ArrayList<TestResult> tests = new ArrayList<>();
-            String lastLine = null;
-            String line;
-            while ((line = reader.readLine()) != null) {
-                Matcher matcher = resultPattern.matcher(line);
-                if (matcher.find()) {
-                    tests.add(new TestResult(matcher.group(3), lastLine, matcher.group(1).equals("passed")));
-                }
-                lastLine = line;
-            }
-            assertAll(tests.stream().map(test -> () ->
-                    assertTrue(test.passed, test.name + (test.info == null ? "" : ": " + test.info))));
-        }
+        }, (_) -> {});
     }
 }

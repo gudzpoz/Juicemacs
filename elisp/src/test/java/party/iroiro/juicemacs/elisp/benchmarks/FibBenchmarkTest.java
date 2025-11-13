@@ -4,6 +4,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.IOException;
@@ -19,6 +20,7 @@ import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 @Warmup(iterations = 3, time = 5)
 @Measurement(iterations = 3, time = 5)
 @State(Scope.Benchmark)
+@DisabledIfSystemProperty(named = "coverage", matches = "true")
 public class FibBenchmarkTest {
     public static final String FIB = """
             ;;; -*- lexical-binding: t -*-

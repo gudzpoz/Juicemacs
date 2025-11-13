@@ -3,6 +3,8 @@
 [[https://justforfunnoreally.dev][https://img.shields.io/badge/justforfunnoreally-dev-9ff.svg]]
 [[https://openjdk.org/projects/jdk/25/][https://img.shields.io/badge/Java-25-orange.svg?logo=openjdk&ext=.svg]]
 [[https://github.com/gudzpoz/Juicemacs/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/gudzpoz/Juicemacs/test.yml?ext=.svg]]
+[[https://app.codecov.io/gh/gudzpoz/Juicemacs/][https://img.shields.io/codecov/c/github/gudzpoz/Juicemacs?label=coverage&ext=.svg]]
+[[https://gudzpoz.github.io/Juicemacs/dev/bench/][https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fgudzpoz.github.io%2FJuicemacs%2Fdev%2Fbench%2Fdata.js&search=%5Cd*-%5Cd*-%5Cd*&label=benchmarks&ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+
 that over-ambitiously aims to explore the following:
@@ -66,7 +68,7 @@ We also support [[https://www.graalvm.org/latest/reference-manual/native-image/]
 
 Emacs comes with a unit-testing toolkit, Emacs Lisp Regression Testing (ERT),
 and has a bunch of ELisp tests in its source repository (=./test/src/=).
-Juicemacs currently can run some of these tests [[file:elisp/src/test/java/party/iroiro/juicemacs/elisp/ELispLanguageTest.java][with a bit of workaround]]:
+Juicemacs currently can run some of these tests [[file:elisp/src/test/java/party/iroiro/juicemacs/elisp/ELispRegressionTest.java][with a bit of workaround]]:
 
 #+begin_src elisp
   ;; TODO: pp requires a bunch of sexp parsing functions

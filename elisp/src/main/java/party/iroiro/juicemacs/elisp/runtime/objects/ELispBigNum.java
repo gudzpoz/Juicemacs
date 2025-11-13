@@ -137,7 +137,12 @@ public final class ELispBigNum extends Number implements TruffleObject, Comparab
 
     @TruffleBoundary
     public Number mod(ELispBigNum other) {
-        return wrap(value.mod(other.value));
+        BigInteger o = other.value;
+        if (o.signum() >= 0) {
+            return wrap(value.mod(o));
+        }
+        BigInteger mod = value.mod(o.negate());
+        return mod.signum() == 0 ? 0L : wrap(mod.add(o));
     }
 
     @TruffleBoundary

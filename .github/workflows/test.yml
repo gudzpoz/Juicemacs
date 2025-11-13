@@ -96,15 +96,15 @@ jobs:
       - name: Unit Tests
         run: |
           ./gradlew cleanTest
+          ./gradlew --info --stacktrace :commons:mule-utils:test   || true
           ./gradlew --info --stacktrace :commons:piece-tree:test   || true
           ./gradlew --info --stacktrace :commons:pmd-no-int:test   || true
           ./gradlew --info --stacktrace :elisp:test                || true
       - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: codecov/test-results-action@v1
         if: (!cancelled())
         with:
-          files: |
-            **/build/test-results/**/*.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Native Image Generation
         run: |
@@ -141,3 +141,16 @@ jobs:
           output-file-path: elisp/build/reports/elisp/benchmarks.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
+
+      - name: Code Coverage
+        run: |
+          ./gradlew --info --stacktrace -Pcoverage :commons:mule-utils:test || true
+          ./gradlew --info --stacktrace -Pcoverage :commons:piece-tree:test || true
+          ./gradlew --info --stacktrace -Pcoverage :commons:pmd-no-int:test || true
+          ./gradlew --info --stacktrace -Pcoverage :elisp:test || true
+          ./gradlew -Pcoverage jacocoTestReport
+      - name: Publish Code Coverage
+        uses: codecov/codecov-action@v5
+        if: (!cancelled())
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

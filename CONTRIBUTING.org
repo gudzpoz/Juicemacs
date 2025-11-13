@@ -6,9 +6,10 @@ developer tools. Whether you are looking to contribute or just taking a peek,
 this guide should help you started with the current codebase.
 
 Alternatively, you can also contribute by reporting bugs or discussing designs
-and features. Other than a personal request to use [[https://codeberg.org/gudzpoz/Juicemacs][Codeberg]] instead of the
-GitHub mirror, there are no other guidelines (yet). Please feel free to [[https://codeberg.org/gudzpoz/Juicemacs/issues/new][open
-issues]] on Codeberg for anything related to Juicemacs.
+and features. We use GitHub as the issue tracker and CI/CD runner, and accept
+pull requests from both [[https://codeberg.org/gudzpoz/Juicemacs][Codeberg]] and GitHub. Please feel free to [[https://codeberg.org/gudzpoz/Juicemacs/issues/new][open issues]] for
+anything related to Juicemacs. If you prefer something more conversational, we
+also have a (rather empty) Zulip server at [[https://juice.zulipchat.com/][juice.zulipchat.com]].
 
 For code contributors, there is also this legal notice boilerplate here:
 

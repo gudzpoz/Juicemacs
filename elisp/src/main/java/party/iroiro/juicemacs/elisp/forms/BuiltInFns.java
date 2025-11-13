@@ -24,6 +24,8 @@ import party.iroiro.juicemacs.elisp.runtime.objects.*;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
+import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
+import party.iroiro.juicemacs.mule.CodingUtils;
 import party.iroiro.juicemacs.mule.MuleStringBuilder;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
 
@@ -341,7 +343,8 @@ public class BuiltInFns extends ELispBuiltIns {
             try {
                 return (long) cons.size();
             } catch (ELispSignals.ELispSignalException e) {
-                if (e.getTag() == LISTP) {
+                Object error = e.getTag();
+                if (error == WRONG_TYPE_ARGUMENT || error == CIRCULAR_LIST) {
                     return false;
                 }
                 throw e;
@@ -704,7 +707,7 @@ public class BuiltInFns extends ELispBuiltIns {
         public static void appendSequence(MuleStringBuilder builder, Object sequence) {
             TruffleUtils.Iter<?> i = iterateSequence(sequence);
             while (i.hasNext()) {
-                builder.appendCodePoint(asInt(i.next()));
+                builder.appendCodePointOrRaw(asInt(i.next()));
             }
         }
     }
@@ -883,8 +886,14 @@ public class BuiltInFns extends ELispBuiltIns {
     public abstract static class FStringToMultibyte extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString stringToMultibyte(ELispString string) {
-            // TODO: Support unibyte?
-            return string;
+            if (string.state() != CodingUtils.STATE_BYTES) {
+                return string;
+            }
+            ELispString.Builder sb = new Builder(string.bytes().length * 2);
+            for (byte b : string.bytes()) {
+                sb.append(b >= 0 ? b : (0x3FFF80 | (b & 0xFF)));
+            }
+            return sb.build();
         }
     }
 
@@ -902,8 +911,25 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringToUnibyte extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringToUnibyte(Object string) {
-            throw new UnsupportedOperationException();
+        public static ELispString stringToUnibyte(ELispString string) {
+            if (string.isUnibyte()) {
+                return string;
+            }
+            return toUnibyte(string);
+        }
+
+        private static ELispString toUnibyte(ELispString string) {
+            byte[] bytes = new byte[string.length()];
+            CharIterator iterator = string.iterator(0);
+            int i = 0;
+            while (iterator.hasNext() && i < bytes.length) {
+                int c = iterator.nextInt();
+                if (0x80 <= c && c < 0x3FFF80) {
+                    throw ELispSignals.error("Cannot convert character to unibyte");
+                }
+                bytes[i] = (byte) c;
+            }
+            return ELispString.ofBytes(bytes);
         }
     }
 
@@ -1010,18 +1036,31 @@ public class BuiltInFns extends ELispBuiltIns {
         @TruffleBoundary
         @Specialization
         public static Object take(long n, Object list) {
-            if (isNil(list) || n <= 0) {
+            if (n <= 0 || isNil(list)) {
                 return false;
             }
             ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
-            Iterator<?> iterator = asCons(list).listIterator(0);
-            for (int i = 0, limit = Math.toIntExact(n); i < limit; i++) {
-                if (!iterator.hasNext()) {
+            // We do not use iterator here because take/ntake allows circular lists.
+            Object current = list;
+            for (long i = 0; i < n; i++) {
+                ELispCons next = asCons(current);
+                builder.add(next.car());
+                Object cdr = next.cdr();
+                if (isNil(cdr)) {
                     break;
                 }
-                builder.add(iterator.next());
+                current = cdr;
             }
             return builder.build();
+        }
+
+        @TruffleBoundary
+        @Specialization
+        public static Object takeBigNum(ELispBigNum n, Object list) {
+            if (isNil(list) || n.signum() <= 0) {
+                return false;
+            }
+            return take(n.asBigInteger().bitLength() < 64 ? n.longValue() : Long.MAX_VALUE, list);
         }
     }
 
@@ -1037,8 +1076,32 @@ public class BuiltInFns extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FNtake extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void ntake(Object n, Object list) {
-            throw new UnsupportedOperationException();
+        public static Object ntake(long n, Object list) {
+            if (n <= 0 || isNil(list)) {
+                return false;
+            }
+            // We do not use iterator here because take/ntake allow circular lists.
+            ELispCons prev = asCons(list);
+            Object current = list;
+            for (long i = 0; i < n; i++) {
+                prev = asCons(current);
+                Object cdr = prev.cdr();
+                if (isNil(cdr)) {
+                    break;
+                }
+                current = cdr;
+            }
+            prev.setCdr(false);
+            return list;
+        }
+
+        @TruffleBoundary
+        @Specialization
+        public static Object ntakeBigNum(ELispBigNum n, Object list) {
+            if (isNil(list) || n.signum() <= 0) {
+                return false;
+            }
+            return ntake(n.asBigInteger().bitLength() < 64 ? n.longValue() : Long.MAX_VALUE, list);
         }
     }
 
@@ -1050,7 +1113,7 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "nthcdr", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FNthcdr extends ELispBuiltInBaseNode {
-        @Specialization
+        @Specialization(guards = "n < 128")
         public static Object nthcdr(long n, Object list) {
             for (; n > 0; n--) {
                 if (isNil(list)) {
@@ -1059,6 +1122,75 @@ public class BuiltInFns extends ELispBuiltIns {
                 list = asCons(list).cdr();
             }
             return list;
+        }
+
+        @Specialization
+        public static Object nthcdrMaybeCircular(Object n, Object list) {
+            if (n instanceof Long l && l < 128) {
+                return nthcdr(l, list);
+            }
+            return nthcdrSlow(n, list);
+        }
+
+        @TruffleBoundary
+        private static Object nthcdrSlow(Object n, Object list) {
+            long batch;
+            ELispBigNum bigNum = null;
+            if (n instanceof Long l) {
+                batch = l;
+            } else {
+                bigNum = asBigNum(n);
+                if (bigNum.signum() < 0) {
+                    return list;
+                }
+                if (bigNum.asBigInteger().bitLength() < 64) {
+                    batch = bigNum.longValue();
+                    bigNum = null;
+                } else {
+                    batch = Long.MAX_VALUE;
+                }
+            }
+            if (batch < 0 || isNil(list)) {
+                return false;
+            }
+
+            ELispCons nthcdr = asCons(list);
+            ConsIterator iterator = nthcdr.iterator();
+            for (; batch >= 0; batch--) {
+                Object cdr = iterator.peekNextCdr();
+                if (isNil(cdr)) {
+                    return false;
+                }
+                nthcdr = iterator.nextConsOrCircular();
+                if (nthcdr == null) {
+                    // circular list
+                    return nthcdrCircular(batch, bigNum, asCons(cdr));
+                }
+            }
+            // We don't handle bignums here because we expect a proper list to be shorter than Long.MAX_VALUE,
+            // and we should be able to find out a circular list in Long.MAX_VALUE iterations.
+            return nthcdr;
+        }
+
+        @TruffleBoundary
+        private static Object nthcdrCircular(long remainder, @Nullable ELispBigNum n, ELispCons cons) {
+            Object tail = cons.cdr();
+            long circularLength = 1;
+            while (cons != tail) {
+                tail = asCons(tail).cdr();
+                circularLength++;
+            }
+            long mod;
+            if (n == null) {
+                mod = remainder % circularLength;
+            } else {
+                mod = n.asBigInteger()
+                        .subtract(BigInteger.valueOf(Long.MAX_VALUE))
+                        .add(BigInteger.valueOf(remainder))
+                        .mod(BigInteger.valueOf(circularLength))
+                        .longValue();
+            }
+            return nthcdr(mod, cons);
         }
     }
 
@@ -1131,7 +1263,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator iterator = asCons(list).listIterator(0);
-            while (iterator.hasNextCons()) {
+            while (!iterator.endOfList()) {
                 ELispCons next = iterator.nextCons();
                 if (FEqual.equal(next.car(), elt)) {
                     return next;
@@ -1157,7 +1289,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator iterator = asCons(list).listIterator(0);
-            while (iterator.hasNextCons()) {
+            while (!iterator.endOfList()) {
                 ELispCons next = iterator.nextCons();
                 if (BuiltInData.FEq.eq(next.car(), elt)) {
                     return next;
@@ -1183,7 +1315,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 return false;
             }
             ConsIterator i = asCons(list).listIterator(0);
-            while (i.hasNextCons()) {
+            while (!i.endOfList()) {
                 ELispCons current = i.nextCons();
                 if (FEql.eql(current.car(), elt)) {
                     return current;
@@ -1343,7 +1475,7 @@ public class BuiltInFns extends ELispBuiltIns {
             }
             ConsIterator i = cons.listIterator(1);
             ELispCons prev = cons;
-            while (i.hasNextCons()) {
+            while (!i.endOfList()) {
                 ELispCons current = i.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), elt)) {
                     prev.setCdr(current.cdr());
@@ -1393,7 +1525,7 @@ public class BuiltInFns extends ELispBuiltIns {
                 prev = asCons(cdr);
             }
             ConsIterator i = prev.listIterator(1);
-            while (i.hasNextCons()) {
+            while (!i.endOfList()) {
                 ELispCons current = i.nextCons();
                 if (FEqual.equal(elt, current.car())) {
                     prev.setCdr(current.cdr());
@@ -1666,8 +1798,7 @@ public class BuiltInFns extends ELispBuiltIns {
         @Specialization(replaces = "plistGetEq")
         public static Object plistGet(
                 Object plist, Object prop, Object predicate,
-                @Bind Node node,
-                @Cached(inline = true) FuncallDispatchNode dispatchNode
+                @Bind Node node, @Cached(inline = true) FuncallDispatchNode dispatchNode
         ) {
             if (!(plist instanceof ELispCons cons)) {
                 return false;
@@ -1678,7 +1809,8 @@ public class BuiltInFns extends ELispBuiltIns {
             try {
                 Iterator<Object> iterator = cons.iterator();
                 while (iterator.hasNext()) {
-                    if (!isNil(dispatchNode.dispatch(node, predicate, prop, iterator.next()))) {
+                    // Undocumented convention: must call (predicate key prop) instead of (predicate prop key)
+                    if (!isNil(dispatchNode.dispatch(node, predicate, iterator.next(), prop))) {
                         return iterator.next();
                     }
                     iterator.next();
@@ -1745,15 +1877,13 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "plist-put", minArgs = 3, maxArgs = 4)
     @GenerateNodeFactory
     public abstract static class FPlistPut extends ELispBuiltInBaseNode {
-        @Specialization
-        public static ELispCons plistPut(Object plist, Object prop, Object val, Object predicate) {
-            if (isNil(predicate)) {
-                return plistPutEq(plist, prop, val);
-            }
-            throw new UnsupportedOperationException();
+        public static boolean useEq(Object predicate) {
+            return isNil(predicate) || predicate == EQ;
         }
 
-        public static ELispCons plistPutEq(Object plist, Object prop, Object val) {
+        @TruffleBoundary
+        @Specialization(guards = "useEq(predicate)")
+        public static ELispCons plistPutEq(Object plist, Object prop, Object val, Object predicate) {
             if (isNil(plist)) {
                 return ELispCons.listOf(prop, val);
             }
@@ -1765,8 +1895,36 @@ public class BuiltInFns extends ELispBuiltIns {
                 if (!i.hasNext()) {
                     throw ELispSignals.wrongTypeArgument(PLISTP, plist);
                 }
-                tail = i.currentCons();
+                tail = i.peekNextCons();
                 if (BuiltInData.FEq.eq(key, prop)) {
+                    tail.setCar(val);
+                    return list;
+                }
+                i.next();
+            } while (i.hasNext());
+            tail.setCdr(ELispCons.listOf(prop, val));
+            return list;
+        }
+
+        @Specialization
+        public static ELispCons plistPut(
+                Object plist, Object prop, Object val, Object predicate,
+                @Bind Node node, @Cached(inline = true) FuncallDispatchNode dispatchNode
+        ) {
+            if (isNil(plist)) {
+                return ELispCons.listOf(prop, val);
+            }
+            ELispCons list = asCons(plist);
+            ConsIterator i = list.listIterator(0);
+            ELispCons tail;
+            do {
+                Object key = i.next();
+                if (!i.hasNext()) {
+                    throw ELispSignals.wrongTypeArgument(PLISTP, plist);
+                }
+                tail = i.peekNextCons();
+                // Undocumented convention: must call (predicate key prop) instead of (predicate prop key)
+                if (!isNil(dispatchNode.dispatch(node, predicate, key, prop))) {
                     tail.setCar(val);
                     return list;
                 }
@@ -1810,26 +1968,13 @@ public class BuiltInFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "plist-member", minArgs = 2, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FPlistMember extends ELispBuiltInBaseNode {
-        @Specialization
-        public Object plistMember(Object plist, Object prop, Object predicate) {
-            if (isNil(plist)) {
-                return false;
-            }
-            ELispCons cons = asCons(plist);
-            if (isNil(predicate)) {
-                return plistMemberEq(cons, prop);
-            }
-            ConsIterator iterator = cons.listIterator(0);
-            while (iterator.hasNextCons()) {
-                ELispCons current = iterator.nextCons();
-                if (!isNil(BuiltInEval.FFuncall.funcall(this, predicate, current.car(), prop))) {
-                    return current;
-                }
-            }
-            return false;
+        public static boolean useEq(Object predicate) {
+            return isNil(predicate) || predicate == EQ;
         }
 
-        public static Object plistMemberEq(Object plist, Object prop) {
+        @TruffleBoundary
+        @Specialization(guards = "useEq(predicate)")
+        public static Object plistMemberEq(Object plist, Object prop, Object predicate) {
             if (isNil(plist)) {
                 return false;
             }
@@ -1838,6 +1983,33 @@ public class BuiltInFns extends ELispBuiltIns {
                 ELispCons current = iterator.nextCons();
                 if (BuiltInData.FEq.eq(current.car(), prop)) {
                     return current;
+                }
+                if (iterator.hasNext()) {
+                    iterator.next();
+                }
+            }
+            return false;
+        }
+
+        @Specialization
+        public static Object plistMember(
+                Object plist, Object prop, Object predicate,
+                @Bind Node node, @Cached(inline = true) FuncallDispatchNode dispatchNode
+        ) {
+            if (isNil(plist)) {
+                return false;
+            }
+            predicate = isNil(predicate) ? EQ : predicate;
+            ELispCons cons = asCons(plist);
+            ConsIterator iterator = cons.listIterator(0);
+            while (iterator.hasNextCons()) {
+                ELispCons current = iterator.nextCons();
+                // Undocumented convention: must call (predicate key prop) instead of (predicate prop key)
+                if (!isNil(dispatchNode.dispatch(node, predicate, current.car(), prop))) {
+                    return current;
+                }
+                if (iterator.hasNext()) {
+                    iterator.next();
                 }
             }
             return false;

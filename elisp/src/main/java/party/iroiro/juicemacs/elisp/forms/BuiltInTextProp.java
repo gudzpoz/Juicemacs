@@ -520,7 +520,9 @@ public class BuiltInTextProp extends ELispBuiltIns {
                     offset, len, true,
                     (properties, propsStart, _) -> {
                         Object actual = BuiltInData.FCdrSafe.cdrSafe(
-                                BuiltInFns.FPlistMember.plistMemberEq(properties == null ? false : properties, property)
+                                BuiltInFns.FPlistMember.plistMemberEq(
+                                        properties == null ? false : properties, property, false
+                                )
                         );
                         if (!BuiltInData.FEq.eq(actual, value)) {
                             return propsStart;

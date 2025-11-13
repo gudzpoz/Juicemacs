@@ -91,7 +91,7 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
                 return false;
             }
         }
-        return BuiltInFns.FEqual.equal(i.tail(), j.tail());
+        return BuiltInFns.FEqual.equal(i.peekNextCdr(), j.peekNextCdr());
     }
     @Override
     public int lispHashCode(int depth) {
@@ -194,7 +194,17 @@ public final class ELispCons implements ELispValue, ListIteratorList, TruffleObj
     public static ELispCons listOf(Object car, Object cadr) {
         return new ELispCons(car, new ELispCons(cadr));
     }
-    public static Object listOf(Object... elements) {
+    public static ELispCons listOf(Object car, Object... elements) {
+        ELispCons cons = new ELispCons(car);
+        ELispCons tail = cons;
+        for (Object element : elements) {
+            ELispCons next = new ELispCons(element);
+            tail.setCdr(next);
+            tail = next;
+        }
+        return cons;
+    }
+    public static Object listOf(Object[] elements) {
         ListBuilder builder = new ListBuilder();
         for (Object element : elements) {
             builder.add(element);

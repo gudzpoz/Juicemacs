@@ -11,12 +11,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static party.iroiro.juicemacs.elisp.forms.BaseFormTest.getTestingContext;
 
+@DisabledIfSystemProperty(named = "coverage", matches = "true")
 public class TruffleLanguageTest {
     /// Tests a basic bytecode compiler
     @Test

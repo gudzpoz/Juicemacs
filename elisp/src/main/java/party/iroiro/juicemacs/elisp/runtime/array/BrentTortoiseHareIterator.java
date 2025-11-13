@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.runtime.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 
 import java.util.ListIterator;
@@ -39,7 +40,7 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsItera
     }
 
     @Override
-    public ELispCons currentCons() {
+    public ELispCons peekNextCons() {
         if (tail instanceof ELispCons cons) {
             return cons;
         }
@@ -47,18 +48,24 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsItera
     }
 
     @Override
-    public Object next() {
-        return nextCons().car;
-    }
-
-    @Override
-    public Object tail() {
+    public Object peekNextCdr() {
         return tail;
     }
 
     @TruffleBoundary
     @Override
     public ELispCons nextCons() {
+        ELispCons next = nextConsOrCircular();
+        if (next == null) {
+            throw ELispSignals.circularList(tortoise);
+        }
+        return next;
+    }
+
+    @TruffleBoundary
+    @Override
+    @Nullable
+    public ELispCons nextConsOrCircular() {
         ELispCons next;
         // hasNext() should be called before next()
         if (tail instanceof ELispCons cons) {
@@ -88,7 +95,7 @@ final class BrentTortoiseHareIterator implements ListIterator<Object>, ConsItera
             n >>= 16; // USHRT_WIDTH;
             tortoise = tail;
         } else if (tail == tortoise) {
-            throw ELispSignals.circularList(tortoise);
+            return null;
         }
         return next;
     }

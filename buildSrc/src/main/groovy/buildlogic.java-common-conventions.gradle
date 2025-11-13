@@ -1,13 +1,6 @@
 plugins {
     id 'java'
     id 'net.ltgt.errorprone'
-//    // JaCoCo transforms the bytecode, which severely impacts how
-//    // Graal/Truffle JIT compile the program.
-//    // (For example, it introduces concurrency constructs to pass
-//    // signals for code coverage, which Graal/Truffle will try to
-//    // inline-&-compile and will eventually bail out because it is
-//    // just too complex.)
-//    id 'jacoco'
 }
 
 repositories {
@@ -17,7 +10,30 @@ repositories {
 boolean isGraalVM() {
     return file("${System.getProperty("java.home")}/lib/graalvm").exists()
 }
+boolean runCoverage() {
+    return project.hasProperty('coverage')
+}
 List<String> getGraalVMArgs() {
+    if (runCoverage()) {
+        // JaCoCo transforms the bytecode, which severely impacts how
+        // Graal/Truffle JIT compile the program.
+        // (For example, it introduces concurrency constructs to pass
+        // signals for code coverage, which Graal/Truffle will try to
+        // inline-&-compile and will eventually bail out because it is
+        // just too complex.)
+        // We only enable coverage when -Pcoverage is passed.
+        project.logger.lifecycle('Enabling jacoco test coverage')
+        rootProject.subprojects {
+            apply plugin: 'jacoco'
+            jacocoTestReport {
+                reports {
+                    xml.required = true
+                    html.required = true
+                }
+            }
+        }
+        return ['-Dpolyglot.engine.Compilation=false']
+    }
     boolean isGraalVM = isGraalVM()
     List<String> graalArgs = []
     String truffleVersion = libs.graalvm.truffle.api.get().version
@@ -94,4 +110,7 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+    if (runCoverage()) {
+        jvmArgs += ['-Dcoverage=true']
+    }
 }

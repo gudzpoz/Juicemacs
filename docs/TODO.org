@@ -95,7 +95,7 @@ Lazy data for =concat=, useful for nested =concat/format/...= calls.
 
 =format= function calls very often comes with constant format strings. It might
 help if we can turn =(format "example: %d" var)= into =(concat "example"
-(format-%d var)= during JIT.
+(format-%d var))= during JIT.
 
 * TODO [#B] Regexp redesign
 
