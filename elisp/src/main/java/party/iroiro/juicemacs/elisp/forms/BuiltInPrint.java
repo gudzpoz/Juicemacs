@@ -214,7 +214,12 @@ public class BuiltInPrint extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FPrint extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void print(Object object, Object printcharfun) {
+        public static boolean print(Object object, Object printcharfun) {
+            // TODO
+            if (printcharfun instanceof ELispBuffer buffer) {
+                buffer.insert(ELispPrint.toString(object));
+                return false;
+            }
             throw new UnsupportedOperationException();
         }
     }

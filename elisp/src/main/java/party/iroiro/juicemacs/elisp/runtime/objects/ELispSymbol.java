@@ -122,6 +122,10 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
         getStorage().setBufferLocal(localIfSet, this);
     }
 
+    public void flushBufferLocal(ELispBuffer buffer) {
+        getStorage().flushBufferLocal(buffer);
+    }
+
     public boolean isBufferLocal(Object buffer) {
         Optional<ValueStorage> storage = tryGetStorage();
         //noinspection OptionalIsPresent
@@ -210,6 +214,10 @@ public final class ELispSymbol implements ELispValue, TruffleObject {
 
     public Object getProperties() {
         return getStorage().getProperties();
+    }
+
+    public void setProperties(Object properties) {
+        getStorage().setProperties(properties);
     }
 
     @SuppressWarnings("EqualsDoesntCheckParameterClass")

@@ -128,6 +128,10 @@ public final class ELispString implements TruffleObject, ELispValue {
         return value;
     }
 
+    public boolean isImmutable() {
+        return (state & STATE_MUTABLE_MASK) == 0;
+    }
+
     /// Used by symbols, setting hash and forbidding modification
     public void setImmutable() {
         this.lispHashCode(0);

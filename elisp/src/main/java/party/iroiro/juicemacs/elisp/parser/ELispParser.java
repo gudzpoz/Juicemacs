@@ -341,7 +341,15 @@ public class ELispParser {
     private static ELispRootNode parse(ELispLanguage language, ELispParser parser, Source source, boolean debug)
             throws IOException {
         // TODO: We might need a CompilerDirectives.transferToInterpreterAndInvalidate() here.
-        ELispExpressionNode expr = ELispRootNodes.createMacroexpand(parser.parse(source), parser.isLexicallyBound());
+        ELispExpressionNode expr;
+        Object[] parsed = parser.parse(source);
+        String name = source.getName();
+        if (name != null && name.endsWith(".elc")) {
+            expr = ELispRootNodes.createRoot(parsed, parser.isLexicallyBound());
+        } else {
+            expr = ELispRootNodes.createMacroexpand(parsed, parser.isLexicallyBound());
+        }
+
         if (!debug) {
             source = TruffleUtils.buildSource(Source.newBuilder(source).content(Source.CONTENT_NONE));
         }

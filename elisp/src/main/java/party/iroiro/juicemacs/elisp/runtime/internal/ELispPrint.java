@@ -28,11 +28,22 @@ public final class ELispPrint {
     private final ArrayList<Object> stack;
     private boolean inString = false;
 
+    private long limit = -1;
+
     @TruffleBoundary
     private ELispPrint(PrintFunc func) {
         this.stack = new ArrayList<>();
         this.visited = new HashMap<>();
         this.func = func;
+    }
+
+    private void decLimit() {
+        if (limit != -1) {
+            limit--;
+            if (limit == 0) {
+                throw PrintExit.INSTANCE;
+            }
+        }
     }
 
     public void startString() {
@@ -52,6 +63,7 @@ public final class ELispPrint {
     }
 
     public void printRawByte(byte b) {
+        decLimit();
         int c = b >= 0 ? b : ((b & 0x7F) + MAX_5_BYTE_CHAR + 1);
         if (inString) {
             print(c);
@@ -70,6 +82,7 @@ public final class ELispPrint {
 
     @TruffleBoundary
     public ELispPrint print(int c) {
+        decLimit();
         if (inString) {
             if (c == '"' || c == '\\') {
                 func.print('\\');
@@ -100,6 +113,7 @@ public final class ELispPrint {
     }
 
     public ELispPrint print(String s) {
+        decLimit();
         func.print(new ELispString(s));
         return this;
     }
@@ -213,6 +227,7 @@ public final class ELispPrint {
     }
 
     public ELispPrint print(ELispString s) {
+        decLimit();
         func.print(s);
         return this;
     }
@@ -229,6 +244,7 @@ public final class ELispPrint {
 
     @TruffleBoundary
     public ELispPrint print(Object o) {
+        decLimit();
         if (o instanceof Constable) {
             if (o == Boolean.FALSE) {
                 print("nil");
@@ -256,6 +272,11 @@ public final class ELispPrint {
         return this;
     }
 
+    public ELispPrint limit(long limit) {
+        this.limit = limit;
+        return this;
+    }
+
     public void flush() {
         func.flush();
     }
@@ -277,8 +298,14 @@ public final class ELispPrint {
     }
 
     public static ELispString toString(Object o) {
+        return toString(o, -1); // NOPMD
+    }
+    public static ELispString toString(Object o, long limit) {
         ELispString.Builder buffer = new Builder();
-        fromBuilder(buffer).print(o).flush();
+        try {
+            fromBuilder(buffer).limit(limit).print(o).flush();
+        } catch (PrintExit ignored) {
+        }
         return buffer.build();
     }
 
@@ -368,6 +395,14 @@ public final class ELispPrint {
 
         @Override
         public void flush() {
+        }
+    }
+
+    private static final class PrintExit extends RuntimeException {
+        private static final PrintExit INSTANCE = new PrintExit();
+
+        static {
+            INSTANCE.setStackTrace(new StackTraceElement[0]);
         }
     }
 }

@@ -15,6 +15,7 @@ import party.iroiro.juicemacs.elisp.forms.BuiltInFns;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.TruffleUtils;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
 
@@ -308,6 +309,14 @@ public final class ValueStorage implements Externalizable {
         }
     }
 
+    public void flushBufferLocal(ELispBuffer buffer) {
+        if (delegate instanceof BufferLocal local) {
+            if (local.cachedBuffer == buffer) {
+                local.flushCache();
+            }
+        }
+    }
+
     public boolean isBufferLocal(Object buffer) {
         return delegate instanceof BufferLocal local && local.getBufferLocalValue() != UNBOUND;
     }
@@ -344,6 +353,26 @@ public final class ValueStorage implements Externalizable {
         ELispCons.ListBuilder builder = new ELispCons.ListBuilder();
         props.forEach((k, v) -> builder.add(k).add(v));
         return builder.build();
+    }
+
+    public void setProperties(Object cons) {
+        if (isNil(cons)) {
+            properties = null;
+            return;
+        }
+        ELispHashtable props = properties;
+        if (props == null) {
+            props = new ELispHashtable();
+        } else {
+            props.clear();
+        }
+        ConsIterator iterator = asCons(cons).iterator();
+        while (iterator.hasNext()) {
+            Object key = iterator.next();
+            Object value = iterator.next();
+            props.put(key, value);
+        }
+        properties = props;
     }
 
     @Override
@@ -438,6 +467,11 @@ public final class ValueStorage implements Externalizable {
                 cachedBuffer = buffer;
                 value = cachedBuffer.getLocal(symbol);
             }
+        }
+
+        public void flushCache() {
+            cachedBuffer = null;
+            value = null;
         }
 
         public Object getDefaultValue() {

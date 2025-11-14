@@ -24,6 +24,7 @@ import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 import party.iroiro.juicemacs.elisp.runtime.pdump.ELispPortableDumper;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asBuffer;
 
@@ -134,6 +136,17 @@ public final class ELispContext implements ELispParser.InternContext {
 
     public ELispBuffer currentBuffer() {
         return asBuffer(language.currentBuffer().getValue());
+    }
+
+    public <T> T withCurrentBuffer(ELispBuffer buffer, Supplier<T> runnable) {
+        Forwarded slot = language.currentBuffer();
+        Object old = slot.getValue();
+        try {
+            slot.setValue(buffer);
+            return runnable.get();
+        } finally {
+            slot.setValue(old);
+        }
     }
 
     public void initGlobal(ELispLanguage language) {

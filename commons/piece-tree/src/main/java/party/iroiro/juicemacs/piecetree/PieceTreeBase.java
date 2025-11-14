@@ -1058,6 +1058,9 @@ public final class PieceTreeBase {
         }
 
         public record NodePiece(byte[] bytes, int startByte, int endByte, int codePoints) {
+            public int byteLength() {
+                return endByte - startByte;
+            }
         }
     }
 

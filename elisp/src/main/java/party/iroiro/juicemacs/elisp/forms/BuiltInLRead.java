@@ -9,6 +9,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.FExpandFileName;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.FFileNameDirectory;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFileIO.FFileNameNondirectory;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FConcat;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.parser.CodePointReader;
 import party.iroiro.juicemacs.elisp.parser.ELispLexer;
@@ -199,9 +203,17 @@ public class BuiltInLRead extends ELispBuiltIns {
                 }
                 return false;
             }
+            ELispContext context = ELispContext.get(null);
+            ELispString histFilename = FConcat.concat(new Object[]{
+                    Objects.requireNonNullElse(
+                            FFileNameDirectory.getFileNameDirectory(file, context),
+                            false
+                    ),
+                    FFileNameNondirectory.fileNameNonDirectory(path, context),
+            });
             return !isNil(BuiltInEval.FFuncall.funcall(caller, loader,
                     path,
-                    file,
+                    histFilename,
                     !errorIfNotFound,
                     false
             ));
@@ -571,18 +583,28 @@ public class BuiltInLRead extends ELispBuiltIns {
     @ELispBuiltIn(name = "eval-buffer", minArgs = 0, maxArgs = 5)
     @GenerateNodeFactory
     public abstract static class FEvalBuffer extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
         public boolean evalBuffer(Object buffer, Object printflag, Object filename, Object unibyte, Object doAllowPrint) {
             ELispContext context = getContext();
             ELispBuffer current = isNil(buffer) ? context.currentBuffer() : asBuffer(buffer);
+            filename = isNil(filename) ? current.getFilename() : filename;
+            Object f = filename instanceof ELispString s
+                    ? FExpandFileName.expandFileName(s, false)
+                    : false;
             Source source = getSource(filename, current, context);
-            try {
-                ELispRootNode root = ELispParser.parse(getLanguage(), context, source, current);
-                root.getCallTarget().call(this);
-            } catch (IOException e) {
-                throw ELispSignals.error(TruffleUtils.eMessage(e));
-            }
-            return true;
+            return context.withCurrentBuffer(current, () -> {
+                Dynamic hist = Dynamic.pushDynamic(CURRENT_LOAD_LIST, ELispCons.listOf(f));
+                try {
+                    ELispRootNode root = ELispParser.parse(getLanguage(), context, source, current);
+                    root.getCallTarget().call(this);
+                    return true;
+                } catch (IOException e) {
+                    throw ELispSignals.error(TruffleUtils.eMessage(e));
+                } finally {
+                    hist.close();
+                }
+            });
         }
 
         @TruffleBoundary

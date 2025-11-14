@@ -22,18 +22,18 @@ import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase.NodeIterator;
+import party.iroiro.juicemacs.piecetree.PieceTreeBase.NodeIterator.NodePiece;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -133,6 +133,11 @@ public class BuiltInFileIO extends ELispBuiltIns {
         @Specialization
         public Object fileNameDirectory(ELispString filename) {
             ELispContext context = getContext();
+            return Objects.requireNonNullElse(getFileNameDirectory(filename, context), false);
+        }
+
+        @Nullable
+        public static ELispString getFileNameDirectory(ELispString filename, ELispContext context) {
             String sep = context.truffleEnv().getFileNameSeparator();
             String name = filename.toString();
             if (seemsLikeDirectory(name, sep)) {
@@ -140,7 +145,7 @@ public class BuiltInFileIO extends ELispBuiltIns {
             }
             TruffleFile parent = context.getFile(name).getParent();
             if (parent == null) {
-                return false;
+                return null;
             }
             String dir = TruffleUtils.toString(parent);
             return new ELispString(seemsLikeDirectory(dir, sep) ? dir : TruffleUtils.concat(dir, sep));
@@ -164,7 +169,11 @@ public class BuiltInFileIO extends ELispBuiltIns {
     public abstract static class FFileNameNondirectory extends ELispBuiltInBaseNode {
         @Specialization
         public ELispString fileNameNondirectory(ELispString filename) {
-            TruffleLanguage.Env env = getContext().truffleEnv();
+            return fileNameNonDirectory(filename, getContext());
+        }
+
+        public static ELispString fileNameNonDirectory(ELispString filename, ELispContext context) {
+            TruffleLanguage.Env env = context.truffleEnv();
             String sep = env.getFileNameSeparator();
             String name = filename.toString();
             if (name.endsWith(sep) || name.endsWith("/") || name.endsWith("\\")) {
@@ -1220,9 +1229,47 @@ public class BuiltInFileIO extends ELispBuiltIns {
     @ELispBuiltIn(name = "write-region", minArgs = 3, maxArgs = 7)
     @GenerateNodeFactory
     public abstract static class FWriteRegion extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
-        public static Void writeRegion(Object start, Object end, Object filename, Object append, Object visit, Object lockname, Object mustbenew) {
-            throw new UnsupportedOperationException();
+        public boolean writeRegion(
+                Object start, Object end, ELispString filename,
+                Object append, Object visit, Object lockname, Object mustbenew
+        ) {
+            // TODO: handle coding
+            TruffleFile file = getContext().getFileExpanded(filename);
+            List<OpenOption> options = new ArrayList<>(List.of(
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE
+            ));
+            if (!isNil(append) && !(append instanceof Long)) {
+                options.add(StandardOpenOption.APPEND);
+            }
+            try (SeekableByteChannel out = file.newByteChannel(Set.copyOf(options))) {
+                if (start instanceof ELispString s) {
+                    out.write(ByteBuffer.wrap(s.bytes()));
+                    return false;
+                }
+                ELispBuffer buffer = getContext().currentBuffer();
+                long startI, endI;
+                if (isNil(start)) {
+                    startI = buffer.pointMin();
+                    endI = buffer.pointMax();
+                } else {
+                    startI = asLong(start);
+                    endI = asLong(end);
+                }
+                if (append instanceof Long where) {
+                    out.position(where);
+                }
+                NodeIterator iterator = buffer.iterator(startI, endI);
+                while (iterator.hasNext()) {
+                    NodePiece piece = iterator.nextNode();
+                    out.write(ByteBuffer.wrap(piece.bytes(), piece.startByte(), piece.byteLength()));
+                }
+                return false;
+            } catch (IOException e) {
+                throw ELispSignals.reportFileError(e, filename);
+            }
         }
     }
 

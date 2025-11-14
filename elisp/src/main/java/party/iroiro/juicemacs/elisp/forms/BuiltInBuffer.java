@@ -1,12 +1,10 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
@@ -14,6 +12,8 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
@@ -159,8 +159,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetFileBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getFileBuffer(Object filename) {
-            throw new UnsupportedOperationException();
+        public static Object getFileBuffer(Object filename) {
+            // TODO: track visiting buffers
+            return false;
         }
     }
 
@@ -175,8 +176,9 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetTruenameBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getTruenameBuffer(Object filename) {
-            throw new UnsupportedOperationException();
+        public static boolean getTruenameBuffer(Object filename) {
+            // TODO: track visiting buffers
+            return false;
         }
     }
 
@@ -295,13 +297,12 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGenerateNewBufferName extends ELispBuiltInBaseNode {
         @Specialization
-        public static ELispString generateNewBufferName(
-                ELispString name, Object ignore,
-                @Cached TruffleString.FromLongNode longToString,
-                @Cached TruffleString.CodePointAtIndexNode charAt
-        ) {
+        public static ELispString generateNewBufferName(ELispString name, Object ignore) {
             if (!isNil(FGetBuffer.getBuffer(name))) {
                 return name;
+            }
+            if (isNil(ignore)) {
+                ignore = ELispString.EMPTY;
             }
             if (BuiltInFns.FStringEqual.stringEqual(name, ignore)) {
                 return name;
@@ -408,8 +409,13 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FBufferLocalValue extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void bufferLocalValue(Object variable, Object buffer) {
-            throw new UnsupportedOperationException();
+        public static Object bufferLocalValue(ELispSymbol variable, ELispBuffer buffer) {
+            Forwarded local = buffer.getLocal(variable);
+            // TODO
+            if (local != null) {
+                return local.getValue();
+            }
+            return variable.getDefaultValue();
         }
     }
 
@@ -580,9 +586,26 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "rename-buffer", minArgs = 1, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FRenameBuffer extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
-        public static Void renameBuffer(Object newname, Object unique) {
-            throw new UnsupportedOperationException();
+        public boolean renameBuffer(ELispString newname, Object unique) {
+            HashStringMap<ELispBuffer> buffers = getBuffers(this);
+            if (buffers.get(newname) != null) {
+                if (isNil(unique)) {
+                    throw ELispSignals.error("Buffer name is in use");
+                }
+                newname = FGenerateNewBufferName.generateNewBufferName(newname, false);
+            }
+            ELispBuffer buffer = currentBuffer();
+            ELispString name = asStr(buffer.getName());
+            if (buffers.get(name) == buffer) {
+                buffers.removeKey(name);
+            } else {
+                buffers.removeValue(buffer);
+            }
+            buffers.put(newname, buffer);
+            buffer.setName(newname);
+            return false;
         }
     }
 

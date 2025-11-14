@@ -840,6 +840,8 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
                         break;
                     case SAVE_RESTRICTION:             // 0214
                         // TODO
+                        bindings.saveExcursion(context.currentBuffer());
+                        break;
                     case CATCH:                        // 0215
                         throw new UnsupportedOperationException();
                     case UNWIND_PROTECT:               // 0216

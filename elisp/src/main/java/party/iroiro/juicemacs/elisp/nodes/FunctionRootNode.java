@@ -8,6 +8,8 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 import party.iroiro.juicemacs.elisp.nodes.funcall.ReadFunctionArgNode;
+import party.iroiro.juicemacs.elisp.runtime.internal.ELispPrint;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispValue;
 
 public class FunctionRootNode extends RootNode {
 
@@ -46,6 +48,9 @@ public class FunctionRootNode extends RootNode {
     @Override
     @TruffleBoundary
     public String getName() {
+        if (lispFunction instanceof ELispValue) {
+            return ELispPrint.toString(lispFunction, 512).toString();
+        }
         return lispFunction.toString();
     }
 

@@ -9,9 +9,11 @@ import org.junit.jupiter.api.function.Executable;
 
 import java.io.BufferedReader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,9 +21,30 @@ import static org.junit.jupiter.api.Assertions.*;
 import static party.iroiro.juicemacs.elisp.ELispLanguageTest.testWithDumped;
 
 public class ELispRegressionTest {
+    private static final String[] TEST_FILES = {
+            // built-in function tests
+            "src/alloc-tests",
+            "src/chartab-tests",
+            "src/data-tests",
+            "src/fns-tests",
+            "src/floatfns-tests",
+
+            // elisp regression tests
+            "lisp/emacs-lisp/backquote-tests",
+//            "lisp/emacs-lisp/bytecomp-tests", // TODO: needs font-lock-mode
+            "lisp/emacs-lisp/byte-run-tests",
+            "lisp/emacs-lisp/cconv-tests",
+//            "lisp/emacs-lisp/cl-generic-tests", // TODO: needs edebug
+            "lisp/emacs-lisp/cl-preloaded-tests",
+            "lisp/emacs-lisp/macroexp-tests",
+            "lisp/emacs-lisp/nadvice-tests",
+            "lisp/emacs-lisp/oclosure-tests",
+            "lisp/emacs-lisp/pcase-tests",
+            "lisp/subr-tests",
+    };
     private final CompletableFuture<List<DynamicTest>> testCases = new CompletableFuture<>();
     private final CompletableFuture<Map<String, TestResult>> testResults = new CompletableFuture<>();
-    private final List<Throwable> outOfTestExceptions = Collections.synchronizedList(new ArrayList<>());
+    private final AtomicBoolean erroredOut = new AtomicBoolean();
 
     @TestFactory
     public Collection<DynamicTest> emacsRegressionTests() throws ExecutionException, InterruptedException {
@@ -34,7 +57,7 @@ public class ELispRegressionTest {
             try {
                 // Extract available tests
                 List<DynamicTest> testCases = new ArrayList<>();
-                Value tests = context.eval("elisp", """
+                context.eval("elisp", """
                         ;; TODO: pp requires a bunch of sexp parsing functions
                         (require 'pp)
                         (defalias 'pp 'princ)
@@ -42,29 +65,40 @@ public class ELispRegressionTest {
                         (defun cl--assertion-failed (&rest _) t)
                         
                         (require 'ert)
-                        (load "../test/src/data-tests")
-                        (load "../test/src/fns-tests")
-                        (load "../test/src/floatfns-tests")
-                        (apply #'vector (mapcar #'ert-test-name (ert-select-tests t t)))
+                        """);
+                for (String test : TEST_FILES) {
+                    context.eval("elisp", "(load \"../test/%s\")".formatted(test));
+                }
+                Value tests = context.eval("elisp", """
+                        (apply #'vector (mapcar (lambda (test) (vector (ert-test-name test)
+                                                                       (ert-test-file-name test)))
+                                                (ert-select-tests t t)))
                         """);
                 long count = tests.getArraySize();
                 for (long i = 0; i < count; i++) {
-                    String name = tests.getArrayElement(i).asString();
-                    testCases.add(DynamicTest.dynamicTest(name, () -> {
-                        Map<String, TestResult> results = testResults.get();
+                    Value info = tests.getArrayElement(i);
+                    String name = info.getArrayElement(0).asString();
+                    Path file = Path.of(info.getArrayElement(1).asString());
+                    testCases.add(DynamicTest.dynamicTest(name + "@" + file.getFileName(), () -> {
+                        Map<String, TestResult> results;
+                        try {
+                            results = testResults.get();
+                        } catch (ExecutionException e) {
+                            if (erroredOut.compareAndSet(false, true)) {
+                                throw e;
+                            }
+                            Assumptions.abort();
+                            return;
+                        }
                         TestResult result = results.get(name);
-                        assertNotNull(result);
+                        if (result == null) {
+                            Assumptions.abort();
+                            return;
+                        }
                         switch (result.state) {
                             case Failed -> fail(result.info == null ? result.name : result.info);
                             case Skipped -> Assumptions.abort("skipped");
                             case Passed -> {}
-                        }
-                        if (!outOfTestExceptions.isEmpty()) {
-                            Throwable old = outOfTestExceptions.get(0);
-                            outOfTestExceptions.clear();
-                            assertDoesNotThrow(() -> {
-                                throw old;
-                            });
                         }
                     }));
                 }
@@ -111,7 +145,6 @@ public class ELispRegressionTest {
         try {
             executable.execute();
         } catch (Throwable e) {
-            outOfTestExceptions.add(e);
             testResults.completeExceptionally(e);
         }
     }

@@ -20,6 +20,7 @@ import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
+import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -171,6 +172,9 @@ public abstract class ELispSignals {
 
     //#region File operations
     public static ELispSignalException reportFileError(IOException e, Object file) {
+        if (e instanceof EOFException) {
+            return endOfFile(file);
+        }
         return signal(FILE_ERROR, TruffleUtils.eMessage(e), file);
     }
     public static ELispSignalException fileMissing(FileNotFoundException e, Object file) {

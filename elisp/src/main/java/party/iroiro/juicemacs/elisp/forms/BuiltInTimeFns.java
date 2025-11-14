@@ -13,6 +13,10 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -528,9 +532,29 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "current-time-string", minArgs = 0, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FCurrentTimeString extends ELispTimeFnsNode {
+        private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(
+                "EEE MMM dd HH:mm:ss uuuu"
+        );
+
+        @TruffleBoundary
         @Specialization
-        public static Void currentTimeString(Object specifiedTime, Object zone) {
-            throw new UnsupportedOperationException();
+        public static ELispString currentTimeString(Instant specifiedTime, Object zone) {
+            return ELispString.ofJava(FORMATTER.format(toZonedDateTime(specifiedTime, zone)));
+        }
+
+        public static ZonedDateTime toZonedDateTime(Instant time, Object zone) {
+            ZoneId id;
+            if (isT(zone)) {
+                id = ZoneOffset.UTC;
+            } else if (toSym(zone) instanceof ELispSymbol) {
+                id = ZoneId.systemDefault();
+            } else if (zone instanceof ELispString s && s.isAscii()) {
+                id = ZoneId.of(s.toString());
+            } else {
+                // TODO
+                throw new UnsupportedOperationException();
+            }
+            return ZonedDateTime.ofInstant(time, id);
         }
     }
 

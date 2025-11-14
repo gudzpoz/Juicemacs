@@ -1866,8 +1866,12 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FSetplist extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void setplist(Object symbol, Object newplist) {
-            throw new UnsupportedOperationException();
+        public static Object setplist(ELispSymbol symbol, Object newplist) {
+            if (!isNil(newplist) && !(newplist instanceof ELispCons)) {
+                throw ELispSignals.wrongTypeArgument(LISTP, newplist);
+            }
+            symbol.setProperties(newplist);
+            return newplist;
         }
     }
 
@@ -2281,8 +2285,9 @@ public class BuiltInData extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FKillLocalVariable extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void killLocalVariable(Object variable) {
-            throw new UnsupportedOperationException();
+        public ELispSymbol killLocalVariable(ELispSymbol variable) {
+            getContext().currentBuffer().killLocal(variable);
+            return variable;
         }
     }
 

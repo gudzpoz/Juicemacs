@@ -796,7 +796,18 @@ public class BuiltInFns extends ELispBuiltIns {
 
         @Specialization
         public static ELispString copySequenceString(ELispString arg) {
-            return new ELispString(arg.toString());
+            byte[] bytes;
+            if (arg.isImmutable()) {
+                bytes = arg.bytes();
+            } else {
+                bytes = arg.bytes().clone();
+            }
+            return ELispString.ofKnown(bytes, arg.length(), arg.state());
+        }
+
+        @Specialization
+        public static ELispRecord copySequenceRecord(ELispRecord arg) {
+            return new ELispRecord(arg.inner());
         }
     }
 
@@ -3259,7 +3270,7 @@ public class BuiltInFns extends ELispBuiltIns {
             MessageDigest digest = getDigest(algorithm);
             while (iterator.hasNext()) {
                 NodePiece piece = iterator.nextNode();
-                digest.update(piece.bytes(), piece.startByte(), piece.endByte() - piece.startByte());
+                digest.update(piece.bytes(), piece.startByte(), piece.byteLength());
             }
             return output(digest.digest(), binary);
         }

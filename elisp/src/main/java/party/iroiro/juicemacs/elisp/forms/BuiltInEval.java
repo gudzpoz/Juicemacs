@@ -2212,9 +2212,33 @@ public class BuiltInEval extends ELispBuiltIns {
     @ELispBuiltIn(name = "run-hook-wrapped", minArgs = 2, maxArgs = 2, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FRunHookWrapped extends ELispBuiltInBaseNode {
+        @TruffleBoundary
         @Specialization
-        public static Void runHookWrapped(Object hook, Object wrapFunction, Object[] args) {
-            throw new UnsupportedOperationException();
+        public Object runHookWrapped(ELispSymbol hook, Object wrapFunction, Object[] args) {
+            if (!hook.isBound()) {
+                return false;
+            }
+            Object value = hook.getValue();
+            if (isNil(value)) {
+                return false;
+            }
+            ELispCons hooks;
+            if (value instanceof ELispCons cons) {
+                hooks = cons;
+            } else {
+                hooks = ELispCons.listOf(value);
+            }
+            Object[] wrapArgs = new Object[args.length + 1];
+            System.arraycopy(args, 0, wrapArgs, 1, args.length);
+            for (Object callable : hooks) {
+                // TODO: Handle buffer-local hooks
+                wrapArgs[0] = callable;
+                Object result = FFuncall.funcall(this, wrapFunction, wrapArgs);
+                if (!isNil(result)) {
+                    return result;
+                }
+            }
+            return false;
         }
     }
 

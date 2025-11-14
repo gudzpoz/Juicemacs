@@ -232,6 +232,12 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         return localVariables.computeIfAbsent(symbol, _ -> new Forwarded());
     }
 
+    @TruffleBoundary
+    public void killLocal(ELispSymbol variable) {
+        localVariables.remove(variable);
+        variable.flushBufferLocal(this);
+    }
+
     public Object getSlot(int index) {
         return bufferLocalFields[index];
     }
