@@ -151,6 +151,7 @@ public final class ELispPortableDumper {
                 BuiltInComp.class,
                 BuiltInComposite.class,
                 BuiltInData.class,
+                BuiltInDecompress.class,
                 BuiltInDired.class,
                 BuiltInDispNew.class,
                 BuiltInDoc.class,

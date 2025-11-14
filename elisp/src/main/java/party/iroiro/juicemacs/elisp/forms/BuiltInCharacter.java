@@ -3,12 +3,16 @@ package party.iroiro.juicemacs.elisp.forms;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
+import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FCompareStrings;
+import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
+import party.iroiro.juicemacs.elisp.runtime.string.CharIterator;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
 import java.util.List;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInCharacter extends ELispBuiltIns {
@@ -84,8 +88,14 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMultibyteCharToUnibyte extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void multibyteCharToUnibyte(Object ch) {
-            throw new UnsupportedOperationException();
+        public static long multibyteCharToUnibyte(long ch) {
+            if (ch < 0x100) {
+                return ch;
+            }
+            if (0x3FFF80 <= ch && ch <= 0x3FFFFF) {
+                return ch & 0xFF;
+            }
+            return -1;
         }
     }
 
@@ -105,8 +115,16 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FCharWidth extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void charWidth(Object char_) {
-            throw new UnsupportedOperationException();
+        public static long charWidth(long char_) {
+            asChar(char_);
+            if (char_ == '\t') {
+                return asLong(ELispContext.get(null).currentBuffer().getTabWidth());
+            }
+            if (char_ == '\n') {
+                return 0;
+            }
+            // TODO
+            return 1;
         }
     }
 
@@ -139,8 +157,15 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FStringWidth extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void stringWidth(Object string, Object from, Object to) {
-            throw new UnsupportedOperationException();
+        public static long stringWidth(ELispString string, Object from, Object to) {
+            int[] range = FCompareStrings.checkStringRange(string, from, to);
+            int len = range[1] - range[0];
+            CharIterator iterator = string.iterator(range[0]);
+            long width = 0;
+            while (iterator.hasNext() && len-- > 0) {
+                width += FCharWidth.charWidth(iterator.nextInt());
+            }
+            return width;
         }
     }
 
@@ -193,9 +218,45 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @ELispBuiltIn(name = "char-resolve-modifiers", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FCharResolveModifiers extends ELispBuiltInBaseNode {
+        /// @see party.iroiro.juicemacs.elisp.parser.ELispLexer
+        @SuppressWarnings("OctalInteger")
         @Specialization
-        public static Void charResolveModifiers(Object char_) {
-            throw new UnsupportedOperationException();
+        public static long charResolveModifiers(long char_) {
+            // from character.c: char_resolve_modifier_mask
+
+            /* A non-ASCII character can't reflect modifier bits to the code.  */
+            if ((char_ & ~CHAR_MODIFIER_MASK) >= 0x80) {
+                return char_;
+            }
+            /* For Meta, Shift, and Control modifiers, we need special care.  */
+            if ((char_ & CHAR_SHIFT) != 0) {
+                /* Shift modifier is valid only with [A-Za-z].  */
+                if ('A' <= (char_ & 0377) && (char_ & 0377) <= 'Z') {
+                    char_ &= ~CHAR_SHIFT;
+                } else if ('a' <= (char_ & 0377) && (char_ & 0377) <= 'z') {
+                    char_ = (char_ & ~CHAR_SHIFT) - ('a' - 'A');
+                } else if ((char_ & ~CHAR_MODIFIER_MASK) <= 0x20) {
+                    /* Shift modifier for control characters and SPC is ignored.  */
+                    char_ &= ~CHAR_SHIFT;
+                }
+            }
+            if ((char_ & CHAR_CTL) != 0) {
+                /* Simulate the code in lread.c.  */
+                /* Allow `\C- ' and `\C-?'.  */
+                if ((char_ & 0377) == ' ') {
+                    char_ &= ~0177 & ~CHAR_CTL;
+                } else if ((char_ & 0377) == '?') {
+                    char_ = 0177 | (char_ & ~0177 & ~CHAR_CTL);
+                }
+                /* ASCII control chars are made from letters (both cases),
+                   as well as the non-letters within 0100...0137.  */
+                else if ((char_ & 0137) >= 0101 && (char_ & 0137) <= 0132) {
+                    char_ &= (037 | (~0177 & ~CHAR_CTL));
+                } else if ((char_ & 0177) >= 0100 && (char_ & 0177) <= 0137) {
+                    char_ &= (037 | (~0177 & ~CHAR_CTL));
+                }
+            }
+            return char_;
         }
     }
 
@@ -216,8 +277,22 @@ public class BuiltInCharacter extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FGetByte extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void getByte(Object position, Object string) {
-            throw new UnsupportedOperationException();
+        public long getByte(Object position, Object string) {
+            int c;
+            if (isNil(string)) {
+                ELispBuffer buffer = getContext().currentBuffer();
+                c = buffer.getChar(isNil(position) ? buffer.getPoint() : asLong(position));
+            } else {
+                ELispString s = asStr(string);
+                c = s.codePointAt(isNil(position) ? 0 : asInt(position));
+            }
+            if (c < 256) {
+                return c;
+            }
+            if (c >= 0x3FFF80) {
+                return c & 0xFF;
+            }
+            throw ELispSignals.error("Not an ASCII nor an 8-bit character");
         }
     }
 }

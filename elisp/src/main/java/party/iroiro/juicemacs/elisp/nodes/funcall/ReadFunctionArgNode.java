@@ -2,7 +2,6 @@ package party.iroiro.juicemacs.elisp.nodes.funcall;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import org.jspecify.annotations.Nullable;
@@ -77,7 +76,7 @@ public class ReadFunctionArgNode extends ELispExpressionNode {
             TruffleSafepoint.poll(this);
             try {
                 return function.executeGeneric(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (RuntimeException e) {
                 throw remapException(e, this.function);
             }
         }

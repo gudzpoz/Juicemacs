@@ -23,11 +23,16 @@ import static party.iroiro.juicemacs.elisp.ELispLanguageTest.testWithDumped;
 public class ELispRegressionTest {
     private static final String[] TEST_FILES = {
             // built-in function tests
+            // - core ones
             "src/alloc-tests",
             "src/chartab-tests",
             "src/data-tests",
+            "src/eval-tests",
             "src/fns-tests",
             "src/floatfns-tests",
+            // - others
+            "src/character-tests",
+            "src/decompress-tests",
 
             // elisp regression tests
             "lisp/emacs-lisp/backquote-tests",

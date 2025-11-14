@@ -14,7 +14,7 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString.Builder;
 
-import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.MAX_CHAR;
+import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInConstants.*;
 import static party.iroiro.juicemacs.elisp.parser.CodePointReader.noEOF;
 
 /// A ELisp lexer
@@ -386,14 +386,6 @@ public class ELispLexer {
         };
     }
 
-    private final static int CHAR_ALT = 0x0400000;
-    private final static int CHAR_SUPER = 0x0800000;
-    private final static int CHAR_HYPER = 0x1000000;
-    private final static int CHAR_SHIFT = 0x2000000;
-    private final static int CHAR_CTL = 0x4000000;
-    private final static int CHAR_META = 0x8000000;
-    private final static int MODIFIER_MASK = CHAR_ALT | CHAR_SUPER | CHAR_HYPER | CHAR_SHIFT | CHAR_CTL | CHAR_META;
-
     /**
      * @see <a href="https://www.gnu.org/software/emacs/manual/html_node/elisp/Other-Char-Bits.html">
      * elisp/Other Char Bits</a>
@@ -493,8 +485,8 @@ public class ELispLexer {
             throw ELispSignals.invalidReadSyntax("Invalid modifier");
         }
         int c = readChar(inString);
-        int modifier = c & MODIFIER_MASK;
-        c = c & ~MODIFIER_MASK;
+        int modifier = c & CHAR_MODIFIER_MASK;
+        c = c & ~CHAR_MODIFIER_MASK;
         if (('@' <= c && c <= '_') || ('a' <= c && c <= 'z')) {
             c &= 0x1F;
         } else if (c == '?') {

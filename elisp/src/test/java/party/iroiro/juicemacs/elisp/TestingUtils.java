@@ -54,6 +54,7 @@ public abstract class TestingUtils {
     public static Context.Builder getContextBuilder(@Nullable PrintStream out) {
         String loadPath = Path.of("emacs", "lisp").toAbsolutePath().toString();
         String dataPath = Path.of("emacs", "etc").toAbsolutePath().toString();
+        String testPath = Path.of("emacs", "test").toAbsolutePath().toString();
         Context.Builder builder = Context.newBuilder("elisp")
                 .allowExperimentalOptions(true)
                 // Uncomment the following two lines to use an external debugger for Lisp before we get to edebug.
@@ -69,6 +70,7 @@ public abstract class TestingUtils {
 //                .option("engine.TraceInlining", "true")
                 .environment("EMACSLOADPATH", loadPath)
                 .environment("EMACSDATA", dataPath)
+                .environment("EMACS_TEST_DIRECTORY", testPath)
                 .allowIO(getTestIOAccess());
         if (out != null) {
             builder.out(out);

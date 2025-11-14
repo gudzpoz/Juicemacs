@@ -210,7 +210,9 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         if (content.getLength() != 0) {
             throw ELispSignals.error("unsupported");
         }
-        setEnableMultibyteCharacters(!isNil(flag));
+        boolean multibyte = !isNil(flag);
+        content.setMultibyte(multibyte);
+        setEnableMultibyteCharacters(multibyte);
     }
 
     public ELispString bufferString() {

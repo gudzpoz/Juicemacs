@@ -60,13 +60,12 @@ public class BuiltInDecompress extends ELispBuiltIns {
             if (!isNil(buffer.getEnableMultibyteCharacters())) {
                 throw ELispSignals.error("This function can be called only in unibyte buffers");
             }
-            ELispString s = buffer.subString(start, end);
             NodeIterator iterator = buffer.iterator(start, end);
             byte[] bytes;
             try (GZIPInputStream input = new GZIPInputStream(new InputStream() {
                 @Override
                 public int read() {
-                    return iterator.nextInt();
+                    return iterator.hasNext() ? iterator.nextInt() : -1;
                 }
             })) {
                 bytes = input.readAllBytes();

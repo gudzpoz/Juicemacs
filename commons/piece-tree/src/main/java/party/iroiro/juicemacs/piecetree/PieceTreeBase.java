@@ -163,6 +163,13 @@ public final class PieceTreeBase {
         return buffers.getFirst().isRaw();
     }
 
+    public void setMultibyte(boolean multibyte) {
+        if (length != 0) {
+            throw new IllegalStateException();
+        }
+        create(!multibyte, new StringBuffer[0]);
+    }
+
     //#region Buffer API
     /* Skipped: createSnapshot() */
     /* Skipped: equal() */

@@ -135,6 +135,7 @@ code like =throw new UnsupportedOperationException()=. The following code tracks
 how many subroutines has been generated and how many are actually implemented
 and filled with actual code:
 
+#+name: extract-subroutine-stats
 #+begin_src elisp
   (defvar juicemacs-elisp-src-path
     "../elisp/src/main/java/party/iroiro/juicemacs/elisp/")
@@ -182,7 +183,7 @@ and filled with actual code:
 #+RESULTS:
 : extract-subroutine-stats
 
-#+begin_src elisp :var total=total c-files=c-files
+#+begin_src elisp :var total=total c-files=c-files extract=extract-subroutine-stats
   (pcase-let* ((`(,impls ,todos ,files) (extract-subroutine-stats))
                (impl-count (length impls))
                (todo-count (length todos))
@@ -196,7 +197,7 @@ and filled with actual code:
 #+RESULTS:
 |           | Implemented | Remaining | Total | Files |
 | GNU Emacs |        1798 |         0 |  1798 |   105 |
-| Juicemacs |         445 |       842 |  1287 |    49 |
+| Juicemacs |         452 |       835 |  1287 |    49 |
 
 * Remaining C Files
 

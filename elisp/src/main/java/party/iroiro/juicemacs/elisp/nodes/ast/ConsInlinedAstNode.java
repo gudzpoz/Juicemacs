@@ -117,9 +117,7 @@ public final class ConsInlinedAstNode extends ConsCallNode {
         }
         try {
             return inlinedNode.executeGeneric(frame);
-        } catch (ELispSignals.ELispSignalException
-                 | ArithmeticException
-                 | ClassCastException | UnsupportedSpecializationException e) {
+        } catch (RuntimeException e) {
             throw rewriteException(e);
         }
     }

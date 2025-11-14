@@ -1153,7 +1153,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         public void executeVoid(VirtualFrame frame) {
             try {
                 updateInnerNode(frame).executeVoid(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (RuntimeException e) {
                 throw ELispSignals.remapException(e, this);
             }
         }
@@ -1162,7 +1162,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
             try {
                 return updateInnerNode(frame).executeLong(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (RuntimeException e) {
                 throw ELispSignals.remapException(e, this);
             }
         }
@@ -1171,7 +1171,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
             try {
                 return updateInnerNode(frame).executeDouble(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (RuntimeException e) {
                 throw ELispSignals.remapException(e, this);
             }
         }
@@ -1180,7 +1180,7 @@ public class ELispBytecodeFallbackNode extends ELispExpressionNode implements By
         public Object executeGeneric(VirtualFrame frame) {
             try {
                 return updateInnerNode(frame).executeGeneric(frame);
-            } catch (ELispSignals.ELispSignalException | ClassCastException | UnsupportedSpecializationException e) {
+            } catch (RuntimeException e) {
                 throw ELispSignals.remapException(e, this);
             }
         }

@@ -490,7 +490,7 @@ public class BuiltInFns extends ELispBuiltIns {
             return true;
         }
 
-        private static int[] checkStringRange(ELispString s, Object start, Object end) {
+        public static int[] checkStringRange(ELispString s, Object start, Object end) {
             int length = s.length();
 
             long startL = notNilOr(start, 0);
