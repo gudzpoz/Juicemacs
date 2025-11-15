@@ -18,6 +18,7 @@ commons-text = "1.14.0"
 eclipse-collections = '11.1.0'
 fory = "0.13.0"
 juniversalchardet = "2.5.0"
+strftime4j = "1.0.6"
 
 # CLI
 jline = "3.30.6"
@@ -53,6 +54,7 @@ eclipse-collections-api = { group = "org.eclipse.collections", name = "eclipse-c
 eclipse-collections-impl = { group = "org.eclipse.collections", name = "eclipse-collections", version.ref = "eclipse-collections" }
 fory-core = { group = "org.apache.fory", name = "fory-core", version.ref = "fory" }
 juniversalchardet = { group = "com.github.albfernandez", name = "juniversalchardet", version.ref = "juniversalchardet" }
+strftime4j = { group = "ua.co.k", name = "strftime4j", version.ref = "strftime4j" }
 
 jline = { group = "org.jline", name = "jline", version.ref = "jline" }
 picocli-lib = { group = "info.picocli", name = "picocli", version.ref = "picocli" }

@@ -329,8 +329,10 @@ function implementation:
   against Juicemacs. It is best suited for context-independent pure functions
   like arithmetic.
 
-- =ELispLanguageTest= :: This test bootstraps Juicemacs, pdumps it and then runs
-  some [[https://www.gnu.org/software/emacs/manual/html_mono/ert.html][ERT tests]]. Currently, it only run =data-tests= and =floatfns-tests=. Free
+- =ELispLanguageTest= :: This test tries to bootstrap Juicemacs with pdump.
+
+- =ELispRegressionTest= :: It loads pdump products and runs some [[https://www.gnu.org/software/emacs/manual/html_mono/ert.html][ERT tests]]. I've
+  added some tests from the GNU Emacs codebase, with many of them failing. Free
   free to add more!
 
 To run the two test suites above, simply modify the Java code to include or
@@ -593,7 +595,7 @@ for some useful Truffle options when debugging:
 
   There are quite a lot of ERT tests in the GNU Emacs codebase. However,
   currently we only run a few of them in our unit test
-  (=ELispLanguageTest.java=). Getting more of them to run can be quite
+  (=ELispRegressionTest.java=). Getting more of them to run can be quite
   beneficial too.
 
 - Performance engineering:

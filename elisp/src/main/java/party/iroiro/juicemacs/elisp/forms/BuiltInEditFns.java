@@ -8,6 +8,7 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FConcat;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FSubstring;
 import party.iroiro.juicemacs.elisp.forms.BuiltInPrint.FPrin1ToString;
@@ -25,16 +26,12 @@ import party.iroiro.juicemacs.piecetree.PieceTreeBase;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.PrimitiveIterator;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static party.iroiro.juicemacs.elisp.forms.ELispBuiltInUtils.currentBuffer;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.CASE_FOLD_SEARCH;
-import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.SYSTEM_NAME;
+import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
 
 public class BuiltInEditFns extends ELispBuiltIns {
@@ -53,24 +50,34 @@ public class BuiltInEditFns extends ELispBuiltIns {
     /// @param from the index of the `@` character, from where text properties should be copied
     record FormatSub(int field, int flags, int width, int precision, int type, int from) implements FormatPiece {
         private static final Pattern SPECIFIER_PATTERN =
-                Pattern.compile("^([0-9]+\\$)?([+ #0-]+)?([0-9]+)?(\\.[0-9]+)?");
+                Pattern.compile("^([0-9]+\\$)?([+ #0-]+)?([0-9]+)?(\\.[0-9]+)?(.*)$");
         private static final int FLAG_PLUS = 1;
         private static final int FLAG_SPACE = 2;
         private static final int FLAG_ALT = 4;
         private static final int FLAG_ZERO = 8;
         private static final int FLAG_MINUS = 16;
         private static boolean isSpecifier(int c) {
-            return "0123456789$ #0-.".indexOf(c) != -1;
+            return "0123456789$+ #0-.".indexOf(c) != -1;
+        }
+        private static int parseIntWithLimit(@Nullable String s, int from, int to) {
+            if (s == null) {
+                return -1;
+            }
+            try {
+                return Integer.parseInt(s.substring(from, s.length() + to));
+            } catch (NumberFormatException ignored) {
+                return Integer.MAX_VALUE;
+            }
         }
 
         static FormatSub parse(Matcher matcher, int type, int from) {
             String fieldS = matcher.group(1);
-            int field = fieldS == null ? -1 : Integer.parseInt(fieldS.substring(0, fieldS.length() - 1));
+            int field = parseIntWithLimit(fieldS, 0, -1);
             int flags = parseFlags(matcher);
             String widthS = matcher.group(3);
-            int width = widthS == null ? -1 : Integer.parseInt(widthS);
+            int width = parseIntWithLimit(widthS, 0, 0);
             String precisionS = matcher.group(4);
-            int precision = precisionS == null ? -1 : Integer.parseInt(precisionS.substring(1));
+            int precision = parseIntWithLimit(precisionS, 1, 0);
             if ("sdoxXefgcS".indexOf(type) == -1) {
                 throw ELispSignals.error("Invalid format operation: " + (char) type);
             }
@@ -181,7 +188,7 @@ public class BuiltInEditFns extends ELispBuiltIns {
         FormatPiece[] parse() {
             // TODO: allow JIT-compiling
             int state = 0;
-            int peek = 0;
+            int peek;
             while (true) {
                 switch (state) {
                     case STATE_TEXT -> {
@@ -217,8 +224,8 @@ public class BuiltInEditFns extends ELispBuiltIns {
             Matcher matcher = FormatSub.SPECIFIER_PATTERN.matcher(specBuilder);
             boolean matches = matcher.matches();
             assert matches; // zero-width always possible
-            if (matcher.end() != specBuilder.length()) {
-                throw ELispSignals.error("Invalid format operation %" + specBuilder.charAt(matcher.end()));
+            if (!matcher.group(5).isEmpty()) {
+                throw ELispSignals.error("Invalid format operation %" + matcher.group(5).charAt(0));
             }
             pieces.add(FormatSub.parse(matcher, c, from - 2));
             from = to;
@@ -244,6 +251,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
                         if (sub.field == -1) {
                             arg = args[argI++];
                         } else if (sub.field > 0) {
+                            if (sub.field > args.length) {
+                                throw ELispSignals.error("Not enough arguments for format string");
+                            }
                             arg = args[sub.field - 1];
                         } else {
                             arg = source;
@@ -1982,6 +1992,9 @@ public class BuiltInEditFns extends ELispBuiltIns {
     public abstract static class FPropertize extends ELispBuiltInBaseNode {
         @Specialization
         public static ELispString propertize(ELispString string, Object[] properties) {
+            if (properties.length % 2 != 0) {
+                throw ELispSignals.wrongNumberOfArguments(PROPERTIZE, properties.length + 1);
+            }
             // TODO
             ELispString s = BuiltInFns.FCopySequence.copySequenceString(string);
             long length = s.length();
@@ -2076,8 +2089,13 @@ public class BuiltInEditFns extends ELispBuiltIns {
         @Specialization
         public static ELispString format(ELispString string, Object[] objects) {
             ELispString s = asStr(string);
-            FormatPiece[] pieces = new FormatStringParser(s).parse();
-            return new Formatter(s, pieces).format(objects);
+            try {
+                FormatPiece[] pieces = new FormatStringParser(s).parse();
+                return new Formatter(s, pieces).format(objects);
+            } catch (IllegalFormatException e) {
+                // TODO
+                throw ELispSignals.error(Objects.requireNonNullElse(e.getMessage(), "format error"));
+            }
         }
     }
 

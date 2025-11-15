@@ -226,7 +226,6 @@ and filled with actual code:
 | atimer.c           |
 | cygw32.c           |
 | dbusbind.c         |
-| decompress.c       |
 | dosfns.c           |
 | emacs-module.c     |
 | font.c             |

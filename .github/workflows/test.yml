@@ -1,5 +1,3 @@
-# Modified from https://github.com/libgdx/libgdx/blob/master/.github/workflows/build-publish.yml
-
 name: Build and Publish
 
 on:
@@ -16,14 +14,8 @@ on:
     branches:
       - main
 
-permissions:
-  checks: write
-  pull-requests: write
-  deployments: write
-  contents: write
-
 jobs:
-  elisp-test:
+  elisp-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +24,6 @@ jobs:
       - name: Basic setup
         uses: ./.github/workflows/composite/setup-basic
 
-      # Linting
       - name: Set up PDM
         uses: pdm-project/setup-pdm@v4
         with:
@@ -44,15 +35,25 @@ jobs:
         run: |
           cd elisp/scripts/emacs-extractor
           pdm install
-      - name: Syntax Check (emacs-extractor)
-        run: |
-          ./gradlew :elisp:emacsGen
-          git restore . # emacs-extractor might be different on different machines
       - name: Syntax Check (pmd)
         run: |
           ./gradlew :elisp:pmdMain
+      - name: Syntax Check (emacs-extractor)
+        run: |
+          ./gradlew :elisp:emacsGen
 
-      # Unit tests
+  elisp-test:
+    permissions:
+      checks: write # EnricoMi/publish-unit-test-result-action
+    runs-on: ubuntu-latest
+    needs: [elisp-lint]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Basic setup
+        uses: ./.github/workflows/composite/setup-basic
+
       - name: Unit Tests
         run: |
           emacs --batch -L elisp/scripts/emacs-extractor -l el-semi-fuzz
@@ -61,19 +62,28 @@ jobs:
           ./gradlew -Pcoverage :commons:pmd-no-int:test || true
           ./gradlew -Pcoverage :elisp:test              || true
           ./gradlew -Pcoverage jacocoTestReport
+      - name: Report Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: ${{ (!cancelled()) && (github.event_name != 'pull_request') }}
+        with:
+          files: '**/build/test-results/**/*.xml'
+          fail_on: nothing
       - name: Publish Code Coverage
         uses: codecov/codecov-action@v5
-        if: (!cancelled())
+        if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: coverage
       - name: Publish Test Results
-        uses: codecov/test-results-action@v1
-        if: (!cancelled())
+        uses: codecov/codecov-action@v5
+        if: ${{ !cancelled() }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
 
   elisp-build:
     runs-on: ubuntu-latest
+    needs: [elisp-lint]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -101,9 +111,13 @@ jobs:
             app/build/libs/app-all.jar
             app/build/native/nativeCompile/elisp-repl
             app/emacs.pdmp
-          retention-days: 30
+          retention-days: 7
 
   elisp-benchmarks:
+    permissions:
+      # benchmark-action/github-action-benchmark
+      contents: write
+      deployments: write
     runs-on: ubuntu-latest
     needs: [elisp-build]
     steps:
@@ -112,7 +126,6 @@ jobs:
           submodules: 'recursive'
       - name: Basic setup
         uses: ./.github/workflows/composite/setup-basic
-
 
       - name: Install elisp-benchmarks
         run: |
@@ -130,7 +143,7 @@ jobs:
           jq -s add build/reports/elisp/benchmarks-*.json > build/reports/elisp/benchmarks.json
       - name: Store Benchmark Results
         uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name != 'pull_request'
+        if: ${{ github.event_name != 'pull_request' }}
         with:
           name: Juicemacs elisp-benchmarks results
           tool: 'customSmallerIsBetter'

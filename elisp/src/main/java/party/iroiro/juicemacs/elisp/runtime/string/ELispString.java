@@ -105,8 +105,13 @@ public final class ELispString implements TruffleObject, ELispValue {
         return state == STATE_ASCII || (state != STATE_BYTES && value.length == length);
     }
 
-    public boolean isUtf8() {
+    public boolean isVariableLength() {
         return state() != STATE_ASCII;
+    }
+
+    public boolean isUtf8Compatible() {
+        int state = state();
+        return state == STATE_ASCII || state == STATE_UTF_8;
     }
 
     public int length() {

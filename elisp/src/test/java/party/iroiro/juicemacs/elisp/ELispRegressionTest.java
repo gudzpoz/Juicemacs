@@ -25,11 +25,13 @@ public class ELispRegressionTest {
             // built-in function tests
             // - core ones
             "src/alloc-tests",
-            "src/chartab-tests",
             "src/data-tests",
             "src/eval-tests",
             "src/fns-tests",
+            "src/chartab-tests",
+            "src/editfns-tests",
             "src/floatfns-tests",
+            "src/timefns-tests",
             // - others
             "src/character-tests",
             "src/decompress-tests",

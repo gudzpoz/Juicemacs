@@ -22,6 +22,7 @@ module party.iroiro.juicemacs.elisp {
     requires org.graalvm.collections;
     requires com.github.albfernandez.juniversalchardet;
     requires org.jspecify;
+    requires strftime4j;
 
     // GraalVM/Truffle
     requires org.graalvm.truffle;

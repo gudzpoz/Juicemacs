@@ -37,6 +37,7 @@ dependencies {
     implementation libs.fory.core
     implementation libs.bundles.eclipse.collections
     implementation libs.juniversalchardet
+    implementation libs.strftime4j
 
     api libs.graalvm.truffle.api
     implementation libs.graalvm.polyglot

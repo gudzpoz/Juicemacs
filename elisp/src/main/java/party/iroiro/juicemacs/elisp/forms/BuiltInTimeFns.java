@@ -6,18 +6,20 @@ import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNode;
 import party.iroiro.juicemacs.elisp.nodes.GlobalVariableReadNodeGen;
 import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem;
+import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBigNum;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
+import ua.co.k.strftime.StrftimeFormatter;
 
 import java.math.BigInteger;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoField;
 import java.util.List;
+import java.util.Locale;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.*;
@@ -29,11 +31,15 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     }
 
     @TypeSystem({
+            // from: Lisp values
             boolean.class,
             ELispSymbol.class,
             long.class,
             ELispCons.class,
-            Instant.class
+
+            // to: Java date/time API
+            Instant.class,
+            ZoneId.class,
     })
     public static class TimeFnsTypeSystem extends ELispTypeSystem {
         @ImplicitCast
@@ -47,13 +53,20 @@ public class BuiltInTimeFns extends ELispBuiltIns {
         public static Instant symbolToInstant(ELispSymbol symbol) {
             return nilToInstant(!isNil(symbol));
         }
+        public static Instant checkedOfEpoch(long second, long nanos) {
+            try {
+                return Instant.ofEpochSecond(second, nanos);
+            } catch (DateTimeException e) {
+                throw ELispSignals.error("Instant exceeds minimum or maximum instant");
+            }
+        }
         @ImplicitCast
         public static Instant longToInstant(long second) {
-            return Instant.ofEpochSecond(second);
+            return checkedOfEpoch(second, 0);
         }
         @ImplicitCast
         public static Instant doubleToInstant(double second) {
-            return Instant.ofEpochSecond(0, (long) (second * 1_000_000_000));
+            return checkedOfEpoch(0, (long) (second * 1_000_000_000));
         }
         @ImplicitCast
         @TruffleBoundary
@@ -73,7 +86,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
                         pico = asLong(asCons(microCons.cdr()).car());
                     }
                 }
-                return Instant.ofEpochSecond(
+                return checkedOfEpoch(
                         (high << 16) + low,
                         micro * 1000 + pico / 1000
                 );
@@ -82,7 +95,7 @@ public class BuiltInTimeFns extends ELispBuiltIns {
             if (timestamp.car() instanceof Long ticks) {
                 long subSecond = ticks % hz;
                 long second = (ticks - subSecond) / hz;
-                return Instant.ofEpochSecond(
+                return checkedOfEpoch(
                         second,
                         hz == 1_000_000_000
                                 ? subSecond
@@ -98,7 +111,57 @@ public class BuiltInTimeFns extends ELispBuiltIns {
 
             BigInteger nano = ticks.mod(hzBig).multiply(nanos).divide(hzBig);
             BigInteger second = ticks.divide(hzBig);
-            return Instant.ofEpochSecond(second.longValue(), nano.longValue());
+            return checkedOfEpoch(second.longValue(), nano.longValue());
+        }
+
+        @TruffleBoundary
+        @ImplicitCast
+        public static ZoneId nilToZoneId(boolean nil) {
+            return nil ? ZoneOffset.UTC : ZoneOffset.systemDefault();
+        }
+        @TruffleBoundary
+        @ImplicitCast
+        public static ZoneId symbolToZoneId(ELispSymbol symbol) {
+            if (symbol == NIL || symbol == T) {
+                return nilToZoneId(symbol == T);
+            }
+            if (symbol == WALL) {
+                // TODO: what is "system wall clock time"?
+                return ZoneId.systemDefault();
+            }
+            throw ELispSignals.error("Invalid time zone specification");
+        }
+        @TruffleBoundary
+        @ImplicitCast
+        public static ZoneId stringToZoneId(ELispString string) {
+            try {
+                return ZoneId.of(string.toString());
+            } catch (DateTimeException e) {
+                return ZoneOffset.UTC;
+            }
+        }
+        @TruffleBoundary
+        @ImplicitCast
+        public static ZoneId consToZoneId(ELispCons cons) {
+            if (cons.car() instanceof Long l) {
+                return longToZoneId(l);
+            }
+            throw ELispSignals.error("Invalid time zone specification");
+        }
+        @TruffleBoundary
+        @ImplicitCast
+        public static ZoneId longToZoneId(long offset) {
+            if (Math.abs(offset) > 64_800) { // max taken by ofTotalSeconds
+                int mod = (int) ((offset + 12 * 60 * 60) % (24 * 60 * 60)) - 12 * 60 * 60;
+                // try to preserve the sign
+                if (offset < 0 && mod > 6 * 60 * 60) {
+                    mod -= 24 * 60 * 60;
+                } else if (offset > 0 && mod < -6 * 60 * 60) {
+                    mod += 24 * 60 * 60;
+                }
+                offset = mod;
+            }
+            return ZoneOffset.ofTotalSeconds((int) offset);
         }
     }
 
@@ -212,9 +275,15 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "time-equal-p", minArgs = 2, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FTimeEqualP extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
-        public static boolean timeEqualP(Instant a, Instant b) {
-            return a.equals(b);
+        public static boolean timeEqualP(Object a, Object b) {
+            if (isNil(a) && isNil(b)) {
+                return true;
+            }
+            Instant ai = TimeFnsTypeSystemGen.asImplicitInstant(a);
+            Instant bi = TimeFnsTypeSystemGen.asImplicitInstant(b);
+            return ai.equals(bi);
         }
     }
 
@@ -323,9 +392,13 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     public abstract static class FFormatTimeString extends ELispTimeFnsNode {
         @TruffleBoundary
         @Specialization
-        public static ELispString formatTimeString(ELispString formatString, Instant time, Object zone) {
-            // TODO
-            return new ELispString(time.toString());
+        public static ELispString formatTimeString(ELispString formatString, Instant time, ZoneId zone) {
+            if (!formatString.isUtf8Compatible()) {
+                throw new UnsupportedOperationException();
+            }
+            StrftimeFormatter formatter = StrftimeFormatter.ofSafePattern(formatString.toString());
+            String formatted = formatter.format(time.atZone(zone));
+            return ELispString.ofJava(formatted);
         }
     }
 
@@ -372,9 +445,30 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "decode-time", minArgs = 0, maxArgs = 3)
     @GenerateNodeFactory
     public abstract static class FDecodeTime extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
-        public static Void decodeTime(Object time, Object zone, Object form) {
-            throw new UnsupportedOperationException();
+        public static ELispCons decodeTime(Instant time, ZoneId zone, Object form) {
+            Object seconds;
+            ZonedDateTime t = time.atZone(zone);
+            if (isT(form)) {
+                seconds = ELispCons.cons(
+                        t.getSecond() * 1_000_000_000L + t.getNano(),
+                        (long) 1_000_000_000
+                );
+            } else {
+                seconds = (long) t.getSecond();
+            }
+            return ELispCons.listOf(
+                    seconds,
+                    (long) t.getMinute(),
+                    (long) t.getHour(),
+                    (long) t.getDayOfMonth(),
+                    (long) t.getMonthValue(),
+                    (long) t.getYear(),
+                    (long) t.get(ChronoField.DAY_OF_WEEK),
+                    zone.getRules().isDaylightSavings(time),
+                    (long) zone.getRules().getOffset(time).getTotalSeconds()
+            );
         }
     }
 
@@ -415,9 +509,42 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "encode-time", minArgs = 1, maxArgs = 1, varArgs = true)
     @GenerateNodeFactory
     public abstract static class FEncodeTime extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
-        public static Void encodeTime(Object time, Object[] obsolescentArguments) {
-            throw new UnsupportedOperationException();
+        public Object encodeTime(Object time, Object[] obsolescentArguments) {
+            ConsIterator i;
+            if (time instanceof ELispCons cons) {
+                i = cons.iterator();
+            } else {
+                i = ELispCons.listOf(time, obsolescentArguments).iterator();
+            }
+            Object secondObj = i.next();
+            int nano;
+            int second;
+            if (secondObj instanceof Long l) {
+                second = asInt(l);
+                nano = 0;
+            } else {
+                Instant instant = TimeFnsTypeSystem.consToInstant(asCons(secondObj));
+                second = (int) instant.getEpochSecond();
+                nano = instant.getNano();
+            }
+            int minute = asInt(i.next());
+            int hour = asInt(i.next());
+            int day = asInt(i.next());
+            int month = asInt(i.next());
+            int year = asInt(i.next());
+            if (i.hasNext()) {
+                i.next(); // ignored
+            }
+            boolean dst = i.hasNext() && !isNil(i.next());
+            ZoneId zone = TimeFnsTypeSystemGen.asImplicitZoneId(i.nextOr(false));
+            ZonedDateTime zoned = ZonedDateTime.of(
+                    year, month, day,
+                    hour, minute, second, nano,
+                    zone
+            );
+            return this.toTime(zoned.toInstant());
         }
     }
 
@@ -538,23 +665,8 @@ public class BuiltInTimeFns extends ELispBuiltIns {
 
         @TruffleBoundary
         @Specialization
-        public static ELispString currentTimeString(Instant specifiedTime, Object zone) {
-            return ELispString.ofJava(FORMATTER.format(toZonedDateTime(specifiedTime, zone)));
-        }
-
-        public static ZonedDateTime toZonedDateTime(Instant time, Object zone) {
-            ZoneId id;
-            if (isT(zone)) {
-                id = ZoneOffset.UTC;
-            } else if (toSym(zone) instanceof ELispSymbol) {
-                id = ZoneId.systemDefault();
-            } else if (zone instanceof ELispString s && s.isAscii()) {
-                id = ZoneId.of(s.toString());
-            } else {
-                // TODO
-                throw new UnsupportedOperationException();
-            }
-            return ZonedDateTime.ofInstant(time, id);
+        public static ELispString currentTimeString(Instant specifiedTime, ZoneId zone) {
+            return ELispString.ofJava(FORMATTER.format(ZonedDateTime.ofInstant(specifiedTime, zone)));
         }
     }
 
@@ -584,9 +696,12 @@ public class BuiltInTimeFns extends ELispBuiltIns {
     @ELispBuiltIn(name = "current-time-zone", minArgs = 0, maxArgs = 2)
     @GenerateNodeFactory
     public abstract static class FCurrentTimeZone extends ELispTimeFnsNode {
+        @TruffleBoundary
         @Specialization
-        public static Void currentTimeZone(Object specifiedTime, Object zone) {
-            throw new UnsupportedOperationException();
+        public static ELispCons currentTimeZone(Instant specifiedTime, ZoneId zone) {
+            ZoneOffset offset = zone.getRules().getOffset(specifiedTime);
+            String name = zone.getDisplayName(TextStyle.FULL, Locale.ROOT);
+            return ELispCons.listOf((long) offset.getTotalSeconds(), ELispString.ofJava(name));
         }
     }
 

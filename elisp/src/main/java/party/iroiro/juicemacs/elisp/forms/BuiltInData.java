@@ -2455,7 +2455,7 @@ public class BuiltInData extends ELispBuiltIns {
         public static long asetString(ELispString array, long idx, long newelt) {
             FAref.checkRange(array.length(), idx);
             byte v = (byte) newelt;
-            if (array.isUtf8() && v < 0) {
+            if (array.isVariableLength() && v < 0) {
                 throw ELispSignals.argsOutOfRange(CHARACTERP, newelt);
             }
             array.asMutable()[(int) idx] = v;
