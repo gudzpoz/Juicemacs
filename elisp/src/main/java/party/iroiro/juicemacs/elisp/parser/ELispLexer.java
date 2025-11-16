@@ -270,7 +270,10 @@ public class ELispLexer {
         record FloatNum(double value) implements Token {
         }
 
-        record Symbol(String value, boolean intern, boolean shorthand) implements Token {
+        record Symbol(ELispString value, boolean intern, boolean shorthand) implements Token {
+            public Symbol(String value, boolean intern, boolean shorthand) {
+                this(ELispString.ofJava(value), intern, shorthand);
+            }
         }
 
         /**
@@ -308,7 +311,7 @@ public class ELispLexer {
     private static final Token.Unquote UNQUOTE = new Token.Unquote();
     private static final Token.UnquoteSplicing UNQUOTE_SPLICING = new Token.UnquoteSplicing();
     private static final Token.LoadFileName LOAD_FILE_NAME = new Token.LoadFileName();
-    static final Token.Symbol EMPTY_SYMBOL = new Token.Symbol("", true, true);
+    static final Token.Symbol EMPTY_SYMBOL = new Token.Symbol(ELispString.EMPTY, true, true);
 
     private static final int NO_BREAK_SPACE = 0x00A0;
     private static final Pattern LEXICAL_BINDING_PATTERN = Pattern.compile(
@@ -694,14 +697,19 @@ public class ELispLexer {
         int c = alreadyRead;
         while (potentialUnescapedSymbolChar(c)) {
             if (alreadyRead == -1) {
-                reader.read();
+                reader.read(); // paired with the reader.peek() call
             } else {
+                // do not advance the reader for the first char
                 alreadyRead = -1;
             }
+
             int codePoint;
             if (c == '\\') {
                 escaped = true;
                 codePoint = reader.read();
+                if (codePoint == -1) {
+                    throw ELispSignals.endOfFile();
+                }
             } else {
                 codePoint = c;
             }
@@ -728,7 +736,7 @@ public class ELispLexer {
                 return new Token.FloatNum(parseFloat(symbol));
             }
         }
-        return new Token.Symbol(symbol, !uninterned, !noShorthand);
+        return new Token.Symbol(ELispString.ofJava(symbol), !uninterned, !noShorthand);
     }
 
     private static final long SIGNIFICAND_BITS = 52;
@@ -854,7 +862,7 @@ public class ELispLexer {
                     case '$' -> LOAD_FILE_NAME;
                     case ':' -> potentialUnescapedSymbolChar(reader.peek())
                             ? readSymbolOrNumber(reader.read(), true, false)
-                            : new Token.Symbol("", false, true);
+                            : new Token.Symbol(ELispString.EMPTY, false, true);
                     case '_' -> potentialUnescapedSymbolChar(reader.peek())
                             ? readSymbolOrNumber(reader.read(), false, true)
                             : EMPTY_SYMBOL;

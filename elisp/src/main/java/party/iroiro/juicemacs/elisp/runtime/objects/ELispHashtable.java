@@ -19,6 +19,8 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.*;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Map.Entry;
 import java.util.function.BiConsumer;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
@@ -123,45 +125,8 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
     @Override
     public Iterator<Map.Entry<Object, Object>> iterator() {
         MapCursor<Object, Object> entries = inner.getEntries();
-        return new Iterator<>() {
-            boolean hasNext = advance();
-            Object key = false;
-            Object value = false;
-
-            @Override
-            public boolean hasNext() {
-                return hasNext;
-            }
-
-            @TruffleBoundary
-            @Override
-            public Map.Entry<Object, Object> next() {
-                if (!hasNext) {
-                    throw new NoSuchElementException();
-                }
-                AbstractMap.SimpleEntry<Object, Object> entry = new AbstractMap.SimpleEntry<>(key, value);
-                hasNext = advance();
-                return entry;
-            }
-
-            @TruffleBoundary
-            private boolean advance() {
-                boolean hasNext = false;
-                Object key = null;
-                Object value = null;
-                while ((key == null || value == null) && (hasNext = entries.advance())) {
-                    key = ELispWeakHashtable.pruneWeakWrapper(entries.getKey());
-                    value = ELispWeakHashtable.pruneWeakWrapper(entries.getValue());
-                }
-                if (hasNext) {
-                    this.key = assertNotNull(key);
-                    this.value = assertNotNull(value);
-                }
-                return hasNext;
-            }
-        };
+        return new EntryIterator(entries);
     }
-
 
     @TruffleBoundary
     public static ELispHashtable hashTableFromPlist(List<Object> list, boolean readSyntax) {
@@ -430,6 +395,48 @@ public sealed class ELispHashtable extends AbstractELispIdentityObject implement
         @Override
         public int hashCode(Object o) {
             return (int) asLong(FFuncall.funcall(null, test.hash(), o));
+        }
+    }
+
+    private static class EntryIterator implements Iterator<Entry<Object, Object>> {
+        private final MapCursor<Object, Object> entries;
+        boolean hasNext = false;
+        Object key = false;
+        Object value = false;
+
+        public EntryIterator(MapCursor<Object, Object> entries) {
+            this.entries = entries;
+            advance();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return hasNext;
+        }
+
+        @TruffleBoundary
+        @Override
+        public Entry<Object, Object> next() {
+            if (!hasNext) {
+                throw new NoSuchElementException();
+            }
+            SimpleEntry<Object, Object> entry = new SimpleEntry<>(key, value);
+            advance();
+            return entry;
+        }
+
+        @TruffleBoundary
+        private void advance() {
+            Object key = null;
+            Object value = null;
+            while ((key == null || value == null) && (hasNext = entries.advance())) {
+                key = ELispWeakHashtable.pruneWeakWrapper(entries.getKey());
+                value = ELispWeakHashtable.pruneWeakWrapper(entries.getValue());
+            }
+            if (hasNext) {
+                this.key = assertNotNull(key);
+                this.value = assertNotNull(value);
+            }
         }
     }
 }

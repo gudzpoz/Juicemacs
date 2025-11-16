@@ -8,6 +8,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.function.Executable;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -60,7 +61,14 @@ public class ELispRegressionTest {
     }
 
     private void startTestRunner() {
-        Thread.ofPlatform().start(() -> noThrow(() -> testWithDumped((context) -> {
+        Thread.ofPlatform().start(() -> noThrow(() -> {
+            Path testOutput = generateTests();
+            parseTestOutput(testOutput);
+        }));
+    }
+
+    private Path generateTests() throws IOException {
+        return testWithDumped((context) -> {
             try {
                 // Extract available tests
                 List<DynamicTest> testCases = new ArrayList<>();
@@ -70,7 +78,7 @@ public class ELispRegressionTest {
                         (defalias 'pp 'princ)
                         ;; ert asserts about newlines produced by pp
                         (defun cl--assertion-failed (&rest _) t)
-                        
+
                         (require 'ert)
                         """);
                 for (String test : TEST_FILES) {
@@ -123,29 +131,34 @@ public class ELispRegressionTest {
             } catch (Throwable e) {
                 this.testResults.completeExceptionally(e);
             }
-        }, (file) -> {
-            // Extract failed tests
-            // TODO: maybe use ert-write-junit-test-report later
-            Map<String, TestResult> results = Collections.synchronizedMap(new HashMap<>());
-            Pattern resultPattern = Pattern.compile(
-                    "^\\s+(passed|skipped|FAILED)\\s+(\\d+/\\d+)\\s+([^ ]+)"
-            );
-            noThrow(() -> {
-                try (BufferedReader reader = Files.newBufferedReader(file)) {
-                    String lastLine = null;
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        Matcher matcher = resultPattern.matcher(line);
-                        if (matcher.find()) {
-                            String name = matcher.group(3);
-                            results.put(name, new TestResult(name, lastLine, TestState.fromString(matcher.group(1))));
-                        }
+        });
+    }
+
+    private void parseTestOutput(Path file) {
+        // Extract failed tests
+        // TODO: maybe use ert-write-junit-test-report later
+        Map<String, TestResult> results = Collections.synchronizedMap(new HashMap<>());
+        Pattern resultPattern = Pattern.compile(
+                "^\\s+(passed|skipped|FAILED)\\s+(\\d+/\\d+)\\s+([^ ]+)"
+        );
+        Pattern ertOutputPattern = Pattern.compile("^\\s+");
+        noThrow(() -> {
+            try (BufferedReader reader = Files.newBufferedReader(file)) {
+                String lastLine = null;
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    Matcher matcher = resultPattern.matcher(line);
+                    if (matcher.find()) {
+                        String name = matcher.group(3);
+                        results.put(name, new TestResult(name, lastLine, TestState.fromString(matcher.group(1))));
+                        lastLine = null;
+                    } else if (ertOutputPattern.matcher(line).find()) {
                         lastLine = line;
                     }
                 }
-            });
-            this.testResults.complete(results);
-        })));
+            }
+        });
+        this.testResults.complete(results);
     }
 
     private void noThrow(Executable executable) {

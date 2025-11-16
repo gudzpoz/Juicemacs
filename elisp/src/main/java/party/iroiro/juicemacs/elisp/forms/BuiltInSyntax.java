@@ -655,7 +655,7 @@ public class BuiltInSyntax extends ELispBuiltIns {
             }
 
             @Override
-            public String applyShorthands(String symbol) {
+            public ELispString applyShorthands(ELispString symbol) {
                 return symbol;
             }
         };

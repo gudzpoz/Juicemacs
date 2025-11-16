@@ -312,7 +312,7 @@ public class BuiltInLRead extends ELispBuiltIns {
                                 cons = next;
                             }
                             cons.setCdr(substitute(cons.cdr()));
-                            yield cons;
+                            yield tree;
                         }
                         case ELispString s -> {
                             s.forProperties((o, _, _) -> substitute(Objects.requireNonNull(o)));

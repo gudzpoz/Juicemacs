@@ -110,7 +110,7 @@ public final class ELispContext implements ELispParser.InternContext {
         return obarray().intern(name);
     }
     @Override
-    public String applyShorthands(String symbol) {
+    public ELispString applyShorthands(ELispString symbol) {
         // TODO: Implementation
         return symbol;
     }

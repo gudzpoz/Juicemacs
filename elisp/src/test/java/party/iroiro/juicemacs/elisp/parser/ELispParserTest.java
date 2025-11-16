@@ -52,7 +52,7 @@ public class ELispParserTest {
         }
 
         @Override
-        public String applyShorthands(String symbol) {
+        public ELispString applyShorthands(ELispString symbol) {
             return symbol;
         }
     };
@@ -300,4 +300,12 @@ public class ELispParserTest {
         assertEquals(message, ((ELispCons) err.getData()).car().toString());
     }
 
+    @Test
+    public void testBytecodeCyclic() throws IOException {
+        String s = "#3=#[() ((if t (cdr tag))) (t)]";
+        Source source = Source.newBuilder("elisp", s, "test").build();
+        ELispParser parser = new ELispParser(context, source);
+        ELispInterpretedClosure closure = assertInstanceOf(ELispInterpretedClosure.class, parser.nextLisp());
+        assertEquals("#[nil ((if t (cdr tag))) (t)]", closure.toString());
+    }
 }

@@ -72,7 +72,7 @@ public final class LazyConsExpressionNode extends ELispExpressionNode implements
                     new ConsInlinedAstNode(stable, sub, cons);
             case ELispSubroutine _, ELispInterpretedClosure _, ELispBytecode _ ->
                     ConsFunctionCallNodeGen.create(cons);
-            default -> throw ELispSignals.invalidFunction(cons.car());
+            default -> throw ELispSignals.invalidFunction(function, cons.car());
         };
         return replace(created);
     }

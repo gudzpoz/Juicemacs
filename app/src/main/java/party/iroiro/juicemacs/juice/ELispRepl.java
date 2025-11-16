@@ -246,7 +246,7 @@ public class ELispRepl implements Callable<Integer> {
             }
 
             @Override
-            public String applyShorthands(String symbol) {
+            public ELispString applyShorthands(ELispString symbol) {
                 return symbol;
             }
         };

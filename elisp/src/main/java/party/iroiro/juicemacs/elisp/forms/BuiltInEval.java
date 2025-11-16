@@ -2338,7 +2338,7 @@ public class BuiltInEval extends ELispBuiltIns {
                         argList = cons.get(1); // fallthrough
                 case ELispInterpretedClosure closure -> argList = closure.get(CLOSURE_ARGLIST);
                 case ELispBytecode byteCode -> argList = byteCode.get(CLOSURE_ARGLIST);
-                default -> throw ELispSignals.invalidFunction(function);
+                default -> throw ELispSignals.invalidFunction(object, function);
             }
             ELispInterpretedClosure.ClosureArgs args = ELispInterpretedClosure.ClosureArgs.parse(argList);
             return ELispCons.cons(

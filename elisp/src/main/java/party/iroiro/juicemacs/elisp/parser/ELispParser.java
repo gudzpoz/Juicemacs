@@ -24,6 +24,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
@@ -42,7 +43,7 @@ public class ELispParser {
     public interface InternContext {
         ELispSymbol intern(String name);
         ELispSymbol intern(ELispString name);
-        String applyShorthands(String symbol);
+        ELispString applyShorthands(ELispString symbol);
     }
 
     private @Nullable Source source = null;
@@ -101,21 +102,34 @@ public class ELispParser {
     private final HashMap<Long, Object> cyclicReferences = new HashMap<>();
     private final ELispHashtable readObjectsCompleted = new ELispHashtable();
 
+    @Nullable
+    private <T> T tentativeGet(Callable<T> executable) {
+        try {
+            return executable.call();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     @TruffleBoundary
     private Object nextObject() throws IOException {
         LocatedToken token = read();
         return switch (token.token()) {
             case EOF() -> throw new EOFException();
             case SkipToEnd() -> false; // TODO: Skip to EOF
-            case LoadFileName() -> LOAD_FILE_NAME.getValue();
+            case LoadFileName() -> Objects.requireNonNullElse(
+                    // ELispSymbol::getValue requires a language context,which is
+                    // not always available (for example, when calling from a REPL highlighter).
+                    tentativeGet(LOAD_FILE_NAME::getValue), ELispString.EMPTY
+            );
             case SetLexicalBindingMode _ -> throw ELispSignals.invalidReadSyntax("Unexpected lexical binding mode");
             case FixNum(long value) -> value;
             case BigNum(BigInteger value) -> ELispBigNum.wrap(value);
             case FloatNum(double value) -> value;
             case Char(int value) -> (long) value;
             case Str(ELispString s) -> s;
-            case Symbol(String value, boolean intern, boolean shorthand) -> {
-                String symbol = value;
+            case Symbol(ELispString value, boolean intern, boolean shorthand) -> {
+                ELispString symbol = value;
                 if (shorthand) {
                     symbol = context.applyShorthands(symbol);
                 }

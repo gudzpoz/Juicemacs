@@ -78,7 +78,7 @@ public class ELispLanguageTest {
         tryDump(bootstrap, null);
     }
 
-    public static void testWithDumped(Consumer<Context> test, Consumer<Path> resultHandler) throws IOException {
+    public static Path testWithDumped(Consumer<Context> test) throws IOException {
         Path file = Files.createTempFile("juicemacs-ert", ".txt");
         try (PrintStream out = TestingUtils.createOut(file.toFile())) {
             System.out.println("Output: " + file);
@@ -97,22 +97,33 @@ public class ELispLanguageTest {
                 e.printStackTrace(out);
             }
         }
-        resultHandler.accept(file);
         file.toFile().deleteOnExit(); // only deletes if no exceptions
+        return file;
     }
 
     @Test
     public void testBasicByteCompile() throws IOException {
-        testWithDumped((context) -> {
-            // Test bytecode compiler
-            context.eval("elisp", """
-                        ;; -*- lexical-binding: t -*-
-                        (require 'bytecomp)
-                        (setq byte-compile-debug t)
-                        (message "%s" (byte-compile (lambda ())))
-                        (message "%s" (byte-compile (lambda (x) (1+ x))))
-                        (message "%s" (byte-compile (lambda (x) (+ x 2))))
-                        """);
-        }, (_) -> {});
+        testWithDumped((context) -> context.eval("elisp", """
+                    ;; -*- lexical-binding: t -*-
+                    (require 'bytecomp)
+                    (setq byte-compile-debug t)
+                    (message "%s" (byte-compile (lambda ())))
+                    (message "%s" (byte-compile (lambda (x) (1+ x))))
+                    (message "%s" (byte-compile (lambda (x) (+ x 2))))
+                    """));
+    }
+
+    @Test
+    public void testClGeneric() throws IOException {
+        testWithDumped((context) -> assertDoesNotThrow(() -> context.eval("elisp", """
+                ;; -*- lexical-binding: t -*-
+                (require 'map)
+                (load "map.el")
+                (require 'cl-macs)
+                (cl-assert (equal (map-into #s(hash-table data (x 1 y 2)) 'list)
+                                  '((x . 1) (y . 2))))
+                (cl-assert (equal (map-into #s(hash-table data (x 1 y 2)) 'plist)
+                                  '(x 1 y 2)))
+                """)));
     }
 }

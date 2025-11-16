@@ -30,6 +30,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.*;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 /// Internal presentations of `catch/throw` and `condition-case/signal`
 public abstract class ELispSignals {
@@ -162,9 +163,15 @@ public abstract class ELispSignals {
     public static ELispSignalException wrongLengthArgument(long expected, long actual) {
         return signal(WRONG_LENGTH_ARGUMENT, expected, actual);
     }
+    @TruffleBoundary
+    public static ELispSignalException invalidFunction(Object function, Object functionName) {
+        return isNil(function) ? voidFunction(functionName) : invalidFunction(functionName); // NOPMD
+    }
+    @TruffleBoundary
     public static ELispSignalException invalidFunction(Object function) {
         return signal(INVALID_FUNCTION, function);
     }
+    @TruffleBoundary
     public static ELispSignalException voidFunction(Object function) {
         return signal(VOID_FUNCTION, function);
     }

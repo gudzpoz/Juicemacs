@@ -75,7 +75,7 @@ public abstract class FunctionObjectCallNode extends Node {
             return switch (function) {
                 case AbstractELispClosure closure -> closure.getFunction();
                 case ELispSubroutine subroutine -> subroutine.body();
-                default -> throw ELispSignals.invalidFunction(symbol);
+                default -> throw ELispSignals.invalidFunction(function, symbol);
             };
         }
     }
