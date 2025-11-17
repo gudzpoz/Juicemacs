@@ -217,7 +217,9 @@ public class ELispInterpreterTest {
     private void testDebuggerBreakpoint(String code, String name, int line) throws IOException {
         Source source = Source.newBuilder("elisp", code, name).build();
         try (
-                DebuggerTester tester = new DebuggerTester(getTestingContextBuilder().option("elisp.truffleDebug", "true"));
+                DebuggerTester tester = new DebuggerTester(getTestingContextBuilder()
+                        .option("engine.WarnInterpreterOnly", "false")
+                        .option("elisp.truffleDebug", "true"));
                 DebuggerSession session = tester.startSession()
         ) {
             tester.startEval(source);

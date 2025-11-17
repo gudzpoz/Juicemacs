@@ -2,7 +2,7 @@
 
 [[https://justforfunnoreally.dev][https://img.shields.io/badge/justforfunnoreally-dev-9ff.svg]]
 [[https://openjdk.org/projects/jdk/25/][https://img.shields.io/badge/Java-25-orange.svg?logo=openjdk&ext=.svg]]
-[[https://github.com/gudzpoz/Juicemacs/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/gudzpoz/Juicemacs/test.yml?ext=.svg]]
+[[https://gudzpoz.github.io/Juicemacs/dev/tests/][https://img.shields.io/github/actions/workflow/status/gudzpoz/Juicemacs/test.yml?ext=.svg]]
 [[https://app.codecov.io/gh/gudzpoz/Juicemacs/][https://img.shields.io/codecov/c/github/gudzpoz/Juicemacs?label=coverage&ext=.svg]]
 [[https://gudzpoz.github.io/Juicemacs/dev/bench/][https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fgudzpoz.github.io%2FJuicemacs%2Fdev%2Fbench%2Fdata.js&search=%5Cd*-%5Cd*-%5Cd*&label=benchmarks&ext=.svg]]
 [[https://juice.zulipchat.com][https://img.shields.io/badge/chat-white?style=social&logo=zulip&ext=.svg]]

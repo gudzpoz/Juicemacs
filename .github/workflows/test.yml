@@ -45,6 +45,8 @@ jobs:
   elisp-test:
     permissions:
       checks: write # EnricoMi/publish-unit-test-result-action
+      contents: write # peaceiris/actions-gh-pages for allure reports
+      pull-requests: write # allure-framework/allure-action
     runs-on: ubuntu-latest
     needs: [elisp-lint]
     steps:
@@ -62,6 +64,7 @@ jobs:
           ./gradlew -Pcoverage :commons:pmd-no-int:test || true
           ./gradlew -Pcoverage :elisp:test              || true
           ./gradlew -Pcoverage jacocoTestReport
+
       - name: Report Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: ${{ (!cancelled()) && (github.event_name != 'pull_request') }}
@@ -80,6 +83,39 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+
+      - name: Load Allure History
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+      - name: Build Allure Report
+        run: |
+          mkdir -p .allure
+          cp gh-pages/dev/tests/history.jsonl .allure/ || true
+
+          mkdir -p allure-results-aggregate
+          find . -path '*/allure-results/*' -type f -exec cp {} allure-results-aggregate/ \;
+          cp elisp/build/allure-results/executor.json allure-results-aggregate/
+          npm install -g allure@3.0.0-beta.22
+          npx allure generate ./allure-results-aggregate/
+
+          rm -rf gh-pages/dev/tests
+          mv allure-report gh-pages/dev/tests
+          mv .allure/history.jsonl gh-pages/dev/tests/
+      - name: Post Allure Report Comment
+        uses: allure-framework/allure-action@v0.2.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-directory: ./gh-pages/dev/tests/
+      - name: Publish Allure Report
+        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: gh-pages
+          force_orphan: true
 
   elisp-build:
     runs-on: ubuntu-latest

@@ -8,8 +8,10 @@ repositories {
 }
 
 dependencies {
+    implementation libs.buildtools.native
     implementation libs.javamodularity
     implementation libs.shadow
+
+    implementation libs.allure.adapter
     implementation libs.errorprone.plugin
-    implementation libs.buildtools.native
 }

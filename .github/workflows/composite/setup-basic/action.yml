@@ -14,7 +14,7 @@ runs:
         distribution: 'graalvm'
         java-version: '25'
     - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v4
+      uses: gradle/actions/setup-gradle@v5
       with:
         add-job-summary: 'on-failure'
     - name: Install Emacs Dependencies

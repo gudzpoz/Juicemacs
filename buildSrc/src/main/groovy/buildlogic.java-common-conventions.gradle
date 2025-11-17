@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'io.qameta.allure-adapter'
     id 'net.ltgt.errorprone'
 }
 
@@ -32,7 +33,7 @@ List<String> getGraalVMArgs() {
                 }
             }
         }
-        return ['-Dpolyglot.engine.Compilation=false']
+        return ['-XX:-EnableJVMCI']
     }
     boolean isGraalVM = isGraalVM()
     List<String> graalArgs = []
@@ -112,5 +113,10 @@ tasks.named('test', Test) {
     useJUnitPlatform()
     if (runCoverage()) {
         jvmArgs += ['-Dcoverage=true']
+    }
+}
+
+allure {
+    adapter {
     }
 }

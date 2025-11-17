@@ -274,6 +274,11 @@ public class ELispLexer {
             public Symbol(String value, boolean intern, boolean shorthand) {
                 this(ELispString.ofJava(value), intern, shorthand);
             }
+            @Override
+            public boolean equals(Object obj) {
+                return obj instanceof Symbol(ELispString other, boolean otherIntern, boolean otherShorthand)
+                        && value.lispEquals(other) && intern == otherIntern && shorthand == otherShorthand;
+            }
         }
 
         /**

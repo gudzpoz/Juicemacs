@@ -10,14 +10,10 @@ The build process of GNU Emacs generates a bunch of file that are crucial to the
 interpreter and you will need to first build a GNU Emacs if you want this
 project to do anything useful. (For example, Unicode properties and charset
 mappings in Emacs are all loaded from generated =.el= or mapping files.)
-However, currently you will need to delete/rename the generated =loaddefs.el=
-because it uses some autoloaded functions before their autoload definitions
-(=rx=).
 
-Currently, the project still cannot fully run through the Emacs =loadup.el=
-(although it's almost there), the execution of which is required for an
-Emacs-like ELisp environment. You may try out a partially initialized
-environment with [[file:../app/]], which contains a simple ELisp REPL.
+Currently, the project can fully run through the Emacs =loadup.el= when run in
+=pbootstrap/pdump= mode. You may try out a partially initialized environment
+with [[file:../app/]], which contains a simple ELisp REPL.
 
 See [[file:../README.org]] for instructions.
 
