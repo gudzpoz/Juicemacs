@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1763461235069,
+  "lastUpdate": 1763463287109,
   "repoUrl": "https://github.com/gudzpoz/Juicemacs",
   "entries": {
     "Juicemacs elisp-benchmarks results": [
@@ -2739,6 +2739,280 @@ window.BENCHMARK_DATA = {
           {
             "name": "total-elc",
             "value": 35.098042,
+            "unit": "s"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "gudzpoz@live.com",
+            "name": "gudzpoz",
+            "username": "gudzpoz"
+          },
+          "committer": {
+            "email": "gudzpoz@live.com",
+            "name": "gudzpoz",
+            "username": "gudzpoz"
+          },
+          "distinct": true,
+          "id": "51da453767d38a1902c0d7fae9eada14a36b59e8",
+          "message": "build: report test regression with allure",
+          "timestamp": "2025-11-18T18:37:06+08:00",
+          "tree_id": "62f8200320a7372a1622dd88006d1c11b6c6f51d",
+          "url": "https://github.com/gudzpoz/Juicemacs/commit/51da453767d38a1902c0d7fae9eada14a36b59e8"
+        },
+        "date": 1763463286433,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bubble-el",
+            "value": 0.779102,
+            "unit": "s"
+          },
+          {
+            "name": "bubble-no-cons-el",
+            "value": 0.851609,
+            "unit": "s"
+          },
+          {
+            "name": "dhrystone-el",
+            "value": 4.942487,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-el",
+            "value": 0.782981,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-named-let-el",
+            "value": 0.060473,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-non-const-el",
+            "value": 0.040925,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-rec-el",
+            "value": 0.368227,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-rec-advice-el",
+            "value": 0.244486,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-rec-non-const-el",
+            "value": 0.338727,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-tc-el",
+            "value": 0.504619,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-tc-non-const-el",
+            "value": 0.405802,
+            "unit": "s"
+          },
+          {
+            "name": "flet-el",
+            "value": 0.877682,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-el",
+            "value": 2.61861,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-mapcar-el",
+            "value": 0.61764,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-mapcar-lambda-el",
+            "value": 1.37001,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-mapcar-lambda-float-el",
+            "value": 0.638858,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-type-hints-el",
+            "value": 4.879895,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-type-hints-bignum-el",
+            "value": 2.279315,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-type-hints-float-el",
+            "value": 0.947736,
+            "unit": "s"
+          },
+          {
+            "name": "mandelbrot-el",
+            "value": 0.141041,
+            "unit": "s"
+          },
+          {
+            "name": "map-closure-el",
+            "value": 2.201663,
+            "unit": "s"
+          },
+          {
+            "name": "nbody-el",
+            "value": 0.284655,
+            "unit": "s"
+          },
+          {
+            "name": "pcase-el",
+            "value": 2.245205,
+            "unit": "s"
+          },
+          {
+            "name": "pidigits-el",
+            "value": 6.148321,
+            "unit": "s"
+          },
+          {
+            "name": "total-el",
+            "value": 34.570071,
+            "unit": "s"
+          },
+          {
+            "name": "bubble-elc",
+            "value": 0.836653,
+            "unit": "s"
+          },
+          {
+            "name": "bubble-no-cons-elc",
+            "value": 1.137405,
+            "unit": "s"
+          },
+          {
+            "name": "dhrystone-elc",
+            "value": 4.958336,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-elc",
+            "value": 0.144015,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-named-let-elc",
+            "value": 0.051479,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-non-const-elc",
+            "value": 0.037005,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-rec-elc",
+            "value": 0.237979,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-rec-advice-elc",
+            "value": 0.194849,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-rec-non-const-elc",
+            "value": 0.243535,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-tc-elc",
+            "value": 0.650673,
+            "unit": "s"
+          },
+          {
+            "name": "fibn-tc-non-const-elc",
+            "value": 0.403898,
+            "unit": "s"
+          },
+          {
+            "name": "flet-elc",
+            "value": 1.169475,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-elc",
+            "value": 2.730659,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-mapcar-elc",
+            "value": 0.571358,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-mapcar-lambda-elc",
+            "value": 1.487487,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-mapcar-lambda-float-elc",
+            "value": 0.615292,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-type-hints-elc",
+            "value": 4.891291,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-type-hints-bignum-elc",
+            "value": 2.298426,
+            "unit": "s"
+          },
+          {
+            "name": "inclist-type-hints-float-elc",
+            "value": 0.941604,
+            "unit": "s"
+          },
+          {
+            "name": "mandelbrot-elc",
+            "value": 0.118125,
+            "unit": "s"
+          },
+          {
+            "name": "map-closure-elc",
+            "value": 3.03977,
+            "unit": "s"
+          },
+          {
+            "name": "nbody-elc",
+            "value": 0.318872,
+            "unit": "s"
+          },
+          {
+            "name": "pcase-elc",
+            "value": 3.232219,
+            "unit": "s"
+          },
+          {
+            "name": "pidigits-elc",
+            "value": 6.037448,
+            "unit": "s"
+          },
+          {
+            "name": "total-elc",
+            "value": 36.347853,
             "unit": "s"
           }
         ]
