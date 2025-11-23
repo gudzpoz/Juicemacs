@@ -1,6 +1,7 @@
 package party.iroiro.juicemacs.elisp.forms;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -10,7 +11,6 @@ import org.jspecify.annotations.Nullable;
 import org.graalvm.collections.Pair;
 import party.iroiro.juicemacs.elisp.forms.BuiltInFns.FCopySequence;
 import party.iroiro.juicemacs.elisp.forms.coding.*;
-import party.iroiro.juicemacs.elisp.nodes.ELispRootNode;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
@@ -45,9 +45,9 @@ public class BuiltInCoding extends ELispBuiltIns {
         Object defineForm = BuiltInFns.FGet.get(codingSystem, CODING_SYSTEM_DEFINE_FORM);
         if (!isNil(defineForm)) {
             BuiltInFns.FPut.put(asSym(codingSystem), CODING_SYSTEM_DEFINE_FORM, false);
-            ELispRootNode root = BuiltInEval.FEval.getEvalRoot(null, defineForm, true);
+            RootCallTarget root = BuiltInEval.FEval.getCallTarget(null, defineForm, true, null);
             try {
-                root.getCallTarget().call();
+                root.call();
             } catch (ELispSignals.ELispSignalException e) {
                 // TODO: safe_eval
                 throw new UnsupportedOperationException("unable to safe_eval coding system define form", e);

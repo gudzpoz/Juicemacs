@@ -15,12 +15,16 @@ import party.iroiro.juicemacs.elisp.nodes.local.Dynamic;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical;
 import party.iroiro.juicemacs.elisp.runtime.ELispContext;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
+import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure;
+import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure.ClosureCommons;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.INTERNAL_MACROEXPAND_FOR_LOAD;
 import static party.iroiro.juicemacs.elisp.runtime.ELispGlobals.PROGN;
+import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.asCons;
 import static party.iroiro.juicemacs.elisp.runtime.ELispTypeSystem.isNil;
 
 public abstract class ELispRootNodes {
@@ -40,6 +44,17 @@ public abstract class ELispRootNodes {
             }
         }
         return new ELispRootExpressions(expressions, lexical);
+    }
+
+    public static ELispExpressionNode createRoot(Object[] expressions, ELispCons lexical) {
+        ELispCons env = asCons(lexical);
+        AbstractELispClosure closure = AbstractELispClosure.create(
+                List.of(false, ELispCons.listOf(expressions), env),
+                new ClosureCommons()
+        );
+        ELispExpressionNode[] funcallArgs = { ELispLiteralNodes.of(closure) };
+        ELispExpressionNode root = FuncallDispatchNode.createSpecializedCallNode(funcallArgs);
+        return new ELispRootExpressions(root, true);
     }
 
     public static ELispExpressionNode createRoot(Object[] expressions, boolean lexical) {

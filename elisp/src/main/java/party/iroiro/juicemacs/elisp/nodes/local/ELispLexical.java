@@ -176,6 +176,9 @@ public final class ELispLexical {
     /// Also, Emacs oclosures directly depend on the order of the list items.
     ///
     /// @see Scope#toAssocList(Frame)
+    ///
+    /// @param frame the frame to host the variables, usually created from [#newUpperFrameFromCons(ELispCons)]
+    /// @param cons the lexical environment (an assoc list)
     @TruffleBoundary
     public static ELispLexical.Scope newBlockFromAlist(MaterializedFrame frame, ELispCons cons) {
         ArrayList<ELispSymbol> symbols = new ArrayList<>();
@@ -195,6 +198,17 @@ public final class ELispLexical {
             index--;
         }
         return block.newScope(block.frameSlots.length);
+    }
+
+    /// Creates a frame with the size of the assoc list
+    ///
+    /// @see #newBlockFromAlist(MaterializedFrame, ELispCons)
+    @TruffleBoundary
+    public static MaterializedFrame newUpperFrameFromCons(ELispCons cons) {
+        return Truffle.getRuntime().createMaterializedFrame(
+                new Object[0],
+                ELispLexical.rootFrameDescriptor(cons.size(), true)
+        );
     }
 
     private static void setVariable(VirtualFrame frame, int slot, Object value) {

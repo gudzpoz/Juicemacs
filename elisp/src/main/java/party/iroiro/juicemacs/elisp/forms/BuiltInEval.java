@@ -19,6 +19,9 @@ import com.oracle.truffle.api.source.SourceSection;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.ELispLanguage;
 
+import party.iroiro.juicemacs.elisp.forms.BuiltInData.FEq;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEvalFactory.FFuncallFactory;
+import party.iroiro.juicemacs.elisp.forms.BuiltInEvalFactory.FFuncallFactory.FFuncallNodeGen;
 import party.iroiro.juicemacs.elisp.nodes.*;
 import party.iroiro.juicemacs.elisp.nodes.ast.ELispInterpretedNode;
 import party.iroiro.juicemacs.elisp.nodes.ast.ELispLiteralNodes;
@@ -27,10 +30,12 @@ import party.iroiro.juicemacs.elisp.nodes.ast.LazyConsExpressionNode;
 import party.iroiro.juicemacs.elisp.nodes.funcall.*;
 import party.iroiro.juicemacs.elisp.nodes.local.*;
 import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical.Captured;
+import party.iroiro.juicemacs.elisp.nodes.local.ELispLexical.Scope;
 import party.iroiro.juicemacs.elisp.runtime.*;
 import party.iroiro.juicemacs.elisp.runtime.array.ConsIterator;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.*;
+import party.iroiro.juicemacs.elisp.runtime.objects.AbstractELispClosure.ClosureCommons;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 
@@ -1903,28 +1908,31 @@ public class BuiltInEval extends ELispBuiltIns {
         ).content(Source.CONTENT_NONE).build();
 
         @Specialization
-        public Object eval(Object form, boolean lexical) {
+        public Object eval(Object form, Object lexical) {
             return evalForm(form, lexical);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object evalForm(Object form, boolean lexical) {
-            ELispRootNode root = getEvalRoot(this, form, lexical);
-            return root.getCallTarget().call();
+        private Object evalForm(Object form, Object lexical) {
+            return getCallTarget(this, form, lexical, null).call();
         }
 
         @TruffleBoundary
-        public static ELispRootNode getEvalRoot(
+        public static RootCallTarget getCallTarget(
                 @Nullable Node node,
                 Object form,
-                boolean lexical
+                Object lexical,
+                @Nullable SourceSection source
         ) {
-            ELispExpressionNode expr = ELispRootNodes.createRoot(new Object[]{form}, lexical);
+            Object[] expressions = {form};
+            ELispExpressionNode expr = (lexical instanceof ELispCons env)
+                    ? ELispRootNodes.createRoot(expressions, env)
+                    : ELispRootNodes.createRoot(expressions, !isNil(lexical));
             return new ELispRootNode(
                     ELispLanguage.get(node),
                     expr,
-                    EVAL_SOURCE.createSection(0, 0)
-            );
+                    source == null ? EVAL_SOURCE.createSection(0, 0) : source
+            ).getCallTarget();
         }
 
         @Override
@@ -1937,14 +1945,16 @@ public class BuiltInEval extends ELispBuiltIns {
         @NodeChild(value = "form", type = ELispExpressionNode.class)
         @NodeChild(value = "lexical", type = ELispExpressionNode.class)
         public abstract static class InlinedEval extends ELispExpressionNode {
+            @TruffleBoundary
             boolean sameForm(Object form, Object oldForm) {
-                return form == oldForm;
+                return FEq.eq(form, oldForm);
             }
 
-            @Specialization(guards = "sameForm(form, oldForm)", limit = "3")
+            @Specialization(guards = {"sameForm(form, oldForm)", "sameForm(lexical, oldEnv)"}, limit = "1")
             public Object eval(
                     Object form, Object lexical,
                     @Cached("form") Object oldForm,
+                    @Cached("lexical") Object oldEnv,
                     @Cached("getRootCallTarget(oldForm, lexical)") ELispFunctionObject function,
                     @Cached("create(function.callTarget())") DirectCallNode dispatchNode
             ) {
@@ -1953,9 +1963,8 @@ public class BuiltInEval extends ELispBuiltIns {
 
             @TruffleBoundary(transferToInterpreterOnException = false)
             public ELispFunctionObject getRootCallTarget(Object form, Object lexical) {
-                ELispExpressionNode expr = ELispRootNodes.createRoot(new Object[]{form}, !isNil(lexical));
-                ELispRootNode root = new ELispRootNode(ELispLanguage.get(this), expr, getEvalSourceSection(form));
-                return new ELispFunctionObject(root.getCallTarget());
+                RootCallTarget root = FEval.getCallTarget(this, form, lexical, getEvalSourceSection(form));
+                return new ELispFunctionObject(root);
             }
 
             public SourceSection getEvalSourceSection(Object form) {

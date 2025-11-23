@@ -34,38 +34,6 @@ bit to make things easier to implement. Currently, we do have this
   - =ForwardedPerFrame=?
   - =ForwardedPerTerminal=?
 
-* TODO [#B] =cconv.el=: Closure conversion for statically scoped Emacs Lisp
-
-Emacs offloads lexical scope analysis to =cconv.el=: =(function ...)= will call
-=internal-make-interpreted-closure-function= (set to
-=cconv-make-interpreted-closure=) to prune the AST and captured variables:
-
-#+begin_src elisp
-  (defmacro test-cconv-macroexp (x) (list '+ x 'y))
-  (cconv-make-interpreted-closure
-   ;; args
-   '(a b c)
-   ;; body
-   '((+ (test-cconv-macroexp x) a b c))
-   ;; env
-   '((x . 1) (y . 1) (z . 1))
-   nil nil)
-#+end_src
-
-#+RESULTS:
-: #[(a b c) ((+ (+ x y) a b c)) ((x . 1) (y . 1))]
-
-Note that in the example above, the function body is replaced with a
-macroexpanded version, and the environment is pruned from =((x . 1) (y . 1) (z .
-1))= to =((x . 1) (y . 1))=.
-
-To support this, we will need to rethink how we handle our materialized frames.
-
-Currently, we use =internal-make-interpreted-closure-function= to determine
-whether a closure captures the external environment or not: if not, we don't
-need to materialized the parent frame. But otherwise, we really don't prune the
-captured variables, which might leak memory if there are unused upper variables.
-
 * TODO [#B] Byte compiler warnings
 
 =(require 'bytecomp)= throws a bunch of errors, but =(byte-compile '(lambda ()
@@ -862,23 +830,6 @@ new linked frame.
 
 ** DONE [#C] =module-info.java=
 
-IntelliJ always complains about =org.graalvm.truffle= not being read by
-=module-info.java=, despite the fact that the =require= line the line is there.
-([[https://youtrack.jetbrains.com/issue/IDEA-362046/Multi-release-module-info.class-causes-false-positive-errors][IDEA-362046]])
-
-** CANCELLED [#B] Buffers
-
-It is still a long long way to go... But at least we have a piece table now. I
-might still need to look into CRDTs and the new Eg-walker if we want to merge
-buffers from different (virtual) threads.
-
-Edit: I think OT is better here to handle all the edge cases. Or maybe something
-like offsets organized into a tree?
-
-Oh, I forgot about =buffer-undo-list=. So this will not do. We cannot make
-concurrent edits transparent while sharing the same undo data. I will share
-buffers between the threads and hope they don't mess things up. (At least in
-this case the undo list is always correct, allowing the user to undo.)
 
 ** DONE [#B] Buffer interval properties & markers & overlays
 

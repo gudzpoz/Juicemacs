@@ -1,8 +1,6 @@
 package party.iroiro.juicemacs.elisp.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -54,7 +52,7 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
                 this.upperScope = scope;
             }
             case ELispCons cons -> {
-                this.upperFrame = newUpperFrameFromCons(cons);
+                this.upperFrame = ELispLexical.newUpperFrameFromCons(cons);
                 this.upperScope = ELispLexical.newBlockFromAlist(upperFrame, cons);
             }
             default -> {
@@ -62,14 +60,6 @@ public final class ELispInterpretedClosure extends AbstractELispClosure {
                 upperScope = null;
             }
         }
-    }
-
-    @TruffleBoundary
-    private static MaterializedFrame newUpperFrameFromCons(ELispCons cons) {
-        return Truffle.getRuntime().createMaterializedFrame(
-                new Object[0],
-                ELispLexical.rootFrameDescriptor(cons.size(), true)
-        );
     }
 
     @Override

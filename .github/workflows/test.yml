@@ -103,6 +103,9 @@ jobs:
           rm -rf gh-pages/dev/tests
           mv allure-report gh-pages/dev/tests
           mv .allure/history.jsonl gh-pages/dev/tests/
+
+          RATE=$(jq '.stats|.passed/.total*100|floor' gh-pages/dev/tests/summary.json)
+          wget "https://img.shields.io/badge/tests-${RATE}%25-yellow" -O gh-pages/dev/tests.svg
       - name: Post Allure Report Comment
         uses: allure-framework/allure-action@v0.2.0
         with:

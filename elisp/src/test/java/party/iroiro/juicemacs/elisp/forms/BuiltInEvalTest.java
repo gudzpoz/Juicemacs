@@ -127,6 +127,16 @@ public class BuiltInEvalTest extends BaseFormTest {
     }
 
     @Test
+    public void testLexicalEval() {
+        try (Context context = getTestingContext()) {
+            Value sum = context.eval("elisp", """
+                    (eval '(+ x y) '((x . 1) (y . 2)))
+                    """);
+            assertEquals(3L, sum.asLong());
+        }
+    }
+
+    @Test
     public void testSignals() {
         try (Context context = getTestingContext()) {
             assertErrorMessage(context, "((lambda ()) 1)",
