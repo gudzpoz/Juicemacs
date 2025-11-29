@@ -2,9 +2,9 @@
 
 [[https://justforfunnoreally.dev][https://img.shields.io/badge/justforfunnoreally-dev-9ff.svg]]
 [[https://openjdk.org/projects/jdk/25/][https://img.shields.io/badge/Java-25-orange.svg?logo=openjdk&ext=.svg]]
-[[https://gudzpoz.github.io/Juicemacs/dev/tests/][https://gudzpoz.github.io/Juicemacs/dev/tests.svg]]
+[[https://emacsen.de/dev/tests/][https://emacsen.de/dev/tests.svg]]
 [[https://app.codecov.io/gh/gudzpoz/Juicemacs/][https://img.shields.io/codecov/c/github/gudzpoz/Juicemacs?label=coverage&ext=.svg]]
-[[https://gudzpoz.github.io/Juicemacs/dev/bench/][https://img.shields.io/badge/benchmark-charts-blue?ext=.svg]]
+[[https://emacsen.de/dev/bench/][https://img.shields.io/badge/benchmark-charts-blue?ext=.svg]]
 [[https://juice.zulipchat.com][https://img.shields.io/badge/chat-white?style=social&logo=zulip&ext=.svg]]
 
 Juicemacs is a work-in-progress Emacs implementation +just for the fun of it+

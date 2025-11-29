@@ -475,7 +475,7 @@ string-related commits, leading to increasing buffer load/parse time.
    provide inlinable nodes for string/buffer access. Currently there is none and
    the thing is highly polymorphic and inefficient.
 
-*** Thoughts
+*** Thoughts on strings
 
 - Maybe use UTF-8 after all.
   - We need to support =string-bytes= and =position-bytes=.
@@ -590,7 +590,7 @@ In conclusion, no, /I/ cannot produce an efficient implementation (but maybe
 some Truffle expert can?). The code is committed and then reverted to leave
 traces in git logs in case anyone is interested.
 
-*** Thoughts
+*** Thoughts on conses
 
 I am quite envious about [[https://v8.dev/blog/elements-kinds][how JS gets to optimize their internal array
 representations]]. In Lisp dialects that expose =cons= structure, I don't think it

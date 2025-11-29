@@ -292,24 +292,29 @@ This means we cannot use =java.lang.String= or any string implementation that
 expects only valid Unicode. The good news is that =TruffleString= support
 =UTF-32= and we can store those invalid Unicode codepoints with a bit of
 tweaking. The bad news is, it still expects Unicode and will try to convert
-invalid bytes into replacement characters from time to time. But anyways, now
-=ELispString= stores the following to maintain some compatibility with GNU
-Emacs:
+invalid bytes into replacement characters from time to time. So, our final
+answer is: we are to build our string type from scratch, directly on Java
+=byte[]=. Now =ELispString= stores the following to maintain some compatibility
+with GNU Emacs:
 
-- =state= :: =STATE_BYTES(1)= or =STATE_ASCII(0)= is =unibyte=. Any values higher than
-  =1= (=STATE_UTF32(2)/STATE_EMACS(3)=) is =multibyte=.
-- =value= :: A =TruffleString= object with an auto-compacting =UTF-32= encoding.
-  It /should/ be able to support non-Unicode chars in =#x110000 ~ #x3FFFFF=. (It
-  it quite fortunate that =TruffleString= allows =CodeRange.BROKEN= chars. But
-  currently it sometimes convert those chars into =#xFFFD=, the replaecment
-  character.)
+- =state= :: String state + cached hash code.
+  - States: =STATE_BYTES= or =STATE_ASCII= is =unibyte=. And
+    =STATE_UTF_8/STATE_EMACS= is =multibyte=.
+  - Other states: A bit is used to represent whether the string is mutable.
+  - Hash: higher bits are used to store the hash code of the string, computed
+    lazily.
+    - Mutable strings does not have constant hashes, so we forbid computing
+      hashes for mutable strings and mutating strings with computed hashes.
+- =value= :: A =byte[]= object in =utf-8-emacs= encoding (or raw bytes when the
+  state is =STATE_BYTES=). It /should/ be able to support non-Unicode chars in
+  =#x110000 ~ #x3FFFFF=.
+  - We plan to extend this value field to support lazy values, like maybe
+    =LazyConcat=, so that we can reduce allocation for nested =format/concat=
+    forms. (=TruffleString= also does this, and we should follow what they do.)
 - =intervals= :: Emacs string properties
 
-Utilities for strings are currently scattered everywhere...
-
-- =StringNodes=
-- =StringSupport=
-- =MuleStringBuilder=
+Utilities for strings are currently scattered everywhere, but mainly lie in the
+=:commons:mule-utils= sub-project and the =StringSupport= class.
 
 ** Linting
 

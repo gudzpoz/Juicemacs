@@ -20,7 +20,7 @@ Also: there are other Emacs re-implementations and the best we can get is to
 work together towards a new display backend that hopefully can also work on GNU
 Emacs.
 
-*** Reading List
+*** Reading List: Rendering
 
 - [[https://faultlore.com/blah/text-hates-you/#characters-can-be-too-damn-big][Text Rendering Hates You - Aria Desires]]
 - [[https://www.finseth.com/craft/index.html][The Craft of Text Editing - Craig A. Finseth]]
