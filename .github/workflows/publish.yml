@@ -1,0 +1,47 @@
+name: Build Documentation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - gh-pages
+
+jobs:
+  build:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
+          ref: 'main'
+      - uses: actions/checkout@v5
+        with:
+          path: 'gh-pages'
+
+      - name: Install Emacs
+        shell: bash
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y emacs-nox
+      - name: Build GitHub Pages
+        run: |
+          cd gh-pages
+          emacs -Q --script publish.el
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: gh-pages
+
+  deploy-pages:
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-slim
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
