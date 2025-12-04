@@ -2,18 +2,18 @@ package party.iroiro.juicemacs.piecetree.meta;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.jspecify.annotations.Nullable;
+import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree.MarkerArray;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.SENTINEL;
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.rbDelete;
 
-public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.Marker> {
+public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerArray> {
     private @Nullable MarkerMovedListener listener;
     private T buffer;
     private final HashSet<Marker> markers;
+    private long length = 0;
 
     public MarkerPieceTree(MarkerMovedListener listener, T buffer) {
         this.listener = listener;
@@ -45,263 +45,393 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
     @TruffleBoundary
     public void insertMarker(long offset, Marker marker) {
         marker.detach();
-        insert(offset, new Piece<>(0, marker));
         markers.add(marker);
+        if (root == SENTINEL) {
+            this.length = offset;
+            insertLeft(null, marker, offset);
+            return;
+        }
+        if (offset > this.length) {
+            insertRight(root.rightest(), marker, offset - this.length);
+            this.length = offset;
+            return;
+        }
+
+        NodePosition<MarkerArray> nodePosition = nodeAt(offset);
+        MarkTreeNode<MarkerArray> node = nodePosition.node;
+        long remainder = nodePosition.remainder;
+        long nodeStartOffset = nodePosition.nodeStartOffset;
+
+        Piece<MarkerArray> piece = node.piece;
+        if (nodeStartOffset == offset) {
+            MarkTreeNode<MarkerArray> prev = node.prev();
+            if (prev == SENTINEL) {
+                if (piece.length != 0) {
+                    insertLeft(node, marker, 0);
+                    return;
+                }
+            } else {
+                node = prev;
+            }
+            node.piece.mark.insert(marker);
+        } else if (nodeStartOffset + piece.length > offset) {
+            updateNodeSome(node, -remainder);
+            insertLeft(node, marker, remainder);
+        } else {
+            node.piece.mark.insert(marker);
+        }
+    }
+
+    private void insertLeft(@Nullable MarkTreeNode<MarkerArray> node, Marker marker, long length) {
+        MarkerArray array = new MarkerArray(this, marker);
+        Piece<MarkerArray> piece = new Piece<>(length, array);
+        array.node = rbInsertLeft(node, piece);
+    }
+    private void insertRight(MarkTreeNode<MarkerArray> node, Marker marker, long length) {
+        MarkerArray array = new MarkerArray(this, marker);
+        Piece<MarkerArray> piece = new Piece<>(length, array);
+        array.node = rbInsertRight(node, piece);
     }
 
     public void insertString(long offset, long cnt) {
         if (cnt == 0) {
             return;
         }
-        insert(offset, new Piece<>(cnt, null));
-    }
-
-    @Override
-    protected boolean isMergeable(Piece<Marker> value, Piece<Marker> piece) {
-        return false;
-    }
-
-    @Nullable
-    private static Affinity getAffinity(Piece<Marker> piece) {
-        //noinspection DataFlowIssue
-        return piece.length() == 0 ? piece.mark().affinity : null;
-    }
-
-    /// When there are point marks in between, this function rearranges the point marks
-    /// so that all [Affinity#LEFT] marks are before all [Affinity#RIGHT] marks.
-    @TruffleBoundary
-    private static void sortPointMarksNearby(MarkTreeNode<Marker> some) {
-        MarkTreeNode<Marker> left = some;
-        while (true) {
-            MarkTreeNode<Marker> prev = left.prev();
-            if (prev == SENTINEL || prev.piece.length() != 0) {
-                break;
-            }
-            left = prev;
+        if (root == SENTINEL) {
+            return;
         }
-
-        while (getAffinity(left.piece) == Affinity.LEFT) {
-            MarkTreeNode<Marker> next = left.next();
-            if (next == SENTINEL || next.piece.length() != 0) {
-                return;
-            }
-            left = next;
+        if (offset > this.length) {
+            return;
         }
+        this.length += cnt;
 
-        MarkTreeNode<Marker> right = left;
-        while (true) {
-            MarkTreeNode<Marker> next = right.next();
-            if (next == SENTINEL || next.piece.length() != 0) {
-                return;
-            }
+        NodePosition<MarkerArray> nodePosition = nodeAt(offset);
+        MarkTreeNode<MarkerArray> node = nodePosition.node;
+        long nodeStartOffset = nodePosition.nodeStartOffset;
 
-            right = next;
-            Piece<Marker> rightPiece = right.piece;
-            if (getAffinity(rightPiece) == Affinity.LEFT) {
-                // swap left and right
-                right.piece = left.piece;
-                left.piece = rightPiece;
-                //noinspection DataFlowIssue
-                left.piece.mark().node = left;
-                //noinspection DataFlowIssue
-                right.piece.mark().node = right;
-                left = left.next();
-            }
-        }
-    }
-
-    @Override
-    protected void deleteInBetween(NodePosition<Marker> startPosition, NodePosition<Marker> endPosition) {
-        MarkTreeNode<Marker> startNode = startPosition.node();
-        MarkTreeNode<Marker> endNode = endPosition.node();
-
-        // we need to reserve point marks
-        List<MarkTreeNode<Marker>> nodesToDel = new ArrayList<>();
-        MarkTreeNode<Marker> pointMark = startNode.prev();
-        if (pointMark == SENTINEL || pointMark.piece.length() != 0) {
-            // condition 1: (point mark) [region to delete] (point marks): should resort marks
-            pointMark = null;
-        }
-
-        long lengthToDelete = startPosition.node().piece.length() - startPosition.remainder();
-        if (lengthToDelete != 0) {
-            updateNodeSome(startNode, -lengthToDelete);
-            if (startNode.piece.length() == 0) {
-                // an interval node is deleted
-                nodesToDel.add(startNode);
-            } else {
-                pointMark = null;
-            }
-        } else if (startNode.piece.length() == 0) {
-            // condition 2: [region to delete (startNode: point mark) ...] (point marks): should resort marks
-            pointMark = startNode;
-        }
-
-        // delete interval nodes in between
-        long markOffset = -lengthToDelete;
-        MarkTreeNode<Marker> secondNode = startNode.next();
-        for (MarkTreeNode<Marker> node = secondNode; node != endNode && node != SENTINEL; node = node.next()) {
-            long length = node.piece.length();
-            if (length == 0) {
-                // a point mark: report position change, but do not delete
-                if (listener != null) {
-                    //noinspection DataFlowIssue
-                    listener.onMarkerMoved(node.piece.mark(), markOffset);
+        Piece<MarkerArray> piece = node.piece;
+        MarkTreeNode<MarkerArray> split;
+        if (nodeStartOffset == offset) {
+            MarkTreeNode<MarkerArray> prev = node.prev();
+            if (prev == SENTINEL) {
+                if (piece.length == 0) {
+                    split = node;
+                } else {
+                    updateNodeSome(node, cnt);
+                    return;
                 }
-                pointMark = node;
             } else {
-                nodesToDel.add(node);
-                markOffset -= length;
+                split = prev;
             }
+        } else if (nodeStartOffset + piece.length > offset) {
+            updateNodeSome(node, cnt);
+            return;
+        } else {
+            split = node;
+        }
+
+        MarkerArray markers = split.piece.mark;
+        markers.trySplit(split, this, cnt);
+    }
+
+    public void delete(long offset, long cnt) {
+        if (offset >= this.length || cnt <= 0) {
+            return;
+        }
+        assert root != SENTINEL;
+        long end = Math.min(this.length, offset + cnt);
+        this.length -= end - offset;
+
+        NodePosition<MarkerArray> startPosition = nodeAt(offset);
+        MarkTreeNode<MarkerArray> startNode = startPosition.node;
+        long remainder = startPosition.remainder;
+
+        if (remainder == 0) {
+            MarkTreeNode<MarkerArray> prev = startNode.prev();
+            if (prev != SENTINEL) {
+                startNode = prev;
+                remainder = prev.piece.length;
+            }
+        }
+
+        NodePosition<MarkerArray> endPosition = nodeAt(end);
+        MarkTreeNode<MarkerArray> endNode = endPosition.node;
+
+        if (startNode == endNode) {
+            // remainder == 0: only if the node is the leftest, where we allow zero length;
+            // remainder > 0: updated node always has length > 0.
+            // either way, we don't need to merge nodes
+            long delta = remainder - endPosition.remainder;
+            updateNodeSome(startNode, delta);
+            if (endPosition.remainder == endNode.piece.length) {
+                // when deletion overlaps with markers, we need explicit entries in undo logs.
+                startNode.piece.mark.notifyMovement(listener, delta);
+            }
+            return;
+        }
+
+        ArrayList<Marker> leftMarks = new ArrayList<>();
+        ArrayList<Marker> rightMarks = new ArrayList<>();
+        ArrayList<MarkTreeNode<MarkerArray>> nodesToDel = new ArrayList<>();
+        long delta = 0;
+        if (remainder != startNode.piece.length) {
+            delta = remainder - startNode.piece.length;
+            updateNodeSome(startNode, delta);
+            startNode.piece.mark.notifyMovement(listener, delta);
+        }
+        startNode.piece.mark.splitInto(leftMarks, rightMarks);
+
+        for (MarkTreeNode<MarkerArray> node = startNode.next(); node != endNode; node = node.next()) {
+            assert node != SENTINEL;
+            delta -= node.piece.length;
+            MarkerArray array = node.piece.mark;
+            array.notifyMovement(listener, delta);
+            array.splitInto(leftMarks, rightMarks);
+            nodesToDel.add(node);
         }
 
         // update last touched node
-        if (endPosition.remainder() != 0) {
-            updateNodeSome(endNode, -endPosition.remainder());
-            if (endNode.piece.length() == 0) {
-                // an interval node is deleted
+        if (endPosition.remainder != 0) {
+            MarkerArray array = endNode.piece.mark;
+            delta -= endPosition.remainder;
+            array.notifyMovement(listener, delta);
+            if (endPosition.remainder == endNode.piece.length) {
+                array.splitInto(leftMarks, rightMarks);
                 nodesToDel.add(endNode);
+            } else {
+                updateNodeSome(endNode, -endPosition.remainder);
             }
         }
+
         deleteNodes(nodesToDel);
-
-        if (pointMark != null) {
-            sortPointMarksNearby(pointMark);
-        }
-    }
-
-    @Override
-    protected MarkTreeNode<Marker> rbInsertRight(MarkTreeNode<Marker> node, Piece<Marker> piece) {
-        node = adjustInsertionPoint(node, piece, Affinity.RIGHT);
-        if (node == SENTINEL) {
-            return updateMarkerNode(super.rbInsertLeft(root.leftest(), piece));
-        }
-        if (tryMerge(node, piece)) {
-            return node;
-        }
-        return updateMarkerNode(super.rbInsertRight(node, piece));
-    }
-
-    @Override
-    protected MarkTreeNode<Marker> rbInsertLeft(@Nullable MarkTreeNode<Marker> node, Piece<Marker> piece) {
-        if (node != null) {
-            node = adjustInsertionPoint(node, piece, Affinity.LEFT);
-            if (node == SENTINEL) {
-                return updateMarkerNode(super.rbInsertRight(root.rightest(), piece));
-            }
-            if (tryMerge(node, piece)) {
-                return node;
-            }
-        }
-        return updateMarkerNode(super.rbInsertLeft(node, piece));
-    }
-
-    private boolean tryMerge(MarkTreeNode<Marker> node, Piece<Marker> piece) {
-        if (piece.mark() == null && node.piece.mark() == null) {
-            updateNodeSome(node, piece.length());
-            return true;
-        }
-        return false;
-    }
-
-    /// Spaghetti code to find the insertion point for point marks
-    private MarkTreeNode<Marker> adjustInsertionPoint(MarkTreeNode<Marker> node, Piece<Marker> piece, Affinity where) {
-        // This method should prevent point marks getting inserted in an unsorted way,
-        // that is, point marks with [Affinity#LEFT] should be before point marks with [Affinity#RIGHT].
-        // Also, when an interval is inserted, it should be inserted between LEFT and RIGHT point marks.
-
-        Affinity pieceAffinity = getAffinity(piece);
-        Affinity currentAffinity = getAffinity(node.piece);
-        if (currentAffinity == pieceAffinity && pieceAffinity != null) {
-            // The result is always [L][L] or [R][R], which are obviously sorted.
-            return node;
-        }
-
-        // In the following comments, we use (L), (R) or (=) to denote the being inserted `piece`.
-        if (pieceAffinity != null) {
-            return findDifferingAffinity(
-                    node,
-                    // Differing affinity, that is:
-                    // [=][L]...[R](L)[R][=] or [=][L](R)[L]...[R][=]
-                    // So when pieceAffinity is (L), we search to the left [L], looking for an [L];
-                    // or to the right [R] otherwise, looking for an [R]/[=].
-                    // See [#findDifferingAffinity] #1 and #2.
-                    pieceAffinity,
-                    // When we arrive at the appropriate insertion point:
-                    // ... => [=][L][L1](?)[R1][R][=]
-                    // If where == [L] (insert on the left side of the returned node), we want to return [R1];
-                    // if where == [R], we want to return [L1].
-                    // That is, if we search to the right [R] and where == [L], we should return the next node, thus
-                    // inclusive == true.
-                    // To summarize, when pieceAffinity != where, return the next node (see [#findDifferingAffinity] #3);
-                    // otherwise, return the current node (#4).
-                    pieceAffinity != where
-            );
-        }
-        // The inserted piece is an interval.
-        Affinity direction = currentAffinity == null
-                // If the current node is an interval, then the search direction depends on `where`.
-                // If where == [L], then it is ...[L][R](=)[=] => ...[L](=)[R][=] (searching to the left);
-                // if where == [R], then it is [=](=)[L][R]... => [=][L](=)[R]... (searching to the right).
-                ? where
-                // If the current node is a point mark, then:
-                // If it is ...[L][R](=)[R] => ...[L](=)[R][R] (searching to the left);
-                // if it is [L](=)[L][R]... => [L][L](=)[R]... (searching to the right).
-                // That is, when surrounded by [R], search to the left, otherwise search to the right.
-                : currentAffinity == Affinity.LEFT ? Affinity.RIGHT : Affinity.LEFT;
-        return findDifferingAffinity(node, direction, direction != where);
-    }
-
-    private MarkTreeNode<Marker> findDifferingAffinity(MarkTreeNode<Marker> node, Affinity direction, boolean inclusive) {
-        while (true) {
-            MarkTreeNode<Marker> next = inclusive ? node : direction.next(node); // #1, #3
-            if (next == SENTINEL // We treat SENTINEL as [=], which is handled in [#rbInsertLeft/Right]
-                    || next.piece.length() != 0 // #2
-                    || getAffinity(next.piece) == direction // #2
-            ) {
-                return node; // #4
-            }
-            node = inclusive ? direction.next(node) : next; // #3
-        }
-    }
-
-    private MarkTreeNode<Marker> updateMarkerNode(MarkTreeNode<Marker> node) {
-        Marker mark = node.piece.mark();
-        if (mark != null) {
-            mark.node = node;
-            mark.tree = this;
-        }
-        return node;
+        startNode.piece.mark.mergeMarks(leftMarks, rightMarks);
     }
 
     public enum Affinity {
-        LEFT {
-            @Override
-            public MarkTreeNode<Marker> next(MarkTreeNode<Marker> node) {
-                return node.prev();
-            }
-        },
-        RIGHT {
-            @Override
-            public MarkTreeNode<Marker> next(MarkTreeNode<Marker> node) {
-                return node.next();
-            }
-        };
-
-        public abstract MarkTreeNode<Marker> next(MarkTreeNode<Marker> node);
+        LEFT, RIGHT
     }
 
     public interface MarkerMovedListener {
         void onMarkerMoved(Marker marker, long delta);
     }
 
+    static final class MarkerArray {
+        /// [Marker] or an array of [Marker Markers]
+        Object markers;
+        MarkTreeNode<MarkerArray> node;
+        final MarkerPieceTree<?> tree;
+
+        @SuppressWarnings("DataFlowIssue")
+        MarkerArray(MarkerPieceTree<?> tree, Marker init) {
+            this.node = null; // initialized later
+            this.tree = tree;
+            this.markers = init;
+            init.parent = this;
+        }
+        @SuppressWarnings("DataFlowIssue")
+        MarkerArray(MarkerPieceTree<?> tree, Marker[] init) {
+            this.node = null; // initialized later
+            this.tree = tree;
+            for (Marker marker : init) {
+                marker.parent = this;
+            }
+            this.markers = init.length == 1 ? init[0] : init;
+        }
+
+        private static int indexOf(Marker[] markers, Marker marker) {
+            for (int i = 0; i < markers.length; i++) {
+                if (markers[i] == marker) {
+                    return i;
+                }
+            }
+            throw new IllegalArgumentException();
+        }
+
+        /// When there are point marks in between, this function rearranges the point marks
+        /// so that all [Affinity#LEFT] marks are before all [Affinity#RIGHT] marks.
+        @TruffleBoundary
+        void sortChangedMarker(Marker marker) {
+            if (this.markers == marker) {
+                return;
+            }
+            Marker[] markers = (Marker[]) this.markers;
+            final int index = indexOf(markers, marker);
+            int i = index;
+            // marker.affinity == LEFT:
+            // - find the farthest RIGHT affinity marker to the left, and swap.
+            // marker.affinity == RIGHT:
+            // - find the farthest LEFT affinity marker to the right, and swap.
+            if (marker.affinity == Affinity.LEFT) {
+                while (i >= 0) {
+                    if (i == 0 || markers[i - 1].affinity == Affinity.LEFT) {
+                        markers[index] = markers[i];
+                        markers[i] = marker;
+                        break;
+                    }
+                    i--;
+                }
+            } else {
+                while (i < markers.length) {
+                    if (i == markers.length - 1 || markers[i + 1].affinity == Affinity.RIGHT) {
+                        markers[index] = markers[i];
+                        markers[i] = marker;
+                        break;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        void remove(Marker marker) {
+            tree.markers.remove(marker);
+            if (markers != marker) {
+                Marker[] old = (Marker[]) markers;
+                if (old.length != 1) {
+                    int index = indexOf(old, marker);
+                    Marker[] markers = new Marker[old.length - 1];
+                    System.arraycopy(old, 0, markers, 0, index);
+                    System.arraycopy(old, index + 1, markers, index, old.length - index - 1);
+                    this.markers = markers.length == 1 ? markers[0] : markers;
+                    return;
+                }
+            }
+            MarkTreeNode<MarkerArray> next = node.next();
+            if (next == SENTINEL) {
+                tree.length -= node.piece.length;
+            } else {
+                tree.updateNodeSome(next, node.piece.length);
+            }
+            rbDelete(tree, node);
+        }
+
+        void insert(Marker marker) {
+            marker.parent = this;
+            if (markers instanceof Marker prev) {
+                markers = prev.affinity == Affinity.RIGHT && marker.affinity == Affinity.LEFT
+                        ? new Marker[]{marker, prev}
+                        : new Marker[]{prev, marker};
+            } else {
+                Marker[] old = (Marker[]) this.markers;
+                Marker[] markers = new Marker[old.length + 1];
+                if (marker.affinity == Affinity.LEFT) {
+                    markers[0] = marker;
+                    System.arraycopy(old, 0, markers, 1, old.length);
+                } else {
+                    markers[markers.length - 1] = marker;
+                    System.arraycopy(old, 0, markers, 0, old.length);
+                }
+                this.markers = markers;
+            }
+        }
+
+        void trySplit(MarkTreeNode<MarkerArray> node, MarkerPieceTree<?> tree, long cnt) {
+            Affinity affinity;
+            if (markers instanceof Marker marker) {
+                affinity = marker.affinity;
+            } else {
+                Marker[] markers = (Marker[]) this.markers;
+                int firstRight = -1;
+                for (int i = 0; i < markers.length; i++) {
+                    if (markers[i].affinity == Affinity.RIGHT) {
+                        firstRight = i;
+                        break;
+                    }
+                }
+                if (firstRight == 0) {
+                    // all affinity is RIGHT
+                    affinity = Affinity.RIGHT;
+                } else if (firstRight == -1) {
+                    // all affinity is LEFT
+                    affinity = Affinity.LEFT;
+                } else  {
+                    // split needed
+                    Marker[] rightMarkers = Arrays.copyOfRange(markers, firstRight, markers.length);
+                    MarkerArray array = new MarkerArray(tree, rightMarkers);
+                    Piece<MarkerArray> piece = new Piece<>(cnt, array);
+                    array.node = tree.rbInsertRight(node, piece);
+                    this.markers = firstRight == 1 ? markers[0] : Arrays.copyOf(markers, firstRight);
+                    return;
+                }
+            }
+
+            if (affinity == Affinity.RIGHT) {
+                tree.updateNodeSome(node, cnt);
+            } else {
+                MarkTreeNode<MarkerArray> next = node.next();
+                if (next == SENTINEL) {
+                    tree.length -= cnt;
+                } else {
+                    tree.updateNodeSome(next, cnt);
+                }
+            }
+        }
+
+        void notifyMovement(MarkerPieceTree.@Nullable MarkerMovedListener listener, long delta) {
+            if (listener == null) {
+                return;
+            }
+            if (markers instanceof Marker marker) {
+                listener.onMarkerMoved(marker, delta);
+            } else {
+                Marker[] markers = (Marker[]) this.markers;
+                for (Marker marker : markers) {
+                    listener.onMarkerMoved(marker, delta);
+                }
+            }
+        }
+
+        void splitInto(ArrayList<Marker> leftMarks, ArrayList<Marker> rightMarks) {
+            if (markers instanceof Marker marker) {
+                if (marker.affinity == Affinity.LEFT) {
+                    leftMarks.add(marker);
+                } else {
+                    rightMarks.add(marker);
+                }
+            } else {
+                Marker[] markers = (Marker[]) this.markers;
+                for (Marker marker : markers) {
+                    if (marker.affinity == Affinity.LEFT) {
+                        leftMarks.add(marker);
+                    } else {
+                        rightMarks.add(marker);
+                    }
+                }
+            }
+        }
+
+        public void mergeMarks(ArrayList<Marker> leftMarks, ArrayList<Marker> rightMarks) {
+            if (leftMarks.size() + rightMarks.size() == 1) {
+                markers = leftMarks.isEmpty() ? rightMarks.getFirst() : leftMarks.getFirst();
+                return;
+            }
+
+            Marker[] markers = new Marker[leftMarks.size() + rightMarks.size()];
+            int i = 0;
+            for (Marker marker : leftMarks) {
+                markers[i++] = marker;
+            }
+            for (Marker marker : rightMarks) {
+                markers[i++] = marker;
+            }
+            this.markers = markers;
+            for (Marker marker : markers) {
+                marker.parent = this;
+            }
+        }
+
+        @Override
+        public String toString() {
+            if (markers instanceof Marker marker) {
+                return marker.toString();
+            } else {
+                return Arrays.toString((Marker[]) markers);
+            }
+        }
+    }
+
     public static final class Marker {
         @Nullable
-        private MarkTreeNode<Marker> node = null;
-
-        @Nullable
-        private MarkerPieceTree<?> tree = null;
-
+        MarkerArray parent = null;
         private Affinity affinity;
 
         public Marker(Affinity affinity) {
@@ -309,19 +439,19 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
         }
 
         public long position() {
-            MarkTreeNode<Marker> parent = node;
-            if (parent == null) {
+            if (this.parent == null) {
                 return -1;
             }
-            long offset = parent.size_left;
+            MarkTreeNode<MarkerArray> parent = this.parent.node;
+            long offset = parent.size_left + parent.piece.length;
             while (true) {
-                MarkTreeNode<Marker> child = parent;
+                MarkTreeNode<MarkerArray> child = parent;
                 parent = parent.parent;
                 if (parent == SENTINEL) {
                     return offset;
                 }
                 if (child == parent.right) {
-                    offset += parent.size_left + parent.piece.length();
+                    offset += parent.size_left + parent.piece.length;
                 }
             }
         }
@@ -331,30 +461,28 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerPieceTree.
         }
 
         public void setAffinity(Affinity affinity) {
+            Affinity prev = this.affinity;
             this.affinity = affinity;
-            if (node != null) {
-                sortPointMarksNearby(node);
+            if (prev != affinity && parent != null) {
+                parent.sortChangedMarker(this);
             }
         }
 
         @TruffleBoundary
         public void detach() {
-            if (node != null) {
-                assert tree != null;
-                tree.markers.remove(this);
-                rbDelete(tree, node);
-                tree = null;
-                node = null;
+            if (parent != null) {
+                parent.remove(this);
+                parent = null;
             }
         }
 
         public boolean isDetached() {
-            return tree == null;
+            return parent == null;
         }
 
         @Nullable
         public MarkerPieceTree<?> tree() {
-            return tree;
+            return parent == null ? null : parent.tree;
         }
 
         @Override

@@ -27,6 +27,7 @@ package party.iroiro.juicemacs.piecetree.meta;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.jspecify.annotations.Nullable;
+import party.iroiro.juicemacs.piecetree.meta.OverlayPieceTreeList.OverlayPieceTree;
 
 import java.util.*;
 
@@ -52,32 +53,19 @@ import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.*;
 ///
 /// ## Marks
 ///
-/// This implementation assumes that there are three kinds of marks:
-/// - Empty interval marks: marks whose [Piece#mark] is `null`. They serve as placeholders,
-///   storing relative offsets of other *real* marks. Their [Piece#length] must not be `0`.
-///   - Adjacent empty intervals are automatically merged.
-/// - Non-empty interval marks: marks whose [Piece#mark] is not `null`, with non-zero [Piece#length].
-///   They are most likely to be used for Emacs text properties.
-///   - To change the merge behavior, override [#isMergeable].
-/// - Non-empty point markers: marks whose [Piece#mark] is not `null`, with zero [Piece#length].
-///   These marks represent Emacs markers, that is, a single position in a buffer. They have
-///   [MarkerPieceTree.Affinity]: when inserting text at the mark, markers with [MarkerPieceTree.Affinity#LEFT] will not move,
-///   while [MarkerPieceTree.Affinity#RIGHT] will move along to the end of the inserted text.
-///   - To assign affinity, override [#getAffinity].
+/// Although both [IntervalPieceTree] and [MarkerPieceTree] builds upon this class,
+/// their "marks"  are quite different. So, this class only offers the bare minimum
+/// of tree editing [#rbInsertLeft(MarkTreeNode, Piece)] and [#rbInsertRight(MarkTreeNode, Piece)],
+/// with main tree operations implemented in corresponding classes, with moderate
+/// code repetitions.
 @SuppressWarnings("unchecked")
-public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, MarkerPieceTree {
+public sealed abstract class MarkPieceTreeBase<T extends @Nullable Object>
+        permits IntervalPieceTree, MarkerPieceTree, OverlayPieceTree {
     MarkTreeNode<T> root;
 
     public MarkPieceTreeBase() {
         root = SENTINEL;
     }
-
-    //#region Override methods to change behaviors
-    protected boolean isMergeable(Piece<T> value, Piece<T> piece) {
-        // TODO: expose
-        return value.mark == piece.mark;
-    }
-    //#endregion Override methods to change behaviors
 
     public long getLength() {
         long length = 0;
@@ -89,142 +77,19 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         return length;
     }
 
-    @TruffleBoundary
-    protected void insert(long offset, Piece<T> value) {
-        if (root == SENTINEL) {
-            // insert new node
-            rbInsertLeft(null, value);
-            return;
-        }
-
-        NodePosition<T> nodePosition = nodeAt(offset);
-        MarkTreeNode<T> node = nodePosition.node;
-        long remainder = nodePosition.remainder;
-        long nodeStartOffset = nodePosition.nodeStartOffset;
-        Piece<T> piece = node.piece;
-        if (isMergeable(value, piece)) {
-            // changed buffer
-            updateNodeSome(node, value.length);
-            return;
-        }
-        if (nodeStartOffset == offset) {
-            MarkTreeNode<T> prev = node.prev();
-            if (prev != SENTINEL && isMergeable(prev.piece, piece)) {
-                updateNodeSome(prev, value.length);
-                return;
-            }
-            rbInsertLeft(node, value);
-        } else if (nodeStartOffset + node.piece.length > offset) {
-            // we are inserting into the middle of a node.
-            Piece<T> newRightPiece = new Piece<>(
-                    piece.length - remainder,
-                    piece.mark
-            );
-            // reuse node for content before insertion point.
-            updateNodeSome(node, remainder - node.piece.length);
-            if (newRightPiece.length > 0) {
-                rbInsertRightNoMerge(node, newRightPiece);
-            }
-            rbInsertRight(node, value);
-        } else {
-            MarkTreeNode<T> next = node.next();
-            if (next != SENTINEL && isMergeable(next.piece, piece)) {
-                updateNodeSome(next, value.length);
-                return;
-            }
-            rbInsertRight(node, value);
-        }
-    }
-
-    public void delete(long offset, long cnt) {
-        if (cnt <= 0 || root == SENTINEL) {
-            return;
-        }
-        NodePosition<T> startPosition = nodeAt(offset);
-        deleteStartingFrom(offset, cnt, startPosition);
-    }
-
-    @TruffleBoundary
-    protected void deleteStartingFrom(long offset, long cnt, NodePosition<T> startPosition) {
-        if (cnt == 0) {
-            // [#delete] only deletes interval marks
-            return;
-        }
-
-        NodePosition<T> endPosition = nodeAt(offset + cnt);
-        MarkTreeNode<T> startNode = startPosition.node;
-        MarkTreeNode<T> endNode = endPosition.node;
-        if (startNode == endNode) {
-            // since cnt != 0, startNode is an interval node
-            if (cnt == startNode.piece.length) { // delete node
-                MarkTreeNode<T> prev = startNode.prev();
-                MarkTreeNode<T> next = startNode.next();
-                rbDelete(this, startNode);
-                if (prev != SENTINEL && next != SENTINEL) {
-                    if (isMergeable(prev.piece, next.piece)) {
-                        updateNodeSome(prev, next.piece.length);
-                        rbDelete(this, next);
-                    }
-                }
-                return;
-            }
-            updateNodeSome(startNode, -cnt);
-            return;
-        }
-
-        deleteInBetween(startPosition, endPosition);
-    }
-
-    protected void deleteInBetween(NodePosition<T> startPosition, NodePosition<T> endPosition) {
-        MarkTreeNode<T> startNode = startPosition.node;
-        MarkTreeNode<T> endNode = endPosition.node;
-
-        List<MarkTreeNode<T>> nodesToDel = new ArrayList<>();
-
-        long lengthToDelete = startPosition.node.piece.length - startPosition.remainder;
-        if (lengthToDelete != 0) {
-            updateNodeSome(startNode, -lengthToDelete);
-            if (startNode.piece.length == 0) {
-                // an interval node is deleted
-                nodesToDel.add(startNode);
-            }
-        }
-
-        // delete interval nodes in between
-        MarkTreeNode<T> secondNode = startNode.next();
-        for (MarkTreeNode<T> node = secondNode; node != endNode && node != SENTINEL; node = node.next()) {
-            nodesToDel.add(node);
-        }
-
-        // update last touched node
-        if (endPosition.remainder != 0) {
-            updateNodeSome(endNode, -endPosition.remainder);
-            if (endNode.piece.length == 0) {
-                // an interval node is deleted
-                nodesToDel.add(endNode);
-            }
-        }
-        deleteNodes(nodesToDel);
-    }
-
-    protected void deleteNodes(List<MarkTreeNode<T>> nodes) {
+    final void deleteNodes(List<MarkTreeNode<T>> nodes) {
         for (MarkTreeNode<T> node : nodes) {
             rbDelete(this, node);
         }
     }
 
-    protected void updateNodeSome(MarkTreeNode<T> node, long lengthDelta) {
-        Piece<T> piece = node.piece;
-        long newLength = node.piece.length + lengthDelta;
-        node.piece = new Piece<>(
-                newLength,
-                piece.mark
-        );
+    final void updateNodeSome(MarkTreeNode<T> node, long lengthDelta) {
+        node.piece.length += lengthDelta;
         updateTreeMetadata(this, node, lengthDelta);
     }
 
     @TruffleBoundary
-    protected NodePosition<T> nodeAt(long offset) {
+    final NodePosition<T> nodeAt(long offset) {
         MarkTreeNode<T> x = root;
         long nodeStartOffset = 0;
         while (x != SENTINEL) {
@@ -243,11 +108,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
     }
 
     //#region Tree operations
-    protected MarkTreeNode<T> rbInsertRight(MarkTreeNode<T> node, Piece<T> piece) {
-        return rbInsertRightNoMerge(node, piece);
-    }
-
-    private MarkTreeNode<T> rbInsertRightNoMerge(MarkTreeNode<T> node, Piece<T> piece) {
+    final MarkTreeNode<T> rbInsertRight(MarkTreeNode<T> node, Piece<T> piece) {
         MarkTreeNode<T> z = new MarkTreeNode<>(piece, MarkTreeNode.RED);
         z.left = SENTINEL;
         z.right = SENTINEL;
@@ -272,7 +133,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
     }
 
     @SuppressWarnings("DataFlowIssue")
-    protected MarkTreeNode<T> rbInsertLeft(@Nullable MarkTreeNode<T> node, Piece<T> piece) {
+    final MarkTreeNode<T> rbInsertLeft(@Nullable MarkTreeNode<T> node, Piece<T> piece) {
         MarkTreeNode<T> z = new MarkTreeNode<>(piece, MarkTreeNode.RED);
         z.left = SENTINEL;
         z.right = SENTINEL;
@@ -298,14 +159,14 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
 
     @Nullable
     @TruffleBoundary
-    protected <R> R forEachMarkIn(long offset, long cnt, PieceConsumer<T, R> consumer) {
+    final <R> R forEachMarkIn(long offset, long cnt, PieceConsumer<T, R> consumer) {
         if (root == SENTINEL) {
             return null;
         }
         NodePosition<T> startPosition = nodeAt(offset);
-        MarkTreeNode<T> currentNode = startPosition.node();
+        MarkTreeNode<T> currentNode = startPosition.node;
         long currentOffset = offset;
-        long remainder = startPosition.remainder();
+        long remainder = startPosition.remainder;
         long targetOffset = offset + cnt;
         if (targetOffset < cnt) {
             targetOffset = Long.MAX_VALUE;
@@ -313,7 +174,7 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         if (remainder == 0) {
             while (true) {
                 MarkTreeNode<T> prev = currentNode.prev();
-                if (prev == SENTINEL || prev.piece.length() != 0) {
+                if (prev == SENTINEL || prev.piece.length != 0) {
                     break;
                 }
                 currentNode = prev;
@@ -321,14 +182,14 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         }
         while (currentOffset < targetOffset && currentNode != SENTINEL) {
             Piece<T> piece = currentNode.piece;
-            long length = piece.length() - remainder;
+            long length = piece.length - remainder;
             long newOffset = currentOffset + length;
             remainder = 0;
             if (newOffset > targetOffset) {
                 length -= newOffset - targetOffset;
             }
-            if (length != piece.length()) {
-                piece = new Piece<>(length, piece.mark());
+            if (length != piece.length) {
+                piece = new Piece<>(length, piece.mark);
             }
             R accept = consumer.accept(piece, currentOffset);
             if (accept != null) {
@@ -367,19 +228,34 @@ public sealed abstract class MarkPieceTreeBase<T> permits IntervalPieceTree, Mar
         return builder.toString();
     }
 
-    protected interface PieceConsumer<T, R> {
+    interface PieceConsumer<T extends @Nullable Object, R> {
         @Nullable R accept(Piece<T> piece, long offset);
     }
 
-    /**
-     * @param node            piece Index
-     * @param remainder       remainder in the current piece
-     * @param nodeStartOffset node start offset in document
-     */
-    protected record NodePosition<T>(MarkTreeNode<T> node, long nodeStartOffset, long remainder) {
+    static final class NodePosition<T extends @Nullable Object> {
+        final MarkTreeNode<T> node;
+        final long nodeStartOffset;
+        final long remainder;
+
+        /**
+         * @param node            piece Index
+         * @param remainder       remainder in the current piece
+         * @param nodeStartOffset node start offset in document
+         */
+        private NodePosition(MarkTreeNode<T> node, long nodeStartOffset, long remainder) {
+            this.node = node;
+            this.nodeStartOffset = nodeStartOffset;
+            this.remainder = remainder;
+        }
     }
 
-    protected record Piece<T>(long length, @Nullable T mark) {
-    }
+    static final class Piece<T extends @Nullable Object> {
+        long length;
+        final T mark;
 
+        Piece(long length, T mark) {
+            this.length = length;
+            this.mark = mark;
+        }
+    }
 }

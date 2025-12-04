@@ -34,7 +34,7 @@ import party.iroiro.juicemacs.piecetree.meta.MarkPieceTreeBase.Piece;
  * rbTreeBase.ts @ vscode</a>
  */
 @SuppressWarnings({"DuplicatedCode", "unchecked", "rawtypes"})
-public final class MarkTreeNode<T> {
+public final class MarkTreeNode<T extends @Nullable Object> {
     public final static MarkTreeNode SENTINEL = new MarkTreeNode<>(null, MarkTreeNode.BLACK);
     public final static boolean RED = true;
     public final static boolean BLACK = false;
@@ -121,7 +121,7 @@ public final class MarkTreeNode<T> {
         if (this == SENTINEL) {
             return 0;
         }
-        return size_left + piece.length() + right.calculateSize();
+        return size_left + piece.length + right.calculateSize();
     }
 
     public static void resetSentinel() {
@@ -132,7 +132,7 @@ public final class MarkTreeNode<T> {
     public static <T> void leftRotate(MarkPieceTreeBase<T> tree, MarkTreeNode<T> x) {
         MarkTreeNode<T> y = x.right;
 
-        y.size_left += x.size_left + (x == SENTINEL ? 0 : x.piece.length());
+        y.size_left += x.size_left + (x == SENTINEL ? 0 : x.piece.length);
         x.right = y.left;
 
         if (y.left != SENTINEL) {
@@ -160,7 +160,7 @@ public final class MarkTreeNode<T> {
         }
         x.parent = y.parent;
 
-        y.size_left -= x.size_left + (x == SENTINEL ? 0 : x.piece.length());
+        y.size_left -= x.size_left + (x == SENTINEL ? 0 : x.piece.length);
 
         if (y.parent == SENTINEL) {
             tree.root = x;

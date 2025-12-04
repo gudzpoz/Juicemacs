@@ -7,6 +7,7 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispMarker;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
+/// A serializer for [ELispMarker], depending on [PieceTreeSerializer]
 public final class ELispMarkerSerializer extends Serializer<ELispMarker> {
     public ELispMarkerSerializer(Fory fory) {
         super(fory, ELispMarker.class);
@@ -18,6 +19,7 @@ public final class ELispMarkerSerializer extends Serializer<ELispMarker> {
         fory.writeRef(buffer, inner.tree());
         if (inner.tree() == null) {
             buffer.writeBoolean(inner.affinity() == MarkerPieceTree.Affinity.RIGHT);
+            // tree serialization anchors all inner markers
             DumpUtils.writeAnchor(fory, buffer, inner);
         } else {
             fory.writeRef(buffer, inner);

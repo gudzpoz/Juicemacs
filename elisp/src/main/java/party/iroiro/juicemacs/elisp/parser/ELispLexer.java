@@ -583,7 +583,13 @@ public class ELispLexer {
             }
             case 'x' -> maybeRawByte(readEscapedCodepoint(16, -1, true), inString);
             case 'u' -> readEscapedCodepoint(16, 4, false);
-            case 'U' -> readEscapedCodepoint(16, 8, false);
+            case 'U' -> {
+                int codepoint = readEscapedCodepoint(16, 8, false);
+                if (codepoint > Character.MAX_CODE_POINT) {
+                    throw ELispSignals.error("Non-Unicode character");
+                }
+                yield codepoint;
+            }
             case 'N' -> {
                 if (reader.peek() == '{') {
                     reader.read();

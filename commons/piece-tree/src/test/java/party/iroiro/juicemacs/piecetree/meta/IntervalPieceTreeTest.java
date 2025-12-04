@@ -3,6 +3,8 @@ package party.iroiro.juicemacs.piecetree.meta;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.stream.IntStream;
 
 import party.iroiro.juicemacs.piecetree.meta.MarkPieceTreeBase.Piece;
 
@@ -132,5 +134,63 @@ class IntervalPieceTreeTest {
         IntervalPieceTree<Integer> tree = new IntervalPieceTree<>();
         tree.insert(0, new Piece<>(16, null));
         assertThrows(IllegalArgumentException.class, () -> tree.getPropertiesAt(16));
+    }
+
+    @Test
+    public void testRandom() {
+        Character[] alphabet = IntStream.range('a', 'z' + 1)
+                .mapToObj(c -> (char) c)
+                .toArray(Character[]::new);
+        IntervalPieceTree<Character> tree = new IntervalPieceTree<>();
+        String expected = ""; // " ": null, "a-z": properties
+        Random random = new Random(0);
+        for (int i = 0; i < 1000000; i++) {
+            if (expected.isEmpty() || random.nextInt(10) > 3) {
+                // insert
+                int where = expected.isEmpty() ? 0 : random.nextInt(expected.length());
+                Character c = random.nextBoolean()
+                        ? null
+                        : alphabet[random.nextInt(alphabet.length)];
+                int length = random.nextInt(10);
+                expected = expected.substring(0, where)
+                        + (c == null ? " " : c.toString()).repeat(length)
+                        + expected.substring(where);
+                tree.insert(where, length, c);
+            } else {
+                // delete
+                int start = random.nextInt(expected.length());
+                int end = random.nextInt(expected.length() - start) + start;
+                expected = expected.substring(0, start) + expected.substring(end);
+                tree.delete(start, end - start);
+            }
+
+            if (expected.isEmpty()) {
+                assertEquals(0, tree.getLength());
+            }
+            String expectedS = expected;
+            tree.forPropertiesIn(0, expected.length(), true, (c, offsetL, cntL) -> {
+                int offset = Math.toIntExact(offsetL);
+                int cnt = Math.toIntExact(cntL);
+                int end = offset + cnt;
+
+                String substring = expectedS.substring(offset, end);
+                char expectedC = substring.charAt(0);
+                if (expectedC == ' ') {
+                    assertNull(c);
+                    assertEquals(" ".repeat(cnt), substring);
+                } else {
+                    assertNotNull(c);
+                    assertEquals(expectedC, c);
+                    assertEquals(c.toString().repeat(cnt), substring);
+                }
+                if (offset > 0) {
+                    assertNotEquals(expectedC, expectedS.charAt(offset - 1), expectedS);
+                }
+                if (end < expectedS.length()) {
+                    assertNotEquals(expectedC, expectedS.charAt(end), expectedS);
+                }
+                return null;
+            });
+        }
     }
 }
