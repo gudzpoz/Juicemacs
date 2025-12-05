@@ -12,11 +12,13 @@ import party.iroiro.juicemacs.elisp.runtime.ELispSignals;
 import party.iroiro.juicemacs.elisp.runtime.array.ELispCons;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispBuffer;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispObarray.HashStringMap;
+import party.iroiro.juicemacs.elisp.runtime.objects.ELispOverlay;
 import party.iroiro.juicemacs.elisp.runtime.objects.ELispSymbol;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.string.StringSupport;
+import party.iroiro.juicemacs.piecetree.interval.Interval;
 
 import java.util.*;
 
@@ -880,8 +882,7 @@ public class BuiltInBuffer extends ELispBuiltIns {
     public abstract static class FOverlayp extends ELispBuiltInBaseNode {
         @Specialization
         public static boolean overlayp(Object object) {
-            // TODO
-            return false;
+            return object instanceof ELispOverlay;
         }
     }
 
@@ -902,9 +903,16 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMakeOverlay extends ELispBuiltInBaseNode {
         @Specialization
-        public static Object makeOverlay(Object beg, Object end, Object buffer, Object frontAdvance, Object rearAdvance) {
-            // TODO
-            return ELispString.EMPTY;
+        public ELispOverlay makeOverlay(long beg, long end, Object buffer, Object frontAdvance, Object rearAdvance) {
+            if (isNil(buffer)) {
+                buffer = getContext().currentBuffer();
+            }
+            ELispBuffer b = asBuffer(buffer);
+            Interval overlay = new Interval(beg, end);
+            overlay.setFrontAdvance(!isNil(frontAdvance));
+            overlay.setRearAdvance(!isNil(rearAdvance));
+            b.insertOverlay(overlay);
+            return new ELispOverlay(b, overlay);
         }
     }
 
@@ -920,8 +928,13 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FMoveOverlay extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void moveOverlay(Object overlay, Object beg, Object end, Object buffer) {
-            throw new UnsupportedOperationException();
+        public ELispOverlay moveOverlay(ELispOverlay overlay, long beg, long end, Object buffer) {
+            if (isNil(buffer)) {
+                buffer = getContext().currentBuffer();
+            }
+            ELispBuffer b = asBuffer(buffer);
+            overlay.moveOverlay(beg, end, b);
+            return overlay;
         }
     }
 
@@ -934,8 +947,8 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FDeleteOverlay extends ELispBuiltInBaseNode {
         @Specialization
-        public static boolean deleteOverlay(Object overlay) {
-            // TODO
+        public static boolean deleteOverlay(ELispOverlay overlay) {
+            overlay.detach();
             return false;
         }
     }
@@ -964,9 +977,13 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "overlay-start", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FOverlayStart extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Void overlayStart(Object overlay) {
-            throw new UnsupportedOperationException();
+        @Specialization(guards = "overlay.buffer() != null")
+        public static long overlayStart(ELispOverlay overlay) {
+            return overlay.start();
+        }
+        @Specialization(guards = "overlay.buffer() == null")
+        public static boolean overlayNoStart(ELispOverlay overlay) {
+            return false;
         }
     }
 
@@ -978,9 +995,13 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @ELispBuiltIn(name = "overlay-end", minArgs = 1, maxArgs = 1)
     @GenerateNodeFactory
     public abstract static class FOverlayEnd extends ELispBuiltInBaseNode {
-        @Specialization
-        public static Void overlayEnd(Object overlay) {
-            throw new UnsupportedOperationException();
+        @Specialization(guards = "overlay.buffer() != null")
+        public static long overlayEnd(ELispOverlay overlay) {
+            return overlay.end();
+        }
+        @Specialization(guards = "overlay.buffer() == null")
+        public static boolean overlayNoEnd(ELispOverlay overlay) {
+            return false;
         }
     }
 
@@ -994,8 +1015,8 @@ public class BuiltInBuffer extends ELispBuiltIns {
     @GenerateNodeFactory
     public abstract static class FOverlayBuffer extends ELispBuiltInBaseNode {
         @Specialization
-        public static Void overlayBuffer(Object overlay) {
-            throw new UnsupportedOperationException();
+        public static Object overlayBuffer(ELispOverlay overlay) {
+            return Objects.requireNonNullElse(overlay.buffer(), false);
         }
     }
 

@@ -67,6 +67,9 @@ public abstract class DumpUtils {
 
     /// @see #writeAnchors(Fory, MemoryBuffer, Object[])
     public static <T> void readAnchors(Fory fory, MemoryBuffer input, T[] array) {
+        if (array.length == 0) {
+            return;
+        }
         int startId = input.readVarUint32();
         int length = input.readVarUint32();
         RefResolver resolver = fory.getRefResolver();

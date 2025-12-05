@@ -17,6 +17,8 @@ import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.Forwarded;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
+import party.iroiro.juicemacs.piecetree.interval.Interval;
+import party.iroiro.juicemacs.piecetree.interval.IntervalTree;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
@@ -31,6 +33,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     private final PieceTreeBase content;
     private final IntervalPieceTree<Object> intervals;
     private final MarkerPieceTree<ELispBuffer> markers;
+    private final IntervalTree overlays;
     // TODO: Emacs has a point for each window
     private ELispMarker point;
 
@@ -38,6 +41,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         this.bufferLocalFields = bufferLocalFields;
         this.content = content;
         this.intervals = new IntervalPieceTree<>();
+        this.overlays = new IntervalTree();
         intervals.insert(0, content.getLength(), null);
         this.markers = new MarkerPieceTree<>(new MarkerMoveNotifier(), this);
         this.inhibitBufferHooks = inhibitBufferHooks;
@@ -166,6 +170,18 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         intervals.insert(start - 1, end - start, isNil(properties) ? null : properties);
     }
 
+    public void resolveOverlay(Interval interval) {
+        overlays.resolveNode(interval, 0);
+    }
+
+    public void insertOverlay(Interval interval) {
+        overlays.insert(interval);
+    }
+
+    public void deleteOverlay(Interval interval) {
+        overlays.delete(interval);
+    }
+
     public void insert(ELispString text) {
         insert(getPoint(), text); // NOPMD: not recursion
     }
@@ -181,15 +197,18 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
         content.insert(position, text.bytes(), text.isAscii());
         intervals.insert(position, text.length(), null);
         markers.insertString(position, text.length());
+        overlays.acceptReplace(position, 0, text.length());
     }
 
     public void delete(long start, long length) {
         if (length == 0) {
             return;
         }
-        content.delete(start - 1, length);
-        intervals.delete(start - 1, length);
-        markers.delete(start - 1, length);
+        long position = start - 1;
+        content.delete(position, length);
+        intervals.delete(position, length);
+        markers.delete(position, length);
+        overlays.acceptReplace(position, length, 0);
     }
 
     /// Replaces text without messing up intervals and markers
@@ -202,6 +221,7 @@ public final class ELispBuffer extends AbstractELispIdentityObject {
     public void erase() {
         intervals.delete(0, content.getLength());
         markers.delete(0, content.getLength());
+        overlays.acceptReplace(0, content.getLength(), 0);
         content.delete(0, content.getLength());
         content.compact(); // reset the internal tree
     }

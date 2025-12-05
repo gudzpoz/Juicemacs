@@ -8,9 +8,12 @@ import org.apache.fory.serializer.Serializer;
 import org.jspecify.annotations.Nullable;
 import party.iroiro.juicemacs.elisp.runtime.pdump.DumpUtils;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
+import party.iroiro.juicemacs.piecetree.interval.Interval;
+import party.iroiro.juicemacs.piecetree.interval.IntervalTree;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 
 public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
@@ -127,6 +130,49 @@ public final class PieceTreeSerializer extends Serializer<PieceTreeBase> {
             MarkerPieceTree.MarkerMovedListener listener = (MarkerPieceTree.MarkerMovedListener) fory.readRef(buffer);
             tree.setBuffer(treeBuffer);
             tree.setListener(listener);
+            return tree;
+        }
+    }
+
+    public static final class Overlays extends Serializer<IntervalTree> {
+        public Overlays(Fory fory) {
+            super(fory, IntervalTree.class);
+        }
+
+        @TruffleBoundary
+        @Override
+        public void write(MemoryBuffer buffer, IntervalTree value) {
+            ArrayList<Interval> intervals = new ArrayList<>();
+            try (DumpUtils.CounterSlot slot = DumpUtils.CounterSlot.record(buffer)) {
+                value.intervalSearch(0, Long.MAX_VALUE, 0, (i) -> {
+                    buffer.writeVarUint64(i.cachedAbsoluteStart);
+                    buffer.writeVarUint64(i.cachedAbsoluteEnd);
+                    buffer.writeVarInt32(i.metadata);
+                    fory.writeRef(buffer, i.userData);
+                    slot.inc();
+                    intervals.add(i);
+                });
+            }
+            DumpUtils.writeAnchors(fory, buffer, intervals.toArray(new Interval[0]));
+        }
+
+        @Override
+        public IntervalTree read(MemoryBuffer buffer) {
+            IntervalTree tree = new IntervalTree();
+            fory.getRefResolver().reference(tree);
+            int count = buffer.readInt32();
+            Interval[] intervalArray = new Interval[count];
+            for (int i = 0; i < count; i++) {
+                long start = buffer.readVarUint64();
+                long end = buffer.readVarUint64();
+                int metadata = buffer.readVarInt32();
+                Object userData = fory.readRef(buffer);
+                Interval interval = new Interval(start, end);
+                interval.metadata = metadata;
+                interval.setUserData(userData);
+                intervalArray[i] = interval;
+            }
+            DumpUtils.readAnchors(fory, buffer, intervalArray);
             return tree;
         }
     }

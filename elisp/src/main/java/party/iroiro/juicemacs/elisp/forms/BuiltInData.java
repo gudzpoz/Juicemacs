@@ -948,6 +948,7 @@ public class BuiltInData extends ELispBuiltIns {
                 case ELispObarray _ -> OBARRAY;
                 case ELispBuffer _ -> BUFFER;
                 case ELispMarker _ -> MARKER;
+                case ELispOverlay _ -> OVERLAY;
                 case ELispSubroutine sub when sub.specialForm() -> SPECIAL_FORM;
                 case ELispSubroutine _ -> PRIMITIVE_FUNCTION;
                 default -> throw new UnsupportedOperationException();

@@ -122,7 +122,7 @@ public class IntervalTreeTest {
                 Interval interval = new Interval(range.start, range.end);
                 interval.setFrontAdvance(range.frontAdvance);
                 interval.setRearAdvance(range.rearAdvance);
-                interval.acceptEdit(offset, (offset + deleted), inserted);
+                interval.acceptEdit(offset, offset + deleted, inserted);
                 range.start = interval.start;
                 range.end = interval.end;
             }
@@ -507,6 +507,21 @@ public class IntervalTreeTest {
         tree.intervalSearch(0, Long.MAX_VALUE, 0, intervals::add);
         assertEquals(1, intervals.size());
         Interval actual = intervals.get(0);
+        assertEquals(new Range(4, 4), new Range(actual.start, actual.end));
+    }
+
+    @Test
+    public void testGetAll() {
+        IntervalTree tree = TestState.testIntervalTree(
+                new Insert(0, 0),
+                new Insert(4, 4)
+        );
+        ArrayList<Interval> intervals = new ArrayList<>(1);
+        tree.intervalSearch(0, 4, 0, intervals::add);
+        assertEquals(2, intervals.size());
+        Interval actual = intervals.get(0);
+        assertEquals(new Range(0, 0), new Range(actual.start, actual.end));
+        actual = intervals.get(1);
         assertEquals(new Range(4, 4), new Range(actual.start, actual.end));
     }
 }

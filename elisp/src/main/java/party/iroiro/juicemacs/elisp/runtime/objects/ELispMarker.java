@@ -56,6 +56,7 @@ public final class ELispMarker extends Number implements ELispValue {
         if (inner.isDetached()) {
             throw ELispSignals.error("marker does not point anywhere");
         }
+        // TODO: similar to overlays, add inner.cachedVersionId to avoid resolving
         return inner.position() + 1;
     }
 

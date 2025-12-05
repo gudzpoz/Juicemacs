@@ -29,12 +29,15 @@ import party.iroiro.juicemacs.elisp.runtime.objects.ELispHashtable.ELispWeakHash
 import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.*;
 import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.PieceTreeSerializer.Intervals;
 import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.PieceTreeSerializer.Marks;
+import party.iroiro.juicemacs.elisp.runtime.pdump.serializers.PieceTreeSerializer.Overlays;
 import party.iroiro.juicemacs.elisp.runtime.scopes.FunctionStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ThreadLocalStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage;
 import party.iroiro.juicemacs.elisp.runtime.scopes.ValueStorage.*;
 import party.iroiro.juicemacs.elisp.runtime.string.ELispString;
 import party.iroiro.juicemacs.piecetree.PieceTreeBase;
+import party.iroiro.juicemacs.piecetree.interval.Interval;
+import party.iroiro.juicemacs.piecetree.interval.IntervalTree;
 import party.iroiro.juicemacs.piecetree.meta.IntervalPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree;
 import party.iroiro.juicemacs.piecetree.meta.MarkerPieceTree.Marker;
@@ -79,9 +82,12 @@ public final class ELispPortableDumper {
         // Buffers
         fory.registerSerializer(ELispMarker.class, new ELispMarkerSerializer(fory));
         fory.registerSerializer(Marker.class, DumpUtils.never(fory, Marker.class));
+        fory.registerSerializer(ELispOverlay.class, new ELispOverlaySerializer(fory));
+        fory.registerSerializer(Interval.class, DumpUtils.never(fory, Interval.class));
         fory.registerSerializer(PieceTreeBase.class, new PieceTreeSerializer(fory));
         fory.registerSerializer(IntervalPieceTree.class, new Intervals(fory));
         fory.registerSerializer(MarkerPieceTree.class, new Marks(fory));
+        fory.registerSerializer(IntervalTree.class, new Overlays(fory));
 
         // Truffle internals
         fory.registerSerializer(CyclicAssumption.class, new CyclicAssumptionSerializer(fory));

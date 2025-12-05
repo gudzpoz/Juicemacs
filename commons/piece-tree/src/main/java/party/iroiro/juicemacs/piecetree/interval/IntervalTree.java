@@ -25,6 +25,8 @@
 
 package party.iroiro.juicemacs.piecetree.interval;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
@@ -43,14 +45,17 @@ public final class IntervalTree {
         requestNormalizeDelta = false;
     }
 
+    @TruffleBoundary
     public void insert(Interval interval) {
         rbTreeInsert(interval);
         normalizeDeltaIfNecessary();
     }
+    @TruffleBoundary
     public void delete(Interval interval) {
         rbTreeDelete(interval);
         normalizeDeltaIfNecessary();
     }
+    @TruffleBoundary
     public void resolveNode(Interval node, int cachedVersionId) {
         Interval initialNode = node;
         long delta = 0;
@@ -66,6 +71,7 @@ public final class IntervalTree {
         initialNode.setCachedOffsets(nodeStart, nodeEnd, cachedVersionId);
     }
 
+    @TruffleBoundary
     public void acceptReplace(long offset, long length, long textLength) {
         // Our strategy is to remove all directly impacted nodes, and then add them back to the tree.
 
@@ -120,7 +126,7 @@ public final class IntervalTree {
                 continue;
             }
 
-            if (!node.left.isVisited()) {
+            if (node.left != SENTINEL && !node.left.isVisited()) {
                 // first time seeing this node
                 nodeMaxEnd = delta + node.maxEnd;
                 if (nodeMaxEnd < start) {
@@ -130,11 +136,9 @@ public final class IntervalTree {
                     continue;
                 }
 
-                if (node.left != SENTINEL) {
-                    // go left
-                    node = node.left;
-                    continue;
-                }
+                // go left
+                node = node.left;
+                continue;
             }
 
             // handle current node
@@ -191,7 +195,7 @@ public final class IntervalTree {
                 continue;
             }
 
-            if (!node.left.isVisited()) {
+            if (node.left != SENTINEL && !node.left.isVisited()) {
                 // first time seeing this node
                 nodeMaxEnd = delta + node.maxEnd;
                 if (nodeMaxEnd < start) {
@@ -201,11 +205,9 @@ public final class IntervalTree {
                     continue;
                 }
 
-                if (node.left != SENTINEL) {
-                    // go left
-                    node = node.left;
-                    continue;
-                }
+                // go left
+                node = node.left;
+                continue;
             }
 
             // handle current node
@@ -313,7 +315,7 @@ public final class IntervalTree {
                 continue;
             }
 
-            if (!node.left.isVisited()) {
+            if (node.left != SENTINEL && !node.left.isVisited()) {
                 // first time seeing this node
                 nodeMaxEnd = delta + node.maxEnd;
                 if (nodeMaxEnd < intervalStart) {
@@ -323,11 +325,9 @@ public final class IntervalTree {
                     continue;
                 }
 
-                if (node.left != SENTINEL) {
-                    // go left
-                    node = node.left;
-                    continue;
-                }
+                // go left
+                node = node.left;
+                continue;
             }
 
             // handle current node

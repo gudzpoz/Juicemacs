@@ -22,8 +22,8 @@ runs:
       run: |
         echo "GNU_EMACS_COMMIT=$(cd elisp/emacs && git rev-parse HEAD)" >> $GITHUB_ENV
         # Emacs dependencies
-        sudo apt-get update
-        sudo apt-get install libgnutls28-dev
+        sudo apt-get update -y
+        sudo apt-get install -y libgnutls28-dev
     - name: Restore GNU Emacs Build Cache
       id: cache-emacs-restore
       uses: actions/cache/restore@v4

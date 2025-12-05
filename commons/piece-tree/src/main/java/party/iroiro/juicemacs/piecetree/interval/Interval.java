@@ -50,10 +50,10 @@ public final class Interval {
     Interval left;
     Interval right;
 
-    public long start;
-    public long end;
-    public long delta;
-    public long maxEnd;
+    long start;
+    long end;
+    long delta;
+    long maxEnd;
 
     public int cachedVersionId;
     public long cachedAbsoluteStart;

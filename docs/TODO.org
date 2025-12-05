@@ -150,24 +150,6 @@ in the git logs in case any one is interested.)
      "\\(.*\\(\\2\\).*\\)\\'")
   #+end_src
 
-* TODO [#C] Arithmetic operation compatibility
-
-Emacs has a few edge cases for arithmetic operations:
-
-- src_elisp{(should (< most-positive-fixnum (+ 1.0 most-positive-fixnum)))}
-
-  In many languages, comparison between floating numbers and integers is done by
-  first converting integers to floating numbers. However, this conversion can
-  potentially truncate the integer value. Emacs spends extra effort to make
-  comparisons like this exact.
-
-  However, in Java, this will be more costly, because our =most-positive-fixnum=
-  is exactly =Long.MAX_VALUE=, while Emacs has a few spare bits to accommodate
-  overflows. We can add more specializations, but is it really worth it?
-
-- The same applies to many other operations, as can be seen in the failing ERT
-  tests.
-
 * TODO [#B] Implement placeholder functions
 
 I've made lots of functions no-op in order to bootstrap =ert.el=. And we should
@@ -195,7 +177,7 @@ probably return to them some time:
 
   - [ ] =backward-prefix-chars=
 
-- [ ] =format-time-string=
+- [X] =format-time-string=
 
 * TODO [#C] Support native-comp
 
@@ -339,7 +321,12 @@ Edit: See comments in =BuiltInKeymap.java= for what keymap is about.
 
 - [X] A fallback, feature-complete regex engine -> no
 
-- [ ] Emacs Lisp byte-code interpreter in Truffle
+- [-] Emacs Lisp byte-code interpreter in Truffle
+
+  - [X] =ELispBytecodeFallbackNode=: a fallback bytecode interpreter with
+    not-bad JIT performance
+
+  - [ ] A bytecode interpreter based on =nativecomp=?
 
 ** Types [5/6]
 
@@ -371,12 +358,12 @@ interop, but otherwise simply using some classes with public member should do.
 
 - [X] =Lisp_String=
 
-- [-] =Lisp_Vectorlike= [12/36]
+- [-] =Lisp_Vectorlike= [13/36]
 
   - [X] =PVEC_NORMAL_VECTOR=
   - [ ] =PVEC_FREE=
   - [X] =PVEC_BIGNUM=
-  - [ ] =PVEC_MARKER=
+  - [X] =PVEC_MARKER=
   - [ ] =PVEC_OVERLAY=
   - [ ] =PVEC_FINALIZER=
   - [X] =PVEC_SYMBOL_WITH_POS= (maybe integrate into =ELispSymbol=)

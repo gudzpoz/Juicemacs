@@ -54,19 +54,21 @@ tasks.withType(JavaCompile).configureEach {
     options.fork = true
 }
 
-var dumpTestToIGV = false
-var dumpAssembly = false
-test {
-    jvmArgs += graalArgs + ['-XX:+UseParallelGC']
-    if (dumpTestToIGV || dumpAssembly) {
+static List<String> extraTestingJvmArgs(boolean igv, boolean assembly) {
+    var jvmArgs = ['-XX:+UseParallelGC']
+    if (igv || assembly) {
         jvmArgs += ['-Djdk.graal.Dump=:1']
     }
-    if (dumpTestToIGV) {
+    if (igv) {
         jvmArgs += ['-Djdk.graal.PrintGraph=Network']
     }
-    if (dumpAssembly) {
+    if (assembly) {
         jvmArgs += ['-Djdk.graal.PrintBackendCFG=true']
     }
+    return jvmArgs
+}
+test {
+    jvmArgs += graalArgs + extraTestingJvmArgs(false, false)
 }
 
 var emacsSrc = file('emacs/src')
@@ -96,4 +98,6 @@ tasks.register("elispBenchmarks", Test) {
     testClassesDirs = testing.suites.test.sources.output.classesDirs
     classpath = testing.suites.test.sources.runtimeClasspath
     outputs.upToDateWhen { false }
+
+    jvmArgs += graalArgs + extraTestingJvmArgs(false, false)
 }
