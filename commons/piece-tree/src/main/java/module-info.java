@@ -6,4 +6,5 @@ module party.iroiro.juicemacs.piecetree {
 
     exports party.iroiro.juicemacs.piecetree;
     exports party.iroiro.juicemacs.piecetree.meta;
+    exports party.iroiro.juicemacs.piecetree.interval;
 }

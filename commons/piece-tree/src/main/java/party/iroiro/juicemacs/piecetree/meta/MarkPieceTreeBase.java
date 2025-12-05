@@ -27,7 +27,6 @@ package party.iroiro.juicemacs.piecetree.meta;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.jspecify.annotations.Nullable;
-import party.iroiro.juicemacs.piecetree.meta.OverlayPieceTreeList.OverlayPieceTree;
 
 import java.util.*;
 
@@ -59,8 +58,7 @@ import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.*;
 /// with main tree operations implemented in corresponding classes, with moderate
 /// code repetitions.
 @SuppressWarnings("unchecked")
-public sealed abstract class MarkPieceTreeBase<T extends @Nullable Object>
-        permits IntervalPieceTree, MarkerPieceTree, OverlayPieceTree {
+public sealed abstract class MarkPieceTreeBase<T extends @Nullable Object> permits IntervalPieceTree, MarkerPieceTree {
     MarkTreeNode<T> root;
 
     public MarkPieceTreeBase() {

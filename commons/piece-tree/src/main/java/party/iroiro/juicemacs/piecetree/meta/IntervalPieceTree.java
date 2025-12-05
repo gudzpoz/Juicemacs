@@ -9,6 +9,14 @@ import java.util.List;
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.SENTINEL;
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.rbDelete;
 
+/// A tree for keeping text properties.
+///
+/// Since it is for Emacs buffer text properties, for which "the properties
+/// belong to a particular character at a particular place", it is actually
+/// not an "interval tree". And that makes it rather similar to our text
+/// piece tree [party.iroiro.juicemacs.piecetree.PieceTreeBase]: each segment
+/// of text of the same properties is a "piece". The only difference is that
+/// this class make extra efforts to merge adjacent pieces of the same properties.
 public final class IntervalPieceTree<T extends @Nullable Object> extends MarkPieceTreeBase<@Nullable T> {
     //#region Properties
     @Nullable

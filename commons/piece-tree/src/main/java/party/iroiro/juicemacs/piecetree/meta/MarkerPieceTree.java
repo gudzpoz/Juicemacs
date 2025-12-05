@@ -9,6 +9,26 @@ import java.util.*;
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.SENTINEL;
 import static party.iroiro.juicemacs.piecetree.meta.MarkTreeNode.rbDelete;
 
+/// A piece tree that supports markers
+///
+/// This "marker piece tree" is a bit different from both [IntervalPieceTree]
+/// and [party.iroiro.juicemacs.piecetree.PieceTreeBase]: each piece now keeps
+/// track of two things - the markers at the end of the piece, and the text
+/// before those markers, delimited by markers.
+///
+/// Uhh, for example, the following buffer:
+///
+/// ```
+/// (m1)text(m2)(m3)hello world!(m4)(m5)
+/// ```
+///
+/// ...is represented by three pieces:
+///
+/// ```
+/// Piece 1: {length: 0, markers: [m1]}
+/// Piece 2: {length: 4, markers: [m2, m3]} // text
+/// Piece 3: {length: 12, markers: [m4, m5]} // hello world!
+/// ```
 public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerArray> {
     private @Nullable MarkerMovedListener listener;
     private T buffer;
@@ -94,13 +114,7 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerArray> {
     }
 
     public void insertString(long offset, long cnt) {
-        if (cnt == 0) {
-            return;
-        }
-        if (root == SENTINEL) {
-            return;
-        }
-        if (offset > this.length) {
+        if (cnt == 0 || offset > this.length || root == SENTINEL) {
             return;
         }
         this.length += cnt;
@@ -215,6 +229,10 @@ public final class MarkerPieceTree<T> extends MarkPieceTreeBase<MarkerArray> {
         void onMarkerMoved(Marker marker, long delta);
     }
 
+    /// Marker data directly stored by a node
+    ///
+    /// Note that it tries to avoid array allocation by keeping
+    /// [#markers] as a single marker or an array of markers.
     static final class MarkerArray {
         /// [Marker] or an array of [Marker Markers]
         Object markers;
