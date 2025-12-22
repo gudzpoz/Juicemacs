@@ -1,0 +1,18 @@
+[[https://github.com/gudzpoz/Juicemacs][https://img.shields.io/github/stars/gudzpoz/Juicemacs?ext=.svg]]
+
+This website hosts several documentation files in the Juicemacs repository,
+because the Org files are very often rendered incorrectly.
+
+Currently, we have the following documentation:
+
+#+begin_src elisp :exports results :eval yes
+  (require 'cl-macs)
+  (cl-loop
+   for pattern in '("*.org" "*/*.org") append
+   (let ((pattern (file-name-concat default-directory pattern)))
+     (cl-loop for file in (file-expand-wildcards pattern) collect
+              (list (format "[[file:%s][%s]]" file
+                            (file-relative-name file default-directory))))))
+#+end_src
+
+#+INCLUDE: "./README.org" :lines "1-10"
